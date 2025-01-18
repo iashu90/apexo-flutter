@@ -37,7 +37,7 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
 
 ## Testing
 
-- [How to tun ___unit testing___](https://github.com/alselawi/apexo-flutter/blob/master/test/unit_test_readme.md).
+- [How to run ___unit testing___](https://github.com/alselawi/apexo-flutter/blob/master/test/unit_test_readme.md).
 - [How to run ___integration testing___](https://github.com/alselawi/apexo-flutter/blob/master/integration_test/readme.md).
 
 
