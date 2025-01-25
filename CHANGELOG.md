@@ -1,3 +1,11 @@
+### ____0.4.3____
+
+-   Fixed: Admin mode being activated if its a first login into any device.
+-   Fixed: disable date time picker if the appointment is open.
+-   Fixed: Barrier behind panels in small screens.
+-   Fixed: Show more button in datatable dark mode isn't visible.
+-   Scaled checkboxes.
+
 ### ____0.4.2____
 
 -   Implemented sentry for crash and error reporting.
