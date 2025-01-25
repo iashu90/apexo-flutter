@@ -17,7 +17,7 @@ class _LoginService extends ObservablePersistingObject {
   String email = "";
   String password = "";
   String token = "";
-  String adminCollectionId = "";
+  String adminCollectionId = "__UNDEFINED__";
 
   String get currentUserID {
     if (token.isEmpty) return "";
