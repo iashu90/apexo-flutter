@@ -1,9 +1,6 @@
 import 'en.dart';
 
-
-
-
-class Es implements En{
+class Es implements En {
   Direction $direction = Direction.ltr;
   String $name = "Español";
   String $code = "es";
@@ -38,7 +35,7 @@ class Es implements En{
     "appointments": "Citas",
     "patients": "Pacientes",
     "doctors": "Doctores",
-    "labworks": "Trabajos de laboratorio",
+    "labworks": "trabajos de lab.",
     "statistics": "Estadísticas",
 
     // dashboard
@@ -83,7 +80,8 @@ class Es implements En{
     "dutyDays": "Días de servicio",
     "addAppointment": "Añadir cita",
     "lockToUsers": "Solo los siguientes usuarios pueden ver/editar los datos y citas de este doctor",
-    "noUpcomingAppointmentsForThisDoctor": "No se econtraron citas próximas. Use el botón abajo para añadir una nueva cita.",
+    "noUpcomingAppointmentsForThisDoctor":
+        "No se econtraron citas próximas. Use el botón abajo para añadir una nueva cita.",
 
     // days and months
     "monday": "Lunes",
@@ -144,7 +142,8 @@ class Es implements En{
     "patientTags": "Etiquetas del paciente",
     "male": "Masculino",
     "female": "Femenino",
-    "noAppointmentsFound": "No se encontraron citas para este paciente, utiliza el botón de abajo para agregar una nueva cita.",
+    "noAppointmentsFound":
+        "No se encontraron citas para este paciente, utiliza el botón de abajo para agregar una nueva cita.",
     "editPatient": "Editar paciente",
     "editAppointment": "Editar cita",
     "patientPage": "Página web del paciente",
@@ -272,8 +271,8 @@ class Es implements En{
     "dateFormat": "Formato de fecha",
     "dateFormat_desc": "Este formato se usará para mostrar fechas cuando aplique.",
     "cacheReset": "Reiniciar caché",
-    "cacheReset_desc": 
-      "Puedes usar el siguiente botón para reiniciar el caché de la aplicación, excepto las imágenes. Esto puede ayudar a resolver algunos problemas que podrías estar teniendo al sincronizar con otros dispositivos.",
+    "cacheReset_desc":
+        "Puedes usar el siguiente botón para reiniciar el caché de la aplicación, excepto las imágenes. Esto puede ayudar a resolver algunos problemas que podrías estar teniendo al sincronizar con otros dispositivos.",
     "month/day/year": "Mes/Día/Año",
     "day/month/year": "Día/Mes/Año",
     "appliesTo": "Aplica a",
@@ -356,4 +355,4 @@ class Es implements En{
     "newVersionDialogContent":
         "Una nueva versión de Apexo está disponible. Por favor actualiza a la última versión para obtener la mejor experiencia. Escanea el código QR de abajo para comenzar.",
   };
-} 
+}
