@@ -39,7 +39,7 @@ class Patient extends Model {
   }
 
   int get age {
-    return DateTime.now().year - birth;
+    return birth;
   }
 
   double get paymentsMade {
@@ -93,7 +93,7 @@ class Patient extends Model {
   @override
   Map<String, String> get labels {
     Map<String, String> buildingLabels = {
-      "Age": (DateTime.now().year - birth).toString(),
+      "Age": birth.toString(),
     };
 
     if (daysSinceLastAppointment == null) {
@@ -128,7 +128,7 @@ class Patient extends Model {
 
   // id: id of the patient (inherited from Model)
   // title: name of the patient (inherited from Model)
-  /* 1 */ int birth = DateTime.now().year - 18;
+  /* 1 */ int birth = 0;
   /* 2 */ int gender = 0; // 0 for female, 1 for male
   /* 3 */ String phone = "";
   /* 4 */ String email = "";

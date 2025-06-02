@@ -20,6 +20,7 @@ void main() async {
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
 
+ runApp(const ApexoApp());
   if (kDebugMode) {
     runApp(const ApexoApp());
   } else {

@@ -17,14 +17,16 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
-Future<Patient> openPatient([Patient? patient]) {
+Future<Patient> openPatient([Patient? patient,int initialTabIndex = 0]) {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
   final panel = Panel<Patient>(
     item: editingCopy,
     store: patients,
     icon: FluentIcons.medication_admin,
     title: patients.get(editingCopy.id) == null ? txt("newPatient") : editingCopy.title,
+
     tabs: [
       PanelTab(
         title: txt("patientDetails"),
@@ -53,6 +55,7 @@ Future<Patient> openPatient([Patient? patient]) {
       ),
     ],
   );
+  panel.selectedTab(initialTabIndex);
   routes.openPanel(panel);
   return panel.result.future;
 }
@@ -239,13 +242,20 @@ class _PatientDetailsState extends State<_PatientDetails> {
         Row(mainAxisSize: MainAxisSize.min, children: [
           Expanded(
             child: InfoLabel(
-              label: "${txt("birthYear")}:",
+              label: "${txt("age")}:",
               isHeader: true,
               child: CupertinoTextField(
                 key: WK.fieldPatientYOB,
-                placeholder: "${txt("birthYear")}...",
+                placeholder: "${txt("age")}...",
                 controller: TextEditingController(text: widget.patient.birth.toString()),
-                onChanged: (value) => widget.patient.birth = int.tryParse(value) ?? widget.patient.birth,
+                keyboardType: TextInputType.number,
+                maxLength: 3,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
+                onChanged: (value) =>
+                    widget.patient.birth = int.tryParse(value) ?? widget.patient.birth,
               ),
             ),
           ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/core/store.dart';
+import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -79,18 +80,20 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     return labels.where((x) => !x.contains("\u200B")).toList();
   }
 
-  List<Item> get filteredItems {
-    final words = _searchValue.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
-    final List<Item> candidates = [];
-    for (var item in widget.items) {
-      final searchIn =
-          (item.title + jsonEncode(item.labels.values.toList())).toLowerCase().replaceAll(RegExp("أ|إ"), "ا");
-      final bool allTermsFound =
-          words.map((word) => searchIn.contains(word)).where((x) => x == true).length == words.length;
-      if (allTermsFound) candidates.add(item);
-    }
-    return candidates;
+List<Item> get filteredItems {
+  final words = _searchValue.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
+  final List<Item> candidates = [];
+  for (var item in widget.items) {
+    // Add phone to the searchIn string if it exists
+    final searchIn = (item.title + (item is Patient ? (item.phone) : '') + jsonEncode(item.labels.values.toList()))
+        .toLowerCase()
+        .replaceAll(RegExp("أ|إ"), "ا");
+    final bool allTermsFound =
+        words.map((word) => searchIn.contains(word)).where((x) => x == true).length == words.length;
+    if (allTermsFound) candidates.add(item);
   }
+  return candidates;
+}
 
   String removeNonNumbers(String input) {
     final regex = RegExp(r'^\D+|\D+$');

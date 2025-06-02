@@ -16,7 +16,15 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart' as intl;
 
-enum AppointmentSections { patient, doctors, photos, preNotes, postNotes, prescriptions, pay }
+enum AppointmentSections {
+  patient,
+  doctors,
+  photos,
+  preNotes,
+  postNotes,
+  prescriptions,
+  pay
+}
 
 class AppointmentCard extends StatelessWidget {
   final Appointment appointment;
@@ -24,7 +32,11 @@ class AppointmentCard extends StatelessWidget {
   final String? difference;
   final int number;
   const AppointmentCard(
-      {super.key, required this.appointment, this.difference, required this.number, this.hide = const []});
+      {super.key,
+      required this.appointment,
+      this.difference,
+      required this.number,
+      this.hide = const []});
 
   @override
   Widget build(BuildContext context) {
@@ -62,14 +74,16 @@ class AppointmentCard extends StatelessWidget {
                 child: Acrylic(
                   elevation: 100,
                   blurAmount: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5)),
                   child: Container(
                     decoration: _coloredHandleDecoration(color),
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
                         _buildHeader(context, color),
-                        if (appointment.patient != null && !hide.contains(AppointmentSections.patient)) ...[
+                        if (appointment.patient != null &&
+                            !hide.contains(AppointmentSections.patient)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("patient"),
@@ -82,7 +96,8 @@ class AppointmentCard extends StatelessWidget {
                             color,
                           ),
                         ],
-                        if (appointment.operators.isNotEmpty && !hide.contains(AppointmentSections.doctors)) ...[
+                        if (appointment.operators.isNotEmpty &&
+                            !hide.contains(AppointmentSections.doctors)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("doctors"),
@@ -99,7 +114,8 @@ class AppointmentCard extends StatelessWidget {
                             color,
                           ),
                         ],
-                        if (appointment.imgs.isNotEmpty && !hide.contains(AppointmentSections.photos)) ...[
+                        if (appointment.imgs.isNotEmpty &&
+                            !hide.contains(AppointmentSections.photos)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("photos"),
@@ -116,38 +132,83 @@ class AppointmentCard extends StatelessWidget {
                             color,
                           ),
                         ],
-                        if (appointment.preOpNotes.isNotEmpty && !hide.contains(AppointmentSections.preNotes)) ...[
+                        if (appointment.preOpNotes.isNotEmpty &&
+                            !hide.contains(AppointmentSections.preNotes)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("pre-opNotes"),
                             Txt(
                               appointment.preOpNotes,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500),
                             ),
                             FluentIcons.quick_note,
                             color,
                           ),
                         ],
-                        if (appointment.postOpNotes.isNotEmpty && !hide.contains(AppointmentSections.postNotes)) ...[
+                        if (appointment.postOpNotes.isNotEmpty &&
+                            !hide.contains(AppointmentSections.postNotes)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("post-opNotes"),
                             Txt(
                               appointment.postOpNotes,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500),
                             ),
                             FluentIcons.quick_note,
                             color,
                           ),
                         ],
+                        // --- Treatment Section ---
+                        if (appointment.selectedTreatments.isNotEmpty) ...[
+                          ..._betweenSections,
+                          _buildSection(
+                            txt("treatment"),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: appointment.selectedTreatments.map((t) {
+                                // Check if it's a sub-treatment (format: Parent::Child)
+                                if (t.contains('::')) {
+                                  final parts = t.split('::');
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 18.0, top: 2, bottom: 2),
+                                    child: Txt(
+                                      parts[1],
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  );
+                                } else {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                        top: 2, bottom: 2),
+                                    child: Txt(
+                                      t,
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  );
+                                }
+                              }).toList(),
+                            ),
+                            FluentIcons.medical,
+                            color,
+                          ),
+                        ],
                         if (appointment.prescriptions.isNotEmpty &&
-                            !hide.contains(AppointmentSections.prescriptions)) ...[
+                            !hide.contains(
+                                AppointmentSections.prescriptions)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("prescription"),
                             Txt(
                               appointment.prescriptions.join("\n"),
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500),
                             ),
                             FluentIcons.pill,
                             color,
@@ -223,9 +284,11 @@ class AppointmentCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            _paymentPill(txt("price"), appointment.price.toString(), context, null, color),
+            _paymentPill(txt("price"), appointment.price.toString(), context,
+                null, color),
             _horizontalSpacing(),
-            _paymentPill(txt("paid"), appointment.paid.toString(), context, null, color),
+            _paymentPill(
+                txt("paid"), appointment.paid.toString(), context, null, color),
           ],
         ),
         _verticalSpacing(),
@@ -240,10 +303,17 @@ class AppointmentCard extends StatelessWidget {
     );
   }
 
-  PaymentPill _paymentPill(String title, String amount, BuildContext context, [Color? color, Color? textColor]) {
-    final Color finalTextColor =
-        textColor ?? (color == null ? (FluentTheme.of(context).iconTheme.color ?? Colors.grey) : Colors.white);
-    return PaymentPill(finalTextColor: finalTextColor, amount: amount, title: title, color: color);
+  PaymentPill _paymentPill(String title, String amount, BuildContext context,
+      [Color? color, Color? textColor]) {
+    final Color finalTextColor = textColor ??
+        (color == null
+            ? (FluentTheme.of(context).iconTheme.color ?? Colors.grey)
+            : Colors.white);
+    return PaymentPill(
+        finalTextColor: finalTextColor,
+        amount: amount,
+        title: title,
+        color: color);
   }
 
   List<Widget> get _betweenSections {
@@ -285,10 +355,12 @@ class AppointmentCard extends StatelessWidget {
               ),
             ),
             Acrylic(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50)),
               elevation: 100,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 child: Txt(
                   title,
                   style: const TextStyle(
@@ -348,9 +420,11 @@ class AppointmentCard extends StatelessWidget {
   }
 
   Text _buildFormattedDate(Color color) {
-    final df = localSettings.dateFormat.startsWith("d") == true ? "d/MM" : "MM/d";
+    final df =
+        localSettings.dateFormat.startsWith("d") == true ? "d/MM" : "MM/d";
     return Txt(
-      intl.DateFormat("E $df yyyy - hh:mm a", locale.s.$code).format(appointment.date),
+      intl.DateFormat("E $df yyyy - hh:mm a", locale.s.$code)
+          .format(appointment.date),
       style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold),
     );
   }
@@ -431,7 +505,10 @@ class TimeDifference extends StatelessWidget {
   Widget build(BuildContext context) {
     return Txt(
       difference!,
-      style: TextStyle(fontSize: 12, color: Colors.grey.withValues(alpha: 0.5), fontWeight: FontWeight.bold),
+      style: TextStyle(
+          fontSize: 12,
+          color: Colors.grey.withValues(alpha: 0.5),
+          fontWeight: FontWeight.bold),
     );
   }
 }
