@@ -203,6 +203,7 @@ class Es implements En {
     "error": "Error",
     "enterLink": "Ingresa una URL que contenga fotos",
     "import": "Importar",
+    "treatment": "Tratamiento",
 
     // labworks
     "laboratory": "Laboratorio",

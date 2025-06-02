@@ -138,7 +138,7 @@ class _ReceiptEditingState extends State<_ReceiptEditing> {
                 child: AutoSuggestBox<String>(
                   key: WK.fieldReceiptIssuer,
                   style: textFieldTextStyle(),
-                  decoration: textFieldDecoration(),
+                  decoration: textFieldDecorationProperty(),
                   clearButtonEnabled: false,
                   placeholder: "${txt("issuer")}...",
                   controller: issuerController,
@@ -166,7 +166,7 @@ class _ReceiptEditingState extends State<_ReceiptEditing> {
                 child: AutoSuggestBox<String>(
                   key: WK.fieldLabworkPhoneNumber,
                   style: textFieldTextStyle(),
-                  decoration: textFieldDecoration(),
+                  decoration: textFieldDecorationProperty(),
                   clearButtonEnabled: false,
                   placeholder: "${txt("phone")}...",
                   controller: issuerPhoneController,
@@ -208,6 +208,15 @@ BoxDecoration textFieldDecoration() {
   return BoxDecoration(
     borderRadius: BorderRadius.circular(5),
     border: Border.all(color: const Color.fromARGB(255, 192, 192, 192)),
+  );
+}
+
+WidgetStateProperty<BoxDecoration>? textFieldDecorationProperty() {
+  return WidgetStateProperty.all(
+    BoxDecoration(
+      borderRadius: BorderRadius.circular(5),
+      border: Border.all(color: const Color.fromARGB(255, 192, 192, 192)),
+    ),
   );
 }
 

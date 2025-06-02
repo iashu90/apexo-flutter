@@ -5,6 +5,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/appointments/treatment_model.dart';
 
 class Appointment extends Model {
   @override
@@ -26,7 +27,10 @@ class Appointment extends Model {
   }
 
   Patient? get patient {
-    if (patientID != null && patientID!.isNotEmpty && patients.get(patientID!) == null && patientID!.length == 15) {
+    if (patientID != null &&
+        patientID!.isNotEmpty &&
+        patients.get(patientID!) == null &&
+        patientID!.length == 15) {
       patients.set(Patient.fromJson({"id": patientID}));
     }
     return patients.get(patientID ?? "return null when null");
@@ -51,7 +55,11 @@ class Appointment extends Model {
   }
 
   Set<int> get availableWeekDays {
-    return operators.expand((element) => element.dutyDays).toSet().map((day) => allDays.indexOf(day) + 1).toSet();
+    return operators
+        .expand((element) => element.dutyDays)
+        .toSet()
+        .map((day) => allDays.indexOf(day) + 1)
+        .toSet();
   }
 
   String get subtitleLine1 {
@@ -80,7 +88,9 @@ class Appointment extends Model {
   }
 
   bool get isMissed {
-    return date.isBefore(DateTime.now()) && date.difference(DateTime.now()).inDays.abs() > 0 && !isDone;
+    return date.isBefore(DateTime.now()) &&
+        date.difference(DateTime.now()).inDays.abs() > 0 &&
+        !isDone;
   }
 
   bool get firstAppointmentForThisPatient {
@@ -100,18 +110,52 @@ class Appointment extends Model {
   /* 8 */ List<String> imgs = [];
   /* 9 */ DateTime date = DateTime.now();
   /* 10 */ bool isDone = false;
+  /* 11 */ List<Treatment> treatments = [
+    Treatment(
+      name: 'Regular Exams and Cleanings',
+      price: 50,
+      subTreatments: [
+        Treatment(name: 'Child Cleaning', price: 30),
+        Treatment(name: 'Adult Cleaning', price: 60),
+      ],
+    ),
+    Treatment(
+      name: 'Dental X-rays',
+      price: 40,
+      subTreatments: [
+        Treatment(name: 'Bitewing X-ray', price: 20),
+        Treatment(name: 'Panoramic X-ray', price: 60),
+      ],
+    ),
+    Treatment(
+      name: 'Fluoride Treatments',
+      price: 25,
+    ),
+    // ...add other treatments similarly...
+  ];
+  /* 12 */ List<String> selectedTreatments = [];
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
-    /* 1 */ operatorsIDs = List<String>.from(json["operatorsIDs"] ?? operatorsIDs);
-    /* 2 */ prescriptions = List<String>.from(json["prescriptions"] ?? prescriptions);
+    /* 1 */ operatorsIDs =
+        List<String>.from(json["operatorsIDs"] ?? operatorsIDs);
+    /* 2 */ prescriptions =
+        List<String>.from(json["prescriptions"] ?? prescriptions);
     /* 3 */ patientID = json["patientID"] ?? patientID;
     /* 4 */ preOpNotes = json["preOpNotes"] ?? preOpNotes;
     /* 5 */ postOpNotes = json["postOpNotes"] ?? postOpNotes;
     /* 6 */ price = double.parse((json["price"] ?? price).toString());
     /* 7 */ paid = double.parse((json["paid"] ?? paid).toString());
     /* 8 */ imgs = List<String>.from(json["imgs"] ?? imgs);
-    /* 9 */ date = (json["date"] != null ? DateTime.fromMillisecondsSinceEpoch((json["date"] * 60000).toInt()) : date);
+    /* 9 */ date = (json["date"] != null
+        ? DateTime.fromMillisecondsSinceEpoch((json["date"] * 60000).toInt())
+        : date);
     /* 10 */ isDone = (json["isDone"] ?? isDone);
+    /* 11 */ if (json.containsKey("treatments") && json["treatments"] != null) {
+      treatments = (json["treatments"] as List<dynamic>)
+          .map((e) => Treatment.fromJson(e))
+          .toList();
+    }
+    /* 12 */ selectedTreatments = List<String>.from(json["selectedTreatments"] ?? []);
   }
 
   @override
@@ -128,6 +172,10 @@ class Appointment extends Model {
     /* 8 */ if (imgs.isNotEmpty) json['imgs'] = imgs;
     /* 9 */ if (isDone != d.isDone) json['isDone'] = isDone;
     /* 10 */ json['date'] = (date.millisecondsSinceEpoch / 60000).round();
+    /* 11 */ if (treatments.isNotEmpty) {
+      json['treatments'] = treatments.map((e) => e.toJson()).toList();
+    }
+    /* 12 */ if (selectedTreatments.isNotEmpty) json['selectedTreatments'] = selectedTreatments;
 
     json.remove("title"); // remove since it is a computed value in this case
 

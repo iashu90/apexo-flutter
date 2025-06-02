@@ -31,7 +31,9 @@ void openAppointment([Appointment? appointment]) {
     item: editingCopy,
     store: appointments,
     icon: FluentIcons.calendar,
-    title: appointments.get(editingCopy.id) == null ? txt("addAppointment") : editingCopy.title,
+    title: appointments.get(editingCopy.id) == null
+        ? txt("addAppointment")
+        : editingCopy.title,
     tabs: [],
   );
 
@@ -51,7 +53,10 @@ void openAppointment([Appointment? appointment]) {
       icon: FluentIcons.camera,
       body: _AppointmentGallery(panel),
       onlyIfSaved: true,
-      footer: kIsWeb ? null : _AppointmentGalleryFooter(panel), // TODO: image upload isn't supported on web
+      footer: kIsWeb
+          ? null
+          : _AppointmentGalleryFooter(
+              panel), // TODO: image upload isn't supported on web
       padding: 0,
     ),
   ];
@@ -64,7 +69,8 @@ class _AppointmentGalleryFooter extends StatefulWidget {
   const _AppointmentGalleryFooter(this.panel);
 
   @override
-  State<_AppointmentGalleryFooter> createState() => _AppointmentGalleryFooterState();
+  State<_AppointmentGalleryFooter> createState() =>
+      _AppointmentGalleryFooterState();
 }
 
 class _AppointmentGalleryFooterState extends State<_AppointmentGalleryFooter> {
@@ -103,15 +109,18 @@ class _AppointmentGalleryFooterState extends State<_AppointmentGalleryFooter> {
                   ],
                 ),
                 onPressed: () async {
-                  final XFile? res = await ImagePicker().pickImage(source: ImageSource.camera);
+                  final XFile? res =
+                      await ImagePicker().pickImage(source: ImageSource.camera);
                   if (res == null) return;
                   widget.panel.inProgress(true);
                   try {
-                    final imgName = await handleNewImage(rowID: widget.panel.item.id, targetPath: res.path);
+                    final imgName = await handleNewImage(
+                        rowID: widget.panel.item.id, targetPath: res.path);
                     if (widget.panel.item.imgs.contains(imgName) == false) {
                       widget.panel.item.imgs.add(imgName);
                       appointments.set(widget.panel.item);
-                      widget.panel.savedJson = jsonEncode(widget.panel.item.toJson());
+                      widget.panel.savedJson =
+                          jsonEncode(widget.panel.item.toJson());
                     }
                   } catch (e, s) {
                     logger("Error during uploading camera capture: $e", s);
@@ -129,15 +138,18 @@ class _AppointmentGalleryFooterState extends State<_AppointmentGalleryFooter> {
                 ],
               ),
               onPressed: () async {
-                List<XFile> res = await ImagePicker().pickMultiImage(limit: 50 - widget.panel.item.imgs.length);
+                List<XFile> res = await ImagePicker()
+                    .pickMultiImage(limit: 50 - widget.panel.item.imgs.length);
                 widget.panel.inProgress(true);
                 try {
                   for (var img in res) {
-                    final imgName = await handleNewImage(rowID: widget.panel.item.id, targetPath: img.path);
+                    final imgName = await handleNewImage(
+                        rowID: widget.panel.item.id, targetPath: img.path);
                     if (widget.panel.item.imgs.contains(imgName) == false) {
                       widget.panel.item.imgs.add(imgName);
                       appointments.set(widget.panel.item);
-                      widget.panel.savedJson = jsonEncode(widget.panel.item.toJson());
+                      widget.panel.savedJson =
+                          jsonEncode(widget.panel.item.toJson());
                       widget.panel.selectedTab(widget.panel.selectedTab());
                     }
                   }
@@ -170,7 +182,10 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
         stream: widget.panel.selectedTab.stream,
         builder: (context, _) {
           return widget.panel.item.imgs.isEmpty
-              ? Center(child: InfoBar(title: Txt(txt("emptyGallery")), content: Txt(txt("noPhotos"))))
+              ? Center(
+                  child: InfoBar(
+                      title: Txt(txt("emptyGallery")),
+                      content: Txt(txt("noPhotos"))))
               : StreamBuilder(
                   stream: widget.panel.inProgress.stream,
                   builder: (context, snapshot) {
@@ -181,10 +196,12 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                       onPressDelete: (img) async {
                         widget.panel.inProgress(true);
                         try {
-                          await appointments.deleteImg(widget.panel.item.id, img);
+                          await appointments.deleteImg(
+                              widget.panel.item.id, img);
                           widget.panel.item.imgs.remove(img);
                           appointments.set(widget.panel.item);
-                          widget.panel.savedJson = jsonEncode(widget.panel.item.toJson());
+                          widget.panel.savedJson =
+                              jsonEncode(widget.panel.item.toJson());
                         } catch (e, s) {
                           logger("Error during deleting image: $e", s);
                         }
@@ -215,28 +232,32 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
           /// rebuild needed if a patient is selected/deselected
           key: Key(widget.appointment.patientID ?? ""),
           label: "${txt("patient")}:",
-          child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Expanded(
-              child: PatientPicker(
-                  value: widget.appointment.patientID,
-                  onChanged: (id) {
-                    setState(() {
-                      widget.appointment.patientID = id;
-                    });
-                  }),
-            ),
-            const SizedBox(width: 5),
-            if (widget.appointment.patientID == null)
-              AcrylicButton(
-                  icon: FluentIcons.add_friend,
-                  text: txt("newPatient"),
-                  onPressed: () async {
-                    final newPatientId = uuid();
-                    final newPatient = await openPatient(Patient.fromJson({"id": newPatientId}));
-                    routes.closePanel(newPatientId);
-                    widget.appointment.patientID = newPatient.id;
-                  })
-          ]),
+          child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: PatientPicker(
+                      value: widget.appointment.patientID,
+                      onChanged: (id) {
+                        setState(() {
+                          widget.appointment.patientID = id;
+                        });
+                      }),
+                ),
+                const SizedBox(width: 5),
+                if (widget.appointment.patientID == null)
+                  AcrylicButton(
+                      icon: FluentIcons.add_friend,
+                      text: txt("newPatient"),
+                      onPressed: () async {
+                        final newPatientId = uuid();
+                        final newPatient = await openPatient(
+                            Patient.fromJson({"id": newPatientId}));
+                        routes.closePanel(newPatientId);
+                        widget.appointment.patientID = newPatient.id;
+                      })
+              ]),
         ),
         InfoLabel(
           label: "${txt("doctors")}:",
@@ -269,7 +290,8 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
             ),
             const SizedBox(height: 5),
             if (widget.appointment.operators.isNotEmpty &&
-                !widget.appointment.availableWeekDays.contains(widget.appointment.date.weekday))
+                !widget.appointment.availableWeekDays
+                    .contains(widget.appointment.date.weekday))
               InfoBar(
                 title: Txt(txt("attention")),
                 content: Txt(txt("doctorNotAvailable")),
@@ -303,11 +325,12 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
             key: WK.fieldAppointmentPreOpNotes,
             expands: true,
             maxLines: null,
-            controller: TextEditingController(text: widget.appointment.preOpNotes),
+            controller:
+                TextEditingController(text: widget.appointment.preOpNotes),
             onChanged: (v) => widget.appointment.preOpNotes = v,
             placeholder: "${txt("preOperativeNotes")}...",
           ),
-        )
+        ),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
     );
   }
@@ -326,6 +349,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   final TextEditingController priceController = TextEditingController();
   final TextEditingController paidController = TextEditingController();
   bool didNotEditPaidYet = true;
+  Set<String> selectedTreatments = {};
+  bool isExpanded = true;
 
   void setToDone() {
     setState(() {
@@ -340,6 +365,34 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     priceController.text = widget.appointment.price.toStringAsFixed(0);
     paidController.text = widget.appointment.paid.toStringAsFixed(0);
     if (widget.appointment.paid != 0) didNotEditPaidYet = false;
+    if (widget.appointment.selectedTreatments.isNotEmpty) {
+      selectedTreatments = widget.appointment.selectedTreatments.toSet();
+    } else {
+      selectedTreatments = {};
+    }
+    // Set initial price based on selected treatments
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      updateSelectedTreatments();
+    });
+  }
+
+  void updateSelectedTreatments() {
+    widget.appointment.selectedTreatments = selectedTreatments.toList();
+    // Calculate total price of selected treatments and sub-treatments
+    double total = 0;
+    for (final treatment in widget.appointment.treatments) {
+      if (selectedTreatments.contains(treatment.name)) {
+        total += treatment.price;
+      }
+      for (final sub in treatment.subTreatments) {
+        final key = '${treatment.name}::${sub.name}';
+        if (selectedTreatments.contains(key)) {
+          total += sub.price;
+        }
+      }
+    }
+    priceController.text = total.toStringAsFixed(0);
+    widget.appointment.price = total;
   }
 
   @override
@@ -347,6 +400,70 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              isExpanded = !isExpanded; // Toggle expand/collapse state
+            });
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("${txt("treatment")}:"),
+              Icon(isExpanded
+                  ? FluentIcons.chevron_up
+                  : FluentIcons.chevron_down),
+            ],
+          ),
+        ),
+        if (isExpanded) const SizedBox(height: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: widget.appointment.treatments.map((treatment) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Checkbox(
+                    checked: selectedTreatments.contains(treatment.name),
+                    onChanged: (isChecked) {
+                      setState(() {
+                        if (isChecked == true) {
+                          selectedTreatments.add(treatment.name);
+                        } else {
+                          selectedTreatments.remove(treatment.name);
+                        }
+                        updateSelectedTreatments();
+                      });
+                    },
+                    content: Text('${treatment.name} - \$${treatment.price}'),
+                  ),
+                ),
+                ...treatment.subTreatments.map((sub) => Padding(
+                      padding: const EdgeInsets.only(left: 24.0, bottom: 8.0),
+                      child: Checkbox(
+                        checked: selectedTreatments
+                            .contains('${treatment.name}::${sub.name}'),
+                        onChanged: (isChecked) {
+                          setState(() {
+                            final key = '${treatment.name}::${sub.name}';
+                            if (isChecked == true) {
+                              selectedTreatments.add(key);
+                            } else {
+                              selectedTreatments.remove(key);
+                            }
+                            updateSelectedTreatments();
+                          });
+                        },
+                        content: Text('${sub.name} - \$${sub.price}'),
+                      ),
+                    )),
+              ],
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
         InfoLabel(
           label: "${txt("postOperativeNotes")}:",
           child: CupertinoTextField(
@@ -360,21 +477,28 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 widget.appointment.isDone = true;
               });
             },
-            placeholder: "${txt("postOperativeNotes")}...",
+            placeholder: "${txt("postOperativeNotes")}",
           ),
         ),
         InfoLabel(
           label: "${txt("prescription")}:",
           child: TagInputWidget(
             key: WK.fieldAppointmentPrescriptions,
-            suggestions: appointments.allPrescriptions.map((p) => TagInputItem(value: p, label: p)).toList(),
+            suggestions: appointments.allPrescriptions
+                .map((p) => TagInputItem(value: p, label: p))
+                .toList(),
             onChanged: (s) {
               setState(() {
-                widget.appointment.prescriptions = s.where((x) => x.value != null).map((x) => x.value!).toList();
+                widget.appointment.prescriptions = s
+                    .where((x) => x.value != null)
+                    .map((x) => x.value!)
+                    .toList();
                 widget.appointment.isDone = true;
               });
             },
-            initialValue: widget.appointment.prescriptions.map((p) => TagInputItem(value: p, label: p)).toList(),
+            initialValue: widget.appointment.prescriptions
+                .map((p) => TagInputItem(value: p, label: p))
+                .toList(),
             strict: false,
             limit: 999,
             placeholder: "${txt("prescription")}...",
@@ -385,7 +509,11 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               style: const ButtonStyle(elevation: WidgetStatePropertyAll(2)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [const Icon(FluentIcons.print), const SizedBox(width: 10), Txt(txt("printPrescription"))],
+                children: [
+                  const Icon(FluentIcons.print),
+                  const SizedBox(width: 10),
+                  Txt(txt("printPrescription"))
+                ],
               ),
               onPressed: () {
                 printingPrescription(
@@ -401,7 +529,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
           children: [
             Expanded(
               child: InfoLabel(
-                label: "${txt("priceIn")} ${globalSettings.get("currency_______").value}",
+                label:
+                    "${txt("priceIn")} ${globalSettings.get("currency_______").value}",
                 child: CupertinoTextField(
                   key: WK.fieldAppointmentPrice,
                   controller: priceController,
@@ -410,7 +539,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                       widget.appointment.price = double.tryParse(v) ?? 0;
                       if (didNotEditPaidYet) {
                         widget.appointment.paid = double.tryParse(v) ?? 0;
-                        paidController.text = widget.appointment.paid.toStringAsFixed(0);
+                        paidController.text =
+                            widget.appointment.paid.toStringAsFixed(0);
                       }
                       widget.appointment.isDone = true;
                     });
@@ -424,7 +554,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             const SizedBox(width: 10),
             Expanded(
               child: InfoLabel(
-                label: "${txt("paidIn")} ${globalSettings.get("currency_______").value}",
+                label:
+                    "${txt("paidIn")} ${globalSettings.get("currency_______").value}",
                 child: CupertinoTextField(
                   key: WK.fieldAppointmentPayment,
                   controller: paidController,
@@ -452,6 +583,27 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             });
           },
           content: Txt(txt("isDone")),
+        ),
+        const SizedBox(height: 20),
+        FilledButton(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(FluentIcons.save),
+              SizedBox(width: 8),
+              Txt("Save & Book New Appointment"),
+            ],
+          ),
+          onPressed: () async {
+            appointments.set(widget.appointment);
+            routes.closePanel(widget.appointment.id);
+            // Create a new appointment with the same patient ID
+            final newAppointment = Appointment.fromJson({});
+            newAppointment.patientID = widget.appointment.patientID;
+
+            // Open the new appointment panel with the patient pre-selected
+            openAppointment(newAppointment);
+          },
         ),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
     );

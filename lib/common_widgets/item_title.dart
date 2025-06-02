@@ -1,3 +1,4 @@
+import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/imgs.dart';
@@ -91,10 +92,21 @@ class _ItemTitleState extends State<ItemTitle> {
               constraints:
                   BoxConstraints(minWidth: widget.maxWidth < 100 ? widget.maxWidth : 100, maxWidth: widget.maxWidth),
               padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
-              child: Txt(
-                widget.item.title,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: widget.fontSize ?? 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Txt(
+                    widget.item.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: widget.fontSize ?? 14),
+                  ),
+                  if (widget.item is Patient)
+                    Txt(
+                      (widget.item as Patient).phone ?? '',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
               ),
             ),
           ),

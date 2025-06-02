@@ -55,7 +55,8 @@ class En {
     "onceConnectionIsStable":
         "Once your connection becomes stable you can use the button in the top right corner to reconnect.",
     "unRestrictedAccess": "unrestricted access in the application",
-    "restrictedAccess": "restricted access to some screens as dictated by the administrator",
+    "restrictedAccess":
+        "restricted access to some screens as dictated by the administrator",
     "youAreCurrentlyIn": "You are currently in",
     "mode": "mode",
     "youHave": "You have",
@@ -82,8 +83,10 @@ class En {
     "doctorEmail": "Doctor email",
     "dutyDays": "Duty days",
     "addAppointment": "Add Appointment",
-    "lockToUsers": "Only the following users can view/edit this doctor's data and appointments",
-    "noUpcomingAppointmentsForThisDoctor": "No upcoming appointments found. Use the button below to register new one",
+    "lockToUsers":
+        "Only the following users can view/edit this doctor's data and appointments",
+    "noUpcomingAppointmentsForThisDoctor":
+        "No upcoming appointments found. Use the button below to register new one",
 
     // days and months
     "monday": "Monday",
@@ -144,11 +147,13 @@ class En {
     "patientTags": "Patient tags",
     "male": "Male",
     "female": "Female",
-    "noAppointmentsFound": "No appointments found for this patient, use the button below to add new appointment.",
+    "noAppointmentsFound":
+        "No appointments found for this patient, use the button below to add new appointment.",
     "editPatient": "Edit Patient",
     "editAppointment": "Edit Appointment",
     "patientPage": "Patient Web Page",
-    "patientCanUseTheFollowing": "Patient can use the following link to access his appointments, payments and photos.",
+    "patientCanUseTheFollowing":
+        "Patient can use the following link to access his appointments, payments and photos.",
     "printQR": "Print QR Code",
     "dentalNotes": "Dental Notes",
     "showPrimary": "Show Primary",
@@ -182,7 +187,8 @@ class En {
     "changeDate": "Change Date",
     "changeTime": "Change Time",
     "attention": "Attention",
-    "doctorNotAvailable": "One of the selected doctors might not be available on the selected date.",
+    "doctorNotAvailable":
+        "One of the selected doctors might not be available on the selected date.",
     "time": "Time",
     "preOperativeNotes": "Pre-operative notes",
     "selectDoctors": "Select Doctors",
@@ -204,6 +210,13 @@ class En {
     "error": "Error",
     "enterLink": "Enter a URL that contains photos",
     "import": "Import",
+    "treatment": "Treatment",
+    "noAppointmentsToday": "No appointments today",
+    "noPatientsForDoctor": "No patients for this doctor.",
+    "saveBook": "Laboratory",
+    "completedVsPendingAppointments": "Completed vs. Pending Appointments",
+    "completed": "Completed",
+    "pending": "Pending",
 
     // labworks
     "laboratory": "Laboratory",
@@ -261,16 +274,21 @@ class En {
 
     // settings
     "currency": "Currency",
-    "currency_desc": "Currency code to be used across the application (e.g. USD, EUR, IQD).",
-    "phone_desc": "The phone number will be displayed in prints and patients web page.",
+    "currency_desc":
+        "Currency code to be used across the application (e.g. USD, EUR, IQD).",
+    "phone_desc":
+        "The phone number will be displayed in prints and patients web page.",
     "prescriptionFooter": "Prescription footer",
-    "prescriptionFooter_desc": "This text will be displayed at the bottom of the prescription.",
+    "prescriptionFooter_desc":
+        "This text will be displayed at the bottom of the prescription.",
     "language": "Language",
-    "language_desc": "The interface language for the menus, buttons, and info used across the app.",
+    "language_desc":
+        "The interface language for the menus, buttons, and info used across the app.",
     "startingDayOfWeek": "Starting day of week",
     "startingDayOfWeek_desc": "The day of the week that the week starts on.",
     "dateFormat": "Date format",
-    "dateFormat_desc": "This format will be used to display dates where applicable.",
+    "dateFormat_desc":
+        "This format will be used to display dates where applicable.",
     "cacheReset": "Cache reset",
     "cacheReset_desc":
         "Using the button below, you can delete locally saved data (except for images), this would solve some issues with synchronization if you're facing any.",
@@ -291,10 +309,12 @@ class En {
     "restoreBackup": "Restore backup",
     "restoreBackupWarning1":
         "Restoring this backup will overwrite all data in the app currently. Any changes that you have made after the date of this backup",
-    "restoreBackupWarning2": "will be lost.\n\nAre you sure you want to restore this backup?",
+    "restoreBackupWarning2":
+        "will be lost.\n\nAre you sure you want to restore this backup?",
     "sureDeleteBackup": "Are you sure you want to delete this backup",
     "backupDate": "Backup date",
-    "useTheFollowingLinkToDownloadTheBackup": "Use the following link to download the backup",
+    "useTheFollowingLinkToDownloadTheBackup":
+        "Use the following link to download the backup",
 
     // advanced settings: Admins
     "admins": "Administrators",
@@ -304,7 +324,8 @@ class En {
     "password": "Password",
     "leaveBlankToKeepUnchanged": "Leave blank to keep unchanged",
     "updatingPassword": "Updating password",
-    "leaveItEmpty": "Leave the password field empty if you don't want to change it.",
+    "leaveItEmpty":
+        "Leave the password field empty if you don't want to change it.",
     "newAdmin": "New admin",
     "minimumPasswordLength": "Minimum 10 characters password",
 
@@ -322,7 +343,8 @@ class En {
     // advanced settings: prod tests
     "prodTests": "Production tests",
     "fileStorageTest": "File storage test",
-    "fileStorageTestDesc": "Use the following button to test whether S3 storage is working properly.",
+    "fileStorageTestDesc":
+        "Use the following button to test whether S3 storage is working properly.",
     "fileStorageButton": "Test S3 setup",
     "fileStorageFail": "S3 setup failed",
     "fileStorageSuccess": "S3 setup is working properly",
@@ -342,11 +364,14 @@ class En {
     "serverUrl": "Server URL",
     "proceedOffline": "Proceed offline",
     "youLLGet": "Get reset link by email",
-    "beenSent": "Password reset instructions have been sent to you, check your inbox.",
+    "beenSent":
+        "Password reset instructions have been sent to you, check your inbox.",
 
     // other
-    "sureArchiveSelected": "Are you sure you want to archive the selected items?",
-    "sureClosePanel": "Are you sure you want to close this panel? Any unsaved changes will be lost.",
+    "sureArchiveSelected":
+        "Are you sure you want to archive the selected items?",
+    "sureClosePanel":
+        "Are you sure you want to close this panel? Any unsaved changes will be lost.",
     "sure": "Sure",
     "back": "Back",
     "firstLaunchDialogTitle": "Welcome to Apexo",

@@ -202,6 +202,7 @@ class Ar implements En {
     "error": "خطأ",
     "enterLink": "أدخل عنوان URL الذي يحتوي على صور",
     "import": "استيراد",
+    "treatment": "العلاج",
 
     // labworks
     "laboratory": "مختبر",

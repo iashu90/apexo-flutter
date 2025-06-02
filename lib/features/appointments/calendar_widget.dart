@@ -14,6 +14,7 @@ import '../../utils/round.dart';
 import '../../common_widgets/item_title.dart';
 import 'appointments_store.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:flutter/material.dart' as material;
 
 class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
   final List<Item> items;
@@ -36,13 +37,16 @@ class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
   });
 
   @override
-  WeekAgendaCalendarState<Item> createState() => WeekAgendaCalendarState<Item>();
+  WeekAgendaCalendarState<Item> createState() =>
+      WeekAgendaCalendarState<Item>();
 }
 
-class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgendaCalendar<Item>> {
+class WeekAgendaCalendarState<Item extends Appointment>
+    extends State<WeekAgendaCalendar<Item>> {
   CalendarFormat calendarFormat = CalendarFormat.week;
   late DateTime selectedDate;
   final now = DateTime.now();
+  bool? appointmentDayFilter;
 
   double get calendarHeight {
     switch (calendarFormat) {
@@ -58,7 +62,8 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
   @override
   void initState() {
     super.initState();
-    selectedDate = DateTime.fromMillisecondsSinceEpoch(widget.initiallySelectedDay);
+    selectedDate =
+        DateTime.fromMillisecondsSinceEpoch(widget.initiallySelectedDay);
   }
 
   void _goToToday() {
@@ -72,11 +77,17 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
   }
 
   List<Item> _getItemsForSelectedDay() {
-    return widget.items.where((item) => isSameDay(selectedDate, item.date)).toList();
+    final all = widget.items
+        .where((item) => isSameDay(selectedDate, item.date))
+        .toList();
+    if (appointmentDayFilter == null) return all;
+    return all.where((item) => item.isDone == appointmentDayFilter).toList();
   }
 
   bool isSameDay(DateTime day1, DateTime day2) {
-    return day1.day == day2.day && day1.month == day2.month && day1.year == day2.year;
+    return day1.day == day2.day &&
+        day1.month == day2.month &&
+        day1.year == day2.year;
   }
 
   @override
@@ -97,7 +108,9 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
             }),
             child: Column(children: [
               _buildCurrentDayTitleBar(itemsForSelectedDay),
-              itemsForSelectedDay.isEmpty ? _buildEmptyDayMessage() : _buildAppointmentsList(itemsForSelectedDay),
+              itemsForSelectedDay.isEmpty
+                  ? _buildEmptyDayMessage()
+                  : _buildAppointmentsList(itemsForSelectedDay),
             ]),
           ),
         ),
@@ -116,7 +129,11 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
             IconButton(
                 onPressed: () => widget.onAddNew(selectedDate),
                 icon: Row(
-                  children: [const Icon(FluentIcons.add_event, size: 17), const SizedBox(width: 10), Txt(txt("add"))],
+                  children: [
+                    const Icon(FluentIcons.add_event, size: 17),
+                    const SizedBox(width: 10),
+                    Txt(txt("add"))
+                  ],
                 )),
             Row(
               children: widget.actions ?? [],
@@ -190,13 +207,20 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
                   onPressed: _goToToday,
                   iconButtonMode: IconButtonMode.large,
                   icon: Row(
-                    children: [const Icon(FluentIcons.goto_today), const SizedBox(width: 5), Txt(txt("today"))],
+                    children: [
+                      const Icon(FluentIcons.goto_today),
+                      const SizedBox(width: 5),
+                      Txt(txt("today"))
+                    ],
                   ),
                   style: ButtonStyle(
                     padding: const WidgetStatePropertyAll(EdgeInsets.all(8)),
                     shape: WidgetStatePropertyAll(RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(5),
-                        side: BorderSide(color: colorsWithoutYellow[DateTime.now().weekday - 1].withValues(alpha: 1)))),
+                        side: BorderSide(
+                            color:
+                                colorsWithoutYellow[DateTime.now().weekday - 1]
+                                    .withValues(alpha: 1)))),
                   ),
                 ),
             ],
@@ -212,7 +236,9 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
           return DayCell(day: day, type: DayCellType.selected);
         },
         markerBuilder: (context, day, events) {
-          return events.isEmpty ? null : AppointmentsNumberIndicator(events: events, day: day);
+          return events.isEmpty
+              ? null
+              : AppointmentsNumberIndicator(events: events, day: day);
         },
       ),
       onDaySelected: (newDate, focusedDay) {
@@ -222,8 +248,8 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
   }
 
   Widget _buildAppointmentsList(List<Item> itemsForSelectedDay) {
-    var sortedItems = [...itemsForSelectedDay]
-      ..sort((a, b) => a.date.millisecondsSinceEpoch - b.date.millisecondsSinceEpoch);
+    var sortedItems = [...itemsForSelectedDay]..sort((a, b) =>
+        a.date.millisecondsSinceEpoch - b.date.millisecondsSinceEpoch);
     return Expanded(
       child: ListView.builder(
         padding: const EdgeInsets.only(bottom: 80),
@@ -266,12 +292,23 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
   }
 
   Widget _buildCurrentDayTitleBar(List<Item> itemsForSelectedDay) {
-    final df = localSettings.dateFormat.startsWith("d") == true ? "dd MMMM" : "MMMM dd";
+    final df = localSettings.dateFormat.startsWith("d") == true
+        ? "dd MMMM"
+        : "MMMM dd";
+
+    // Calculate counts
+    final total = itemsForSelectedDay.length;
+    final completed = itemsForSelectedDay.where((a) => a.isDone == true).length;
+    final pending = total - completed;
+
     return Container(
       decoration: BoxDecoration(
-          border: BorderDirectional(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+          border: BorderDirectional(
+              bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
           gradient: LinearGradient(colors: [
-            colorsWithoutYellow[selectedDate.weekday - 1].darkest.withValues(alpha: 0.08),
+            colorsWithoutYellow[selectedDate.weekday - 1]
+                .darkest
+                .withValues(alpha: 0.08),
             colorsWithoutYellow[selectedDate.weekday - 1].withValues(alpha: 0),
           ])),
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -279,9 +316,102 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Txt(
-            intl.DateFormat("$df / yyyy", locale.s.$code).format(selectedDate),
-            style: const TextStyle(fontWeight: FontWeight.w500),
+          Row(
+            children: [
+              Txt(
+                intl.DateFormat("$df / yyyy", locale.s.$code)
+                    .format(selectedDate),
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(width: 16),
+              // Total appointments
+              Row(
+                children: [
+                  Icon(FluentIcons.calendar, size: 16, color: Colors.blue),
+                  const SizedBox(width: 4),
+                  Txt("$total"),
+                ],
+              ),
+              const SizedBox(width: 12),
+              // Completed appointments with filter
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    // Filter to show only completed
+                    appointmentDayFilter = true;
+                  });
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: appointmentDayFilter == true
+                        ? Colors.green.withOpacity(0.25)
+                        : Colors.green.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: appointmentDayFilter == true
+                        ? Border.all(color: Colors.green, width: 1.5)
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(FluentIcons.check_mark,
+                          color: Colors.green, size: 16),
+                      const SizedBox(width: 2),
+                      Txt("$completed",
+                          style: const TextStyle(
+                              color: Colors.successPrimaryColor,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Pending appointments with filter
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    // Filter to show only pending
+                    appointmentDayFilter = false;
+                  });
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: appointmentDayFilter == false
+                        ? Colors.orange.withOpacity(0.25)
+                        : Colors.orange.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: appointmentDayFilter == false
+                        ? Border.all(color: Colors.orange, width: 1.5)
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(FluentIcons.clock, color: Colors.orange, size: 16),
+                      const SizedBox(width: 2),
+                      Txt("$pending",
+                          style: const TextStyle(
+                              color: Colors.warningPrimaryColor,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+              // Reset filter button
+              if (appointmentDayFilter != null) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(FluentIcons.clear),
+                  onPressed: () {
+                    setState(() {
+                      appointmentDayFilter = null;
+                    });
+                  },
+                ),
+              ]
+            ],
           ),
         ],
       ),
@@ -305,17 +435,23 @@ class AppointmentsNumberIndicator extends StatelessWidget {
       style: TextStyle(
         fontStyle: FontStyle.italic,
         fontWeight: FontWeight.bold,
-        fontSize: 10,
+        fontSize: 12,
         color: Colors.white,
         shadows: [
           ...kElevationToShadow[1]!,
-          Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 2, offset: const Offset(0, 0)),
-          Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 15, offset: const Offset(0, 0)),
+          Shadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 2,
+              offset: const Offset(0, 0)),
+          Shadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 15,
+              offset: const Offset(0, 0)),
           ...List.generate(
             10,
             (index) => Shadow(
-                color: colorsWithoutYellow[day.weekday - 1]
-                    .withValues(alpha: min(roundToPrecision(events.length / 30, 2), 1)),
+                color: colorsWithoutYellow[day.weekday - 1].withValues(
+                    alpha: min(roundToPrecision(events.length / 30, 2), 1)),
                 blurRadius: 1),
           )
         ],
@@ -352,8 +488,10 @@ class DayCell extends StatelessWidget {
                 ]
               : type == DayCellType.today
                   ? [
-                      colorsWithoutYellow[day.weekday - 1].withValues(alpha: 0.1),
-                      colorsWithoutYellow[day.weekday - 1].withValues(alpha: 0.2),
+                      colorsWithoutYellow[day.weekday - 1]
+                          .withValues(alpha: 0.1),
+                      colorsWithoutYellow[day.weekday - 1]
+                          .withValues(alpha: 0.2),
                     ]
                   : [
                       colorsWithoutYellow[day.weekday - 1],
@@ -365,13 +503,16 @@ class DayCell extends StatelessWidget {
       ),
       child: Center(
         child: Txt(intl.DateFormat("d", locale.s.$code).format(day),
-            style: type == DayCellType.normal ? null : const TextStyle(color: Colors.white)),
+            style: type == DayCellType.normal
+                ? null
+                : const TextStyle(color: Colors.white)),
       ),
     );
   }
 }
 
-class AppointmentCalendarTile<Item extends Appointment> extends StatelessWidget {
+class AppointmentCalendarTile<Item extends Appointment>
+    extends StatelessWidget {
   final Item item;
   final void Function(Item item) onSetTime;
   final void Function(Item item) onSelect;
@@ -387,21 +528,62 @@ class AppointmentCalendarTile<Item extends Appointment> extends StatelessWidget 
 
   @override
   Widget build(BuildContext context) {
+    final preop = (item.preOpNotes ?? '').toString();
+
+    // If treatments is a List, join as comma separated string, else fallback to string
+    String treatmentsStr = '';
+    if (item.treatments is List) {
+      treatmentsStr = (item.treatments as List)
+          .where((e) => e != null)
+          .map((e) {
+            if (e is Map && e['name'] != null) return e['name'].toString();
+            if (e is Map && e['title'] != null) return e['title'].toString();
+            if (e is String) return e;
+            // If it's a custom object, try .name or .title
+            try {
+              return e.name ?? e.title ?? e.toString();
+            } catch (_) {
+              return e.toString();
+            }
+          })
+          .where((s) => s.trim().isNotEmpty)
+          .join(', ');
+    } else {
+      treatmentsStr = (item.treatments ?? '').toString();
+    }
+    final postop = (item.postOpNotes ?? '').toString();
+
     return Container(
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
+          bottom:
+              BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
         ),
       ),
       child: ListTile(
         title: ItemTitle(item: item),
-        subtitle: item.subtitleLine1.isNotEmpty ? Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis) : null,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (item.subtitleLine1.isNotEmpty)
+              Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis),
+            if (preop.isNotEmpty)
+              Txt("Pre-op: $preop",
+                  style: const TextStyle(
+                      fontSize: 14, color: material.Colors.blueGrey)),
+            if (treatmentsStr.isNotEmpty)
+              Txt("Treatments: $treatmentsStr",
+                  style: const TextStyle(
+                      fontSize: 14, color: material.Colors.teal)),
+          ],
+        ),
         leading: Row(children: [
           routes.panels().where((p) => p.item.id == item.id).isNotEmpty
               ? IconButton(
                   icon: const Icon(FluentIcons.open_in_new_tab),
                   onPressed: () {
-                    final index = routes.panels().indexWhere((p) => p.item.id == item.id);
+                    final index =
+                        routes.panels().indexWhere((p) => p.item.id == item.id);
                     if (index == -1) return;
                     routes.bringPanelToFront(index);
                   })
@@ -418,45 +600,57 @@ class AppointmentCalendarTile<Item extends Appointment> extends StatelessWidget 
           const Divider(direction: Axis.vertical, size: 40),
         ]),
         onPressed: () => onSelect(item),
-        trailing: Row(
-          children: [
-            const Divider(direction: Axis.vertical, size: 40),
-            const SizedBox(width: 5),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconButton(
-                  onPressed: () async {
-                    final index = routes.panels().indexWhere((p) => p.item.id == item.id);
-                    if (index > -1) return routes.bringPanelToFront(index);
-                    TimeOfDay? res = await showTimePicker(
-                        context: context, initialTime: TimeOfDay(hour: item.date.hour, minute: item.date.minute));
-                    if (res != null) {
-                      item.date = DateTime(item.date.year, item.date.month, item.date.day, res.hour, res.minute);
-                      onSetTime(item);
-                    }
-                  },
-                  icon: Row(
-                    children: [
-                      routes.panels().where((p) => p.item.id == item.id).isEmpty
-                          ? const Icon(FluentIcons.clock)
-                          : const Icon(FluentIcons.open_in_new_tab),
-                      const SizedBox(width: 5),
-                      Txt(intl.DateFormat('hh:mm a', locale.s.$code).format(item.date)),
-                    ],
+        trailing: SizedBox(
+          width: 160,
+          child: Row(
+            children: [
+              const Divider(direction: Axis.vertical, size: 40),
+              const SizedBox(width: 5),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    onPressed: () async {
+                      final index = routes
+                          .panels()
+                          .indexWhere((p) => p.item.id == item.id);
+                      if (index > -1) return routes.bringPanelToFront(index);
+                      TimeOfDay? res = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay(
+                              hour: item.date.hour, minute: item.date.minute));
+                      if (res != null) {
+                        item.date = DateTime(item.date.year, item.date.month,
+                            item.date.day, res.hour, res.minute);
+                        onSetTime(item);
+                      }
+                    },
+                    icon: Row(
+                      children: [
+                        routes
+                                .panels()
+                                .where((p) => p.item.id == item.id)
+                                .isEmpty
+                            ? const Icon(FluentIcons.clock)
+                            : const Icon(FluentIcons.open_in_new_tab),
+                        const SizedBox(width: 5),
+                        Txt(intl.DateFormat('hh:mm a', locale.s.$code)
+                            .format(item.date)),
+                      ],
+                    ),
                   ),
-                ),
-                if (item.subtitleLine2.isNotEmpty)
-                  SizedBox(
-                      width: 75,
-                      child: Txt(
-                        item.subtitleLine2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12),
-                      ))
-              ],
-            ),
-          ],
+                  if (item.subtitleLine2.isNotEmpty)
+                    SizedBox(
+                        width: 120,
+                        child: Txt(
+                          item.subtitleLine2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ))
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
