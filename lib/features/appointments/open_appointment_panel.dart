@@ -24,6 +24,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/material.dart' as material;
 
 void openAppointment([Appointment? appointment]) {
   final editingCopy = Appointment.fromJson(appointment?.toJson() ?? {});
@@ -348,9 +349,11 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   final TextEditingController postOpNotesController = TextEditingController();
   final TextEditingController priceController = TextEditingController();
   final TextEditingController paidController = TextEditingController();
+  final TextEditingController discountController = TextEditingController();
+  String discountType = 'flat'; // 'flat' or 'percent'
   bool didNotEditPaidYet = true;
   Set<String> selectedTreatments = {};
-  bool isExpanded = true;
+  double originalPrice = 0;
 
   void setToDone() {
     setState(() {
@@ -364,13 +367,19 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     postOpNotesController.text = widget.appointment.postOpNotes;
     priceController.text = widget.appointment.price.toStringAsFixed(0);
     paidController.text = widget.appointment.paid.toStringAsFixed(0);
+
+    // Pre-populate discount fields from model
+    discountController.text = widget.appointment.discount == 0
+        ? ''
+        : widget.appointment.discount.toString();
+    discountType = widget.appointment.discountType;
+
     if (widget.appointment.paid != 0) didNotEditPaidYet = false;
     if (widget.appointment.selectedTreatments.isNotEmpty) {
       selectedTreatments = widget.appointment.selectedTreatments.toSet();
     } else {
       selectedTreatments = {};
     }
-    // Set initial price based on selected treatments
     WidgetsBinding.instance.addPostFrameCallback((_) {
       updateSelectedTreatments();
     });
@@ -378,7 +387,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
 
   void updateSelectedTreatments() {
     widget.appointment.selectedTreatments = selectedTreatments.toList();
-    // Calculate total price of selected treatments and sub-treatments
     double total = 0;
     for (final treatment in widget.appointment.treatments) {
       if (selectedTreatments.contains(treatment.name)) {
@@ -391,77 +399,105 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         }
       }
     }
-    priceController.text = total.toStringAsFixed(0);
+    priceController.text = (total == 0.0) ? '' : total.toStringAsFixed(0);
     widget.appointment.price = total;
+    originalPrice = total;
+    _applyDiscount();
+  }
+
+  void _applyDiscount() {
+    double discount = double.tryParse(discountController.text) ?? 0;
+    double finalPrice = originalPrice;
+    if (discount > 0) {
+      if (discountType == 'percent') {
+        finalPrice = originalPrice - (originalPrice * discount / 100);
+      } else {
+        finalPrice = originalPrice - discount;
+      }
+      if (finalPrice < 0) finalPrice = 0;
+    }
+    // Save to model
+    widget.appointment.discount = discount;
+    widget.appointment.discountType = discountType;
+
+    priceController.text = finalPrice == 0 ? '' : finalPrice.toStringAsFixed(0);
+    widget.appointment.price = finalPrice;
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    final double discount = double.tryParse(discountController.text) ?? 0;
+    double discountValue = 0;
+    if (discountType == 'percent') {
+      discountValue = originalPrice * discount / 100;
+    } else {
+      discountValue = discount;
+    }
+    final double discountedPrice =
+        (originalPrice - discountValue).clamp(0, double.infinity);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              isExpanded = !isExpanded; // Toggle expand/collapse state
-            });
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("${txt("treatment")}:"),
-              Icon(isExpanded
-                  ? FluentIcons.chevron_up
-                  : FluentIcons.chevron_down),
-            ],
-          ),
-        ),
-        if (isExpanded) const SizedBox(height: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: widget.appointment.treatments.map((treatment) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Checkbox(
-                    checked: selectedTreatments.contains(treatment.name),
-                    onChanged: (isChecked) {
-                      setState(() {
-                        if (isChecked == true) {
-                          selectedTreatments.add(treatment.name);
-                        } else {
-                          selectedTreatments.remove(treatment.name);
-                        }
-                        updateSelectedTreatments();
-                      });
-                    },
-                    content: Text('${treatment.name} - \$${treatment.price}'),
-                  ),
-                ),
-                ...treatment.subTreatments.map((sub) => Padding(
-                      padding: const EdgeInsets.only(left: 24.0, bottom: 8.0),
+                Text("${txt("treatment")}:"),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: widget.appointment.treatments.map((treatment) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
                       child: Checkbox(
-                        checked: selectedTreatments
-                            .contains('${treatment.name}::${sub.name}'),
+                        checked: selectedTreatments.contains(treatment.name),
                         onChanged: (isChecked) {
                           setState(() {
-                            final key = '${treatment.name}::${sub.name}';
                             if (isChecked == true) {
-                              selectedTreatments.add(key);
+                              selectedTreatments.add(treatment.name);
                             } else {
-                              selectedTreatments.remove(key);
+                              selectedTreatments.remove(treatment.name);
                             }
                             updateSelectedTreatments();
                           });
                         },
-                        content: Text('${sub.name} - \$${sub.price}'),
+                        content:
+                            Text('${treatment.name} - \₹${treatment.price}'),
                       ),
-                    )),
-              ],
-            );
-          }).toList(),
+                    ),
+                    ...treatment.subTreatments.map((sub) => Padding(
+                          padding:
+                              const EdgeInsets.only(left: 24.0, bottom: 8.0),
+                          child: Checkbox(
+                            checked: selectedTreatments
+                                .contains('${treatment.name}::${sub.name}'),
+                            onChanged: (isChecked) {
+                              setState(() {
+                                final key = '${treatment.name}::${sub.name}';
+                                if (isChecked == true) {
+                                  selectedTreatments.add(key);
+                                } else {
+                                  selectedTreatments.remove(key);
+                                }
+                                updateSelectedTreatments();
+                              });
+                            },
+                            content: Text('${sub.name} - \₹${sub.price}'),
+                          ),
+                        )),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         InfoLabel(
@@ -504,6 +540,176 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             placeholder: "${txt("prescription")}...",
           ),
         ),
+        InfoLabel(
+          label: txt("discount"),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CupertinoTextField(
+                controller: discountController,
+                placeholder: txt("discount"),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9]'))
+                ],
+                onChanged: (v) {
+                  setState(() {
+                    _applyDiscount();
+                  });
+                },
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                prefix: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Icon(material.Icons.discount,
+                      color: material.Colors.blue, size: 18),
+                ),
+                suffix: Tooltip(
+                  message: discountType == 'percent'
+                      ? txt("percentDiscount")
+                      : txt("flatDiscount"),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        discountType =
+                            discountType == 'percent' ? 'flat' : 'percent';
+                        _applyDiscount();
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: discountType == 'percent'
+                              ? material.Colors.blue.withOpacity(0.15)
+                              : material.Colors.green.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          discountType == 'percent' ? "%" : txt("₹"),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: material.Colors.grey.shade300),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+              ),
+              // Add error messages here
+              if (discountType == 'flat' &&
+                  (double.tryParse(discountController.text) ?? 0) >
+                      originalPrice)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 8),
+                  child: Text(
+                    txt("discountMoreThanPrice"),
+                    style: const TextStyle(
+                      color: material.Colors.red,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              if (discountType == 'percent' &&
+                  (double.tryParse(discountController.text) ?? 0) > 100)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 8),
+                  child: Text(
+                    txt("discountPercentMoreThan100"),
+                    style: const TextStyle(
+                      color: material.Colors.red,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (discountController.text.trim().isNotEmpty && discountedPrice > 0)
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: material.Colors.grey.shade300),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(material.Icons.attach_money,
+                        color: material.Colors.blue, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      txt("totalPrice"),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    Text(
+                      originalPrice == 0
+                          ? ''
+                          : "${originalPrice.toStringAsFixed(0)} ${globalSettings.get("currency_______").value}",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(material.Icons.discount,
+                        color: material.Colors.red, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      txt("discountedPrice"),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: material.Colors.red),
+                    ),
+                    const Spacer(),
+                    Text(
+                      discountValue == 0
+                          ? ''
+                          : "-${discountValue.toStringAsFixed(0)} ${globalSettings.get("currency_______").value}",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: material.Colors.red),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(material.Icons.check_circle,
+                        color: material.Colors.green, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      txt("priceAfterDiscount"),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: material.Colors.green),
+                    ),
+                    const Spacer(),
+                    Text(
+                      discountedPrice == 0
+                          ? ''
+                          : "${discountedPrice.toStringAsFixed(0)} ${globalSettings.get("currency_______").value}",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: material.Colors.green),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         if (widget.appointment.prescriptions.isNotEmpty)
           FilledButton(
               style: const ButtonStyle(elevation: WidgetStatePropertyAll(2)),

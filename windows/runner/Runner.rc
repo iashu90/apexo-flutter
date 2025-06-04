@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "apexo" "\0"
+            VALUE "FileDescription", "Dr.Nowfar Dental Clinic" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "apexo" "\0"
+            VALUE "InternalName", "Dr.Nowfar Dental Clinic" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "apexo.exe" "\0"
-            VALUE "ProductName", "apexo" "\0"
+            VALUE "OriginalFilename", "DrNowfarDental.exe" "\0"
+            VALUE "ProductName", "Dr.Nowfar Dental Clinic" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

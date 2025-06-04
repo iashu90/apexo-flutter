@@ -19,14 +19,15 @@ import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
-Future<Patient> openPatient([Patient? patient,int initialTabIndex = 0]) {
+Future<Patient> openPatient([Patient? patient, int initialTabIndex = 0]) {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
   final panel = Panel<Patient>(
     item: editingCopy,
     store: patients,
     icon: FluentIcons.medication_admin,
-    title: patients.get(editingCopy.id) == null ? txt("newPatient") : editingCopy.title,
-
+    title: patients.get(editingCopy.id) == null
+        ? txt("newPatient")
+        : editingCopy.title,
     tabs: [
       PanelTab(
         title: txt("patientDetails"),
@@ -74,7 +75,11 @@ class _PrintQRButton extends StatelessWidget {
           children: [
             FilledButton(
                 child: Row(
-                  children: [const Icon(FluentIcons.print), const SizedBox(width: 5), Txt(txt("printQR"))],
+                  children: [
+                    const Icon(FluentIcons.print),
+                    const SizedBox(width: 5),
+                    Txt(txt("printQR"))
+                  ],
                 ),
                 onPressed: () {
                   printingQRCode(
@@ -132,8 +137,10 @@ class _PatientAppointments extends StatelessWidget {
                       final appointment = patient.allAppointments[index];
                       String? difference;
                       if (patient.allAppointments.last != appointment) {
-                        int differenceInDays =
-                            appointment.date.difference(patient.allAppointments[index + 1].date).inDays.abs();
+                        int differenceInDays = appointment.date
+                            .difference(patient.allAppointments[index + 1].date)
+                            .inDays
+                            .abs();
 
                         difference =
                             "${txt("after")} $differenceInDays ${txt("day${(differenceInDays > 1) ? "s" : ""}")}";
@@ -150,7 +157,8 @@ class _PatientAppointments extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 10, 12, 50),
                       child: Acrylic(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5)),
                         elevation: 50,
                         child: Container(
                           padding: const EdgeInsets.all(10),
@@ -160,7 +168,9 @@ class _PatientAppointments extends StatelessWidget {
                               boxShadow: kElevationToShadow[4],
                               border: Border(
                                   top: BorderSide(
-                                color: (colorBasedOnPayments(patient.paymentsMade, patient.pricesGiven) ??
+                                color: (colorBasedOnPayments(
+                                            patient.paymentsMade,
+                                            patient.pricesGiven) ??
                                         FluentTheme.of(context).cardColor)
                                     .withValues(alpha: 0.3),
                                 width: 5,
@@ -168,10 +178,14 @@ class _PatientAppointments extends StatelessWidget {
                           child: Column(
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 5),
-                                child: Txt("${txt("paymentSummary")} (${globalSettings.get("currency_______").value})",
-                                    style:
-                                        const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 5),
+                                child: Txt(
+                                    "${txt("paymentSummary")} (${globalSettings.get("currency_______").value})",
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey)),
                               ),
                               const SizedBox(height: 10),
                               const Divider(),
@@ -247,15 +261,20 @@ class _PatientDetailsState extends State<_PatientDetails> {
               child: CupertinoTextField(
                 key: WK.fieldPatientYOB,
                 placeholder: "${txt("age")}...",
-                controller: TextEditingController(text: widget.patient.birth.toString()),
+                controller: TextEditingController(
+                  text: (widget.patient.birth != null &&
+                          widget.patient.birth != 0)
+                      ? widget.patient.birth.toString()
+                      : '',
+                ),
                 keyboardType: TextInputType.number,
                 maxLength: 3,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(3),
                 ],
-                onChanged: (value) =>
-                    widget.patient.birth = int.tryParse(value) ?? widget.patient.birth,
+                onChanged: (value) => widget.patient.birth =
+                    int.tryParse(value) ?? widget.patient.birth,
               ),
             ),
           ),
@@ -341,11 +360,16 @@ class _PatientDetailsState extends State<_PatientDetails> {
           isHeader: true,
           child: TagInputWidget(
             key: WK.fieldPatientTags,
-            suggestions: patients.allTags.map((t) => TagInputItem(value: t, label: t)).toList(),
+            suggestions: patients.allTags
+                .map((t) => TagInputItem(value: t, label: t))
+                .toList(),
             onChanged: (tags) {
-              widget.patient.tags = List<String>.from(tags.map((e) => e.value).where((e) => e != null));
+              widget.patient.tags = List<String>.from(
+                  tags.map((e) => e.value).where((e) => e != null));
             },
-            initialValue: widget.patient.tags.map((e) => TagInputItem(value: e, label: e)).toList(),
+            initialValue: widget.patient.tags
+                .map((e) => TagInputItem(value: e, label: e))
+                .toList(),
             strict: false,
             limit: 9999,
             placeholder: "${txt("patientTags")}...",

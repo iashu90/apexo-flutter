@@ -40,6 +40,7 @@ class En {
     "doctors": "Doctors",
     "labworks": "Labworks",
     "statistics": "Statistics",
+    "data": "Manage Data",
 
     // dashboard
     "admin": "Admin",
@@ -61,6 +62,15 @@ class En {
     "mode": "mode",
     "youHave": "You have",
     "hello": "Hello",
+    "nextDayAppointments": "Next day Appointments",
+    "noAppointmentsWithFilter":
+        "No appointments found with the selected filter.",
+    "typeOfWork": "Type of Work",
+    "selectTypeOfWork": "Select type of work",
+    "noOfUnits": "No. of Units",
+    "shade": "Shade",
+    "selectShade": "Select shade",
+    "goToToday": "Go to Today",
 
     // datatable
     "archiveSelected": "Archive Selected",
@@ -217,6 +227,16 @@ class En {
     "completedVsPendingAppointments": "Completed vs. Pending Appointments",
     "completed": "Completed",
     "pending": "Pending",
+    "totalPrice": "Total Price",
+    "discountedPrice": "Discount Amount",
+    "priceAfterDiscount": "Price After Discount",
+    "discount": "Discount",
+    "discountMoreThanPrice": "Discount cannot be more than total price.",
+    "discountPercentMoreThan100": "Discount percent cannot be more than 100.",
+    "noCompletedAppointments": "No completed appointments.",
+    "noPendingAppointments": "No pending appointments.",
+    "percentDiscount": "Percentage discount",
+    "flatDiscount": "Flat discount",
 
     // labworks
     "laboratory": "Laboratory",

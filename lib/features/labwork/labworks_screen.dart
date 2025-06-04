@@ -27,6 +27,15 @@ class LabworksScreen extends StatelessWidget {
                     compact: true,
                     items: labworks.present.values.toList(),
                     store: labworks,
+                    labelOrder: [
+                      "Patient",
+                      "Type",
+                      "Units",
+                      "Shade",
+                      "Laboratory",
+                      "Paid",
+                      "doctors",
+                    ],
                     actions: [
                       DataTableAction(
                         callback: (_) => openLabwork(),
@@ -35,7 +44,10 @@ class LabworksScreen extends StatelessWidget {
                       ),
                       archiveSelected(labworks)
                     ],
-                    furtherActions: [const SizedBox(width: 5), ArchiveToggle(notifier: labworks.notify)],
+                    furtherActions: [
+                      const SizedBox(width: 5),
+                      ArchiveToggle(notifier: labworks.notify)
+                    ],
                     onSelect: openLabwork,
                     itemActions: [
                       ItemAction(
