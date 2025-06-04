@@ -43,7 +43,7 @@ class _AppLogoState extends State<AppLogo> {
               height: 50,
             ),
             const SizedBox(width: 5),
-            Text("Apexo", style: textStyle),
+            Text("Dr.Nowfar Dental Clinic", style: textStyle),
             const SizedBox(width: 5),
             Text(version, style: textStyle)
           ],

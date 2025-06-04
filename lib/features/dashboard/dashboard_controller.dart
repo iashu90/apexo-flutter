@@ -43,6 +43,13 @@ class _DashboardController {
     return _todayAppointments!;
   }
 
+  List get tomorrowAppointments => appointments.present.values
+      .where((a) =>
+          a.date.year == DateTime.now().add(const Duration(days: 1)).year &&
+          a.date.month == DateTime.now().add(const Duration(days: 1)).month &&
+          a.date.day == DateTime.now().add(const Duration(days: 1)).day)
+      .toList();
+
   double get paymentsToday {
     double res = 0;
     for (var appointment in todayAppointments) {
@@ -54,6 +61,31 @@ class _DashboardController {
   int get newPatientsToday {
     int res = 0;
     for (var appointment in todayAppointments) {
+      if (appointment.firstAppointmentForThisPatient == true) res++;
+    }
+    return res;
+  }
+
+  List<Appointment> appointmentsForDate(DateTime date) {
+    return appointments.present.values.where((appointment) =>
+      appointment.date.year == date.year &&
+      appointment.date.month == date.month &&
+      appointment.date.day == date.day
+    ).toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+  }
+
+  double paymentsForDate(DateTime date) {
+    double res = 0;
+    for (var appointment in appointmentsForDate(date)) {
+      res += appointment.paid;
+    }
+    return res;
+  }
+
+  int newPatientsForDate(DateTime date) {
+    int res = 0;
+    for (var appointment in appointmentsForDate(date)) {
       if (appointment.firstAppointmentForThisPatient == true) res++;
     }
     return res;

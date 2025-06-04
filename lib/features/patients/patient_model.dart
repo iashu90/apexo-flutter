@@ -1,4 +1,5 @@
 import 'package:apexo/core/model.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/utils/encode.dart';
@@ -109,11 +110,10 @@ class Patient extends Model {
     }
 
     if (outstandingPayments > 0) {
-      buildingLabels["Pay"] = "${txt("underpaid")}🔻";
+      buildingLabels["Pay"] = txt("underpaid");
     }
-
     if (outstandingPayments < 0) {
-      buildingLabels["Pay"] = "${txt("overpaid")}🔺";
+      buildingLabels["Pay"] = txt("overpaid");
     }
 
     if (paymentsMade != 0) {

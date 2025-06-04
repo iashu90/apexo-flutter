@@ -10,6 +10,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 void openLabwork([Labwork? labwork]) {
   final editingCopy = Labwork.fromJson(labwork?.toJson() ?? {});
@@ -91,6 +92,61 @@ class _LabworkEditingState extends State<_LabworkEditing> {
             maxLines: null,
           ),
         ),
+        InfoLabel(
+          label: "${txt("typeOfWork")}:",
+          child: ComboBox<String>(
+            value: widget.labwork.typeOfWork.isNotEmpty ? widget.labwork.typeOfWork : null,
+            items: [
+              "Crown",
+              "Bridge",
+              "Veneer",
+              "Denture",
+              "Implant",
+              "Inlay/Onlay",
+              "Other"
+            ].map((type) => ComboBoxItem<String>(value: type, child: Text(type))).toList(),
+            placeholder: Text("${txt("selectTypeOfWork")}..."),
+            onChanged: (val) {
+              setState(() {
+                widget.labwork.typeOfWork = val ?? "";
+              });
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        InfoLabel(
+          label: "${txt("noOfUnits")}:",
+          child: NumberBox(
+            key: WK.fieldLabworkNoOfUnits,
+            style: textFieldTextStyle(),
+            clearButton: false,
+            mode: SpinButtonPlacementMode.inline,
+            value: widget.labwork.noOfUnits.toDouble(),
+            min: 0,
+            onChanged: (n) {
+              setState(() {
+                widget.labwork.noOfUnits = n?.toInt() ?? 0;
+              });
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        InfoLabel(
+          label: "${txt("shade")}:",
+          child: ComboBox<String>(
+            value: widget.labwork.shade.isNotEmpty ? widget.labwork.shade : null,
+            items: [
+              "A1", "A2", "A3", "A3.5", "B1", "B2", "B3", "C1", "C2", "D2", "Other"
+            ].map((shade) => ComboBoxItem<String>(value: shade, child: Text(shade))).toList(),
+            placeholder: Text("${txt("selectShade")}..."),
+            onChanged: (val) {
+              setState(() {
+                widget.labwork.shade = val ?? "";
+              });
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [

@@ -15,13 +15,28 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart' show showDatePicker;
+import 'package:flutter/material.dart' as material;
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  DateTime selectedDate = DateTime.now();
+
+  void changeDate(DateTime newDate) {
+    setState(() {
+      selectedDate = newDate;
+    });
+  }
 
   String get currentName {
     if (login.currentMember == null) return "";
@@ -55,12 +70,13 @@ class DashboardScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         key: WK.dashboardScreen,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.all(15),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
@@ -79,6 +95,13 @@ class DashboardScreen extends StatelessWidget {
                           style: const TextStyle(fontSize: 14),
                         ),
                       ],
+                    ),
+                    const SizedBox(width: 24),
+                    Center(
+                      child: DateSelectorRow(
+                        selectedDate: selectedDate,
+                        onChange: changeDate,
+                      ),
                     ),
                   ],
                 ),
@@ -99,8 +122,8 @@ class DashboardScreen extends StatelessWidget {
           const Divider(),
           if (permissions.list[5] || login.isAdmin) ...[
             buildTopSquares(),
-            const DoctorAppointmentsSummaryWithDate(),
-            buildDashboardCharts()
+            DoctorAppointmentsSummaryWithDate(selectedDate: selectedDate),
+            // buildDashboardCharts()
           ] else if (permissions.list[2] &&
               dashboardCtrl.todayAppointments.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -221,20 +244,30 @@ class DashboardScreen extends StatelessWidget {
             dashboardSquare(
               Colors.purple,
               FluentIcons.goto_today,
-              dashboardCtrl.todayAppointments.length.toString(),
+              dashboardCtrl.appointmentsForDate(selectedDate).length.toString(),
               txt("appointmentsToday"),
             ),
             dashboardSquare(
               Colors.blue,
               FluentIcons.people,
-              dashboardCtrl.newPatientsToday.toString(),
+              dashboardCtrl.newPatientsForDate(selectedDate).toString(),
               txt("newPatientsToday"),
             ),
             dashboardSquare(
               Colors.teal,
               FluentIcons.money,
-              dashboardCtrl.paymentsToday.toStringAsFixed(2),
+              dashboardCtrl.paymentsForDate(selectedDate).toStringAsFixed(2),
               txt("paymentsMadeToday"),
+            ),
+            dashboardSquare(
+              Colors.orange,
+              FluentIcons.calendar,
+              dashboardCtrl
+                  .appointmentsForDate(
+                      selectedDate.add(const Duration(days: 1)))
+                  .length
+                  .toString(),
+              txt("nextDayAppointments"),
             ),
           ],
         ),
@@ -254,7 +287,7 @@ class DashboardScreen extends StatelessWidget {
         tint: color,
         shadowColor: color,
         child: SizedBox(
-          width: 300,
+          width: 220,
           child: Column(
             children: [
               Padding(
@@ -303,7 +336,11 @@ class DashboardScreen extends StatelessWidget {
 }
 
 class DoctorAppointmentsSummaryWithDate extends StatefulWidget {
-  const DoctorAppointmentsSummaryWithDate({super.key});
+  final DateTime selectedDate;
+  const DoctorAppointmentsSummaryWithDate({
+    super.key,
+    required this.selectedDate,
+  });
 
   @override
   State<DoctorAppointmentsSummaryWithDate> createState() =>
@@ -312,19 +349,12 @@ class DoctorAppointmentsSummaryWithDate extends StatefulWidget {
 
 class _DoctorAppointmentsSummaryWithDateState
     extends State<DoctorAppointmentsSummaryWithDate> {
-  DateTime selectedDate = DateTime.now();
   Doctor? selectedDoctor;
   int? hoveredDoctorIndex;
 
-  void changeDate(int days) {
-    setState(() {
-      selectedDate = selectedDate.add(Duration(days: days));
-      selectedDoctor = null; // Reset selection when date changes
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final selectedDate = widget.selectedDate;
     // Map of doctorId to count (for selectedDate's appointments only)
     final Map<String, int> doctorAppointmentCounts = {};
 
@@ -355,209 +385,183 @@ class _DoctorAppointmentsSummaryWithDateState
           child: Container(
             constraints: const BoxConstraints(maxWidth: 800),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left: Doctors summary
-                Expanded(
-                  flex: 2,
-                  child: Card(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Date selector row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              icon: const Icon(FluentIcons.chevron_left),
-                              onPressed: () => changeDate(-1),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              DateFormat('d MMM yyyy').format(selectedDate),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.normal,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(FluentIcons.chevron_right),
-                              onPressed: () => changeDate(1),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Center(
-                          child: Text(
-                            DateFormat('EEEE').format(selectedDate) +
-                                (DateUtils.isSameDay(
-                                        selectedDate, DateTime.now())
-                                    ? " (${txt('today')})"
-                                    : ""),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (doctorList.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 24.0),
-                            child: Center(
-                              child: Text(
-                                txt("noAppointmentsToday"),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontStyle: FontStyle.italic,
+            child: SizedBox(
+              height: 250,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left: Doctors summary
+                  Expanded(
+                    flex: 2,
+                    child: Card(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          if (doctorList.isEmpty)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 24.0),
+                              child: Center(
+                                child: Text(
+                                  txt("noAppointmentsToday"),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ),
-                            ),
-                          )
-                        else
-                          // Make the doctor list scrollable with fixed height
-                          SizedBox(
-                            height:
-                                150, // <-- Set your desired fixed height here
-                            child: ListView.separated(
-                              itemCount: doctorList.length,
-                              separatorBuilder: (context, idx) => Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8.0),
-                                  child: Divider(
-                                    direction: Axis.horizontal,
-                                    style: DividerThemeData(
-                                      thickness: 1.0,
-                                      decoration: BoxDecoration(
-                                          color: Colors.grey.withOpacity(0.1)),
-                                      horizontalMargin:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 8.0),
-                                    ),
-                                  )),
-                              itemBuilder: (context, idx) {
-                                final doctor = doctorList[idx];
-                                final count =
-                                    doctorAppointmentCounts[doctor.id] ?? 0;
-                                String initials = '';
-                                final parts = doctor.title.trim().split(' ');
-                                if (parts.length == 1) {
-                                  initials = parts[0].isNotEmpty
-                                      ? parts[0][0].toUpperCase()
-                                      : '';
-                                } else if (parts.length > 1) {
-                                  initials = (parts[0].isNotEmpty
-                                          ? parts[0][0]
-                                          : '') +
-                                      (parts[1].isNotEmpty ? parts[1][0] : '');
-                                  initials = initials.toUpperCase();
-                                }
-                                final color = Colors.accentColors[
-                                    doctor.id.hashCode %
-                                        Colors.accentColors.length];
+                            )
+                          else
+                            // Make the doctor list scrollable with fixed height
+                            SizedBox(
+                              height:
+                                  150, // <-- Set your desired fixed height here
+                              child: ListView.separated(
+                                itemCount: doctorList.length,
+                                separatorBuilder: (context, idx) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8.0),
+                                    child: Divider(
+                                      direction: Axis.horizontal,
+                                      style: DividerThemeData(
+                                        thickness: 1.0,
+                                        decoration: BoxDecoration(
+                                            color:
+                                                Colors.grey.withOpacity(0.1)),
+                                        horizontalMargin:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 8.0),
+                                      ),
+                                    )),
+                                itemBuilder: (context, idx) {
+                                  final doctor = doctorList[idx];
+                                  final count =
+                                      doctorAppointmentCounts[doctor.id] ?? 0;
+                                  String initials = '';
+                                  final parts = doctor.title.trim().split(' ');
+                                  if (parts.length == 1) {
+                                    initials = parts[0].isNotEmpty
+                                        ? parts[0][0].toUpperCase()
+                                        : '';
+                                  } else if (parts.length > 1) {
+                                    initials = (parts[0].isNotEmpty
+                                            ? parts[0][0]
+                                            : '') +
+                                        (parts[1].isNotEmpty
+                                            ? parts[1][0]
+                                            : '');
+                                    initials = initials.toUpperCase();
+                                  }
+                                  final color = Colors.accentColors[
+                                      doctor.id.hashCode %
+                                          Colors.accentColors.length];
 
-                                return MouseRegion(
-                                  onEnter: (_) =>
-                                      setState(() => hoveredDoctorIndex = idx),
-                                  onExit: (_) =>
-                                      setState(() => hoveredDoctorIndex = null),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        selectedDoctor = doctor;
-                                      });
-                                    },
-                                    child: Container(
-                                      color: hoveredDoctorIndex == idx
-                                          ? Colors.blue.withOpacity(
-                                              0.15) // light blue hover
-                                          : Colors.transparent,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 8.0,
-                                        horizontal:
-                                            12.0, // horizontal padding added
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 36,
-                                            height: 36,
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  color.withValues(alpha: 0.8),
-                                              shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: color.withOpacity(0.2),
-                                                  blurRadius: 6,
-                                                  offset: const Offset(0, 2),
+                                  return MouseRegion(
+                                    onEnter: (_) => setState(
+                                        () => hoveredDoctorIndex = idx),
+                                    onExit: (_) => setState(
+                                        () => hoveredDoctorIndex = null),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          selectedDoctor = doctor;
+                                        });
+                                      },
+                                      child: Container(
+                                        color: hoveredDoctorIndex == idx
+                                            ? Colors.blue.withOpacity(
+                                                0.15) // light blue hover
+                                            : Colors.transparent,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8.0,
+                                          horizontal:
+                                              12.0, // horizontal padding added
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 36,
+                                              height: 36,
+                                              decoration: BoxDecoration(
+                                                color: color.withValues(
+                                                    alpha: 0.8),
+                                                shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color:
+                                                        color.withOpacity(0.2),
+                                                    blurRadius: 6,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ],
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                initials,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
                                                 ),
-                                              ],
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              initials,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Text(
-                                              doctor.title,
-                                              style: const TextStyle(
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Text(
+                                                doctor.title,
+                                                style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight:
+                                                        FontWeight.w500),
+                                              ),
+                                            ),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: color.withValues(
+                                                    alpha: 0.15),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                count.toString(),
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: color,
                                                   fontSize: 15,
-                                                  fontWeight: FontWeight.w500),
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  color.withValues(alpha: 0.15),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              count.toString(),
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: color,
-                                                fontSize: 15,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  flex: 3,
-                  child: selectedDoctor != null
-                      ? DoctorPatientsList(
-                          doctor: selectedDoctor!,
-                          selectedDate: selectedDate,
-                          appointmentsForDay: dayAppointments,
-                        )
-                      : Container(),
-                ),
-              ],
+                  const SizedBox(width: 24),
+                  Expanded(
+                    flex: 3,
+                    child: selectedDoctor != null
+                        ? DoctorPatientsList(
+                            doctor: selectedDoctor!,
+                            selectedDate: selectedDate,
+                            appointmentsForDay: dayAppointments,
+                          )
+                        : Container(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -565,6 +569,104 @@ class _DoctorAppointmentsSummaryWithDateState
         // Show the completed vs pending bar for the selected date
         CompletedVsPendingAppointmentsBar(
           appointments: dayAppointments,
+        ),
+      ],
+    );
+  }
+}
+
+// Use this DateSelectorRow widget (already in your codebase)
+class DateSelectorRow extends StatelessWidget {
+  final DateTime selectedDate;
+  final void Function(DateTime newDate) onChange;
+
+  const DateSelectorRow({
+    super.key,
+    required this.selectedDate,
+    required this.onChange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              icon: const Icon(FluentIcons.chevron_left),
+              onPressed: () =>
+                  onChange(selectedDate.subtract(const Duration(days: 1))),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (picked != null) {
+                  onChange(picked);
+                }
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    DateFormat('d MMM yyyy').format(selectedDate),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: material.Colors.blue,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('EEEE').format(selectedDate) +
+                        (DateUtils.isSameDay(selectedDate, DateTime.now())
+                            ? " (${txt('today')})"
+                            : ""),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(FluentIcons.chevron_right),
+              onPressed: () =>
+                  onChange(selectedDate.add(const Duration(days: 1))),
+            ),
+            const SizedBox(width: 8),
+            if (!DateUtils.isSameDay(selectedDate, DateTime.now()))
+              Tooltip(
+                message: txt("goToToday"),
+                child: FilledButton(
+                  child: Row(
+                    children: [
+                      Icon(FluentIcons.refresh),
+                    ],
+                  ),
+                  onPressed: () => onChange(DateTime.now()),
+                  style: ButtonStyle(
+                    padding: ButtonState.all(
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
+                    backgroundColor: ButtonState.all(Colors.blue),
+                    foregroundColor: ButtonState.all(Colors.white),
+                  ),
+                ),
+              ),
+          ],
         ),
       ],
     );
@@ -598,7 +700,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
 
-    // Calculate completed and pending counts for this doctor
+    // Calculate completed and pending counts for this doctor on this day
     int completedCount = 0;
     int pendingCount = 0;
     for (final appt in doctorAppointments) {
@@ -620,7 +722,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
         child: Text(
           txt("noPatientsForDoctor"),
           style: TextStyle(
-            color: Colors.grey[600],
+            color: material.Colors.grey[600],
             fontStyle: FontStyle.italic,
             fontSize: 16,
           ),
@@ -631,7 +733,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
     return Card(
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -652,7 +754,8 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                     });
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: showCompleted == true
                           ? Colors.green.withOpacity(0.25)
@@ -685,7 +788,8 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                     });
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: showCompleted == false
                           ? Colors.orange.withOpacity(0.25)
@@ -727,7 +831,8 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
             // Patient list
             SizedBox(
               height: 150,
-              child: _PatientListWithHover(doctorAppointments: filteredAppointments),
+              child: _PatientListWithHover(
+                  doctorAppointments: filteredAppointments),
             ),
           ],
         ),
@@ -795,7 +900,7 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               color: hoveredIndex == index
                   ? Colors.blue.withOpacity(0.15)
                   : Colors.transparent,
@@ -823,17 +928,30 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                     ),
                   ),
                   const SizedBox(width: 24),
-                  Text(
-                    patientName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 16),
-                    overflow: TextOverflow.ellipsis,
+                  Expanded(
+                    child: Text(
+                      patientName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
                   const SizedBox(width: 24),
-                  Text(
-                    apptTime,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 16),
+                  SizedBox(
+                    width: 70, // Set a fixed width for time to align all times
+                    child: Text(
+                      apptTime,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.right,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
                 ],
               ),
@@ -864,6 +982,10 @@ class CompletedVsPendingAppointmentsBar extends StatelessWidget {
     // Hide the bar if there are no appointments
     if (total == 0) return const SizedBox.shrink();
 
+    // Define your custom colors
+    final completedColor = Colors.teal;
+    final pendingColor = Colors.red;
+
     return Container(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -885,18 +1007,16 @@ class CompletedVsPendingAppointmentsBar extends StatelessWidget {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(
-                      flex: (completedPercent * 100).round(),
-                      child: Container(
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.horizontal(
-                              left: Radius.circular(12)),
-                        ),
-                        alignment: Alignment.centerLeft,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 8.0),
+                    if (completed == total)
+                      // Only completed bar (full width)
+                      Expanded(
+                        child: Container(
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: completedColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
                           child: Text(
                             "${txt("completed")}: $completed",
                             style: const TextStyle(
@@ -905,20 +1025,17 @@ class CompletedVsPendingAppointmentsBar extends StatelessWidget {
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: (pendingPercent * 100).round(),
-                      child: Container(
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.orange,
-                          borderRadius: BorderRadius.horizontal(
-                              right: Radius.circular(12)),
-                        ),
-                        alignment: Alignment.centerRight,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
+                      )
+                    else if (pending == total)
+                      // Only pending bar (full width)
+                      Expanded(
+                        child: Container(
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: pendingColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
                           child: Text(
                             "${txt("pending")}: $pending",
                             style: const TextStyle(
@@ -927,8 +1044,54 @@ class CompletedVsPendingAppointmentsBar extends StatelessWidget {
                             ),
                           ),
                         ),
+                      )
+                    else ...[
+                      // Both bars
+                      Expanded(
+                        flex: (completedPercent * 100).round(),
+                        child: Container(
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: completedColor,
+                            borderRadius: const BorderRadius.horizontal(
+                                left: Radius.circular(12)),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Text(
+                              "${txt("completed")}: $completed",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      Expanded(
+                        flex: (pendingPercent * 100).round(),
+                        child: Container(
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: pendingColor,
+                            borderRadius: const BorderRadius.horizontal(
+                                right: Radius.circular(12)),
+                          ),
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: Text(
+                              "${txt("pending")}: $pending",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 8),

@@ -110,6 +110,8 @@ class Appointment extends Model {
   /* 8 */ List<String> imgs = [];
   /* 9 */ DateTime date = DateTime.now();
   /* 10 */ bool isDone = false;
+  double discount = 0.0;
+  String discountType = 'flat'; // or 'percent'
   /* 11 */ List<Treatment> treatments = [
     Treatment(
       name: 'Regular Exams and Cleanings',
@@ -131,7 +133,74 @@ class Appointment extends Model {
       name: 'Fluoride Treatments',
       price: 25,
     ),
-    // ...add other treatments similarly...
+    Treatment(
+      name: 'Tooth Fillings',
+      price: 120,
+      subTreatments: [
+        Treatment(name: 'Composite Filling', price: 130),
+        Treatment(name: 'Amalgam Filling', price: 110),
+      ],
+    ),
+    Treatment(
+      name: 'Root Canal Therapy',
+      price: 350,
+      subTreatments: [
+        Treatment(name: 'Anterior Tooth', price: 300),
+        Treatment(name: 'Premolar Tooth', price: 350),
+        Treatment(name: 'Molar Tooth', price: 400),
+      ],
+    ),
+    Treatment(
+      name: 'Dental Crowns',
+      price: 500,
+      subTreatments: [
+        Treatment(name: 'Porcelain Crown', price: 600),
+        Treatment(name: 'Metal Crown', price: 450),
+        Treatment(name: 'Zirconia Crown', price: 700),
+      ],
+    ),
+    Treatment(
+      name: 'Teeth Whitening',
+      price: 200,
+      subTreatments: [
+        Treatment(name: 'In-office Whitening', price: 250),
+        Treatment(name: 'Take-home Kit', price: 180),
+      ],
+    ),
+    Treatment(
+      name: 'Dental Implants',
+      price: 1500,
+      subTreatments: [
+        Treatment(name: 'Single Tooth Implant', price: 1500),
+        Treatment(name: 'Multiple Teeth Implant', price: 4000),
+      ],
+    ),
+    Treatment(
+      name: 'Braces',
+      price: 2500,
+      subTreatments: [
+        Treatment(name: 'Metal Braces', price: 2500),
+        Treatment(name: 'Ceramic Braces', price: 3000),
+        Treatment(name: 'Lingual Braces', price: 3500),
+      ],
+    ),
+    Treatment(
+      name: 'Dentures',
+      price: 800,
+      subTreatments: [
+        Treatment(name: 'Partial Denture', price: 600),
+        Treatment(name: 'Full Denture', price: 1000),
+      ],
+    ),
+    Treatment(
+      name: 'Tooth Extraction',
+      price: 100,
+      subTreatments: [
+        Treatment(name: 'Simple Extraction', price: 100),
+        Treatment(name: 'Surgical Extraction', price: 250),
+      ],
+    ),
+    // ...add other treatments as needed...
   ];
   /* 12 */ List<String> selectedTreatments = [];
 
@@ -155,7 +224,11 @@ class Appointment extends Model {
           .map((e) => Treatment.fromJson(e))
           .toList();
     }
-    /* 12 */ selectedTreatments = List<String>.from(json["selectedTreatments"] ?? []);
+    /* 12 */ selectedTreatments =
+        List<String>.from(json["selectedTreatments"] ?? []);
+    // In fromJson:
+    discount = (json['discount'] ?? 0).toDouble();
+    discountType = json['discountType'] ?? 'flat';
   }
 
   @override
@@ -175,8 +248,10 @@ class Appointment extends Model {
     /* 11 */ if (treatments.isNotEmpty) {
       json['treatments'] = treatments.map((e) => e.toJson()).toList();
     }
-    /* 12 */ if (selectedTreatments.isNotEmpty) json['selectedTreatments'] = selectedTreatments;
-
+    /* 12 */ if (selectedTreatments.isNotEmpty)
+      json['selectedTreatments'] = selectedTreatments;
+    if (discount != d.discount) json['discount'] = discount;
+    if (discountType != d.discountType) json['discountType'] = discountType;
     json.remove("title"); // remove since it is a computed value in this case
 
     return json;

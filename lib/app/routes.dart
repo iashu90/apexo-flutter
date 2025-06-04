@@ -25,6 +25,7 @@ import 'package:apexo/features/settings/settings_screen.dart';
 import '../core/observable.dart';
 import "../features/appointments/appointments_store.dart";
 import "../features/settings/settings_stores.dart";
+import 'package:apexo/features/data/data_screen.dart';
 
 class PanelTab {
   final String title;
@@ -63,7 +64,8 @@ class Panel<T extends Model> {
     required this.icon,
     this.title,
   }) {
-    identifier = store.get(item.id) == null ? "new+${store.local?.name}" : item.id;
+    identifier =
+        store.get(item.id) == null ? "new+${store.local?.name}" : item.id;
     savedJson = jsonEncode(item.toJson());
   }
 
@@ -105,7 +107,8 @@ class _Routes {
   final minimizePanels = ObservableState(false);
 
   void openPanel(Panel panel) {
-    final foundPanel = panels().indexWhere((element) => element.identifier == panel.identifier);
+    final foundPanel = panels()
+        .indexWhere((element) => element.identifier == panel.identifier);
     if (foundPanel > -1) {
       // bring to front
       bringPanelToFront(foundPanel);
@@ -211,6 +214,15 @@ class _Routes {
             await patients.synchronize();
             appointments.synchronize();
           },
+        ),
+        Route(
+          title: txt("data"),
+          identifier: "data",
+          icon: FluentIcons.database, // You can choose any Fluent icon
+          screen: DataScreen.new,
+          accessible: true,
+          onFooter: false,
+          onSelect: () {},
         ),
         Route(
           title: txt("settings"),

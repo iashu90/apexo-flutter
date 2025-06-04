@@ -18,16 +18,21 @@ class Labwork extends Model {
   @override
   get labels {
     return {
-      "Laboratory": lab,
-      "Month": DateFormat("MMM yyyy", locale.s.$code).format(date),
       "Patient": patient?.title ?? "Unknown",
+      "Type": typeOfWork,
+      "Units": noOfUnits.toString(),
+      "Shade": shade,
+      "Laboratory": lab,
       "Paid": paid ? txt("paid") : txt("due"),
       "doctors": operators.map((e) => e.title).join(", "),
     };
   }
 
   Patient? get patient {
-    if (patientID != null && patientID!.isNotEmpty && patients.get(patientID!) == null && patientID!.length == 15) {
+    if (patientID != null &&
+        patientID!.isNotEmpty &&
+        patients.get(patientID!) == null &&
+        patientID!.length == 15) {
       patients.set(Patient.fromJson({"id": patientID}));
     }
     return patients.get(patientID ?? "");
@@ -59,16 +64,26 @@ class Labwork extends Model {
   /* 6 */ DateTime date = DateTime.now();
   /* 7 */ String lab = "";
   /* 8 */ String phoneNumber = "";
+  /* 9 */ String typeOfWork = "";
+  /* 10 */ int noOfUnits = 0;
+  /* 11 */ String shade = "";
 
   Labwork.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
-    /* 1 */ operatorsIDs = List<String>.from(json["operatorsIDs"] ?? operatorsIDs);
+    /* 1 */ operatorsIDs =
+        List<String>.from(json["operatorsIDs"] ?? operatorsIDs);
     /* 2 */ patientID = json["patientID"] ?? patientID;
     /* 3 */ note = json["note"] ?? note;
     /* 4 */ price = double.parse((json["price"] ?? price).toString());
     /* 5 */ paid = json["paid"] ?? paid;
-    /* 6 */ date = json["date"] != null ? DateTime.fromMillisecondsSinceEpoch(json["date"] * (60 * 60 * 1000)) : date;
+    /* 6 */ date = json["date"] != null
+        ? DateTime.fromMillisecondsSinceEpoch(json["date"] * (60 * 60 * 1000))
+        : date;
     /* 7 */ lab = json["lab"] ?? lab;
     /* 8 */ phoneNumber = json["phoneNumber"] ?? phoneNumber;
+    /* 9 */ typeOfWork = json["typeOfWork"] ?? typeOfWork;
+    /* 10 */ noOfUnits =
+        int.tryParse(json["noOfUnits"]?.toString() ?? "") ?? noOfUnits;
+    /* 11 */ shade = json["shade"] ?? shade;
   }
 
   @override
@@ -80,9 +95,13 @@ class Labwork extends Model {
     /* 3 */ if (note != d.note) json['note'] = note;
     /* 4 */ if (price != d.price) json['price'] = price;
     /* 5 */ if (paid != d.paid) json['paid'] = paid;
-    /* 6 */ json['date'] = (date.millisecondsSinceEpoch / (60 * 60 * 1000)).round();
+    /* 6 */ json['date'] =
+        (date.millisecondsSinceEpoch / (60 * 60 * 1000)).round();
     /* 7 */ if (lab != d.lab) json['lab'] = lab;
     /* 8 */ if (phoneNumber != d.phoneNumber) json['phoneNumber'] = phoneNumber;
+    /* 9 */ if (typeOfWork != d.typeOfWork) json['typeOfWork'] = typeOfWork;
+    /* 10 */ if (noOfUnits != d.noOfUnits) json['noOfUnits'] = noOfUnits;
+    /* 11 */ if (shade != d.shade) json['shade'] = shade;
     return json;
   }
 }

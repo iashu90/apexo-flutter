@@ -92,7 +92,9 @@ class WeekAgendaCalendarState<Item extends Appointment>
 
   @override
   Widget build(BuildContext context) {
-    var itemsForSelectedDay = _getItemsForSelectedDay();
+    var allItemsForSelectedDay = _getItemsForDay(selectedDate); // always unfiltered
+    var itemsForSelectedDay = _getItemsForSelectedDay(); // filtered if filter is active
+
     return Column(
       children: [
         _buildCommandBar(),
@@ -107,7 +109,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
               selectedDate = selectedDate.add(const Duration(days: 1));
             }),
             child: Column(children: [
-              _buildCurrentDayTitleBar(itemsForSelectedDay),
+              _buildCurrentDayTitleBar(allItemsForSelectedDay),
               itemsForSelectedDay.isEmpty
                   ? _buildEmptyDayMessage()
                   : _buildAppointmentsList(itemsForSelectedDay),
@@ -528,18 +530,30 @@ class AppointmentCalendarTile<Item extends Appointment>
 
   @override
   Widget build(BuildContext context) {
-    final preop = (item.preOpNotes ?? '').toString();
-
-    // If treatments is a List, join as comma separated string, else fallback to string
+    // Only show treatments that are checked/selected by the doctor
     String treatmentsStr = '';
-    if (item.treatments is List) {
+    if (item.treatments is List && item.selectedTreatments is List) {
+      final selectedNames = item.selectedTreatments.map((e) => e.toString()).toSet();
       treatmentsStr = (item.treatments as List)
-          .where((e) => e != null)
+          .where((e) {
+            // Support both Treatment objects and Map
+            String? name;
+            if (e is Map && e['name'] != null) name = e['name'].toString();
+            else if (e is Map && e['title'] != null) name = e['title'].toString();
+            else if (e is String) name = e;
+            else {
+              try {
+                name = e.name ?? e.title ?? e.toString();
+              } catch (_) {
+                name = e.toString();
+              }
+            }
+            return name != null && selectedNames.contains(name);
+          })
           .map((e) {
             if (e is Map && e['name'] != null) return e['name'].toString();
             if (e is Map && e['title'] != null) return e['title'].toString();
             if (e is String) return e;
-            // If it's a custom object, try .name or .title
             try {
               return e.name ?? e.title ?? e.toString();
             } catch (_) {
@@ -549,9 +563,8 @@ class AppointmentCalendarTile<Item extends Appointment>
           .where((s) => s.trim().isNotEmpty)
           .join(', ');
     } else {
-      treatmentsStr = (item.treatments ?? '').toString();
+      treatmentsStr = '';
     }
-    final postop = (item.postOpNotes ?? '').toString();
 
     return Container(
       decoration: BoxDecoration(
@@ -567,12 +580,8 @@ class AppointmentCalendarTile<Item extends Appointment>
           children: [
             if (item.subtitleLine1.isNotEmpty)
               Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis),
-            if (preop.isNotEmpty)
-              Txt("Pre-op: $preop",
-                  style: const TextStyle(
-                      fontSize: 14, color: material.Colors.blueGrey)),
             if (treatmentsStr.isNotEmpty)
-              Txt("Treatments: $treatmentsStr",
+              Txt(treatmentsStr,
                   style: const TextStyle(
                       fontSize: 14, color: material.Colors.teal)),
           ],
