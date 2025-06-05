@@ -71,6 +71,9 @@ class En {
     "shade": "Shade",
     "selectShade": "Select shade",
     "goToToday": "Go to Today",
+    "todaysAppointments": "Today's Appointments",
+    "deliveredToDoctor": "Delivered to Doctor",
+    "deliveredToPatient": "Delivered to Patient",
 
     // datatable
     "archiveSelected": "Archive Selected",

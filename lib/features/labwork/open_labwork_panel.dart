@@ -1,4 +1,5 @@
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/call_button.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
@@ -10,7 +11,6 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 
 void openLabwork([Labwork? labwork]) {
   final editingCopy = Labwork.fromJson(labwork?.toJson() ?? {});
@@ -19,7 +19,9 @@ void openLabwork([Labwork? labwork]) {
     item: editingCopy,
     store: labworks,
     icon: FluentIcons.manufacturing,
-    title: labworks.get(editingCopy.id) == null ? txt("newLabwork") : editingCopy.title,
+    title: labworks.get(editingCopy.id) == null
+        ? txt("newLabwork")
+        : editingCopy.title,
     tabs: [
       PanelTab(
         title: txt("labwork"),
@@ -42,198 +44,281 @@ class _LabworkEditing extends StatefulWidget {
 class _LabworkEditingState extends State<_LabworkEditing> {
   final TextEditingController labNameController = TextEditingController();
   final TextEditingController labPhoneController = TextEditingController();
+  final FocusNode labNameFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     labNameController.text = widget.labwork.lab;
     labPhoneController.text = widget.labwork.phoneNumber;
+    labNameController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    labNameController.dispose();
+    labPhoneController.dispose();
+    labNameFocusNode.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InfoLabel(
-          label: "${txt("date")}:",
-          child: DateTimePicker(
-            key: WK.fieldLabworkDate,
-            initValue: widget.labwork.date,
-            onChange: (d) => widget.labwork.date = d,
-            buttonText: txt("changeDate"),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InfoLabel(
+            label: "${txt("date")}:",
+            child: DateTimePicker(
+              key: WK.fieldLabworkDate,
+              initValue: widget.labwork.date,
+              onChange: (d) => widget.labwork.date = d,
+              buttonText: txt("changeDate"),
+            ),
           ),
-        ),
-        InfoLabel(
-          label: "${txt("patient")}:",
-          child: PatientPicker(
-              value: widget.labwork.patientID,
-              onChanged: (id) {
-                widget.labwork.patientID = id;
-              }),
-        ),
-        InfoLabel(
-          label: "${txt("doctors")}:",
-          child: OperatorsPicker(
-              value: widget.labwork.operatorsIDs,
-              onChanged: (ids) {
-                widget.labwork.operatorsIDs = ids;
-              }),
-        ),
-        InfoLabel(
-          label: "${txt("orderNotes")}:",
-          child: CupertinoTextField(
-            key: WK.fieldLabworkOrderNotes,
-            controller: TextEditingController(text: widget.labwork.note),
-            placeholder: "${txt("orderNotes")}...",
-            onChanged: (val) {
-              widget.labwork.note = val;
-            },
-            maxLines: null,
+          InfoLabel(
+            label: "${txt("patient")}:",
+            child: PatientPicker(
+                value: widget.labwork.patientID,
+                onChanged: (id) {
+                  widget.labwork.patientID = id;
+                }),
           ),
-        ),
-        InfoLabel(
-          label: "${txt("typeOfWork")}:",
-          child: ComboBox<String>(
-            value: widget.labwork.typeOfWork.isNotEmpty ? widget.labwork.typeOfWork : null,
-            items: [
-              "Crown",
-              "Bridge",
-              "Veneer",
-              "Denture",
-              "Implant",
-              "Inlay/Onlay",
-              "Other"
-            ].map((type) => ComboBoxItem<String>(value: type, child: Text(type))).toList(),
-            placeholder: Text("${txt("selectTypeOfWork")}..."),
-            onChanged: (val) {
-              setState(() {
-                widget.labwork.typeOfWork = val ?? "";
-              });
-            },
+          InfoLabel(
+            label: "${txt("doctors")}:",
+            child: OperatorsPicker(
+                value: widget.labwork.operatorsIDs,
+                onChanged: (ids) {
+                  widget.labwork.operatorsIDs = ids;
+                }),
           ),
-        ),
-        const SizedBox(height: 10),
-        InfoLabel(
-          label: "${txt("noOfUnits")}:",
-          child: NumberBox(
-            key: WK.fieldLabworkNoOfUnits,
-            style: textFieldTextStyle(),
-            clearButton: false,
-            mode: SpinButtonPlacementMode.inline,
-            value: widget.labwork.noOfUnits.toDouble(),
-            min: 0,
-            onChanged: (n) {
-              setState(() {
-                widget.labwork.noOfUnits = n?.toInt() ?? 0;
-              });
-            },
+          InfoLabel(
+            label: "${txt("laboratory")}:",
+            child: LaboratoryPicker(
+              value: labNameController.text,
+              onChanged: (lab) {
+                setState(() {
+                  labNameController.text = lab ?? "";
+                  widget.labwork.lab = lab ?? "";
+                });
+              },
+              focusNode: labNameFocusNode,
+              controller: labNameController,
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        InfoLabel(
-          label: "${txt("shade")}:",
-          child: ComboBox<String>(
-            value: widget.labwork.shade.isNotEmpty ? widget.labwork.shade : null,
-            items: [
-              "A1", "A2", "A3", "A3.5", "B1", "B2", "B3", "C1", "C2", "D2", "Other"
-            ].map((shade) => ComboBoxItem<String>(value: shade, child: Text(shade))).toList(),
-            placeholder: Text("${txt("selectShade")}..."),
-            onChanged: (val) {
-              setState(() {
-                widget.labwork.shade = val ?? "";
-              });
-            },
+          InfoLabel(
+            label: "${txt("phone")}:",
+            child: AutoSuggestBox<String>(
+              key: WK.fieldLabworkPhoneNumber,
+              style: textFieldTextStyle(),
+              decoration: textFieldDecorationProperty(),
+              clearButtonEnabled: false,
+              placeholder: "${txt("phone")}...",
+              controller: labPhoneController,
+              noResultsFoundBuilder: (context) => Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Txt(txt("noSuggestions")),
+              ),
+              onChanged: (text, reason) {
+                widget.labwork.phoneNumber = text;
+              },
+              trailingIcon:
+                  CallIconButton(phoneNumber: widget.labwork.phoneNumber),
+              items: labworks.allPhones
+                  .map((pn) => AutoSuggestBoxItem<String>(value: pn, label: pn))
+                  .toList(),
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: InfoLabel(
-                label: "${txt("priceIn")} ${globalSettings.get("currency_______").value}",
-                child: NumberBox(
-                  key: WK.fieldLabworkPrice,
-                  style: textFieldTextStyle(),
-                  clearButton: false,
-                  mode: SpinButtonPlacementMode.inline,
-                  value: widget.labwork.price,
-                  onChanged: (n) => widget.labwork.price = n ?? 0.0,
+          InfoLabel(
+            label: "${txt("orderNotes")}:",
+            child: CupertinoTextField(
+              key: WK.fieldLabworkOrderNotes,
+              controller: TextEditingController(text: widget.labwork.note),
+              placeholder: "${txt("orderNotes")}...",
+              onChanged: (val) {
+                widget.labwork.note = val;
+              },
+              maxLines: null,
+            ),
+          ),
+          InfoLabel(
+            label: "${txt("typeOfWork")}:",
+            child: ComboBox<String>(
+              value: widget.labwork.typeOfWork.isNotEmpty
+                  ? widget.labwork.typeOfWork
+                  : null,
+              items: [
+                "Crown",
+                "Bridge",
+                "Veneer",
+                "Denture",
+                "Implant",
+                "Inlay/Onlay",
+                "Other"
+              ]
+                  .map((type) =>
+                      ComboBoxItem<String>(value: type, child: Text(type)))
+                  .toList(),
+              placeholder: Text("${txt("selectTypeOfWork")}..."),
+              onChanged: (val) {
+                setState(() {
+                  widget.labwork.typeOfWork = val ?? "";
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          InfoLabel(
+            label: "${txt("noOfUnits")}:",
+            child: NumberBox(
+              key: WK.fieldLabworkNoOfUnits,
+              style: textFieldTextStyle(),
+              clearButton: false,
+              mode: SpinButtonPlacementMode.inline,
+              value: widget.labwork.noOfUnits.toDouble(),
+              min: 0,
+              onChanged: (n) {
+                setState(() {
+                  widget.labwork.noOfUnits = n?.toInt() ?? 0;
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          InfoLabel(
+            label: "${txt("shade")}:",
+            child: ComboBox<String>(
+              value:
+                  widget.labwork.shade.isNotEmpty ? widget.labwork.shade : null,
+              items: [
+                "A1",
+                "A2",
+                "A3",
+                "A3.5",
+                "B1",
+                "B2",
+                "B3",
+                "C1",
+                "C2",
+                "D2",
+                "Other"
+              ]
+                  .map((shade) =>
+                      ComboBoxItem<String>(value: shade, child: Text(shade)))
+                  .toList(),
+              placeholder: Text("${txt("selectShade")}..."),
+              onChanged: (val) {
+                setState(() {
+                  widget.labwork.shade = val ?? "";
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: InfoLabel(
+                  label:
+                      "${txt("priceIn")} ${globalSettings.get("currency_______").value}",
+                  child: NumberBox(
+                    key: WK.fieldLabworkPrice,
+                    style: textFieldTextStyle(),
+                    clearButton: false,
+                    mode: SpinButtonPlacementMode.inline,
+                    value: widget.labwork.price,
+                    onChanged: (n) => widget.labwork.price = n ?? 0.0,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 15),
-            Padding(
-              padding: const EdgeInsets.only(top: 22.5),
-              child: Checkbox(
-                key: WK.fieldLabworkPaidToggle,
-                checked: widget.labwork.paid,
-                onChanged: (n) {
+              const SizedBox(width: 15),
+              Padding(
+                padding: const EdgeInsets.only(top: 22.5),
+                child: Checkbox(
+                  key: WK.fieldLabworkPaidToggle,
+                  checked: widget.labwork.paid,
+                  onChanged: (n) {
+                    setState(() {
+                      widget.labwork.paid = n == true;
+                    });
+                  },
+                  content: widget.labwork.paid
+                      ? Txt(txt("paid"))
+                      : Txt(txt("unpaid")),
+                ),
+              )
+            ],
+          ),
+          const SizedBox(height: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                checked: widget.labwork.deliveredToDoctor == true,
+                onChanged: (val) {
                   setState(() {
-                    widget.labwork.paid = n == true;
+                    widget.labwork.deliveredToDoctor = val ?? false;
                   });
                 },
-                content: widget.labwork.paid ? Txt(txt("paid")) : Txt(txt("unpaid")),
+                content: Txt(txt("deliveredToDoctor")),
               ),
-            )
-          ],
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: InfoLabel(
-                label: "${txt("laboratory")}:",
-                child: AutoSuggestBox<String>(
-                  key: WK.fieldLabworkLabName,
-                  style: textFieldTextStyle(),
-                  decoration: textFieldDecorationProperty(),
-                  clearButtonEnabled: false,
-                  placeholder: "${txt("laboratory")}...",
-                  controller: labNameController,
-                  noResultsFoundBuilder: (context) => Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Txt(txt("noSuggestions")),
-                  ),
-                  onChanged: (text, reason) {
-                    widget.labwork.lab = text;
-                    String? phoneNumber = labworks.getPhoneNumber(text);
-                    if (phoneNumber != null) {
-                      labPhoneController.text = phoneNumber;
-                      widget.labwork.phoneNumber = phoneNumber;
-                    }
-                  },
-                  items: labworks.allLabs.map((name) => AutoSuggestBoxItem<String>(value: name, label: name)).toList(),
-                ),
+              const SizedBox(height: 10),
+              Checkbox(
+                checked: widget.labwork.deliveredToPatient == true,
+                onChanged: (val) {
+                  setState(() {
+                    widget.labwork.deliveredToPatient = val ?? false;
+                  });
+                },
+                content: Txt(txt("deliveredToPatient")),
               ),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: InfoLabel(
-                label: "${txt("phone")}:",
-                child: AutoSuggestBox<String>(
-                  key: WK.fieldLabworkPhoneNumber,
-                  style: textFieldTextStyle(),
-                  decoration: textFieldDecorationProperty(),
-                  clearButtonEnabled: false,
-                  placeholder: "${txt("phone")}...",
-                  controller: labPhoneController,
-                  noResultsFoundBuilder: (context) => Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Txt(txt("noSuggestions")),
-                  ),
-                  onChanged: (text, reason) {
-                    widget.labwork.phoneNumber = text;
-                  },
-                  trailingIcon: CallIconButton(phoneNumber: widget.labwork.phoneNumber),
-                  items: labworks.allPhones.map((pn) => AutoSuggestBoxItem<String>(value: pn, label: pn)).toList(),
-                ),
-              ),
-            ),
-          ],
-        )
-      ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
+            ],
+          ),
+        ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
+      ),
+    );
+  }
+}
+
+class LaboratoryPicker extends StatelessWidget {
+  final void Function(String? labName) onChanged;
+  final String? value;
+  final FocusNode? focusNode;
+  final TextEditingController? controller;
+
+  const LaboratoryPicker({
+    super.key,
+    required this.onChanged,
+    this.value,
+    this.focusNode,
+    this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TagInputWidget(
+      key: WK.fieldLabworkLabName,
+      focusNode: focusNode,
+      controller: controller,
+      suggestions: labworks.allLabs
+          .map((e) => TagInputItem(value: e, label: e))
+          .toList(),
+      onChanged: (s) {
+        if (s.isEmpty) return onChanged(null);
+        onChanged(s.first.value ?? "");
+      },
+      initialValue: value != null && value!.isNotEmpty
+          ? [TagInputItem(value: value!, label: value!)]
+          : [],
+      strict: false,
+      limit: 1,
+      placeholder: txt("laboratory"),
+      clearButton: true,
     );
   }
 }
@@ -244,7 +329,6 @@ BoxDecoration textFieldDecoration() {
     border: Border.all(color: const Color.fromARGB(255, 192, 192, 192)),
   );
 }
-
 
 WidgetStateProperty<BoxDecoration>? textFieldDecorationProperty() {
   return WidgetStateProperty.all(
