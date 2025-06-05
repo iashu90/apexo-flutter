@@ -45,6 +45,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
   final int defaultSortDirection;
   final String defaultSortingName;
   final List<String>? labelOrder;
+  final Map<String, Widget Function(Item)>? columnBuilders;
 
   const DataTable({
     super.key,
@@ -58,6 +59,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
     this.defaultSortDirection = 1,
     this.defaultSortingName = "byTitle",
     this.labelOrder,
+    this.columnBuilders,
   });
 
   @override

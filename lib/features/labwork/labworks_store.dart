@@ -64,7 +64,14 @@ class Labworks extends Store<Labwork> {
   }
 
   List<String> get allLabs {
-    Set<String> labs = {};
+    Set<String> labs = {
+      "Now Diagnostics",
+      "LabCare",
+      "Smile Labs",
+      "DentalPro Lab",
+      "BrightPath Diagnostics",
+      "OralTech Solutions",
+    };
     for (var doc in docs.values) {
       labs.add(doc.lab);
     }

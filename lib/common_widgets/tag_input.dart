@@ -13,24 +13,31 @@ class TagInputWidget extends StatefulWidget {
   final void Function(List<TagInputItem>) onChanged;
   final void Function(TagInputItem)? onItemTap;
   final String placeholder;
+  final TextEditingController? controller; // <-- Add this
+  final FocusNode? focusNode; // <-- Add this
+  final bool clearButton; // <-- Add this
 
-  const TagInputWidget(
-      {super.key,
-      required this.suggestions,
-      required this.onChanged,
-      required this.initialValue,
-      required this.strict,
-      required this.limit,
-      this.placeholder = "",
-      this.onItemTap});
+  const TagInputWidget({
+    super.key,
+    required this.suggestions,
+    required this.onChanged,
+    required this.initialValue,
+    required this.strict,
+    required this.limit,
+    this.placeholder = "",
+    this.onItemTap,
+    this.controller,
+    this.focusNode,
+    this.clearButton = false, // <-- Add this
+  });
 
   @override
   TagInputWidgetState createState() => TagInputWidgetState();
 }
 
 class TagInputWidgetState extends State<TagInputWidget> {
-  final TextEditingController _controller = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
   late List<TagInputItem> _tags;
   late List<TagInputItem> _filteredSuggestions;
   final key = GlobalKey<AutoSuggestBoxState>();
@@ -38,6 +45,8 @@ class TagInputWidgetState extends State<TagInputWidget> {
   @override
   void initState() {
     super.initState();
+    _controller = widget.controller ?? TextEditingController();
+    _focusNode = widget.focusNode ?? FocusNode();
     _filteredSuggestions = widget.suggestions;
     _tags = widget.initialValue;
   }
@@ -98,6 +107,13 @@ class TagInputWidgetState extends State<TagInputWidget> {
   }
 
   @override
+  void dispose() {
+    if (widget.controller == null) _controller.dispose();
+    if (widget.focusNode == null) _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
@@ -119,38 +135,59 @@ class TagInputWidgetState extends State<TagInputWidget> {
             ),
           ),
           if (widget.limit > _tags.length)
-            AutoSuggestBox<String>(
-                key: key,
-                controller: _controller,
-                textInputAction: TextInputAction.none,
-                decoration: WidgetStateProperty.all(BoxDecoration(
-                  border:
-                      Border.all(color: const Color.fromARGB(255, 220, 220, 220), width: _tags.isEmpty ? 1.25 : 0.01),
-                )),
-                focusNode: _focusNode, // Attach the FocusNode to preserve focus
-                items: _filteredSuggestions
-                    .where((suggestion) => _tags.where((selected) => selected.value == suggestion.value).isEmpty)
-                    .toList(),
-                onSelected: _onSuggestionSelected,
-                onChanged: _onTextChanged,
-                placeholder: widget.placeholder,
-                noResultsFoundBuilder: (context) =>
-                    Padding(padding: const EdgeInsets.all(10), child: Txt(txt("noResultsFound"))),
-                trailingIcon: GestureDetector(
-                  child: const Icon(FluentIcons.grouped_descending),
-                  onTap: () {
-                    if (key.currentState != null) {
-                      var state = key.currentState!;
-                      if (state.isOverlayVisible) {
-                        state.dismissOverlay();
-                        _focusNode.unfocus();
-                      } else {
-                        state.showOverlay();
-                        _focusNode.requestFocus();
+            Stack(
+              alignment: Alignment.centerRight,
+              children: [
+                AutoSuggestBox<String>(
+                  key: key,
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  textInputAction: TextInputAction.none,
+                  decoration: WidgetStateProperty.all(BoxDecoration(
+                    border: Border.all(
+                        color: const Color.fromARGB(255, 220, 220, 220),
+                        width: _tags.isEmpty ? 1.25 : 0.01),
+                  )),
+                  items: _filteredSuggestions
+                      .where((suggestion) => _tags.where((selected) => selected.value == suggestion.value).isEmpty)
+                      .toList(),
+                  onSelected: _onSuggestionSelected,
+                  onChanged: _onTextChanged,
+                  placeholder: widget.placeholder,
+                  noResultsFoundBuilder: (context) =>
+                      Padding(padding: const EdgeInsets.all(10), child: Txt(txt("noResultsFound"))),
+                  trailingIcon: GestureDetector(
+                    child: const Icon(FluentIcons.grouped_descending),
+                    onTap: () {
+                      if (key.currentState != null) {
+                        var state = key.currentState!;
+                        if (state.isOverlayVisible) {
+                          state.dismissOverlay();
+                          _focusNode.unfocus();
+                        } else {
+                          state.showOverlay();
+                          _focusNode.requestFocus();
+                        }
                       }
-                    }
-                  },
-                ))
+                    },
+                  ),
+                ),
+                if (widget.clearButton && _controller.text.isNotEmpty)
+                  Positioned(
+                    right: 4,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.cancel, size: 18),
+                      onPressed: () {
+                        setState(() {
+                          _controller.clear();
+                          // Optionally, trigger suggestions overlay
+                          _focusNode.requestFocus();
+                        });
+                      },
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
     );

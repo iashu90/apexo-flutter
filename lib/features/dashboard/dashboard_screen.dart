@@ -1,5 +1,7 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
+import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/services/launch.dart';
@@ -89,10 +91,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           "${txt("hello")} $currentName",
                           style: const TextStyle(fontSize: 20),
                         ),
-                        Txt(
-                          DateFormat("MMMM d yyyy, hh:mm:a", locale.s.$code)
-                              .format(DateTime.now()),
-                          style: const TextStyle(fontSize: 14),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          margin: const EdgeInsets.only(top: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: Colors.blue.withOpacity(0.18)),
+                          ),
+                          child: Txt(
+                            DateFormat("MMMM d yyyy, hh:mm:a", locale.s.$code)
+                                .format(DateTime.now()),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: material.Colors.blue,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -399,14 +417,42 @@ class _DoctorAppointmentsSummaryWithDateState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  txt("todaysAppointments"),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Tooltip(
+                                message: txt("addAppointment"),
+                                child: IconButton(
+                                  icon:
+                                      Icon(FluentIcons.add, color: Colors.blue),
+                                  onPressed: () {
+                                    openAppointment(Appointment.fromJson({
+                                      "date":
+                                          selectedDate.millisecondsSinceEpoch ~/
+                                              60000,
+                                    }));
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
                           if (doctorList.isEmpty)
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 24.0),
+                            SizedBox(
+                              height:
+                                  150, // Match the doctor list height for vertical centering
                               child: Center(
                                 child: Text(
                                   txt("noAppointmentsToday"),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontStyle: FontStyle.italic,
                                   ),
@@ -482,8 +528,8 @@ class _DoctorAppointmentsSummaryWithDateState
                                         child: Row(
                                           children: [
                                             Container(
-                                              width: 36,
-                                              height: 36,
+                                              width: 24,
+                                              height: 24,
                                               decoration: BoxDecoration(
                                                 color: color.withValues(
                                                     alpha: 0.8),
@@ -502,8 +548,8 @@ class _DoctorAppointmentsSummaryWithDateState
                                                 initials,
                                                 style: const TextStyle(
                                                   color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 14,
                                                 ),
                                               ),
                                             ),
@@ -514,7 +560,7 @@ class _DoctorAppointmentsSummaryWithDateState
                                                 style: const TextStyle(
                                                     fontSize: 15,
                                                     fontWeight:
-                                                        FontWeight.w500),
+                                                        FontWeight.w600),
                                               ),
                                             ),
                                             Container(
@@ -531,9 +577,9 @@ class _DoctorAppointmentsSummaryWithDateState
                                               child: Text(
                                                 count.toString(),
                                                 style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
+                                                  fontWeight: FontWeight.w600,
                                                   color: color,
-                                                  fontSize: 15,
+                                                  fontSize: 14,
                                                 ),
                                               ),
                                             ),
@@ -576,7 +622,7 @@ class _DoctorAppointmentsSummaryWithDateState
 }
 
 // Use this DateSelectorRow widget (already in your codebase)
-class DateSelectorRow extends StatelessWidget {
+class DateSelectorRow extends StatefulWidget {
   final DateTime selectedDate;
   final void Function(DateTime newDate) onChange;
 
@@ -587,7 +633,16 @@ class DateSelectorRow extends StatelessWidget {
   });
 
   @override
+  State<DateSelectorRow> createState() => _DateSelectorRowState();
+}
+
+class _DateSelectorRowState extends State<DateSelectorRow> {
+  bool _isHovering = false;
+
+  @override
   Widget build(BuildContext context) {
+    final selectedDate = widget.selectedDate;
+    final onChange = widget.onChange;
     return Column(
       children: [
         Row(
@@ -607,37 +662,55 @@ class DateSelectorRow extends StatelessWidget {
                   firstDate: DateTime(2000),
                   lastDate: DateTime(2100),
                 );
-                if (picked != null) {
+                if (picked != null && picked != selectedDate) {
                   onChange(picked);
                 }
               },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    DateFormat('d MMM yyyy').format(selectedDate),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: material.Colors.blue,
-                    ),
-                    textAlign: TextAlign.center,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                onEnter: (_) => setState(() => _isHovering = true),
+                onExit: (_) => setState(() => _isHovering = false),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  decoration: BoxDecoration(
+                    color: _isHovering
+                        ? Colors.blue.withOpacity(0.08)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    DateFormat('EEEE').format(selectedDate) +
-                        (DateUtils.isSameDay(selectedDate, DateTime.now())
-                            ? " (${txt('today')})"
-                            : ""),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey,
-                    ),
-                    textAlign: TextAlign.center,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        DateFormat('d MMM yyyy').format(selectedDate),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: material.Colors.blue,
+                          decoration:
+                              _isHovering ? TextDecoration.underline : null,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('EEEE').format(selectedDate) +
+                            (DateUtils.isSameDay(selectedDate, DateTime.now())
+                                ? " (${txt('today')})"
+                                : ""),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -733,7 +806,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
     return Card(
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(4.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -741,90 +814,25 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
             Row(
               children: [
                 Expanded(
-                  child: Txt(
+                  child: Text(
                     "${widget.doctor.title}'s ${txt("patients")}",
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      showCompleted = true;
-                    });
-                  },
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: showCompleted == true
-                          ? Colors.green.withOpacity(0.25)
-                          : Colors.green.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: showCompleted == true
-                          ? Border.all(color: Colors.green, width: 1.5)
-                          : null,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(FluentIcons.check_mark,
-                            color: Colors.green, size: 16),
-                        const SizedBox(width: 2),
-                        Text(
-                          completedCount.toString(),
-                          style: const TextStyle(
-                              color: Colors.successPrimaryColor,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      showCompleted = false;
-                    });
-                  },
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: showCompleted == false
-                          ? Colors.orange.withOpacity(0.25)
-                          : Colors.orange.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: showCompleted == false
-                          ? Border.all(color: Colors.orange, width: 1.5)
-                          : null,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(FluentIcons.clock, color: Colors.orange, size: 16),
-                        const SizedBox(width: 2),
-                        Text(
-                          pendingCount.toString(),
-                          style: const TextStyle(
-                              color: Colors.warningPrimaryColor,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Reset filter button if filtered
-                if (showCompleted != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(FluentIcons.clear),
+                Tooltip(
+                  message: txt("addAppointment"),
+                  child: IconButton(
+                    icon: Icon(FluentIcons.add, color: Colors.blue),
                     onPressed: () {
-                      setState(() {
-                        showCompleted = null;
-                      });
+                      openAppointment(Appointment.fromJson({
+                        "operatorsIDs": [widget.doctor.id],
+                      }));
                     },
                   ),
-                ]
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -857,13 +865,12 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
     return ListView.separated(
       itemCount: widget.doctorAppointments.length,
       separatorBuilder: (context, idx) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
           child: Divider(
             direction: Axis.horizontal,
             style: DividerThemeData(
               thickness: 1.0,
               decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1)),
-              horizontalMargin: const EdgeInsets.symmetric(horizontal: 8.0),
             ),
           )),
       itemBuilder: (context, index) {
@@ -899,7 +906,6 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
               }
             },
             child: Container(
-              margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(vertical: 10),
               color: hoveredIndex == index
                   ? Colors.blue.withOpacity(0.15)
@@ -929,14 +935,33 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                   ),
                   const SizedBox(width: 24),
                   Expanded(
-                    child: Text(
-                      patientName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          patientName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        if (a.preOpNotes != null && a.preOpNotes.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 1.0),
+                            child: Text(
+                              a.preOpNotes,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 24),
@@ -946,7 +971,8 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                       apptTime,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                        color: Color.fromARGB(255, 116, 114, 111),
+                        fontSize: 14,
                       ),
                       textAlign: TextAlign.right,
                       overflow: TextOverflow.ellipsis,
