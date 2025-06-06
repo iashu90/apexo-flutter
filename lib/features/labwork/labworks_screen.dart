@@ -146,6 +146,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                     "Units",
                     "Shade",
                     "Paid",
+                    "Price",
                     "Laboratory",
                     "Delivered",
                     "doctors",
@@ -176,28 +177,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
                   ],
                   defaultSortDirection: -1,
                   defaultSortingName: "byDate",
-                  columnBuilders: {
-                    "Paid": (labwork) => Row(
-                          children: [
-                            Text(
-                              labwork.paid ? "+ ₹" : "- ₹",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: labwork.paid ? Colors.green : Colors.red,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              labwork.price.toStringAsFixed(2),
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: labwork.paid ? Colors.green : Colors.red,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                  },
                 );
               },
             ),

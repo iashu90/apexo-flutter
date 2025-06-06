@@ -584,7 +584,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                             : Colors.green,
                         size: 16,
                       ),
-                       const SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
                         item.outstandingPayments.abs().toStringAsFixed(2),
                         style: const TextStyle(fontWeight: FontWeight.w600),
