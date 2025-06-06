@@ -62,18 +62,27 @@ class TagInputWidgetState extends State<TagInputWidget> {
       } else {
         _filteredSuggestions = widget.suggestions
             .where((suggestion) =>
-                _tags.map((e) => e.label.toLowerCase()).contains(suggestion.label.toLowerCase()) == false)
+                _tags
+                    .map((e) => e.label.toLowerCase())
+                    .contains(suggestion.label.toLowerCase()) ==
+                false)
             .toList();
 
         // Always add the current input value to the suggestions
-        if (widget.strict == false && _filteredSuggestions.map((e) => e.label).contains(inputVal) == false) {
-          _filteredSuggestions.insert(0, TagInputItem(value: inputVal.replaceAll(" ", "-"), label: inputVal));
+        if (widget.strict == false &&
+            _filteredSuggestions.map((e) => e.label).contains(inputVal) ==
+                false) {
+          _filteredSuggestions.insert(
+              0,
+              TagInputItem(
+                  value: inputVal.replaceAll(" ", "-"), label: inputVal));
         }
       }
     });
 
     // Refresh the AutoSuggestBox suggestions by slightly altering the input value
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (_controller.text.isNotEmpty) {
         final currentPosition = _controller.selection;
         _controller.text = _controller.text;
@@ -92,6 +101,7 @@ class TagInputWidgetState extends State<TagInputWidget> {
 
     // Force the text field to clear by updating the text field directly
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _controller.text = '';
       _onTextChanged('', null); // Refresh suggestions
     });
@@ -117,7 +127,9 @@ class TagInputWidgetState extends State<TagInputWidget> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        border: _tags.isEmpty ? null : Border.all(color: const Color.fromARGB(255, 221, 221, 221)),
+        border: _tags.isEmpty
+            ? null
+            : Border.all(color: const Color.fromARGB(255, 221, 221, 221)),
         borderRadius: _tags.isEmpty ? null : BorderRadius.circular(4),
         color: _tags.isEmpty ? null : FluentTheme.of(context).menuColor,
       ),
@@ -149,13 +161,17 @@ class TagInputWidgetState extends State<TagInputWidget> {
                         width: _tags.isEmpty ? 1.25 : 0.01),
                   )),
                   items: _filteredSuggestions
-                      .where((suggestion) => _tags.where((selected) => selected.value == suggestion.value).isEmpty)
+                      .where((suggestion) => _tags
+                          .where(
+                              (selected) => selected.value == suggestion.value)
+                          .isEmpty)
                       .toList(),
                   onSelected: _onSuggestionSelected,
                   onChanged: _onTextChanged,
                   placeholder: widget.placeholder,
-                  noResultsFoundBuilder: (context) =>
-                      Padding(padding: const EdgeInsets.all(10), child: Txt(txt("noResultsFound"))),
+                  noResultsFoundBuilder: (context) => Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Txt(txt("noResultsFound"))),
                   trailingIcon: GestureDetector(
                     child: const Icon(FluentIcons.grouped_descending),
                     onTap: () {
@@ -200,9 +216,11 @@ class TagInputWidgetState extends State<TagInputWidget> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         elevation: 1,
         child: IconButton(
-          onPressed: () => widget.onItemTap == null ? null : widget.onItemTap!(tag),
+          onPressed: () =>
+              widget.onItemTap == null ? null : widget.onItemTap!(tag),
           style: const ButtonStyle(
-            padding: WidgetStatePropertyAll(EdgeInsets.only(left: 10, right: 5, top: 5, bottom: 5)),
+            padding: WidgetStatePropertyAll(
+                EdgeInsets.only(left: 10, right: 5, top: 5, bottom: 5)),
           ),
           icon: Row(
             mainAxisSize: MainAxisSize.min,
@@ -213,7 +231,9 @@ class TagInputWidgetState extends State<TagInputWidget> {
                 key: Key("${tag.label}_clear"),
                 icon: const Icon(FluentIcons.clear, size: 10),
                 onPressed: () => _removeTag(tag),
-                style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.black.withValues(alpha: 0.05))),
+                style: ButtonStyle(
+                    backgroundColor: WidgetStatePropertyAll(
+                        Colors.black.withValues(alpha: 0.05))),
               ),
             ],
           ),

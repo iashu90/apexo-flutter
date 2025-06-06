@@ -395,16 +395,23 @@ class _DoctorAppointmentsSummaryWithDateState
             doctorAppointmentCounts[doctor.id]! > 0)
         .toList();
 
+    final int unassignedCount = dayAppointments
+        .where((appointment) => appointment.operatorsIDs.isEmpty)
+        .length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Move the bar to the top
+        CompletedVsPendingAppointmentsBar(
+          appointments: dayAppointments,
+        ),
         Container(
           alignment: Alignment.centerLeft,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 800),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: SizedBox(
-              height: 250,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -445,10 +452,77 @@ class _DoctorAppointmentsSummaryWithDateState
                             ],
                           ),
                           const SizedBox(height: 12),
-                          if (doctorList.isEmpty)
+                          // --- Unassigned row at the top ---
+                          if (unassignedCount > 0)
+                            MouseRegion(
+                              onEnter: (_) =>
+                                  setState(() => hoveredDoctorIndex = -1),
+                              onExit: (_) =>
+                                  setState(() => hoveredDoctorIndex = null),
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedDoctor =
+                                        null; // Special value for unassigned
+                                  });
+                                },
+                                child: Container(
+                                  color: hoveredDoctorIndex == -1
+                                      ? Colors.blue
+                                          .withOpacity(0.15) // light blue hover
+                                      : Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 8.0, horizontal: 12.0),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.withOpacity(0.8),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Icon(FluentIcons.help,
+                                            color: Colors.white, size: 16),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Text(
+                                          "Unassigned",
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            fontStyle: FontStyle.italic,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.withOpacity(0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          unassignedCount.toString(),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (doctorList.isEmpty && unassignedCount == 0)
                             SizedBox(
-                              height:
-                                  150, // Match the doctor list height for vertical centering
+                              height: 150,
                               child: Center(
                                 child: Text(
                                   txt("noAppointmentsToday"),
@@ -460,10 +534,9 @@ class _DoctorAppointmentsSummaryWithDateState
                               ),
                             )
                           else
-                            // Make the doctor list scrollable with fixed height
+                            // Doctor list
                             SizedBox(
-                              height:
-                                  150, // <-- Set your desired fixed height here
+                              height: 150,
                               child: ListView.separated(
                                 itemCount: doctorList.length,
                                 separatorBuilder: (context, idx) => Padding(
@@ -598,24 +671,35 @@ class _DoctorAppointmentsSummaryWithDateState
                   const SizedBox(width: 24),
                   Expanded(
                     flex: 3,
-                    child: selectedDoctor != null
-                        ? DoctorPatientsList(
-                            doctor: selectedDoctor!,
-                            selectedDate: selectedDate,
-                            appointmentsForDay: dayAppointments,
-                          )
-                        : Container(),
-                  ),
+                    child: Builder(
+                      builder: (context) {
+                        final doctorAppointments = selectedDoctor != null
+                            ? dayAppointments
+                                .where((a) =>
+                                    a.operatorsIDs.contains(selectedDoctor!.id))
+                                .toList()
+                            : dayAppointments
+                                .where((a) => a.operatorsIDs.isEmpty)
+                                .toList();
+
+                        if (doctorAppointments.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return DoctorPatientsList(
+                          doctor: selectedDoctor,
+                          selectedDate: selectedDate,
+                          appointmentsForDay: dayAppointments,
+                        );
+                      },
+                    ),
+                  )
                 ],
               ),
             ),
           ),
         ),
         const SizedBox(height: 16),
-        // Show the completed vs pending bar for the selected date
-        CompletedVsPendingAppointmentsBar(
-          appointments: dayAppointments,
-        ),
       ],
     );
   }
@@ -747,7 +831,7 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
 }
 
 class DoctorPatientsList extends StatefulWidget {
-  final Doctor doctor;
+  final Doctor? doctor;
   final DateTime selectedDate;
   final List appointmentsForDay;
 
@@ -768,10 +852,13 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
 
   @override
   Widget build(BuildContext context) {
-    final doctorAppointments = widget.appointmentsForDay
-        .where((a) => a.operatorsIDs.contains(widget.doctor.id))
-        .toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+    final doctorAppointments = widget.doctor != null
+        ? widget.appointmentsForDay
+            .where((a) => a.operatorsIDs.contains(widget.doctor!.id))
+            .toList()
+        : widget.appointmentsForDay
+            .where((a) => a.operatorsIDs.isEmpty)
+            .toList();
 
     // Calculate completed and pending counts for this doctor on this day
     int completedCount = 0;
@@ -789,20 +876,6 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
         ? doctorAppointments
         : doctorAppointments.where((a) => a.isDone == showCompleted).toList();
 
-    if (doctorAppointments.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(
-          txt("noPatientsForDoctor"),
-          style: TextStyle(
-            color: material.Colors.grey[600],
-            fontStyle: FontStyle.italic,
-            fontSize: 16,
-          ),
-        ),
-      );
-    }
-
     return Card(
       borderRadius: BorderRadius.circular(12),
       child: Padding(
@@ -815,7 +888,10 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
               children: [
                 Expanded(
                   child: Text(
-                    "${widget.doctor.title}'s ${txt("patients")}",
+                    (widget.doctor != null
+                            ? "${widget.doctor!.title}'s "
+                            : "Unassigned ") +
+                        txt("patients"),
                     style: const TextStyle(
                       fontWeight: FontWeight.w500,
                       fontSize: 16,
@@ -827,9 +903,19 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                   child: IconButton(
                     icon: Icon(FluentIcons.add, color: Colors.blue),
                     onPressed: () {
-                      openAppointment(Appointment.fromJson({
-                        "operatorsIDs": [widget.doctor.id],
-                      }));
+                      if (widget.doctor != null) {
+                        openAppointment(Appointment.fromJson({
+                          "date": widget.selectedDate.millisecondsSinceEpoch ~/
+                              60000,
+                          "operatorsIDs": [widget.doctor!.id],
+                        }));
+                      } else {
+                        openAppointment(Appointment.fromJson({
+                          "date": widget.selectedDate.millisecondsSinceEpoch ~/
+                              60000,
+                          "operatorsIDs": [],
+                        }));
+                      }
                     },
                   ),
                 ),
@@ -955,7 +1041,6 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey,
-                                fontStyle: FontStyle.italic,
                               ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
@@ -1021,14 +1106,16 @@ class CompletedVsPendingAppointmentsBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding:
-                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Txt(
                   txt("completedVsPendingAppointments"),
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -1119,12 +1206,6 @@ class CompletedVsPendingAppointmentsBar extends StatelessWidget {
                       ),
                     ],
                   ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "${(completedPercent * 100).toStringAsFixed(1)}% ${txt("completed")}, "
-                  "${(pendingPercent * 100).toStringAsFixed(1)}% ${txt("pending")}",
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
                 ),
               ],
             ),
