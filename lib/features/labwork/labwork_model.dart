@@ -25,6 +25,7 @@ class Labwork extends Model {
       "Shade": shade,
       "Laboratory": lab,
       "Paid": paid ? txt("paid") : txt("due"),
+      "Price": (paid ? "" : "-") + price.toStringAsFixed(2),
       "doctors": operators.map((e) => e.title).join(", "),
       "Delivered":
           (deliveredToDoctor ? "✅" : "❌") + (deliveredToPatient ? "✅" : "❌"),
