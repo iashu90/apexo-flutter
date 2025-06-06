@@ -113,95 +113,52 @@ class Appointment extends Model {
   double discount = 0.0;
   String discountType = 'flat'; // or 'percent'
   /* 11 */ List<Treatment> treatments = [
+    Treatment(name: 'Consultation', price: 100),
+    Treatment(name: 'IOPA (X-ray)', price: 100),
     Treatment(
-      name: 'Regular Exams and Cleanings',
-      price: 50,
+      name: 'Filling',
+      price: 0,
       subTreatments: [
-        Treatment(name: 'Child Cleaning', price: 30),
-        Treatment(name: 'Adult Cleaning', price: 60),
+        Treatment(name: 'GIC', price: 500),
+        Treatment(
+          name: 'Composite',
+          price: 0,
+          subTreatments: [
+            Treatment(name: 'Ant', price: 1000),
+            Treatment(name: 'Post', price: 800),
+          ],
+        ),
       ],
     ),
     Treatment(
-      name: 'Dental X-rays',
-      price: 40,
+      name: 'Cleaning',
+      price: 0,
       subTreatments: [
-        Treatment(name: 'Bitewing X-ray', price: 20),
-        Treatment(name: 'Panoramic X-ray', price: 60),
+        Treatment(name: 'Scaling', price: 800),
+        Treatment(name: 'Scaling & Polishing', price: 1000),
+      ],
+    ),
+    Treatment(name: 'RCT', price: 3000),
+    Treatment(name: 'RE RCT', price: 0), // Price unknown
+    Treatment(
+      name: 'Crowns',
+      price: 0,
+      subTreatments: [
+        Treatment(name: 'PFM', price: 3000),
+        Treatment(name: 'Zirconia', price: 6000),
       ],
     ),
     Treatment(
-      name: 'Fluoride Treatments',
-      price: 25,
-    ),
-    Treatment(
-      name: 'Tooth Fillings',
-      price: 120,
+      name: 'Extraction',
+      price: 0,
       subTreatments: [
-        Treatment(name: 'Composite Filling', price: 130),
-        Treatment(name: 'Amalgam Filling', price: 110),
+        Treatment(name: 'Normal', price: 800),
+        Treatment(name: 'Wisdom Teeth', price: 1000),
+        Treatment(name: 'Impaction', price: 3500),
       ],
     ),
-    Treatment(
-      name: 'Root Canal Therapy',
-      price: 350,
-      subTreatments: [
-        Treatment(name: 'Anterior Tooth', price: 300),
-        Treatment(name: 'Premolar Tooth', price: 350),
-        Treatment(name: 'Molar Tooth', price: 400),
-      ],
-    ),
-    Treatment(
-      name: 'Dental Crowns',
-      price: 500,
-      subTreatments: [
-        Treatment(name: 'Porcelain Crown', price: 600),
-        Treatment(name: 'Metal Crown', price: 450),
-        Treatment(name: 'Zirconia Crown', price: 700),
-      ],
-    ),
-    Treatment(
-      name: 'Teeth Whitening',
-      price: 200,
-      subTreatments: [
-        Treatment(name: 'In-office Whitening', price: 250),
-        Treatment(name: 'Take-home Kit', price: 180),
-      ],
-    ),
-    Treatment(
-      name: 'Dental Implants',
-      price: 1500,
-      subTreatments: [
-        Treatment(name: 'Single Tooth Implant', price: 1500),
-        Treatment(name: 'Multiple Teeth Implant', price: 4000),
-      ],
-    ),
-    Treatment(
-      name: 'Braces',
-      price: 2500,
-      subTreatments: [
-        Treatment(name: 'Metal Braces', price: 2500),
-        Treatment(name: 'Ceramic Braces', price: 3000),
-        Treatment(name: 'Lingual Braces', price: 3500),
-      ],
-    ),
-    Treatment(
-      name: 'Dentures',
-      price: 800,
-      subTreatments: [
-        Treatment(name: 'Partial Denture', price: 600),
-        Treatment(name: 'Full Denture', price: 1000),
-      ],
-    ),
-    Treatment(
-      name: 'Tooth Extraction',
-      price: 100,
-      subTreatments: [
-        Treatment(name: 'Simple Extraction', price: 100),
-        Treatment(name: 'Surgical Extraction', price: 250),
-      ],
-    ),
-    // ...add other treatments as needed...
   ];
+
   /* 12 */ List<String> selectedTreatments = [];
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
