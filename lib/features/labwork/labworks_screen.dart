@@ -45,92 +45,16 @@ class _LabworksScreenState extends State<LabworksScreen> {
     }).toList();
 
     // Calculate total money owed (unpaid labworks in filtered range)
-    final double totalOwed = filteredLabworks
-        .where((lw) => !lw.paid)
-        .fold(0.0, (sum, lw) => sum + (lw.price ?? 0));
+    final double totalOwed = filteredLabworks.fold(
+      0.0,
+      (sum, lw) => sum + (lw.paid ? -lw.price : (lw.price ?? 0)),
+    );
 
     return ScaffoldPage(
       key: WK.labworksScreen,
       padding: EdgeInsets.zero,
       content: Column(
         children: [
-          // --- Date Range Filter UI ---
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Row(
-              children: [
-                Text("Filter by date:",
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(width: 12),
-                Button(
-                  child: Text(_fromDate == null
-                      ? "From"
-                      : DateFormat(localSettings.dateFormat)
-                          .format(_fromDate!)),
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _fromDate ?? DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _fromDate = picked;
-                        // If start date is after end date, clear end date
-                        if (_toDate != null && _fromDate!.isAfter(_toDate!)) {
-                          _toDate = null;
-                        }
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(width: 8),
-                Button(
-                  child: Text(_toDate == null
-                      ? "To"
-                      : DateFormat(localSettings.dateFormat).format(_toDate!)),
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _toDate ?? DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _toDate = picked;
-                        // If end date is before start date, clear start date
-                        if (_fromDate != null &&
-                            _toDate!.isBefore(_fromDate!)) {
-                          _fromDate = null;
-                        }
-                      });
-                    }
-                  },
-                ),
-                if (_fromDate != null || _toDate != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(FluentIcons.clear),
-                    onPressed: () => setState(() {
-                      _fromDate = null;
-                      _toDate = null;
-                    }),
-                  ),
-                ],
-                const Spacer(),
-                Text(
-                  "Total Owed: ₹${totalOwed.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: material.Colors.red,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
           // --- DataTable ---
           Expanded(
             child: StreamBuilder(
@@ -151,6 +75,103 @@ class _LabworksScreenState extends State<LabworksScreen> {
                     "Delivered",
                     "doctors",
                   ],
+                  columnBuilders: {
+                    "Price": (labwork) => Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: labwork.paid
+                                ? Colors.green.withOpacity(0.15)
+                                : Colors.red.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            (labwork.paid ? "+ ₹" : "- ₹") +
+                                labwork.price.toStringAsFixed(2),
+                            style: TextStyle(
+                              color: labwork.paid ? Colors.green : Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    // ...other column builders...
+                  },
+                  customHeader: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Row(
+                      children: [
+                        Text("Filter by date:",
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 12),
+                        Button(
+                          child: Text(_fromDate == null
+                              ? "From"
+                              : DateFormat(localSettings.dateFormat)
+                                  .format(_fromDate!)),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: _fromDate ?? DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                _fromDate = picked;
+                                // If start date is after end date, clear end date
+                                if (_toDate != null &&
+                                    _fromDate!.isAfter(_toDate!)) {
+                                  _toDate = null;
+                                }
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Button(
+                          child: Text(_toDate == null
+                              ? "To"
+                              : DateFormat(localSettings.dateFormat)
+                                  .format(_toDate!)),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: _toDate ?? DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                _toDate = picked;
+                                // If end date is before start date, clear start date
+                                if (_fromDate != null &&
+                                    _toDate!.isBefore(_fromDate!)) {
+                                  _fromDate = null;
+                                }
+                              });
+                            }
+                          },
+                        ),
+                        if (_fromDate != null || _toDate != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(FluentIcons.clear),
+                            onPressed: () => setState(() {
+                              _fromDate = null;
+                              _toDate = null;
+                            }),
+                          ),
+                        ],
+                        const Spacer(),
+                        Expanded(
+                          child: Center(
+                            child: _buildTotalOwed(totalOwed),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   actions: [
                     DataTableAction(
                       callback: (_) => openLabwork(),
@@ -183,6 +204,42 @@ class _LabworksScreenState extends State<LabworksScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTotalOwed(double totalOwed) {
+    IconData icon;
+    Color color;
+    String label;
+
+    if (totalOwed > 0) {
+      icon = material.Icons.trending_down;
+      color = material.Colors.red;
+      label = "Total Owed";
+    } else if (totalOwed < 0) {
+      icon = material.Icons.trending_up;
+      color = material.Colors.green;
+      label = "Paid Extra";
+    } else {
+      icon = material.Icons.check_circle_outline;
+      color = material.Colors.blueGrey;
+      label = "Settled";
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(width: 8),
+        Text(
+          "$label: ₹${totalOwed.abs().toStringAsFixed(2)}",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: color,
+            fontSize: 16,
+          ),
+        ),
+      ],
     );
   }
 }

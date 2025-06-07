@@ -195,17 +195,25 @@ class _LabworkEditingState extends State<_LabworkEditing> {
               value:
                   widget.labwork.shade.isNotEmpty ? widget.labwork.shade : null,
               items: [
-                "A1",
-                "A2",
-                "A3",
-                "A3.5",
-                "B1",
-                "B2",
-                "B3",
-                "C1",
-                "C2",
-                "D2",
-                "Other"
+                "0M1",
+                "0M2",
+                "0M3",
+                "1M1",
+                "1M2",
+                "2L1.5",
+                "2L2.5",
+                "2M1",
+                "2M2",
+                "2M3",
+                "2R1.5",
+                "2R2.5",
+                "3L1.5",
+                "3L2.5",
+                "3M1",
+                "3M2",
+                "3M3",
+                "3R1.5",
+                "3R2.5"
               ]
                   .map((shade) =>
                       ComboBoxItem<String>(value: shade, child: Text(shade)))
