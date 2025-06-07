@@ -46,6 +46,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
   final String defaultSortingName;
   final List<String>? labelOrder;
   final Map<String, Widget Function(Item)>? columnBuilders;
+  final Widget? customHeader;
 
   const DataTable({
     super.key,
@@ -60,6 +61,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
     this.defaultSortingName = "byTitle",
     this.labelOrder,
     this.columnBuilders,
+    this.customHeader,
   });
 
   @override
@@ -196,6 +198,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       children: [
         _buildCommandBar(),
         _buildListController(),
+        if (widget.customHeader != null) widget.customHeader!,
         _buildItemsList(context),
       ],
     );
@@ -363,11 +366,18 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                   key: Key(item.id),
                   radius: widget.compact ? 1 : 20,
                   item: item),
-              ...nonEmptyLabels.map((labelTitle) => _buildLabelPill(
+              ...nonEmptyLabels.map((labelTitle) {
+                if (widget.columnBuilders != null &&
+                    widget.columnBuilders!.containsKey(labelTitle)) {
+                  return widget.columnBuilders![labelTitle]!(item);
+                }
+                return _buildLabelPill(
                   labelTitle,
                   item,
                   colorsWithoutYellow[
-                      getCycledNumber(nonEmptyLabels.indexOf(labelTitle))]))
+                      getCycledNumber(nonEmptyLabels.indexOf(labelTitle))],
+                );
+              }),
             ],
           ),
         ),
