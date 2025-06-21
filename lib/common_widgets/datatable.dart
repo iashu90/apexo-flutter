@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -72,7 +73,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   Set<String> checkedIds = {};
   int sortBy = -1;
   int sortDirection = 1;
-  int slice = 10;
+  int slice = 20;
 
   /// labels must be cached since this computation would
   /// occur too many times on every rebuild
@@ -289,7 +290,35 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             ],
           ),
         ),
-        leading: _buildCheckBox(isChecked, item),
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildCheckBox(isChecked, item),
+            if (item is Patient) ...[
+              const SizedBox(width: 8),
+              const Divider(direction: Axis.vertical, size: 40),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(FluentIcons.money, size: 20),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => Align(
+                      alignment: Alignment.center,
+                      child: Container(
+                        width: 1000,
+                        color: Colors.white,
+                        child: PatientDetailsDialog(
+                            rows: item.patientDetails,
+                            patientName: item.title ?? ""),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
         onPressed: () => widget.onSelect(item),
         trailing: FlyoutTarget(
             controller: contextMenuControllers[item.id]!,
@@ -602,7 +631,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                     ],
                   ],
                 )
-              : Text(item.labels[l] ?? ""),
+              : Txt(item.labels[l] ?? ""),
         ),
       ),
     );

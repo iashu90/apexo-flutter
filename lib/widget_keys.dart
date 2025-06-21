@@ -55,6 +55,8 @@ class WK {
   static const fieldAppointmentPostOpNotes = Key("fieldAppointmentPostOpNotes");
   static const fieldAppointmentPrescriptions =
       Key("fieldAppointmentPrescriptions");
+  static const fieldAppointmentTreatments = Key("fieldAppointmentTreatments");
+
   static const fieldAppointmentPrice = Key("fieldAppointmentPrice");
   static const fieldAppointmentPayment = Key("fieldAppointmentPayment");
   static const fieldLabworkTitle = Key("fieldLabworkTitle");
