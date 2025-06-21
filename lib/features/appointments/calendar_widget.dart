@@ -437,7 +437,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  "Paid: ₹${totalPaid.toStringAsFixed(2)}",
+                  "Paid: ₹${totalPaid.toStringAsFixed(0)}",
                   style: const TextStyle(
                     color: material.Colors.green,
                     fontWeight: FontWeight.w600,
@@ -453,7 +453,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  "Due: ₹${totalDue.toStringAsFixed(2)}",
+                  "Due: ₹${totalDue.toStringAsFixed(0)}",
                   style: const TextStyle(
                     color: material.Colors.red,
                     fontWeight: FontWeight.w600,
@@ -639,7 +639,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          "Paid: ₹${item.paid.toStringAsFixed(2)}",
+                          "Paid: ₹${item.paid.toStringAsFixed(0)}",
                           style: const TextStyle(
                             color: material.Colors.green,
                             fontWeight: FontWeight.w500,
@@ -656,7 +656,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            "Due: ₹${item.paymentDifference.toStringAsFixed(2)}",
+                            "Due: ₹${item.paymentDifference.toStringAsFixed(0)}",
                             style: const TextStyle(
                               color: material.Colors.red,
                               fontWeight: FontWeight.w500,
