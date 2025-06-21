@@ -100,12 +100,18 @@ class ApexoApp extends StatelessWidget {
 
   Widget buildAppLayout() {
     return MStreamBuilder(
-      streams: [launch.open.stream, routes.currentRouteIndex.stream, routes.panels.stream],
+      streams: [
+        launch.open.stream,
+        routes.currentRouteIndex.stream,
+        routes.panels.stream
+      ],
       key: WK.builder,
       builder: (context, _) => PopScope(
         canPop: false,
         onPopInvokedWithResult: (_, __) {
-          if (launch.layoutWidth < 710 && routes.panels().isNotEmpty && routes.minimizePanels() == false) {
+          if (launch.layoutWidth < 710 &&
+              routes.panels().isNotEmpty &&
+              routes.minimizePanels() == false) {
             routes.minimizePanels(true);
             return;
           }
@@ -120,9 +126,13 @@ class ApexoApp extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 _buildPositionedMainScreen(constraints, hideSidePanel),
-                if (routes.panels().isNotEmpty && routes.minimizePanels() == false && constraints.maxWidth < 710)
+                if (routes.panels().isNotEmpty &&
+                    routes.minimizePanels() == false &&
+                    constraints.maxWidth < 710)
                   ModalBarrier(
-                    color: FluentTheme.of(context).menuColor.withValues(alpha: 0.4),
+                    color: FluentTheme.of(context)
+                        .menuColor
+                        .withValues(alpha: 0.4),
                     onDismiss: () => routes.minimizePanels(true),
                   ),
                 _buildPositionedPanel(constraints, hideSidePanel),
@@ -134,21 +144,28 @@ class ApexoApp extends StatelessWidget {
     );
   }
 
-  AnimatedPositioned _buildPositionedMainScreen(BoxConstraints constraints, bool hideSidePanel) {
+  AnimatedPositioned _buildPositionedMainScreen(
+      BoxConstraints constraints, bool hideSidePanel) {
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       top: 0,
       left: locale.s.$direction == Direction.rtl ? null : 0,
       right: locale.s.$direction == Direction.rtl ? 0 : null,
       height: constraints.maxHeight,
-      width: (!hideSidePanel) && constraints.maxWidth >= 710 ? constraints.maxWidth - 355 : constraints.maxWidth,
+      width: (!hideSidePanel) && constraints.maxWidth >= 710
+          ? constraints.maxWidth - 355
+          : constraints.maxWidth,
       child: Container(
         decoration: BoxDecoration(boxShadow: kElevationToShadow[6]),
         child: NavigationView(
           appBar: NavigationAppBar(
             automaticallyImplyLeading: false,
-            title: launch.open() ? Txt(routes.currentRoute.title) : Txt(txt("login")),
-            leading: routes.history.isEmpty ? null : const BackButton(key: WK.backButton),
+            title: launch.open()
+                ? Txt(routes.currentRoute.title)
+                : Txt(txt("login")),
+            leading: routes.history.isEmpty
+                ? null
+                : const BackButton(key: WK.backButton),
             actions: const NetworkActions(key: WK.globalActions),
           ),
           onDisplayModeChanged: (mode) {
@@ -168,18 +185,24 @@ class ApexoApp extends StatelessWidget {
                   selected: routes.currentRouteIndex(),
                   displayMode: PaneDisplayMode.auto,
                   toggleable: false,
-                  items: List<NavigationPaneItem>.from(routes.allRoutes.where((p) => p.onFooter != true).map(
+                  items: List<NavigationPaneItem>.from(routes.allRoutes
+                      .where((p) => p.onFooter != true)
+                      .map(
                         (route) => PaneItem(
                           key: Key("${route.identifier}_screen_button"),
-                          icon: route.accessible ? Icon(route.icon) : const Icon(FluentIcons.lock),
+                          icon: route.accessible
+                              ? Icon(route.icon)
+                              : const Icon(FluentIcons.lock),
                           body: route.accessible
                               ? Padding(
-                                  padding: EdgeInsets.only(bottom: routes.showBottomNav() ? 60 : 0),
+                                  padding: EdgeInsets.only(
+                                      bottom: routes.showBottomNav() ? 60 : 0),
                                   child: (route.screen)(),
                                 )
                               : const SizedBox(),
                           title: Txt(route.title),
-                          onTap: () => route.accessible ? routes.navigate(route) : null,
+                          onTap: () =>
+                              route.accessible ? routes.navigate(route) : null,
                           enabled: route.accessible,
                         ),
                       )),
@@ -199,15 +222,22 @@ class ApexoApp extends StatelessWidget {
     );
   }
 
-  AnimatedPositioned _buildPositionedPanel(BoxConstraints constraints, bool hideSidePanel) {
+  AnimatedPositioned _buildPositionedPanel(
+      BoxConstraints constraints, bool hideSidePanel) {
     final minimized = routes.minimizePanels() && constraints.maxWidth < 710;
     return AnimatedPositioned(
-      width: (constraints.maxWidth < 490 && minimized) ? constraints.maxWidth : 350,
+      width: (constraints.maxWidth < 490 && minimized)
+          ? constraints.maxWidth
+          : 350,
       height: minimized ? 56 : constraints.maxHeight,
       top: minimized ? null : 0,
       bottom: minimized ? 0 : null,
-      left: locale.s.$direction == Direction.ltr ? null : (hideSidePanel ? -400 : 0),
-      right: locale.s.$direction == Direction.ltr ? (hideSidePanel ? -400 : 0) : null,
+      left: locale.s.$direction == Direction.ltr
+          ? null
+          : (hideSidePanel ? -400 : 0),
+      right: locale.s.$direction == Direction.ltr
+          ? (hideSidePanel ? -400 : 0)
+          : null,
       duration: const Duration(milliseconds: 200),
       child: hideSidePanel
           ? const SizedBox()

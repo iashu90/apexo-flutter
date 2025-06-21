@@ -1,3 +1,4 @@
+import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -49,13 +50,17 @@ class _ItemTitleState extends State<ItemTitle> {
       child: Row(children: [
         Container(
           padding: const EdgeInsets.all(1),
-          decoration:
-              BoxDecoration(color: color, borderRadius: BorderRadius.circular(100), boxShadow: kElevationToShadow[1]),
+          decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(100),
+              boxShadow: kElevationToShadow[1]),
           child: FutureBuilder(
               future: widget.item.avatar != null
                   ? (launch.isDemo
-                      ? demoAvatarRequestQue.add(() => getImage(widget.item.id, widget.item.avatar!))
-                      : getImage(widget.item.imageRowId ?? widget.item.id, widget.item.avatar!))
+                      ? demoAvatarRequestQue.add(
+                          () => getImage(widget.item.id, widget.item.avatar!))
+                      : getImage(widget.item.imageRowId ?? widget.item.id,
+                          widget.item.avatar!))
                   : null,
               builder: (context, snapshot) {
                 if (snapshot.data != null) {
@@ -68,7 +73,8 @@ class _ItemTitleState extends State<ItemTitle> {
                   key: Key(widget.item.id),
                   radius: widget.radius,
                   backgroundColor: color,
-                  backgroundImage: (snapshot.data != null) ? snapshot.data : null,
+                  backgroundImage:
+                      (snapshot.data != null) ? snapshot.data : null,
                   child: widget.item.archived == true
                       ? Icon(FluentIcons.archive, size: widget.radius)
                       : snapshot.data == null
@@ -86,7 +92,9 @@ class _ItemTitleState extends State<ItemTitle> {
               color: color.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(5),
               border: Border.all(
-                  color: color.withValues(alpha: 0.25), width: 0.5, strokeAlign: BorderSide.strokeAlignOutside),
+                  color: color.withValues(alpha: 0.25),
+                  width: 0.5,
+                  strokeAlign: BorderSide.strokeAlignOutside),
             ),
             child: Container(
               constraints:
@@ -96,7 +104,9 @@ class _ItemTitleState extends State<ItemTitle> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Txt(
-                    widget.item.title,
+                    widget.item is Doctor
+                        ? 'Dr. ${widget.item.title}'
+                        : widget.item.title,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: widget.fontSize ?? 14),
                   ),

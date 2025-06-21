@@ -214,7 +214,10 @@ class _PatientAppointments extends StatelessWidget {
                                         : patient.underPaid
                                             ? txt("underpaid")
                                             : txt("fullyPaid"),
-                                    amount: (patient.paymentsMade - patient.pricesGiven).abs().toString(),
+                                    amount: (patient.paymentsMade -
+                                            patient.pricesGiven)
+                                        .abs()
+                                        .toString(),
                                   )
                                 ],
                               ),
@@ -321,18 +324,6 @@ class _PatientDetailsState extends State<_PatientDetails> {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            child: InfoLabel(
-              label: "${txt("email")}:",
-              isHeader: true,
-              child: CupertinoTextField(
-                key: WK.fieldPatientEmail,
-                placeholder: "${txt("email")}...",
-                controller: TextEditingController(text: widget.patient.email),
-                onChanged: (value) => widget.patient.email = value,
-              ),
-            ),
-          ),
         ]),
         InfoLabel(
           label: "${txt("address")}:",

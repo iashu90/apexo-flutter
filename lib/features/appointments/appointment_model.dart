@@ -160,6 +160,7 @@ class Appointment extends Model {
   ];
 
   /* 12 */ List<String> selectedTreatments = [];
+  /* 13 */ List<String> selectedTeeth = [];
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     /* 1 */ operatorsIDs =
@@ -183,6 +184,7 @@ class Appointment extends Model {
     }
     /* 12 */ selectedTreatments =
         List<String>.from(json["selectedTreatments"] ?? []);
+    /* 13 */ selectedTeeth = List<String>.from(json['selectedTeeth'] ?? []);
     // In fromJson:
     discount = (json['discount'] ?? 0).toDouble();
     discountType = json['discountType'] ?? 'flat';
@@ -207,6 +209,7 @@ class Appointment extends Model {
     }
     /* 12 */ if (selectedTreatments.isNotEmpty)
       json['selectedTreatments'] = selectedTreatments;
+    /* 13 */ if (selectedTeeth.isNotEmpty) json['selectedTeeth'] = selectedTeeth;
     if (discount != d.discount) json['discount'] = discount;
     if (discountType != d.discountType) json['discountType'] = discountType;
     json.remove("title"); // remove since it is a computed value in this case

@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
+import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
@@ -354,6 +356,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   bool didNotEditPaidYet = true;
   Set<String> selectedTreatments = {};
   double originalPrice = 0;
+  Set<String> selectedTeethSet = {};
 
   void setToDone() {
     setState(() {
@@ -380,6 +383,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     } else {
       selectedTreatments = {};
     }
+    // Initialize selectedTeethSet from the saved appointment value
+    selectedTeethSet = Set<String>.from(widget.appointment.selectedTeeth ?? []);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       updateSelectedTreatments();
     });
@@ -442,62 +447,76 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("${txt("treatment")}:"),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: widget.appointment.treatments.map((treatment) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Checkbox(
-                        checked: selectedTreatments.contains(treatment.name),
-                        onChanged: (isChecked) {
-                          setState(() {
-                            if (isChecked == true) {
-                              selectedTreatments.add(treatment.name);
-                            } else {
-                              selectedTreatments.remove(treatment.name);
-                            }
-                            updateSelectedTreatments();
-                          });
-                        },
-                        content:
-                            Text('${treatment.name} - \₹${treatment.price}'),
-                      ),
-                    ),
-                    ...treatment.subTreatments.map((sub) => Padding(
-                          padding:
-                              const EdgeInsets.only(left: 24.0, bottom: 8.0),
-                          child: Checkbox(
-                            checked: selectedTreatments
-                                .contains('${treatment.name}::${sub.name}'),
-                            onChanged: (isChecked) {
-                              setState(() {
-                                final key = '${treatment.name}::${sub.name}';
-                                if (isChecked == true) {
-                                  selectedTreatments.add(key);
-                                } else {
-                                  selectedTreatments.remove(key);
-                                }
-                                updateSelectedTreatments();
-                              });
-                            },
-                            content: Text('${sub.name} - \₹${sub.price}'),
-                          ),
-                        )),
-                  ],
-                );
-              }).toList(),
+            InfoLabel(
+              label: "${txt("treatment")}:",
+              child: TagInputWidget(
+                key: WK.fieldAppointmentTreatments,
+                suggestions: [
+                  // Main treatments
+                  ...widget.appointment.treatments.map((t) => TagInputItem(
+                        value: t.name,
+                        label: "${t.name} - ₹${t.price}",
+                      )),
+                  // Sub-treatments
+                  ...widget.appointment.treatments
+                      .expand((t) => t.subTreatments.map((sub) => TagInputItem(
+                            value: "${t.name}::${sub.name}",
+                            label: "↳ ${sub.name} - ₹${sub.price}",
+                          ))),
+                ],
+                onChanged: (s) {
+                  setState(() {
+                    selectedTreatments = s
+                        .where((x) => x.value != null)
+                        .map((x) => x.value!)
+                        .toSet();
+                    updateSelectedTreatments();
+                  });
+                },
+                initialValue: [
+                  // Pre-select already selected treatments and sub-treatments
+                  ...selectedTreatments.map((v) {
+                    // Find the label for the value
+                    final main = widget.appointment.treatments.firstWhere(
+                      (t) => t.name == v,
+                      orElse: () => Treatment(
+                          name: '',
+                          price: 0,
+                          subTreatments: []), // Provide a default Treatment
+                    );
+                    if (main.name.isNotEmpty) {
+                      // found
+                      return TagInputItem(
+                          value: v, label: "${main.name} - ₹${main.price}");
+                    }
+                    // Check for sub-treatment
+                    for (final t in widget.appointment.treatments) {
+                      for (final sub in t.subTreatments) {
+                        if (v == "${t.name}::${sub.name}") {
+                          return TagInputItem(
+                              value: v, label: "↳ ${sub.name} - ₹${sub.price}");
+                        }
+                      }
+                    }
+                    return TagInputItem(value: v, label: v);
+                  }),
+                ],
+                strict: false,
+                limit: 999,
+                placeholder: "${txt("treatments")}...",
+              ),
             ),
           ],
+        ),
+        const SizedBox(height: 16),
+        TeethPicker(
+          selectedTeeth: selectedTeethSet, // Set<String> in your state
+          onChanged: (teeth) {
+            setState(() {
+              selectedTeethSet = teeth;
+              widget.appointment.selectedTeeth = selectedTeethSet.toList();
+            });
+          },
         ),
         const SizedBox(height: 16),
         InfoLabel(
@@ -792,25 +811,28 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         ),
         const SizedBox(height: 20),
         FilledButton(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(FluentIcons.save),
-              SizedBox(width: 8),
-              Txt("Save & Book New Appointment"),
-            ],
-          ),
-          onPressed: () async {
-            appointments.set(widget.appointment);
-            routes.closePanel(widget.appointment.id);
-            // Create a new appointment with the same patient ID
-            final newAppointment = Appointment.fromJson({});
-            newAppointment.patientID = widget.appointment.patientID;
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(FluentIcons.save),
+                SizedBox(width: 8),
+                Txt("Save & Book New Appointment"),
+              ],
+            ),
+            onPressed: () async {
+              appointments.set(widget.appointment);
+              routes.closePanel(widget.appointment.id);
+              // Create a new appointment with the same patient ID
+              final newAppointment = Appointment.fromJson({});
+              newAppointment.patientID = widget.appointment.patientID;
 
-            // Open the new appointment panel with the patient pre-selected
-            openAppointment(newAppointment);
-          },
-        ),
+              // Open the new appointment panel with the patient pre-selected
+              openAppointment(newAppointment);
+            },
+            style: ButtonStyle(
+              textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+              backgroundColor: WidgetStatePropertyAll(Colors.blue),
+            )),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -92,8 +93,10 @@ class WeekAgendaCalendarState<Item extends Appointment>
 
   @override
   Widget build(BuildContext context) {
-    var allItemsForSelectedDay = _getItemsForDay(selectedDate); // always unfiltered
-    var itemsForSelectedDay = _getItemsForSelectedDay(); // filtered if filter is active
+    var allItemsForSelectedDay =
+        _getItemsForDay(selectedDate); // always unfiltered
+    var itemsForSelectedDay =
+        _getItemsForSelectedDay(); // filtered if filter is active
 
     return Column(
       children: [
@@ -303,6 +306,14 @@ class WeekAgendaCalendarState<Item extends Appointment>
     final completed = itemsForSelectedDay.where((a) => a.isDone == true).length;
     final pending = total - completed;
 
+    // Calculate total paid and due for today
+    double totalPaid = 0;
+    double totalDue = 0;
+    for (final appt in itemsForSelectedDay) {
+      totalPaid += appt.paid ?? 0;
+      totalDue += appt.paymentDifference ?? 0;
+    }
+
     return Container(
       decoration: BoxDecoration(
           border: BorderDirectional(
@@ -413,6 +424,42 @@ class WeekAgendaCalendarState<Item extends Appointment>
                   },
                 ),
               ]
+            ],
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "Paid: ₹${totalPaid.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    color: material.Colors.green,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "Due: ₹${totalDue.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    color: material.Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -533,14 +580,18 @@ class AppointmentCalendarTile<Item extends Appointment>
     // Only show treatments that are checked/selected by the doctor
     String treatmentsStr = '';
     if (item.treatments is List && item.selectedTreatments is List) {
-      final selectedNames = item.selectedTreatments.map((e) => e.toString()).toSet();
+      final selectedNames =
+          item.selectedTreatments.map((e) => e.toString()).toSet();
       treatmentsStr = (item.treatments as List)
           .where((e) {
             // Support both Treatment objects and Map
             String? name;
-            if (e is Map && e['name'] != null) name = e['name'].toString();
-            else if (e is Map && e['title'] != null) name = e['title'].toString();
-            else if (e is String) name = e;
+            if (e is Map && e['name'] != null)
+              name = e['name'].toString();
+            else if (e is Map && e['title'] != null)
+              name = e['title'].toString();
+            else if (e is String)
+              name = e;
             else {
               try {
                 name = e.name ?? e.title ?? e.toString();
@@ -574,12 +625,55 @@ class AppointmentCalendarTile<Item extends Appointment>
         ),
       ),
       child: ListTile(
-        title: ItemTitle(item: item),
+        title: Row(
+          children: [
+            ItemTitle(item: item),
+            item.price != 0
+                ? Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          "Paid: ₹${item.paid.toStringAsFixed(2)}",
+                          style: const TextStyle(
+                            color: material.Colors.green,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (item.paymentDifference != 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "Due: ₹${item.paymentDifference.toStringAsFixed(2)}",
+                            style: const TextStyle(
+                              color: material.Colors.red,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ],
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (item.subtitleLine1.isNotEmpty)
-              Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis),
+            if (item.preOpNotes.isNotEmpty)
+              Txt(item.preOpNotes, overflow: TextOverflow.ellipsis),
             if (treatmentsStr.isNotEmpty)
               Txt(treatmentsStr,
                   style: const TextStyle(
@@ -607,10 +701,29 @@ class AppointmentCalendarTile<Item extends Appointment>
                 ),
           const SizedBox(width: 8),
           const Divider(direction: Axis.vertical, size: 40),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(FluentIcons.money, size: 20),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 1000,
+                    color: Colors.white,
+                    child: PatientDetailsDialog(
+                        rows: item.patient?.patientDetails ?? [],
+                        patientName: item.patient?.title ?? ""),
+                  ),
+                ),
+              );
+            },
+          ),
         ]),
         onPressed: () => onSelect(item),
         trailing: SizedBox(
-          width: 160,
+          width: 180,
           child: Row(
             children: [
               const Divider(direction: Axis.vertical, size: 40),
@@ -649,13 +762,74 @@ class AppointmentCalendarTile<Item extends Appointment>
                     ),
                   ),
                   if (item.subtitleLine2.isNotEmpty)
-                    SizedBox(
-                        width: 120,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: getDoctorColor(item.subtitleLine2)
+                            .withOpacity(0.08), // subtle background
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: getDoctorColor(item.subtitleLine2)
+                                .withOpacity(0.12),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: getDoctorColor(item.subtitleLine2)
+                              .withOpacity(0.18),
+                          width: 1,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 4),
+                      child: SizedBox(
+                        width: 160,
                         child: Txt(
                           item.subtitleLine2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12),
-                        ))
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: getDoctorColor(item.subtitleLine2),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      decoration: BoxDecoration(
+                        color:
+                            Colors.grey.withOpacity(0.08), // subtle background
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.12),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: Colors.grey.withOpacity(0.18),
+                          width: 1,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 4),
+                      child: SizedBox(
+                        width: 160,
+                        child: Txt(
+                          item.subtitleLine2.isNotEmpty
+                              ? item.subtitleLine2
+                              : "Unassigned",
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: material.Colors.black),
+                        ),
+                      ),
+                    )
                 ],
               ),
             ],
@@ -664,4 +838,10 @@ class AppointmentCalendarTile<Item extends Appointment>
       ),
     );
   }
+}
+
+Color getDoctorColor(String doctorName) {
+  const colors = material.Colors.primaries;
+  final index = doctorName.hashCode.abs() % colors.length;
+  return colors[index];
 }

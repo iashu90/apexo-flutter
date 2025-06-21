@@ -1,5 +1,5 @@
+import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/core/model.dart';
-import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/utils/encode.dart';
@@ -17,9 +17,45 @@ class Patient extends Model {
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
+  List<PatientDetailRow> get patientDetails =>
+      allAppointments.map((appointment) {
+        final dateStr = (appointment.date != null)
+            ? appointment.date.toString().substring(0, 10)
+            : '';
+
+        final costStr = '₹${(appointment.price ?? 0).toStringAsFixed(2)}';
+        final paidStr = '₹${(appointment.paid ?? 0).toStringAsFixed(2)}';
+
+        final prescriptionStr = (appointment.prescriptions != null &&
+                appointment.prescriptions.isNotEmpty)
+            ? appointment.prescriptions.join(', ')
+            : '';
+
+        final treatmentStr = (appointment.selectedTreatments != null &&
+                appointment.selectedTreatments.isNotEmpty)
+            ? appointment.selectedTreatments.map((t) => t).join(', ')
+            : '';
+
+        final teethStr = (appointment.selectedTeeth != null &&
+                appointment.selectedTeeth.isNotEmpty)
+            ? appointment.selectedTeeth.join(', ')
+            : '';
+
+        return PatientDetailRow(
+          date: dateStr,
+          cost: costStr,
+          paid: paidStr,
+          prescription: prescriptionStr,
+          treatment: treatmentStr,
+          teeth: teethStr,
+          isDone: appointment.isDone,
+        );
+      }).toList();
+
   List<Appointment>? _doneAppointmentsCached;
   List<Appointment> get doneAppointments {
-    return _doneAppointmentsCached ??= (appointments.byPatient[id]?["done"] ?? [])
+    return _doneAppointmentsCached ??= (appointments.byPatient[id]?["done"] ??
+            [])
         .where((appointment) => appointment.archived != true || showArchived())
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
@@ -48,7 +84,8 @@ class Patient extends Model {
   }
 
   double get pricesGiven {
-    return doneAppointments.fold(0.0, (value, element) => value + element.price);
+    return doneAppointments.fold(
+        0.0, (value, element) => value + element.price);
   }
 
   bool get overPaid {
@@ -75,14 +112,16 @@ class Patient extends Model {
   @override
   get avatar {
     if (launch.isDemo) return "https://person.alisaleem.workers.dev/";
-    final appointmentsWithImages = allAppointments.where((a) => a.imgs.isNotEmpty);
+    final appointmentsWithImages =
+        allAppointments.where((a) => a.imgs.isNotEmpty);
     if (appointmentsWithImages.isEmpty) return null;
     return appointmentsWithImages.first.imgs.first;
   }
 
   @override
   get imageRowId {
-    final appointmentsWithImages = allAppointments.where((a) => a.imgs.isNotEmpty);
+    final appointmentsWithImages =
+        allAppointments.where((a) => a.imgs.isNotEmpty);
     if (appointmentsWithImages.isEmpty) return null;
     return appointmentsWithImages.first.id;
   }
@@ -100,7 +139,8 @@ class Patient extends Model {
     if (daysSinceLastAppointment == null) {
       buildingLabels["Last visit"] = txt("noVisits");
     } else {
-      buildingLabels["Last visit"] = "$daysSinceLastAppointment ${txt("daysAgo")}";
+      buildingLabels["Last visit"] =
+          "$daysSinceLastAppointment ${txt("daysAgo")}";
     }
 
     if (gender == 0) {

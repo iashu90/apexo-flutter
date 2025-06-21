@@ -1,3 +1,4 @@
+import 'package:apexo/app/app.dart';
 import 'package:apexo/utils/init_stores.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/main.dart';
