@@ -139,7 +139,7 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
           child: GestureDetector(
             onTap: () {
               if (patient != null) {
-                openPatient(patient, 2);
+                openAppointment(a);
               }
             },
             child: Container(

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/core/store.dart';
+import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
@@ -80,6 +81,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   List<String>? _labels;
   List<String> get labels {
     if (widget.labelOrder != null) return widget.labelOrder!;
+
     return _labels ??= widget.items.fold(<String>{},
         (labels, item) => labels..addAll((item.labels.keys.toList()))).toList()
       ..sort((a, b) => a.compareTo(b));
@@ -606,7 +608,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         child: DataTablePill(
           selected: selected,
           color: color,
-          title: l,
+          title: item is Labwork ? "" : l,
           content: l == "Pay" && item is Patient
               ? Row(
                   mainAxisSize: MainAxisSize.min,
