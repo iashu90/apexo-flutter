@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/patient_report.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 
@@ -41,20 +42,55 @@ class PatientDetailsDialog extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                patientName != null && patientName!.isNotEmpty
-                    ? "$patientName's Details"
-                    : "Patient Details",
-                style:
-                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              Row(
+                children: [
+                  Flexible(
+                    flex: 1,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        patientName != null && patientName!.isNotEmpty
+                            ? "$patientName's Details"
+                            : "Patient Details",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 16),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: Center(
+                      child: Text(
+                        globalSettings.get("prescriptionFot").value,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: material.Colors.blue.shade600,
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                  Flexible(
+                    flex: 1,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton(
+                        icon: const Icon(FluentIcons.cancel),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              IconButton(
-                icon: const Icon(FluentIcons.cancel),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+              const SizedBox(height: 2),
             ],
           ),
           const SizedBox(height: 16),

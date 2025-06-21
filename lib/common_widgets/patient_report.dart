@@ -1,9 +1,42 @@
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-class PatientDetailsTable extends StatelessWidget {
+class PatientDetailsTable extends StatefulWidget {
   final List<PatientDetailRow> rows;
 
   const PatientDetailsTable({super.key, required this.rows});
+
+  @override
+  State<PatientDetailsTable> createState() => _PatientDetailsTableState();
+}
+
+class _PatientDetailsTableState extends State<PatientDetailsTable> {
+  bool _sortAscending = false; // Default to descending order
+
+  late List<PatientDetailRow> _sortedRows;
+
+  @override
+  void initState() {
+    super.initState();
+    _sortedRows = List.from(widget.rows);
+    _sortRows();
+  }
+
+  void _sortRows() {
+    _sortedRows.sort((a, b) {
+      final aDate = DateTime.tryParse(a.date) ?? DateTime(1900);
+      final bDate = DateTime.tryParse(b.date) ?? DateTime(1900);
+      return _sortAscending ? aDate.compareTo(bDate) : bDate.compareTo(aDate);
+    });
+  }
+
+  void _toggleSort() {
+    setState(() {
+      _sortAscending = !_sortAscending;
+      _sortRows();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,15 +58,30 @@ class PatientDetailsTable extends StatelessWidget {
           return null;
         }),
         columns: [
-          _plainColumn('Date'),
+          DataColumn(
+            label: InkWell(
+              onTap: _toggleSort,
+              child: Row(
+                children: [
+                  const Text('Date', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 4),
+                  Icon(
+                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                    size: 16,
+                    color: Colors.blueGrey,
+                  ),
+                ],
+              ),
+            ),
+          ),
           _plainColumn('Teeth'),
           _plainColumn('Treatment'),
           _plainColumn('Prescription'),
           _plainColumn('Cost'),
           _plainColumn('Paid'),
         ],
-        rows: List.generate(rows.length, (index) {
-          final row = rows[index];
+        rows: List.generate(_sortedRows.length, (index) {
+          final row = _sortedRows[index];
           final isEven = index % 2 == 0;
           return DataRow(
             color: MaterialStateProperty.all(
@@ -62,7 +110,13 @@ class PatientDetailsTable extends StatelessWidget {
                               size: 14, color: Colors.white)
                           : null,
                     ),
-                  Text(row.date, style: _cellTextStyle),
+                  Text(
+                    row.date.isNotEmpty
+                        ? DateFormat(localSettings.dateFormat)
+                            .format(DateTime.tryParse(row.date) ?? DateTime(1900))
+                        : '',
+                    style: _cellTextStyle,
+                  ),
                 ],
               )),
               _plainCell(Text(row.teeth, style: _cellTextStyle)),

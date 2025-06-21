@@ -538,7 +538,6 @@ class _DoctorAppointmentsSummaryWithDateState
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             fontStyle: FontStyle.italic,
-                                            color: Colors.grey,
                                           ),
                                         ),
                                       ),
@@ -546,7 +545,7 @@ class _DoctorAppointmentsSummaryWithDateState
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 12, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: Colors.grey.withOpacity(0.15),
+                                          color: Colors.green.withOpacity(0.15),
                                           borderRadius:
                                               BorderRadius.circular(12),
                                         ),
@@ -554,7 +553,7 @@ class _DoctorAppointmentsSummaryWithDateState
                                           unassignedCount.toString(),
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            color: Colors.grey,
+                                            color: material.Colors.green,
                                             fontSize: 14,
                                           ),
                                         ),
