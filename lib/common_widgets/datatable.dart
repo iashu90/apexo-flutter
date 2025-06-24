@@ -49,6 +49,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
   final List<String>? labelOrder;
   final Map<String, Widget Function(Item)>? columnBuilders;
   final Widget? customHeader;
+  final void Function(List<Item>)? onFilterChanged;
 
   const DataTable({
     super.key,
@@ -64,6 +65,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
     this.labelOrder,
     this.columnBuilders,
     this.customHeader,
+    this.onFilterChanged,
   });
 
   @override
@@ -107,7 +109,6 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           return false;
         }
       }
-      // ...you can add more filters here if needed...
       // Search filter
       final words =
           _searchValue.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
@@ -177,6 +178,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     setState(() {
       // Don't modify the controller directly, just use the value for filtering
       _searchValue = value;
+      _updateFilteredItems();
     });
   }
 
@@ -218,6 +220,12 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         _buildItemsList(context),
       ],
     );
+  }
+
+  void _updateFilteredItems() {
+    if (widget.onFilterChanged != null) {
+      widget.onFilterChanged!(filteredItems);
+    }
   }
 
   final contextMenuControllers = <String, FlyoutController>{};

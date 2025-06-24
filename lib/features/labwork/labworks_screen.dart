@@ -23,6 +23,18 @@ class LabworksScreen extends StatefulWidget {
 class _LabworksScreenState extends State<LabworksScreen> {
   DateTime? _fromDate;
   DateTime? _toDate;
+  double _totalOwed = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Calculate initial total owed for all labworks
+    final allLabworks = labworks.present.values.toList();
+    _totalOwed = allLabworks.fold(
+      0.0,
+      (sum, lw) => sum + (lw.paid ? -lw.price : (lw.price ?? 0)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,12 +55,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
       }
       return true;
     }).toList();
-
-    // Calculate total money owed (unpaid labworks in filtered range)
-    final double totalOwed = filteredLabworks.fold(
-      0.0,
-      (sum, lw) => sum + (lw.paid ? -lw.price : (lw.price ?? 0)),
-    );
 
     return ScaffoldPage(
       key: WK.labworksScreen,
@@ -75,6 +81,15 @@ class _LabworksScreenState extends State<LabworksScreen> {
                     "Delivered",
                     "doctors",
                   ],
+                  onFilterChanged: (filteredList) {
+                    setState(() {
+                      _totalOwed = filteredList.fold(
+                        0.0,
+                        (sum, lw) =>
+                            sum + (lw.paid ? -lw.price : (lw.price ?? 0)),
+                      );
+                    });
+                  },
                   columnBuilders: {
                     "Price": (labwork) => Container(
                           padding: const EdgeInsets.symmetric(
@@ -166,7 +181,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                         const Spacer(),
                         Expanded(
                           child: Center(
-                            child: _buildTotalOwed(totalOwed),
+                            child: _buildTotalOwed(_totalOwed),
                           ),
                         ),
                       ],
