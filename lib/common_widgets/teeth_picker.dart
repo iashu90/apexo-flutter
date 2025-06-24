@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+// If using Fluent UI ToggleSwitch, import it as well
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 
 class TeethPicker extends StatefulWidget {
   final Set<String> selectedTeeth;
   final ValueChanged<Set<String>> onChanged;
+  final bool isAdult;
 
   const TeethPicker({
     Key? key,
     required this.selectedTeeth,
     required this.onChanged,
+    this.isAdult = true,
   }) : super(key: key);
 
   @override
@@ -17,11 +20,22 @@ class TeethPicker extends StatefulWidget {
 
 class _TeethPickerState extends State<TeethPicker> {
   late Set<String> _selected;
-
+  bool isAdult = true;
   @override
   void initState() {
     super.initState();
     _selected = Set<String>.from(widget.selectedTeeth);
+    isAdult = widget.isAdult;
+  }
+
+  @override
+  void didUpdateWidget(covariant TeethPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isAdult != oldWidget.isAdult) {
+      setState(() {
+        isAdult = widget.isAdult;
+      });
+    }
   }
 
   void _toggleTooth(String tooth) {
@@ -37,19 +51,64 @@ class _TeethPickerState extends State<TeethPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final quadrants = [
-      {'label': 'UR', 'teeth': List.generate(8, (i) => '1${8 - i}')},
-      {'label': 'UL', 'teeth': List.generate(8, (i) => '2${i + 1}')},
-      {'label': 'LL', 'teeth': List.generate(8, (i) => '3${i + 1}')},
-      {'label': 'LR', 'teeth': List.generate(8, (i) => '4${8 - i}')},
-    ];
+    // Use different quadrants for adult and kid
+    final quadrants = isAdult
+        ? [
+            {'label': 'UR', 'teeth': List.generate(8, (i) => '1${8 - i}')},
+            {'label': 'UL', 'teeth': List.generate(8, (i) => '2${i + 1}')},
+            {'label': 'LL', 'teeth': List.generate(8, (i) => '3${i + 1}')},
+            {'label': 'LR', 'teeth': List.generate(8, (i) => '4${8 - i}')},
+          ]
+        : [
+            {'label': 'UR', 'teeth': List.generate(5, (i) => '5${5 - i}')},
+            {'label': 'UL', 'teeth': List.generate(5, (i) => '6${i + 1}')},
+            {'label': 'LL', 'teeth': List.generate(5, (i) => '7${i + 1}')},
+            {'label': 'LR', 'teeth': List.generate(5, (i) => '8${5 - i}')},
+          ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
-          "Select Teeth",
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isAdult ? "Select Adult Teeth" : "Select Kid Teeth",
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(width: 12),
+            fluent.ToggleSwitch(
+              checked: isAdult,
+              onChanged: (value) {
+                setState(() {
+                  isAdult = value;
+                  _selected.clear();
+                  widget.onChanged(_selected);
+                });
+              },
+              content: Text(isAdult ? "Adult" : "Kid"),
+              style: fluent.ToggleSwitchThemeData(
+                checkedDecoration: fluent.WidgetStateProperty.all(
+                  BoxDecoration(
+                    color: Colors.blue.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                ),
+                checkedKnobDecoration: fluent.WidgetStateProperty.all(
+                  BoxDecoration(
+                    color: Colors.blue,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                ),
+                uncheckedKnobDecoration: fluent.WidgetStateProperty.all(
+                  BoxDecoration(
+                    color: Colors.grey.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 6),
         LayoutBuilder(
@@ -63,14 +122,14 @@ class _TeethPickerState extends State<TeethPicker> {
                   children: [
                     SizedBox(
                       width: quadrantWidth,
-                      child: buildQuadrant(
-                          'UR', quadrants[0]['teeth'] as List<String>),
+                      child: buildQuadrant(quadrants[0]['label'] as String,
+                          quadrants[0]['teeth'] as List<String>),
                     ),
                     const SizedBox(width: 16),
                     SizedBox(
                       width: quadrantWidth,
-                      child: buildQuadrant(
-                          'UL', quadrants[1]['teeth'] as List<String>),
+                      child: buildQuadrant(quadrants[1]['label'] as String,
+                          quadrants[1]['teeth'] as List<String>),
                     ),
                   ],
                 ),
@@ -80,14 +139,14 @@ class _TeethPickerState extends State<TeethPicker> {
                   children: [
                     SizedBox(
                       width: quadrantWidth,
-                      child: buildQuadrant(
-                          'LR', quadrants[3]['teeth'] as List<String>),
+                      child: buildQuadrant(quadrants[3]['label'] as String,
+                          quadrants[3]['teeth'] as List<String>),
                     ),
                     const SizedBox(width: 16),
                     SizedBox(
                       width: quadrantWidth,
-                      child: buildQuadrant(
-                          'LL', quadrants[2]['teeth'] as List<String>),
+                      child: buildQuadrant(quadrants[2]['label'] as String,
+                          quadrants[2]['teeth'] as List<String>),
                     ),
                   ],
                 ),

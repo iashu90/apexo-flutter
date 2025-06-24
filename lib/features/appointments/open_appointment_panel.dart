@@ -357,6 +357,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   Set<String> selectedTreatments = {};
   double originalPrice = 0;
   Set<String> selectedTeethSet = {};
+  bool isAdult = true;
 
   void setToDone() {
     setState(() {
@@ -485,9 +486,13 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
         TeethPicker(
-          selectedTeeth: selectedTeethSet, // Set<String> in your state
+          selectedTeeth: selectedTeethSet,
+          isAdult: selectedTeethSet.every((t) =>
+              t.startsWith('1') ||
+              t.startsWith('2') ||
+              t.startsWith('3') ||
+              t.startsWith('4')),
           onChanged: (teeth) {
             setState(() {
               selectedTeethSet = teeth;
