@@ -93,6 +93,9 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     return labels
         .where((x) => !x.contains("\u200B") && !x.contains("\u200C"))
         .toList();
+    return labels
+        .where((x) => !x.contains("\u200B") && !x.contains("\u200C"))
+        .toList();
   }
 
   List<Item> get filteredItems {
@@ -122,6 +125,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               .where((x) => x == true)
               .length ==
           words.length;
+      return allTermsFound;
+    }).toList();
       return allTermsFound;
     }).toList();
   }
@@ -330,6 +335,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                       alignment: Alignment.center,
                       child: Container(
                         width: 1100,
+                        width: 1100,
                         color: Colors.white,
                         child: PatientDetailsDialog(
                             rows: item.patientDetails,
@@ -468,7 +474,68 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           ),
           _buildSorters(),
         ],
+        children: [
+          _buildItemsNumIndicator(),
+          Row(
+            children: [
+              _buildDaysFilterButton(10),
+              const SizedBox(width: 8),
+              _buildDaysFilterButton(30),
+              const SizedBox(width: 8),
+              _buildTagFilterButton("Ortho", "Ortho"),
+              const SizedBox(width: 8),
+              _buildTagFilterButton("RCT", "RCT"),
+            ],
+          ),
+          _buildSorters(),
+        ],
       ),
+    );
+  }
+
+  int? _activeDaysFilter;
+  Widget _buildDaysFilterButton(int days) {
+    return FilledButton(
+      style: ButtonStyle(
+        backgroundColor: WidgetStatePropertyAll(
+          _activeDaysFilter == days
+              ? Colors.blue
+              : Colors.white.withOpacity(0.2),
+        ),
+        foregroundColor: WidgetStatePropertyAll(
+            _activeDaysFilter == days ? Colors.white : Colors.black),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        ),
+      ),
+      child: Text("> $days Days"),
+      onPressed: () {
+        setState(() {
+          _activeDaysFilter = _activeDaysFilter == days ? null : days;
+        });
+      },
+    );
+  }
+
+  String? _activeTagFilter;
+  Widget _buildTagFilterButton(String tag, String label) {
+    return FilledButton(
+      style: ButtonStyle(
+        backgroundColor: WidgetStatePropertyAll(
+          _activeTagFilter == tag ? Colors.blue : Colors.white.withOpacity(0.2),
+        ),
+        foregroundColor: WidgetStatePropertyAll(
+            _activeTagFilter == tag ? Colors.white : Colors.black),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        ),
+      ),
+      child: Text(label),
+      onPressed: () {
+        setState(() {
+          _activeTagFilter = _activeTagFilter == tag ? null : tag;
+        });
+      },
     );
   }
 
@@ -563,6 +630,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               color: Colors.grey.toAccentColor().lightest,
               fontSize: 11,
               fontWeight: FontWeight.bold),
+        ),
+        Visibility(
+          visible: filtered.isNotEmpty,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: Row(children: _buildToggleSorters(context)),
         ),
         Visibility(
           visible: filtered.isNotEmpty,
