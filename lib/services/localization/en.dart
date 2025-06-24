@@ -158,6 +158,7 @@ class En {
     "address": "Address",
     "notes": "Notes",
     "patientTags": "Patient tags",
+    "treatmentTags": "Treatment tags",
     "male": "Male",
     "female": "Female",
     "noAppointmentsFound":

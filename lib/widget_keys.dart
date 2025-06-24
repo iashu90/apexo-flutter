@@ -46,6 +46,7 @@ class WK {
   static const fieldPatientGender = Key("fieldPatientGender");
   static const fieldPatientYOB = Key("fieldPatientAge");
   static const fieldPatientTags = Key("fieldPatientTags");
+  static const fieldTreatmentTags = Key("fieldTreatmentTags");
   static const fieldPatientNotes = Key("fieldPatientNotes");
   static const fieldOperators = Key("fieldOperators");
   static const fieldPatient = Key("fieldAppointmentPatient");

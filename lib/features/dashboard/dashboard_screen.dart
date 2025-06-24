@@ -1,5 +1,6 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
+import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/dashboard/completed_pending_bar.dart';
@@ -259,6 +260,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   SingleChildScrollView buildTopSquares() {
+    final dayAppointments = appointments.forDate(selectedDate);
+    final appointmentRows = dayAppointments.toPatientDetailRows();
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Padding(
@@ -282,6 +285,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               FluentIcons.money,
               dashboardCtrl.paymentsForDate(selectedDate).toStringAsFixed(2),
               txt("paymentsMadeToday"),
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 1200,
+                      color: Colors.white,
+                      child: PatientDetailsDialog(
+                        rows: appointmentRows,
+                        patientName: "Patient",
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
             dashboardSquare(
               Colors.orange,
@@ -300,58 +319,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Padding dashboardSquare(
-      AccentColor color, IconData icon, String title, String subtitle) {
+      AccentColor color, IconData icon, String title, String subtitle,
+      {VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Acrylic(
-        elevation: 50,
-        luminosityAlpha: 1,
-        blurAmount: 80,
-        tintAlpha: 0.9,
-        tint: color,
-        shadowColor: color,
-        child: SizedBox(
-          width: 220,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    Icon(
-                      icon,
-                      color: color,
-                    ),
-                    ...const [
-                      SizedBox(width: 10),
-                      Divider(size: 40, direction: Axis.vertical),
-                      SizedBox(width: 10),
-                    ],
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Txt(
-                          title,
-                          style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: color.dark),
-                        ),
-                        Txt(
-                          subtitle,
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: color.light,
-                              fontStyle: FontStyle.italic,
-                              letterSpacing: 0.6),
-                        ),
-                        const SizedBox(height: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Acrylic(
+          elevation: 50,
+          luminosityAlpha: 1,
+          blurAmount: 80,
+          tintAlpha: 0.9,
+          tint: color,
+          shadowColor: color,
+          child: SizedBox(
+            width: 220,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        icon,
+                        color: color,
+                      ),
+                      ...const [
+                        SizedBox(width: 10),
+                        Divider(size: 40, direction: Axis.vertical),
+                        SizedBox(width: 10),
                       ],
-                    )
-                  ],
-                ),
-              )
-            ],
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Txt(
+                            title,
+                            style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: color.dark),
+                          ),
+                          Txt(
+                            subtitle,
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: color.light,
+                                fontStyle: FontStyle.italic,
+                                letterSpacing: 0.6),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                      )
+                    ],
+                  ),
+                )
+              ],
+            ),
           ),
         ),
       ),
@@ -383,11 +406,7 @@ class _DoctorAppointmentsSummaryWithDateState
     // Map of doctorId to count (for selectedDate's appointments only)
     final Map<String, int> doctorAppointmentCounts = {};
 
-    final dayAppointments = appointments.present.values.where((appointment) {
-      return appointment.date.year == selectedDate.year &&
-          appointment.date.month == selectedDate.month &&
-          appointment.date.day == selectedDate.day;
-    }).toList();
+    final dayAppointments = appointments.forDate(selectedDate);
 
     for (var appointment in dayAppointments) {
       for (var doctorId in appointment.operatorsIDs) {
@@ -496,21 +515,98 @@ class _DoctorAppointmentsSummaryWithDateState
                             ],
                           ),
                           const SizedBox(height: 12),
-                          // --- Unassigned row at the top ---
+
+                          if (dayAppointments.isNotEmpty)
+                            MouseRegion(
+                              onEnter: (_) => setState(() =>
+                                  hoveredDoctorIndex =
+                                      -2), // Unique index for "All"
+                              onExit: (_) => setState(() =>
+                                  hoveredDoctorIndex = null), // Reset on exit
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedDoctor =
+                                        null; // Select "All" doctors
+                                  });
+                                },
+                                child: Container(
+                                  color: hoveredDoctorIndex == -2
+                                      ? Colors.blue
+                                          .withOpacity(0.15) // light blue hover
+                                      : Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 8.0, horizontal: 12.0),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.withOpacity(0.8),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: const Icon(
+                                            FluentIcons
+                                                .user_optional, // Example icon for "All"
+                                            color: Colors.white,
+                                            size: 16),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      const Expanded(
+                                        child: Text(
+                                          "All",
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          dayAppointments.length.toString(),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: material.Colors.blue,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          // Separator if needed
+                          // const Divider(height: 1, thickness: 1),
+
+                          // --- "Unassigned" row ---
+                          // Only show if there are unassigned items, as per your original `if` condition
                           if (unassignedCount > 0)
                             MouseRegion(
-                              onEnter: (_) =>
-                                  setState(() => hoveredDoctorIndex = -1),
+                              onEnter: (_) => setState(() =>
+                                  hoveredDoctorIndex =
+                                      -1), // Original index for "Unassigned"
                               onExit: (_) =>
                                   setState(() => hoveredDoctorIndex = null),
                               child: GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    selectedDoctor =
-                                        null; // Special value for unassigned
+                                    selectedDoctor = Doctor.fromJson(
+                                        {'id': '', 'title': 'Unassigned'});
                                   });
                                 },
                                 child: Container(
+                                  // Apply hover color based on the original index
                                   color: hoveredDoctorIndex == -1
                                       ? Colors.blue
                                           .withOpacity(0.15) // light blue hover
@@ -527,14 +623,17 @@ class _DoctorAppointmentsSummaryWithDateState
                                           shape: BoxShape.circle,
                                         ),
                                         alignment: Alignment.center,
-                                        child: Icon(FluentIcons.help,
-                                            color: Colors.white, size: 16),
+                                        child: const Icon(
+                                            FluentIcons
+                                                .help, // Example icon for "Unassigned"
+                                            color: Colors.white,
+                                            size: 16),
                                       ),
                                       const SizedBox(width: 16),
-                                      Expanded(
+                                      const Expanded(
                                         child: Text(
                                           "Unassigned",
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             fontStyle: FontStyle.italic,
@@ -722,14 +821,19 @@ class _DoctorAppointmentsSummaryWithDateState
                     flex: 3,
                     child: Builder(
                       builder: (context) {
-                        final doctorAppointments = selectedDoctor != null
+                        final doctorAppointments = selectedDoctor == null
+                            // All: show all appointments
                             ? dayAppointments
-                                .where((a) =>
-                                    a.operatorsIDs.contains(selectedDoctor!.id))
-                                .toList()
-                            : dayAppointments
-                                .where((a) => a.operatorsIDs.isEmpty)
-                                .toList();
+                            // Unassigned: doctor with id == ''
+                            : selectedDoctor!.id.isEmpty
+                                ? dayAppointments
+                                    .where((a) => a.operatorsIDs.isEmpty)
+                                    .toList()
+                                // Specific doctor
+                                : dayAppointments
+                                    .where((a) => a.operatorsIDs
+                                        .contains(selectedDoctor!.id))
+                                    .toList();
 
                         if (doctorAppointments.isEmpty) {
                           return const SizedBox.shrink();

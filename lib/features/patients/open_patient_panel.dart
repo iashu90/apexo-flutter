@@ -1,6 +1,7 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -241,6 +242,8 @@ class _PatientDetails extends StatefulWidget {
 }
 
 class _PatientDetailsState extends State<_PatientDetails> {
+  bool showSuccessInfoBar = false;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -365,7 +368,67 @@ class _PatientDetailsState extends State<_PatientDetails> {
             limit: 9999,
             placeholder: "${txt("patientTags")}...",
           ),
-        )
+        ),
+        InfoLabel(
+          label: "${txt("treatmentTags")}:",
+          isHeader: true,
+          child: TagInputWidget(
+            key: WK
+                .fieldTreatmentTags, // You may want to create a new key for treatment tags
+            suggestions: patients.allTreatmentTags
+                .map((t) => TagInputItem(value: t, label: t))
+                .toList(),
+            onChanged: (tags) {
+              widget.patient.treatmentTags = List<String>.from(
+                  tags.map((e) => e.value).where((e) => e != null));
+            },
+            initialValue: (widget.patient.treatmentTags ?? [])
+                .map((e) => TagInputItem(value: e, label: e))
+                .toList(),
+            strict: false,
+            limit: 9999,
+            placeholder: "${txt("treatmentTags")}...",
+          ),
+        ),
+        const SizedBox(height: 30),
+        FilledButton(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(FluentIcons.save),
+              SizedBox(width: 8),
+              Txt("Quick Check-In"),
+            ],
+          ),
+          onPressed: () async {
+            final newAppointment =
+                Appointment.fromJson({"patientID": widget.patient.id});
+            appointments.set(newAppointment);
+            setState(() {
+              showSuccessInfoBar = true;
+            });
+            // Optionally auto-hide after a delay
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) {
+                setState(() {
+                  showSuccessInfoBar = false;
+                });
+              }
+            });
+          },
+          style: ButtonStyle(
+            textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+            backgroundColor: WidgetStatePropertyAll(Colors.blue),
+          ),
+        ),
+        if (showSuccessInfoBar)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: InfoBar(
+              title: const Text('Appointment booked successfully!'),
+              severity: InfoBarSeverity.success,
+            ),
+          ),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
     );
   }

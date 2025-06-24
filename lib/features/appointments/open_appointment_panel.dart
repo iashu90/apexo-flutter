@@ -393,15 +393,9 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   void updateSelectedTreatments() {
     widget.appointment.selectedTreatments = selectedTreatments.toList();
     double total = 0;
-    for (final treatment in widget.appointment.treatments) {
+    for (final treatment in allTreatments) {
       if (selectedTreatments.contains(treatment.name)) {
         total += treatment.price;
-      }
-      for (final sub in treatment.subTreatments) {
-        final key = '${treatment.name}::${sub.name}';
-        if (selectedTreatments.contains(key)) {
-          total += sub.price;
-        }
       }
     }
     priceController.text = (total == 0.0) ? '' : total.toStringAsFixed(0);
@@ -453,16 +447,10 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 key: WK.fieldAppointmentTreatments,
                 suggestions: [
                   // Main treatments
-                  ...widget.appointment.treatments.map((t) => TagInputItem(
+                  ...allTreatments.map((t) => TagInputItem(
                         value: t.name,
                         label: "${t.name} - ₹${t.price}",
                       )),
-                  // Sub-treatments
-                  ...widget.appointment.treatments
-                      .expand((t) => t.subTreatments.map((sub) => TagInputItem(
-                            value: "${t.name}::${sub.name}",
-                            label: "↳ ${sub.name} - ₹${sub.price}",
-                          ))),
                 ],
                 onChanged: (s) {
                   setState(() {
@@ -477,26 +465,15 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                   // Pre-select already selected treatments and sub-treatments
                   ...selectedTreatments.map((v) {
                     // Find the label for the value
-                    final main = widget.appointment.treatments.firstWhere(
+                    final main = allTreatments.firstWhere(
                       (t) => t.name == v,
                       orElse: () => Treatment(
-                          name: '',
-                          price: 0,
-                          subTreatments: []), // Provide a default Treatment
+                          name: '', price: 0), // Provide a default Treatment
                     );
                     if (main.name.isNotEmpty) {
                       // found
                       return TagInputItem(
                           value: v, label: "${main.name} - ₹${main.price}");
-                    }
-                    // Check for sub-treatment
-                    for (final t in widget.appointment.treatments) {
-                      for (final sub in t.subTreatments) {
-                        if (v == "${t.name}::${sub.name}") {
-                          return TagInputItem(
-                              value: v, label: "↳ ${sub.name} - ₹${sub.price}");
-                        }
-                      }
                     }
                     return TagInputItem(value: v, label: v);
                   }),
