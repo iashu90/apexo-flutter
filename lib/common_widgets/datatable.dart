@@ -88,15 +88,29 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   List<String> get nonNullLabels {
-    return labels.where((x) => !x.contains("\u200B")).toList();
+    return labels
+        .where((x) => !x.contains("\u200B") && !x.contains("\u200C"))
+        .toList();
   }
 
   List<Item> get filteredItems {
-    final words =
-        _searchValue.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
-    final List<Item> candidates = [];
-    for (var item in widget.items) {
-      // Add phone to the searchIn string if it exists
+    return widget.items.where((item) {
+      if (Item == Patient && item is Patient) {
+        // Days filter
+        if (_activeDaysFilter != null &&
+            (item.daysSinceLastAppointment ?? 0) <= _activeDaysFilter!) {
+          return false;
+        }
+        // Tag filter
+        if (_activeTagFilter != null &&
+            !item.treatmentTags.contains(_activeTagFilter)) {
+          return false;
+        }
+      }
+      // ...you can add more filters here if needed...
+      // Search filter
+      final words =
+          _searchValue.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
       final searchIn = (item.title +
               (item is Patient ? (item.phone) : '') +
               jsonEncode(item.labels.values.toList()))
@@ -107,9 +121,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               .where((x) => x == true)
               .length ==
           words.length;
-      if (allTermsFound) candidates.add(item);
-    }
-    return candidates;
+      return allTermsFound;
+    }).toList();
   }
 
   String removeNonNumbers(String input) {
@@ -308,7 +321,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                     builder: (_) => Align(
                       alignment: Alignment.center,
                       child: Container(
-                        width: 1000,
+                        width: 1100,
                         color: Colors.white,
                         child: PatientDetailsDialog(
                             rows: item.patientDetails,
@@ -432,8 +445,68 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       padding: const EdgeInsets.fromLTRB(10, 5, 10, 0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [_buildItemsNumIndicator(), _buildSorters()],
+        children: [
+          _buildItemsNumIndicator(),
+          Row(
+            children: [
+              _buildDaysFilterButton(10),
+              const SizedBox(width: 8),
+              _buildDaysFilterButton(30),
+              const SizedBox(width: 8),
+              _buildTagFilterButton("Ortho", "Ortho"),
+              const SizedBox(width: 8),
+              _buildTagFilterButton("RCT", "RCT"),
+            ],
+          ),
+          _buildSorters(),
+        ],
       ),
+    );
+  }
+
+  int? _activeDaysFilter;
+  Widget _buildDaysFilterButton(int days) {
+    return FilledButton(
+      style: ButtonStyle(
+        backgroundColor: WidgetStatePropertyAll(
+          _activeDaysFilter == days
+              ? Colors.blue
+              : Colors.white.withOpacity(0.2),
+        ),
+        foregroundColor: WidgetStatePropertyAll(
+            _activeDaysFilter == days ? Colors.white : Colors.black),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        ),
+      ),
+      child: Text("> $days Days"),
+      onPressed: () {
+        setState(() {
+          _activeDaysFilter = _activeDaysFilter == days ? null : days;
+        });
+      },
+    );
+  }
+
+  String? _activeTagFilter;
+  Widget _buildTagFilterButton(String tag, String label) {
+    return FilledButton(
+      style: ButtonStyle(
+        backgroundColor: WidgetStatePropertyAll(
+          _activeTagFilter == tag ? Colors.blue : Colors.white.withOpacity(0.2),
+        ),
+        foregroundColor: WidgetStatePropertyAll(
+            _activeTagFilter == tag ? Colors.white : Colors.black),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        ),
+      ),
+      child: Text(label),
+      onPressed: () {
+        setState(() {
+          _activeTagFilter = _activeTagFilter == tag ? null : tag;
+        });
+      },
     );
   }
 
@@ -483,7 +556,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               fontSize: 11,
               fontWeight: FontWeight.bold),
         ),
-        if (filtered.isNotEmpty) ..._buildToggleSorters(context),
+        Visibility(
+          visible: filtered.isNotEmpty,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: Row(children: _buildToggleSorters(context)),
+        ),
       ],
     );
   }

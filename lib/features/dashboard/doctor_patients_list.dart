@@ -26,16 +26,19 @@ class DoctorPatientsList extends StatefulWidget {
 class _DoctorPatientsListState extends State<DoctorPatientsList> {
   // null = show all, true = show completed, false = show pending
   bool? showCompleted;
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
-    final doctorAppointments = widget.doctor != null
-        ? widget.appointmentsForDay
-            .where((a) => a.operatorsIDs.contains(widget.doctor!.id))
-            .toList()
-        : widget.appointmentsForDay
-            .where((a) => a.operatorsIDs.isEmpty)
-            .toList();
+    final doctorAppointments = widget.doctor == null
+        ? widget.appointmentsForDay // Show all for "All"
+        : widget.doctor!.id.isEmpty // Unassigned
+            ? widget.appointmentsForDay
+                .where((a) => a.operatorsIDs.isEmpty)
+                .toList()
+            : widget.appointmentsForDay
+                .where((a) => a.operatorsIDs.contains(widget.doctor!.id))
+                .toList();
 
     // Filter appointments based on selection
     final filteredAppointments = showCompleted == null
@@ -43,6 +46,16 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
         : doctorAppointments.where((a) => a.isDone == showCompleted).toList();
 
     filteredAppointments.sort((a, b) => a.date.compareTo(b.date));
+
+    final patientsStore = patients.present; // or your patients store
+    final searchedAppointments = _searchQuery.isEmpty
+        ? filteredAppointments
+        : filteredAppointments.where((a) {
+            final patient = patientsStore[a.patientID];
+            final name = patient?.title?.toLowerCase() ?? '';
+            final number = patient?.phone?.toLowerCase() ?? '';
+            return name.contains(_searchQuery) || number.contains(_searchQuery);
+          }).toList();
 
     return Card(
       borderRadius: BorderRadius.circular(12),
@@ -56,9 +69,11 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
               children: [
                 Expanded(
                   child: Text(
-                    (widget.doctor != null
-                            ? "${widget.doctor!.title}'s "
-                            : "Unassigned ") +
+                    (widget.doctor == null
+                            ? "All "
+                            : widget.doctor!.id.isEmpty
+                                ? "Unassigned "
+                                : "${widget.doctor!.title}'s ") +
                         txt("patients"),
                     style: const TextStyle(
                       fontWeight: FontWeight.w500,
@@ -85,6 +100,15 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            TextBox(
+              placeholder: 'Search patient by name or number',
+              onChanged: (query) {
+                setState(() {
+                  _searchQuery = query.trim().toLowerCase();
+                });
+              },
+            ),
             const SizedBox(height: 12),
             // Patient list
             ConstrainedBox(
@@ -93,7 +117,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                 maxHeight: 400, // set your desired max height
               ),
               child: _PatientListWithHover(
-                doctorAppointments: filteredAppointments,
+                doctorAppointments: searchedAppointments,
               ),
             )
           ],
@@ -139,7 +163,7 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
           child: GestureDetector(
             onTap: () {
               if (patient != null) {
-                openAppointment(a);
+                openPatient(patient, 2);
               }
             },
             child: Container(

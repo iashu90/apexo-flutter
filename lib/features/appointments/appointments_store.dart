@@ -1,4 +1,6 @@
+import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/core/observable.dart';
+import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
@@ -133,5 +135,69 @@ class Appointments extends Store<Appointment> {
             .toList();
   }
 }
+
+extension AppointmentsDateExtension on Appointments {
+  List<Appointment> forDate(DateTime date) {
+    return present.values
+        .where((appointment) =>
+            appointment.date.year == date.year &&
+            appointment.date.month == date.month &&
+            appointment.date.day == date.day)
+        .toList();
+  }
+}
+
+extension AppointmentListToPatientDetailRows on List<Appointment> {
+  List<PatientDetailRow> toPatientDetailRows() {
+    return map((appointment) {
+      final dateStr = appointment.date.toString().substring(0, 10);
+
+      final costStr = '₹${appointment.price.toStringAsFixed(2)}';
+      final paidStr = '₹${appointment.paid.toStringAsFixed(2)}';
+
+      final prescriptionStr = appointment.prescriptions.isNotEmpty
+          ? appointment.prescriptions.join(', ')
+          : '';
+
+      final treatmentStr = appointment.selectedTreatments.isNotEmpty
+          ? appointment.selectedTreatments.join(', ')
+          : '';
+
+      final teethStr = appointment.selectedTeeth.isNotEmpty
+          ? appointment.selectedTeeth.join(', ')
+          : '';
+
+      final patientName = appointment.patient?.title ?? '';
+
+      return PatientDetailRow(
+          date: dateStr,
+          cost: costStr,
+          paid: paidStr,
+          prescription: prescriptionStr,
+          treatment: treatmentStr,
+          teeth: teethStr,
+          isDone: appointment.isDone,
+          patientName: patientName);
+    }).toList();
+  }
+}
+
+final List<Treatment> allTreatments = [
+  Treatment(name: 'Follow-up', price: 0),
+  Treatment(name: 'Consultation', price: 100),
+  Treatment(name: 'IOPA (X-ray)', price: 100),
+  Treatment(name: 'GIC', price: 500),
+  Treatment(name: 'Ant Composite', price: 1000),
+  Treatment(name: 'Post Composite', price: 800),
+  Treatment(name: 'Cleaning', price: 100),
+  Treatment(name: 'Scaling', price: 800),
+  Treatment(name: 'Scaling & Polishing', price: 1000),
+  Treatment(name: 'RCT', price: 3000),
+  Treatment(name: 'PFM Crowns', price: 3000),
+  Treatment(name: 'Zirconia Crowns', price: 6000),
+  Treatment(name: 'Normal Extraction', price: 800),
+  Treatment(name: 'Wisdom Teeth Extraction', price: 1000),
+  Treatment(name: 'Impaction Extraction', price: 3500),
+];
 
 final appointments = Appointments();

@@ -159,10 +159,15 @@ class Patient extends Model {
     if (paymentsMade != 0) {
       buildingLabels["Total payments"] = "$paymentsMade";
     }
+    for (var i = 0; i < treatmentTags.length; i++) {
+      buildingLabels[List.generate(i + 1, (_) => "\u200C").join("")] =
+          treatmentTags[i];
+    }
 
     for (var i = 0; i < tags.length; i++) {
       buildingLabels[List.generate(i + 1, (_) => "\u200B").join("")] = tags[i];
     }
+
     return buildingLabels;
   }
 
@@ -176,6 +181,7 @@ class Patient extends Model {
   /* 6 */ List<String> tags = [];
   /* 7 */ String notes = "";
   /* 8 */ Map<String, String> teeth = {};
+  List<String> treatmentTags = [];
 
   @override
   Patient.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
@@ -195,6 +201,7 @@ class Patient extends Model {
     /* 6 */ tags = List<String>.from(json['tags'] ?? tags);
     /* 7 */ notes = json['notes'] ?? notes;
     /* 8 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
+    treatmentTags = List<String>.from(json['treatmentTags'] ?? treatmentTags);
   }
   @override
   Map<String, dynamic> toJson() {
@@ -209,6 +216,8 @@ class Patient extends Model {
     /* 6 */ if (tags.toString() != d.tags.toString()) json['tags'] = tags;
     /* 7 */ if (notes != d.notes) json['notes'] = notes;
     /* 8 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
+    if (treatmentTags.toString() != d.treatmentTags.toString())
+      json['treatmentTags'] = treatmentTags;
     return json;
   }
 }

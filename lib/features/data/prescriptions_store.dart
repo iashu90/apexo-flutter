@@ -1,23 +1,21 @@
-import 'package:apexo/features/login/login_controller.dart';
-import 'package:apexo/services/archived.dart';
-import 'package:apexo/services/launch.dart';
-import 'package:apexo/services/network.dart';
-import 'package:apexo/utils/hash.dart';
-import 'package:apexo/utils/demo_generator.dart';
-
-import 'patient_model.dart';
-import '../../services/login.dart';
+import '../../core/store.dart';
+import 'prescriptions_model.dart';
 import '../../core/save_local.dart';
 import '../../core/save_remote.dart';
+import '../../services/login.dart';
+import '../../services/network.dart';
 import '../network_actions/network_actions_controller.dart';
-import '../../core/store.dart';
+import '../../services/launch.dart';
+import 'package:apexo/utils/hash.dart';
+import '../../services/archived.dart';
+import '../../features/login/login_controller.dart';
 
-const _storeName = "patients";
+const _storeName = "prescriptions";
 
-class Patients extends Store<Patient> {
-  Patients()
+class PrescriptionsStore extends Store<Prescriptions> {
+  PrescriptionsStore()
       : super(
-          modeling: Patient.fromJson,
+          modeling: (json) => Prescriptions.fromJson(json),
           isDemo: launch.isDemo,
           showArchived: showArchived,
           onSyncStart: () {
@@ -31,14 +29,18 @@ class Patients extends Store<Patient> {
   @override
   init() {
     super.init();
+    observableMap.observe((_) => _prescriptions = null);
+    observableMap.observe((_) {
+      for (var prescription in observableMap.values) {
+        print(prescription);
+      }
+    });
     login.activators[_storeName] = () async {
       await loaded;
-
       local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
       await deleteMemoryAndLoadFromPersistence();
-
       if (launch.isDemo) {
-        if (docs.isEmpty) setAll(demoPatients(100));
+        if (docs.isEmpty) setAll([]); // Optionally add demo data
       } else {
         remote = SaveRemote(
           pbInstance: login.pb!,
@@ -50,27 +52,21 @@ class Patients extends Store<Patient> {
           },
         );
       }
-
       return () async {
-        loginCtrl.loadingIndicator("Synchronizing patients");
+        loginCtrl.loadingIndicator("Synchronizing prescriptions");
         await synchronize();
         networkActions.syncCallbacks[_storeName] = synchronize;
         networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
-
         network.onOnline[_storeName] = synchronize;
         network.onOffline[_storeName] = cancelRealtimeSub;
       };
     };
   }
-
-  List<String> get allTags {
-    return Set<String>.from(present.values.expand((doc) => doc.tags)).toList();
-  }
-
-    List<String> get allTreatmentTags {
-    return Set<String>.from(present.values.expand((doc) => doc.treatmentTags)).toList();
-  }
 }
 
-final patients = Patients();
-// don't forget to initialize it in main.dart
+List<String>? _prescriptions;
+List<String> get prescriptions {
+  return _prescriptions ??= [];
+}
+
+final prescriptionsStore = PrescriptionsStore();

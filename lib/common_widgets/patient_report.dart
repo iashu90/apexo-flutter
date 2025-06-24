@@ -43,14 +43,14 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: DataTable(
-        headingRowColor: MaterialStateProperty.all(Colors.blueGrey.shade50),
+        headingRowColor: WidgetStateProperty .all(Colors.blueGrey.shade50),
         headingTextStyle: const TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
           color: Colors.blueGrey,
           letterSpacing: 0.5,
         ),
-        dataRowColor: MaterialStateProperty.resolveWith<Color?>(
+        dataRowColor: WidgetStateProperty .resolveWith<Color?>(
             (Set<MaterialState> states) {
           if (states.contains(MaterialState.selected)) {
             return Colors.blue.withOpacity(0.08);
@@ -63,7 +63,8 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
               onTap: _toggleSort,
               child: Row(
                 children: [
-                  const Text('Date', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Date',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(width: 4),
                   Icon(
                     _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
@@ -74,6 +75,8 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
               ),
             ),
           ),
+          if (_sortedRows.any((row) => row.patientName != null))
+            _plainColumn('Patient'),
           _plainColumn('Teeth'),
           _plainColumn('Treatment'),
           _plainColumn('Prescription'),
@@ -84,7 +87,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
           final row = _sortedRows[index];
           final isEven = index % 2 == 0;
           return DataRow(
-            color: MaterialStateProperty.all(
+            color: WidgetStateProperty .all(
                 isEven ? Colors.grey.shade50 : Colors.white),
             cells: [
               DataCell(Row(
@@ -112,13 +115,15 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                     ),
                   Text(
                     row.date.isNotEmpty
-                        ? DateFormat(localSettings.dateFormat)
-                            .format(DateTime.tryParse(row.date) ?? DateTime(1900))
+                        ? DateFormat(localSettings.dateFormat).format(
+                            DateTime.tryParse(row.date) ?? DateTime(1900))
                         : '',
                     style: _cellTextStyle,
                   ),
                 ],
               )),
+              if (row.patientName != null)
+                _plainCell(Text(row.patientName!, style: _cellTextStyle)),
               _plainCell(Text(row.teeth, style: _cellTextStyle)),
               DataCell(
                 Tooltip(
@@ -172,6 +177,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
 
 class PatientDetailRow {
   final String date;
+  final String? patientName;
   final String cost;
   final String paid;
   final String prescription;
@@ -181,6 +187,7 @@ class PatientDetailRow {
 
   PatientDetailRow({
     required this.date,
+    this.patientName,
     required this.cost,
     required this.paid,
     required this.prescription,
