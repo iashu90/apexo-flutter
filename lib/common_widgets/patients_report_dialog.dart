@@ -13,11 +13,11 @@ class PatientDetailsDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     double totalCost = 0;
     double totalPaid = 0;
-    final currency = "₹";
+    const currency = "₹";
 
     for (final row in rows) {
-      totalCost += double.tryParse(row.cost.replaceAll('₹', '')) ?? 0;
-      totalPaid += double.tryParse(row.paid.replaceAll('₹', '')) ?? 0;
+      totalCost += double.tryParse(row.cost.replaceAll(currency, '')) ?? 0;
+      totalPaid += double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
     }
 
     return Container(
@@ -95,7 +95,7 @@ class PatientDetailsDialog extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 400,
+            height: 450,
             child: Column(
               children: [
                 Expanded(

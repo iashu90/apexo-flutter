@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/login.dart';
@@ -112,52 +113,6 @@ class Appointment extends Model {
   /* 10 */ bool isDone = false;
   double discount = 0.0;
   String discountType = 'flat'; // or 'percent'
-  /* 11 */ List<Treatment> treatments = [
-    Treatment(name: 'Consultation', price: 100),
-    Treatment(name: 'IOPA (X-ray)', price: 100),
-    Treatment(
-      name: 'Filling',
-      price: 0,
-      subTreatments: [
-        Treatment(name: 'GIC', price: 500),
-        Treatment(
-          name: 'Composite',
-          price: 0,
-          subTreatments: [
-            Treatment(name: 'Ant', price: 1000),
-            Treatment(name: 'Post', price: 800),
-          ],
-        ),
-      ],
-    ),
-    Treatment(
-      name: 'Cleaning',
-      price: 0,
-      subTreatments: [
-        Treatment(name: 'Scaling', price: 800),
-        Treatment(name: 'Scaling & Polishing', price: 1000),
-      ],
-    ),
-    Treatment(name: 'RCT', price: 3000),
-    Treatment(name: 'RE RCT', price: 0), // Price unknown
-    Treatment(
-      name: 'Crowns',
-      price: 0,
-      subTreatments: [
-        Treatment(name: 'PFM', price: 3000),
-        Treatment(name: 'Zirconia', price: 6000),
-      ],
-    ),
-    Treatment(
-      name: 'Extraction',
-      price: 0,
-      subTreatments: [
-        Treatment(name: 'Normal', price: 800),
-        Treatment(name: 'Wisdom Teeth', price: 1000),
-        Treatment(name: 'Impaction', price: 3500),
-      ],
-    ),
-  ];
 
   /* 12 */ List<String> selectedTreatments = [];
   /* 13 */ List<String> selectedTeeth = [];
@@ -177,11 +132,6 @@ class Appointment extends Model {
         ? DateTime.fromMillisecondsSinceEpoch((json["date"] * 60000).toInt())
         : date);
     /* 10 */ isDone = (json["isDone"] ?? isDone);
-    /* 11 */ if (json.containsKey("treatments") && json["treatments"] != null) {
-      treatments = (json["treatments"] as List<dynamic>)
-          .map((e) => Treatment.fromJson(e))
-          .toList();
-    }
     /* 12 */ selectedTreatments =
         List<String>.from(json["selectedTreatments"] ?? []);
     /* 13 */ selectedTeeth = List<String>.from(json['selectedTeeth'] ?? []);
@@ -204,12 +154,10 @@ class Appointment extends Model {
     /* 8 */ if (imgs.isNotEmpty) json['imgs'] = imgs;
     /* 9 */ if (isDone != d.isDone) json['isDone'] = isDone;
     /* 10 */ json['date'] = (date.millisecondsSinceEpoch / 60000).round();
-    /* 11 */ if (treatments.isNotEmpty) {
-      json['treatments'] = treatments.map((e) => e.toJson()).toList();
-    }
     /* 12 */ if (selectedTreatments.isNotEmpty)
       json['selectedTreatments'] = selectedTreatments;
-    /* 13 */ if (selectedTeeth.isNotEmpty) json['selectedTeeth'] = selectedTeeth;
+    /* 13 */ if (selectedTeeth.isNotEmpty)
+      json['selectedTeeth'] = selectedTeeth;
     if (discount != d.discount) json['discount'] = discount;
     if (discountType != d.discountType) json['discountType'] = discountType;
     json.remove("title"); // remove since it is a computed value in this case

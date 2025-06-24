@@ -22,7 +22,10 @@ class DoctorsScreen extends StatelessWidget {
       key: WK.doctorsScreen,
       padding: EdgeInsets.zero,
       content: MStreamBuilder(
-          streams: [doctors.observableMap.stream, appointments.observableMap.stream],
+          streams: [
+            doctors.observableMap.stream,
+            appointments.observableMap.stream
+          ],
           builder: (context, snapshot) {
             return DataTable<Doctor>(
               items: doctors.present.values.toList(),
@@ -35,7 +38,10 @@ class DoctorsScreen extends StatelessWidget {
                 ),
                 archiveSelected(doctors)
               ],
-              furtherActions: [const SizedBox(width: 5), ArchiveToggle(notifier: doctors.notify)],
+              furtherActions: [
+                const SizedBox(width: 5),
+                ArchiveToggle(notifier: doctors.notify)
+              ],
               onSelect: (item) => openDoctor(item),
               itemActions: [
                 ItemAction(

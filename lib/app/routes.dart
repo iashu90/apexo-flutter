@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/dashboard/dashboard_screen.dart';
+import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
 import 'package:apexo/features/patients/patients_screen.dart';
@@ -218,11 +219,17 @@ class _Routes {
         Route(
           title: txt("data"),
           identifier: "data",
-          icon: FluentIcons.database, // You can choose any Fluent icon
+          icon: FluentIcons.database,
           screen: DataScreen.new,
           accessible: true,
           onFooter: false,
-          onSelect: () {},
+          onSelect: () async {
+            chartsCtrl.resetSelected();
+            await doctors.synchronize();
+            await patients.synchronize();
+            appointments.synchronize();
+            prescriptionsStore.synchronize();
+          },
         ),
         Route(
           title: txt("settings"),

@@ -1,4 +1,5 @@
-import 'package:apexo/features/appointments/appointments_store.dart'; // Import your appointments store
+import 'package:apexo/features/data/prescriptions_store.dart';
+import 'package:apexo/features/data/prescriptions_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -15,7 +16,7 @@ class _DataScreenState extends State<DataScreen> {
   @override
   Widget build(BuildContext context) {
     // Get all prescriptions from the appointments store
-    final prescriptions = appointments.allPrescriptions;
+    // final prescriptions = appointments.allPrescriptions;
 
     return ScaffoldPage(
       header: PageHeader(title: Text("App Data")),
@@ -38,13 +39,14 @@ class _DataScreenState extends State<DataScreen> {
                           placeholder: "Enter prescription",
                           onSubmitted: (value) {
                             final val = value.trim();
-                            if (val.isNotEmpty && !prescriptions.contains(val)) {
-                              setState(() {
-                                // Add to your backend/store here if needed
-                                // appointments.addPrescription(val); // You need to implement this method
-                                prescriptionController.clear();
-                              });
-                            }
+                            // Prescriptions prescriptions = Prescriptions();
+                            // prescriptions.title = val;
+                            // //if (val.isNotEmpty && !prescriptions.contains(val)) {
+                            // if (val.isNotEmpty) {
+                            //   setState(() {
+                            //     prescriptionController.clear();
+                            //   });
+                            // }
                           },
                         ),
                       ),
@@ -53,10 +55,12 @@ class _DataScreenState extends State<DataScreen> {
                         child: const Text("Add"),
                         onPressed: () {
                           final val = prescriptionController.text.trim();
-                          if (val.isNotEmpty && !prescriptions.contains(val)) {
+                          //if (val.isNotEmpty && !prescriptions.contains(val)) {
+                          if (val.isNotEmpty) {
                             setState(() {
-                              // Add to your backend/store here if needed
-                              // appointments.addPrescription(val); // You need to implement this method
+                              Prescriptions prescriptions = Prescriptions();
+                              prescriptions.prescription = val;
+                              prescriptionsStore.set(prescriptions);
                               prescriptionController.clear();
                             });
                           }
@@ -65,48 +69,54 @@ class _DataScreenState extends State<DataScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: prescriptions
-                        .map(
-                          (prescription) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: FluentTheme.of(context).accentColor.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: FluentTheme.of(context).accentColor,
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  prescription,
-                                  style: const TextStyle(fontWeight: FontWeight.w500),
-                                ),
-                                const SizedBox(width: 6),
-                                Button(
-                                  style: ButtonStyle(
-                                    padding: ButtonState.all(EdgeInsets.zero),
-                                    backgroundColor: ButtonState.all(Colors.transparent),
-                                  ),
-                                  child: const Icon(FluentIcons.cancel, size: 16),
-                                  onPressed: () {
-                                    setState(() {
-                                      // Remove from your backend/store here if needed
-                                      // appointments.removePrescription(prescription); // You need to implement this method
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
+                  // Wrap(
+                  //   spacing: 8,
+                  //   runSpacing: 8,
+                  //   children: prescriptions
+                  //       .map(
+                  //         (prescription) => Container(
+                  //           padding: const EdgeInsets.symmetric(
+                  //               horizontal: 12, vertical: 6),
+                  //           decoration: BoxDecoration(
+                  //             color: FluentTheme.of(context)
+                  //                 .accentColor
+                  //                 .withOpacity(0.12),
+                  //             borderRadius: BorderRadius.circular(20),
+                  //             border: Border.all(
+                  //               color: FluentTheme.of(context).accentColor,
+                  //               width: 1,
+                  //             ),
+                  //           ),
+                  //           child: Row(
+                  //             mainAxisSize: MainAxisSize.min,
+                  //             children: [
+                  //               Text(
+                  //                 prescription,
+                  //                 style: const TextStyle(
+                  //                     fontWeight: FontWeight.w500),
+                  //               ),
+                  //               const SizedBox(width: 6),
+                  //               Button(
+                  //                 style: ButtonStyle(
+                  //                   padding: ButtonState.all(EdgeInsets.zero),
+                  //                   backgroundColor:
+                  //                       ButtonState.all(Colors.transparent),
+                  //                 ),
+                  //                 child:
+                  //                     const Icon(FluentIcons.cancel, size: 16),
+                  //                 onPressed: () {
+                  //                   setState(() {
+                  //                     // Remove from your backend/store here if needed
+                  //                     // appointments.removePrescription(prescription); // You need to implement this method
+                  //                   });
+                  //                 },
+                  //               ),
+                  //             ],
+                  //           ),
+                  //         ),
+                  //       )
+                  //       .toList(),
+                  // ),
                 ],
               ),
             ),
@@ -148,13 +158,16 @@ class _DataSectionItemState extends State<DataSectionItem> {
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Expander(
         leading: Icon(widget.icon),
-        header: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.normal)),
+        header: Text(widget.title,
+            style: const TextStyle(fontWeight: FontWeight.normal)),
         content: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.description, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+              Text(widget.description,
+                  style: const TextStyle(
+                      fontSize: 12, fontStyle: FontStyle.italic)),
               const SizedBox(height: 10),
               widget.content,
             ],

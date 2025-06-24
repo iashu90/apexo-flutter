@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
+import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -575,42 +576,15 @@ class AppointmentCalendarTile<Item extends Appointment>
 
   final BuildContext context;
 
-  @override
   Widget build(BuildContext context) {
     // Only show treatments that are checked/selected by the doctor
     String treatmentsStr = '';
-    if (item.treatments is List && item.selectedTreatments is List) {
+    if (allTreatments is List<Treatment> && item.selectedTreatments is List) {
       final selectedNames =
           item.selectedTreatments.map((e) => e.toString()).toSet();
-      treatmentsStr = (item.treatments as List)
-          .where((e) {
-            // Support both Treatment objects and Map
-            String? name;
-            if (e is Map && e['name'] != null)
-              name = e['name'].toString();
-            else if (e is Map && e['title'] != null)
-              name = e['title'].toString();
-            else if (e is String)
-              name = e;
-            else {
-              try {
-                name = e.name ?? e.title ?? e.toString();
-              } catch (_) {
-                name = e.toString();
-              }
-            }
-            return name != null && selectedNames.contains(name);
-          })
-          .map((e) {
-            if (e is Map && e['name'] != null) return e['name'].toString();
-            if (e is Map && e['title'] != null) return e['title'].toString();
-            if (e is String) return e;
-            try {
-              return e.name ?? e.title ?? e.toString();
-            } catch (_) {
-              return e.toString();
-            }
-          })
+      treatmentsStr = (allTreatments as List<Treatment>)
+          .where((t) => selectedNames.contains(t.name))
+          .map((t) => t.name)
           .where((s) => s.trim().isNotEmpty)
           .join(', ');
     } else {
@@ -710,7 +684,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                 builder: (_) => Align(
                   alignment: Alignment.center,
                   child: Container(
-                    width: 1000,
+                    width: 1100,
                     color: Colors.white,
                     child: PatientDetailsDialog(
                         rows: item.patient?.patientDetails ?? [],
