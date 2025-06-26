@@ -189,7 +189,7 @@ final List<Treatment> allTreatments = [
   Treatment(name: 'GIC', price: 500),
   Treatment(name: 'Ant Composite', price: 1000),
   Treatment(name: 'Post Composite', price: 800),
-  Treatment(name: 'Cleaning', price: 100),
+  Treatment(name: 'Localized Scaling', price: 200),
   Treatment(name: 'Scaling', price: 800),
   Treatment(name: 'Scaling & Polishing', price: 1000),
   Treatment(name: 'RCT', price: 3000),
@@ -197,7 +197,7 @@ final List<Treatment> allTreatments = [
   Treatment(name: 'Zirconia Crowns', price: 6000),
   Treatment(name: 'Normal Extraction', price: 800),
   Treatment(name: 'Wisdom Teeth Extraction', price: 1000),
-  Treatment(name: 'Impaction Extraction', price: 3500),
+  Treatment(name: 'Impaction', price: 2500),
 ];
 
 final appointments = Appointments();
