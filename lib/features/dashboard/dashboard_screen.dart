@@ -294,7 +294,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       width: 1200,
                       color: Colors.white,
                       child: PatientDetailsDialog(
-                        rows: appointmentRows,
+                        rows: dayAppointments.toPatientDetailRows(),
+                        patientName: "Patient",
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            dashboardSquare(
+              Colors.green,
+              FluentIcons.medical, // Or another suitable icon
+              dashboardCtrl
+                  .prescriptionPaymentsForDate(selectedDate)
+                  .toStringAsFixed(2),
+              "Prescriptions Payments",
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 1200,
+                      color: Colors.white,
+                      child: PatientDetailsDialog(
+                        rows: dayAppointments.toPatientDetailRows(
+                            usePrescription:
+                                true), // You can filter for prescription rows if needed
                         patientName: "Patient",
                       ),
                     ),

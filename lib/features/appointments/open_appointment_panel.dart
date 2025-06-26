@@ -49,7 +49,26 @@ void openAppointment([Appointment? appointment]) {
     PanelTab(
       title: txt("operativeDetails"),
       icon: FluentIcons.medical_care,
+      onlyIfSaved: true,
       body: _OperativeDetails(editingCopy),
+    ),
+    PanelTab(
+      title: txt("prescription"),
+      icon: FluentIcons
+          .medical, // You can use FluentIcons.prescriptions or another suitable icon
+      onlyIfSaved: true,
+      body: InfoLabel(
+        label: txt("prescription"),
+        child: PrescriptionInput(
+          allPrescriptions: appointments.allPrescriptions,
+          initialPrescriptions: editingCopy.prescriptions,
+          panel: panel,
+          onChanged: (s) {
+            editingCopy.prescriptions = s;
+          },
+          appointment: editingCopy,
+        ),
+      ),
     ),
     PanelTab(
       title: txt("gallery"),
@@ -396,7 +415,12 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     double total = 0;
     for (final treatment in allTreatments) {
       if (selectedTreatments.contains(treatment.name)) {
-        total += treatment.price;
+        if (treatment.multiplier) {
+          total += treatment.price *
+              (selectedTeethSet.isNotEmpty ? selectedTeethSet.length : 1);
+        } else {
+          total += treatment.price;
+        }
       }
     }
     priceController.text = (total == 0.0) ? '' : total.toStringAsFixed(0);
@@ -515,30 +539,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               });
             },
             placeholder: "${txt("postOperativeNotes")}",
-          ),
-        ),
-        InfoLabel(
-          label: "${txt("prescription")}:",
-          child: TagInputWidget(
-            key: WK.fieldAppointmentPrescriptions,
-            suggestions: appointments.allPrescriptions
-                .map((p) => TagInputItem(value: p, label: p))
-                .toList(),
-            onChanged: (s) {
-              setState(() {
-                widget.appointment.prescriptions = s
-                    .where((x) => x.value != null)
-                    .map((x) => x.value!)
-                    .toList();
-                widget.appointment.isDone = true;
-              });
-            },
-            initialValue: widget.appointment.prescriptions
-                .map((p) => TagInputItem(value: p, label: p))
-                .toList(),
-            strict: false,
-            limit: 999,
-            placeholder: "${txt("prescription")}...",
           ),
         ),
         InfoLabel(
@@ -711,26 +711,26 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               ],
             ),
           ),
-        if (widget.appointment.prescriptions.isNotEmpty)
-          FilledButton(
-              style: const ButtonStyle(elevation: WidgetStatePropertyAll(2)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(FluentIcons.print),
-                  const SizedBox(width: 10),
-                  Txt(txt("printPrescription"))
-                ],
-              ),
-              onPressed: () {
-                printingPrescription(
-                  context,
-                  widget.appointment.prescriptions,
-                  widget.appointment.patient?.title ?? "",
-                  widget.appointment.patient?.age.toString() ?? "",
-                  widget.appointment.patient?.webPageLink.toString() ?? "",
-                );
-              }),
+        // if (widget.appointment.prescriptions.isNotEmpty)
+        //   FilledButton(
+        //       style: const ButtonStyle(elevation: WidgetStatePropertyAll(2)),
+        //       child: Row(
+        //         mainAxisSize: MainAxisSize.min,
+        //         children: [
+        //           const Icon(FluentIcons.print),
+        //           const SizedBox(width: 10),
+        //           Txt(txt("printPrescription"))
+        //         ],
+        //       ),
+        //       onPressed: () {
+        //         printingPrescription(
+        //           context,
+        //           widget.appointment.prescriptions,
+        //           widget.appointment.patient?.title ?? "",
+        //           widget.appointment.patient?.age.toString() ?? "",
+        //           widget.appointment.patient?.webPageLink.toString() ?? "",
+        //         );
+        //       }),
         const Divider(direction: Axis.horizontal),
         Row(
           children: [
@@ -816,6 +816,127 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               backgroundColor: WidgetStatePropertyAll(Colors.blue),
             )),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
+    );
+  }
+}
+
+class PrescriptionInput extends StatefulWidget {
+  final List<String> allPrescriptions;
+  final List<String> initialPrescriptions;
+  final ValueChanged<List<String>> onChanged;
+  final Appointment appointment;
+  final Panel panel;
+
+  const PrescriptionInput({
+    Key? key,
+    required this.allPrescriptions,
+    required this.initialPrescriptions,
+    required this.onChanged,
+    required this.panel,
+    required this.appointment,
+  }) : super(key: key);
+
+  @override
+  State<PrescriptionInput> createState() => _PrescriptionInputState();
+}
+
+class _PrescriptionInputState extends State<PrescriptionInput> {
+  late TextEditingController priceController;
+  late TextEditingController paidController;
+
+  @override
+  void initState() {
+    super.initState();
+    priceController = TextEditingController(
+      text: widget.appointment.prescriptionPrice.toStringAsFixed(0),
+    );
+    paidController = TextEditingController(
+      text: widget.appointment.prescriptionPaid.toStringAsFixed(0),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant PrescriptionInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update controllers if the model changes from outside
+    if (priceController.text != widget.appointment.prescriptionPrice.toStringAsFixed(0)) {
+      priceController.text = widget.appointment.prescriptionPrice.toStringAsFixed(0);
+    }
+    if (paidController.text != widget.appointment.prescriptionPaid.toStringAsFixed(0)) {
+      paidController.text = widget.appointment.prescriptionPaid.toStringAsFixed(0);
+    }
+  }
+
+  @override
+  void dispose() {
+    priceController.dispose();
+    paidController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TagInputWidget(
+          key: WK.fieldAppointmentPrescriptions,
+          suggestions: widget.allPrescriptions
+              .map((p) => TagInputItem(value: p, label: p))
+              .toList(),
+          onChanged: (s) {
+            widget.onChanged(
+              s.where((x) => x.value != null).map((x) => x.value!).toList(),
+            );
+            widget.panel.hasUnsavedChanges(true);
+          },
+          initialValue: widget.initialPrescriptions
+              .map((p) => TagInputItem(value: p, label: p))
+              .toList(),
+          strict: false,
+          limit: 999,
+          placeholder: "${txt("prescription")}...",
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: InfoLabel(
+                label: "${txt("priceIn")} ${globalSettings.get("currency_______").value}",
+                child: CupertinoTextField(
+                  key: WK.fieldAppointmentPrice,
+                  controller: priceController,
+                  onChanged: (v) {
+                    final val = double.tryParse(v) ?? 0;
+                    widget.appointment.prescriptionPrice = val;
+                    widget.panel.hasUnsavedChanges(true);
+                  },
+                  placeholder: txt("price"),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: InfoLabel(
+                label: "${txt("paidIn")} ${globalSettings.get("currency_______").value}",
+                child: CupertinoTextField(
+                  key: WK.fieldAppointmentPayment,
+                  controller: paidController,
+                  onChanged: (v) {
+                    final val = double.tryParse(v) ?? 0;
+                    widget.appointment.prescriptionPaid = val;
+                    widget.panel.hasUnsavedChanges(true);
+                  },
+                  placeholder: txt("paid"),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -148,12 +148,18 @@ extension AppointmentsDateExtension on Appointments {
 }
 
 extension AppointmentListToPatientDetailRows on List<Appointment> {
-  List<PatientDetailRow> toPatientDetailRows() {
+  /// [usePrescription] - if true, use prescriptionPrice/prescriptionPaid, else use price/paid
+  List<PatientDetailRow> toPatientDetailRows({bool usePrescription = false}) {
     return map((appointment) {
       final dateStr = appointment.date.toString().substring(0, 10);
 
-      final costStr = '₹${appointment.price.toStringAsFixed(2)}';
-      final paidStr = '₹${appointment.paid.toStringAsFixed(2)}';
+      final costStr = usePrescription
+          ? '₹${appointment.prescriptionPrice.toStringAsFixed(2)}'
+          : '₹${appointment.price.toStringAsFixed(2)}';
+
+      final paidStr = usePrescription
+          ? '₹${appointment.prescriptionPaid.toStringAsFixed(2)}'
+          : '₹${appointment.paid.toStringAsFixed(2)}';
 
       final prescriptionStr = appointment.prescriptions.isNotEmpty
           ? appointment.prescriptions.join(', ')
@@ -170,14 +176,15 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
       final patientName = appointment.patient?.title ?? '';
 
       return PatientDetailRow(
-          date: dateStr,
-          cost: costStr,
-          paid: paidStr,
-          prescription: prescriptionStr,
-          treatment: treatmentStr,
-          teeth: teethStr,
-          isDone: appointment.isDone,
-          patientName: patientName);
+        date: dateStr,
+        cost: costStr,
+        paid: paidStr,
+        prescription: prescriptionStr,
+        treatment: treatmentStr,
+        teeth: teethStr,
+        isDone: appointment.isDone,
+        patientName: patientName,
+      );
     }).toList();
   }
 }
@@ -185,19 +192,19 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
 final List<Treatment> allTreatments = [
   Treatment(name: 'Follow-up', price: 0),
   Treatment(name: 'Consultation', price: 100),
-  Treatment(name: 'IOPA (X-ray)', price: 100),
-  Treatment(name: 'GIC', price: 500),
-  Treatment(name: 'Ant Composite', price: 1000),
-  Treatment(name: 'Post Composite', price: 800),
+  Treatment(name: 'IOPA (X-ray)', price: 10),
+  Treatment(name: 'GIC', price: 500, multiplier: true),
+  Treatment(name: 'Ant Composite', price: 1000, multiplier: true),
+  Treatment(name: 'Post Composite', price: 800, multiplier: true),
   Treatment(name: 'Localized Scaling', price: 200),
   Treatment(name: 'Scaling', price: 800),
   Treatment(name: 'Scaling & Polishing', price: 1000),
-  Treatment(name: 'RCT', price: 3000),
-  Treatment(name: 'PFM Crowns', price: 3000),
-  Treatment(name: 'Zirconia Crowns', price: 6000),
-  Treatment(name: 'Normal Extraction', price: 800),
-  Treatment(name: 'Wisdom Teeth Extraction', price: 1000),
-  Treatment(name: 'Impaction', price: 2500),
+  Treatment(name: 'RCT', price: 3000, multiplier: true),
+  Treatment(name: 'PFM Crowns', price: 3000, multiplier: true),
+  Treatment(name: 'Zirconia Crowns', price: 6000, multiplier: true),
+  Treatment(name: 'Normal Extraction', price: 800, multiplier: true),
+  Treatment(name: 'Wisdom Teeth Extraction', price: 1000, multiplier: true),
+  Treatment(name: 'Impaction', price: 2500, multiplier: true),
 ];
 
 final appointments = Appointments();
