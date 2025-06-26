@@ -67,11 +67,12 @@ class _DashboardController {
   }
 
   List<Appointment> appointmentsForDate(DateTime date) {
-    return appointments.present.values.where((appointment) =>
-      appointment.date.year == date.year &&
-      appointment.date.month == date.month &&
-      appointment.date.day == date.day
-    ).toList()
+    return appointments.present.values
+        .where((appointment) =>
+            appointment.date.year == date.year &&
+            appointment.date.month == date.month &&
+            appointment.date.day == date.day)
+        .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
@@ -79,6 +80,14 @@ class _DashboardController {
     double res = 0;
     for (var appointment in appointmentsForDate(date)) {
       res += appointment.paid;
+    }
+    return res;
+  }
+
+  double prescriptionPaymentsForDate(DateTime date) {
+    double res = 0;
+    for (var appointment in appointmentsForDate(date)) {
+      res += appointment.prescriptionPaid ?? 0;
     }
     return res;
   }

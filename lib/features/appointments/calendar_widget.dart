@@ -648,10 +648,31 @@ class AppointmentCalendarTile<Item extends Appointment>
           children: [
             if (item.preOpNotes.isNotEmpty)
               Txt(item.preOpNotes, overflow: TextOverflow.ellipsis),
-            if (treatmentsStr.isNotEmpty)
-              Txt(treatmentsStr,
-                  style: const TextStyle(
-                      fontSize: 14, color: material.Colors.teal)),
+            Row(
+              children: [
+                if (item.selectedTeeth != null && item.selectedTeeth.isNotEmpty)
+                  Txt(
+                    "${item.selectedTeeth.join(', ')}",
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: material.Colors.deepOrange,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                if (treatmentsStr.isNotEmpty &&
+                    item.selectedTeeth != null &&
+                    item.selectedTeeth.isNotEmpty)
+                  const SizedBox(width: 8),
+                if (treatmentsStr.isNotEmpty)
+                  Txt(
+                    treatmentsStr,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: material.Colors.teal,
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
         leading: Row(children: [

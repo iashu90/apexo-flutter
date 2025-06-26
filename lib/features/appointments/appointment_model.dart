@@ -1,4 +1,3 @@
-import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/login.dart';
@@ -6,7 +5,6 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
-import 'package:apexo/features/appointments/treatment_model.dart';
 
 class Appointment extends Model {
   @override
@@ -108,6 +106,8 @@ class Appointment extends Model {
   /* 5 */ List<String> prescriptions = [];
   /* 6 */ double price = 0;
   /* 7 */ double paid = 0;
+  /* 6a */ double prescriptionPrice = 0;
+/* 7a */ double prescriptionPaid = 0;
   /* 8 */ List<String> imgs = [];
   /* 9 */ DateTime date = DateTime.now();
   /* 10 */ bool isDone = false;
@@ -127,6 +127,11 @@ class Appointment extends Model {
     /* 5 */ postOpNotes = json["postOpNotes"] ?? postOpNotes;
     /* 6 */ price = double.parse((json["price"] ?? price).toString());
     /* 7 */ paid = double.parse((json["paid"] ?? paid).toString());
+    prescriptionPrice = double.parse(
+        (json["prescriptionPrice"] ?? prescriptionPrice).toString());
+    prescriptionPaid =
+        double.parse((json["prescriptionPaid"] ?? prescriptionPaid).toString());
+
     /* 8 */ imgs = List<String>.from(json["imgs"] ?? imgs);
     /* 9 */ date = (json["date"] != null
         ? DateTime.fromMillisecondsSinceEpoch((json["date"] * 60000).toInt())
@@ -151,6 +156,10 @@ class Appointment extends Model {
     /* 5 */ if (postOpNotes != d.postOpNotes) json['postOpNotes'] = postOpNotes;
     /* 6 */ if (price != d.price) json['price'] = price;
     /* 7 */ if (paid != d.paid) json['paid'] = paid;
+    if (prescriptionPrice != d.prescriptionPrice)
+      json['prescriptionPrice'] = prescriptionPrice;
+    if (prescriptionPaid != d.prescriptionPaid)
+      json['prescriptionPaid'] = prescriptionPaid;
     /* 8 */ if (imgs.isNotEmpty) json['imgs'] = imgs;
     /* 9 */ if (isDone != d.isDone) json['isDone'] = isDone;
     /* 10 */ json['date'] = (date.millisecondsSinceEpoch / 60000).round();
