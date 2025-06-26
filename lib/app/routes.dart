@@ -54,6 +54,7 @@ class Panel<T extends Model> {
   final inProgress = ObservableState(false);
   final selectedTab = ObservableState<int>(0);
   final ObservableState<bool> hasUnsavedChanges = ObservableState(false);
+  final ObservableState<bool> hasValidTitle = ObservableState(false);
   late String savedJson;
   late String identifier;
   final Completer<T> result = Completer<T>();
@@ -68,6 +69,7 @@ class Panel<T extends Model> {
     identifier =
         store.get(item.id) == null ? "new+${store.local?.name}" : item.id;
     savedJson = jsonEncode(item.toJson());
+    hasValidTitle(item.title?.isNotEmpty ?? false);
   }
 
   String get storeSingularName {

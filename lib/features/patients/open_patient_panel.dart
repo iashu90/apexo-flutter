@@ -22,44 +22,58 @@ import 'package:flutter/services.dart';
 
 Future<Patient> openPatient([Patient? patient, int initialTabIndex = 0]) {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
-  final panel = Panel<Patient>(
+  late Panel panel;
+
+  // Create a placeholder for the tabs
+  late List<PanelTab> tabs;
+
+  panel = Panel<Patient>(
     item: editingCopy,
     store: patients,
     icon: FluentIcons.medication_admin,
     title: patients.get(editingCopy.id) == null
         ? txt("newPatient")
         : editingCopy.title,
-    tabs: [
-      PanelTab(
-        title: txt("patientDetails"),
-        icon: FluentIcons.medication_admin,
-        body: _PatientDetails(editingCopy),
-      ),
-      PanelTab(
-        title: txt("dentalNotes"),
-        icon: FluentIcons.teeth,
-        body: DentalChart(patient: editingCopy),
-      ),
-      PanelTab(
-        title: txt("appointments"),
-        icon: FluentIcons.calendar,
-        body: _PatientAppointments(editingCopy),
-        footer: AppointmentsListFooter(forPatientID: editingCopy.id),
-        onlyIfSaved: true,
-        padding: 0,
-      ),
-      PanelTab(
-        title: txt("patientPage"),
-        icon: FluentIcons.q_r_code,
-        body: _PatientWebPage(editingCopy),
-        onlyIfSaved: true,
-        footer: _PrintQRButton(editingCopy),
-      ),
-    ],
+    tabs: [],
   );
+
+  // Now that panel is assigned, create the tabs
+  tabs = [
+    PanelTab(
+      title: txt("patientDetails"),
+      icon: FluentIcons.medication_admin,
+      body: _PatientDetails(editingCopy, panel),
+    ),
+    PanelTab(
+      title: txt("dentalNotes"),
+      icon: FluentIcons.teeth,
+      body: DentalChart(patient: editingCopy),
+    ),
+    // Add other tabs as needed...
+    PanelTab(
+      title: txt("appointments"),
+      icon: FluentIcons.calendar,
+      body: _PatientAppointments(editingCopy),
+      footer: AppointmentsListFooter(forPatientID: editingCopy.id),
+      onlyIfSaved: true,
+      padding: 0,
+    ),
+    PanelTab(
+      title: txt("patientPage"),
+      icon: FluentIcons.q_r_code,
+      body: _PatientWebPage(editingCopy),
+      onlyIfSaved: true,
+      footer: _PrintQRButton(editingCopy),
+    ),
+  ];
+
+  // Assign the tabs to the panel
+  panel.tabs.clear();
+  panel.tabs.addAll(tabs);
+
   panel.selectedTab(initialTabIndex);
   routes.openPanel(panel);
-  return panel.result.future;
+  return panel.result.future as Future<Patient>;
 }
 
 class _PrintQRButton extends StatelessWidget {
@@ -235,7 +249,8 @@ class _PatientAppointments extends StatelessWidget {
 
 class _PatientDetails extends StatefulWidget {
   final Patient patient;
-  const _PatientDetails(this.patient);
+  final Panel panel;
+  const _PatientDetails(this.patient, this.panel);
 
   @override
   State<_PatientDetails> createState() => _PatientDetailsState();
@@ -256,7 +271,10 @@ class _PatientDetailsState extends State<_PatientDetails> {
             key: WK.fieldPatientName,
             placeholder: "${txt("name")}...",
             controller: TextEditingController(text: widget.patient.title),
-            onChanged: (value) => widget.patient.title = value,
+            onChanged: (value) {
+              widget.patient.title = value;
+              widget.panel.hasValidTitle(value.isNotEmpty);
+            },
           ),
         ),
         Row(mainAxisSize: MainAxisSize.min, children: [
@@ -319,6 +337,10 @@ class _PatientDetailsState extends State<_PatientDetails> {
               isHeader: true,
               child: CupertinoTextField(
                 key: WK.fieldPatientPhone,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
                 placeholder: "${txt("phone")}...",
                 controller: TextEditingController(text: widget.patient.phone),
                 onChanged: (value) => widget.patient.phone = value,
@@ -391,44 +413,6 @@ class _PatientDetailsState extends State<_PatientDetails> {
           ),
         ),
         const SizedBox(height: 30),
-        FilledButton(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(FluentIcons.save),
-              SizedBox(width: 8),
-              Txt("Quick Check-In"),
-            ],
-          ),
-          onPressed: () async {
-            final newAppointment =
-                Appointment.fromJson({"patientID": widget.patient.id});
-            appointments.set(newAppointment);
-            setState(() {
-              showSuccessInfoBar = true;
-            });
-            // Optionally auto-hide after a delay
-            Future.delayed(const Duration(seconds: 2), () {
-              if (mounted) {
-                setState(() {
-                  showSuccessInfoBar = false;
-                });
-              }
-            });
-          },
-          style: ButtonStyle(
-            textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-            backgroundColor: WidgetStatePropertyAll(Colors.blue),
-          ),
-        ),
-        if (showSuccessInfoBar)
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: InfoBar(
-              title: const Text('Appointment booked successfully!'),
-              severity: InfoBarSeverity.success,
-            ),
-          ),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
     );
   }
