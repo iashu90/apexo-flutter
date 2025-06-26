@@ -54,10 +54,23 @@ class _TeethPickerState extends State<TeethPicker> {
     // Use different quadrants for adult and kid
     final quadrants = isAdult
         ? [
+            // UR: 18 17 16 15 14 13 12 11
             {'label': 'UR', 'teeth': List.generate(8, (i) => '1${8 - i}')},
-            {'label': 'UL', 'teeth': List.generate(8, (i) => '2${i + 1}')},
-            {'label': 'LL', 'teeth': List.generate(8, (i) => '3${i + 1}')},
-            {'label': 'LR', 'teeth': List.generate(8, (i) => '4${8 - i}')},
+            // UL: 26 27 28 21 22 23 24 25
+            {
+              'label': 'UL',
+              'teeth': ['26', '27', '28', '21', '22', '23', '24', '25']
+            },
+            // LL: 35 34 33 32 31 38 37 36
+            {
+              'label': 'LL',
+              'teeth': ['31', '32', '33', '34', '35', '36', '37', '38']
+            },
+            // LR: 45 44 43 42 41 48 47 46
+            {
+              'label': 'LR',
+              'teeth': ['45', '44', '43', '42', '41', '48', '47', '46']
+            },
           ]
         : [
             {'label': 'UR', 'teeth': List.generate(5, (i) => '5${5 - i}')},
@@ -122,14 +135,21 @@ class _TeethPickerState extends State<TeethPicker> {
                   children: [
                     SizedBox(
                       width: quadrantWidth,
-                      child: buildQuadrant(quadrants[0]['label'] as String,
-                          quadrants[0]['teeth'] as List<String>),
+                      child: buildQuadrantCustom(
+                          quadrants[0]['label'] as String,
+                          quadrants[0]['teeth'] as List<String>,
+                          rightAligned: true,
+                          rowBreak: 3),
                     ),
                     const SizedBox(width: 16),
                     SizedBox(
                       width: quadrantWidth,
-                      child: buildQuadrant(quadrants[1]['label'] as String,
-                          quadrants[1]['teeth'] as List<String>),
+                      child: buildQuadrantCustom(
+                        quadrants[1]['label'] as String,
+                        quadrants[1]['teeth'] as List<String>,
+                        rowBreak:
+                            3, // First row: 26 27 28, Second row: 21 22 23 24 25
+                      ),
                     ),
                   ],
                 ),
@@ -139,14 +159,23 @@ class _TeethPickerState extends State<TeethPicker> {
                   children: [
                     SizedBox(
                       width: quadrantWidth,
-                      child: buildQuadrant(quadrants[3]['label'] as String,
-                          quadrants[3]['teeth'] as List<String>),
+                      child: buildQuadrantCustom(
+                        quadrants[3]['label'] as String,
+                        quadrants[3]['teeth'] as List<String>,
+                        rightAligned: true,
+                        rowBreak:
+                            5, // First row: 45 44 43 42 41, Second row: 48 47 46
+                      ),
                     ),
                     const SizedBox(width: 16),
                     SizedBox(
                       width: quadrantWidth,
-                      child: buildQuadrant(quadrants[2]['label'] as String,
-                          quadrants[2]['teeth'] as List<String>),
+                      child: buildQuadrantCustom(
+                        quadrants[2]['label'] as String,
+                        quadrants[2]['teeth'] as List<String>,
+                        rowBreak:
+                            5, // First row: 35 34 33 32 31, Second row: 38 37 36
+                      ),
                     ),
                   ],
                 ),
@@ -158,44 +187,62 @@ class _TeethPickerState extends State<TeethPicker> {
     );
   }
 
-  Widget buildQuadrant(String label, List<String> teeth) {
+  Widget buildQuadrantCustom(
+    String label,
+    List<String> teeth, {
+    bool rightAligned = false,
+    int? rowBreak,
+  }) {
+    // If rowBreak is provided, split into two rows
+    List<List<String>> rows = [];
+    if (rowBreak != null && teeth.length > rowBreak) {
+      rows.add(teeth.sublist(0, rowBreak));
+      rows.add(teeth.sublist(rowBreak));
+    } else {
+      rows.add(teeth);
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment:
+          rightAligned ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         Text(label,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         const SizedBox(height: 2),
-        Wrap(
-          spacing: 2,
-          runSpacing: 2,
-          children: teeth.map((tooth) {
-            final selected = _selected.contains(tooth);
-            return GestureDetector(
-              onTap: () => _toggleTooth(tooth),
-              child: Container(
-                width: 26,
-                height: 26,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? Colors.blue : Colors.grey[200],
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: selected ? Colors.blue : Colors.grey[400]!,
-                    width: selected ? 2 : 1,
+        ...rows.map((row) => Row(
+              mainAxisAlignment: rightAligned
+                  ? MainAxisAlignment.end
+                  : MainAxisAlignment.start,
+              children: row.map((tooth) {
+                final selected = _selected.contains(tooth);
+                return GestureDetector(
+                  onTap: () => _toggleTooth(tooth),
+                  child: Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                    decoration: BoxDecoration(
+                      color: selected ? Colors.blue : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: selected ? Colors.blue : Colors.grey[400]!,
+                        width: selected ? 2 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      tooth,
+                      style: TextStyle(
+                        color: selected ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  tooth,
-                  style: TextStyle(
-                    color: selected ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+                );
+              }).toList(),
+            )),
       ],
     );
   }

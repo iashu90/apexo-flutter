@@ -157,7 +157,7 @@ class En {
     "email": "Email",
     "address": "Address",
     "notes": "Notes",
-    "patientTags": "Patient tags",
+    "patientTags": "Medical History",
     "treatmentTags": "Treatment tags",
     "male": "Male",
     "female": "Female",
