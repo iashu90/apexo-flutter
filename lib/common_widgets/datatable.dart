@@ -47,6 +47,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
   final int defaultSortDirection;
   final String defaultSortingName;
   final List<String>? labelOrder;
+  final List<String> hiddenColumns;
   final Map<String, Widget Function(Item)>? columnBuilders;
   final Widget? customHeader;
   final void Function(List<Item>)? onFilterChanged;
@@ -66,6 +67,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
     this.columnBuilders,
     this.customHeader,
     this.onFilterChanged,
+    this.hiddenColumns = const [],
   });
 
   @override
@@ -90,9 +92,6 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   List<String> get nonNullLabels {
-    return labels
-        .where((x) => !x.contains("\u200B") && !x.contains("\u200C"))
-        .toList();
     return labels
         .where((x) => !x.contains("\u200B") && !x.contains("\u200C"))
         .toList();
@@ -406,7 +405,10 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   Expanded _buildInnerRow(Item item) {
-    var nonEmptyLabels = labels.where((l) => item.labels[l] != null).toList();
+    var nonEmptyLabels = labels
+        .where((l) => item.labels[l] != null)
+        .where((l) => !widget.hiddenColumns.contains(l))
+        .toList();
     return Expanded(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
