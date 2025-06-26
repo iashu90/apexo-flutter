@@ -65,6 +65,7 @@ class WK {
   static const fieldLabworkOrderNotes = Key("fieldLabworkOrderNotes");
   static const fieldLabworkPrice = Key("fieldLabworkPrice");
   static const fieldLabworkNoOfUnits = Key("fieldLabworkNoOfUnits");
+  static const fieldLabworkPricePerUnit = Key("fieldLabworkPricePerUnit");
   static const fieldLabworkPaidToggle = Key("fieldLabworkPaidToggle");
   static const fieldLabworkLabName = Key("fieldLabworkLabName");
   static const fieldLabworkPhoneNumber = Key("fieldLabworkPhoneNumber");

@@ -45,6 +45,7 @@ class _LabworkEditingState extends State<_LabworkEditing> {
   final TextEditingController labNameController = TextEditingController();
   final TextEditingController labPhoneController = TextEditingController();
   final FocusNode labNameFocusNode = FocusNode();
+  double pricePerUnit = 0;
 
   @override
   void initState() {
@@ -184,6 +185,25 @@ class _LabworkEditingState extends State<_LabworkEditing> {
               onChanged: (n) {
                 setState(() {
                   widget.labwork.noOfUnits = n?.toInt() ?? 0;
+                  widget.labwork.price =
+                      pricePerUnit * widget.labwork.noOfUnits;
+                });
+              },
+            ),
+          ),
+          InfoLabel(
+            label: "${txt("pricePerUnit")}:",
+            child: NumberBox(
+              key: WK.fieldLabworkPricePerUnit,
+              style: textFieldTextStyle(),
+              clearButton: false,
+              value: pricePerUnit,
+              min: 0,
+              onChanged: (n) {
+                setState(() {
+                  pricePerUnit = n ?? 0;
+                  widget.labwork.price =
+                      pricePerUnit * widget.labwork.noOfUnits;
                 });
               },
             ),
@@ -240,7 +260,13 @@ class _LabworkEditingState extends State<_LabworkEditing> {
                     clearButton: false,
                     mode: SpinButtonPlacementMode.inline,
                     value: widget.labwork.price,
-                    onChanged: (n) => widget.labwork.price = n ?? 0.0,
+                    onChanged: (n) {
+                      setState(() {
+                        // widget.labwork.noOfUnits = n?.toInt() ?? 0;
+                        // widget.labwork.price =
+                        //     pricePerUnit * widget.labwork.noOfUnits;
+                      });
+                    },
                   ),
                 ),
               ),
