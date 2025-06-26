@@ -22,10 +22,9 @@ class PatientsScreen extends StatefulWidget {
 }
 
 class _PatientsScreenState extends State<PatientsScreen> {
-
   @override
   Widget build(BuildContext context) {
-     return ScaffoldPage(
+    return ScaffoldPage(
       key: WK.patientsScreen,
       padding: EdgeInsets.zero,
       content: Column(
@@ -89,6 +88,34 @@ class _PatientsScreenState extends State<PatientsScreen> {
                       },
                     ),
                   ],
+                  hiddenColumns: ["Pay"],
+                  columnBuilders: {
+                    "Price": (patient) => patient.outstandingPayments == 0
+                        ? const SizedBox.shrink()
+                        : Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: patient.overPaid
+                                  ? Colors.green.withOpacity(0.15)
+                                  : Colors.red.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              (patient.overPaid ? "+ ₹" : "- ₹") +
+                                  patient.outstandingPayments
+                                      .abs()
+                                      .toStringAsFixed(2),
+                              style: TextStyle(
+                                color: patient.overPaid
+                                    ? Colors.green
+                                    : Colors.red,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                    // ...other column builders...
+                  },
                 );
               },
             ),

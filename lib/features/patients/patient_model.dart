@@ -156,6 +156,8 @@ class Patient extends Model {
       buildingLabels["Pay"] = txt("overpaid");
     }
 
+    buildingLabels["Price"] = "Price";
+
     if (paymentsMade != 0) {
       buildingLabels["Total payments"] = "$paymentsMade";
     }
