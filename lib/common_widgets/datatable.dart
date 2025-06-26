@@ -458,17 +458,18 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildItemsNumIndicator(),
-          Row(
-            children: [
-              _buildDaysFilterButton(10),
-              const SizedBox(width: 8),
-              _buildDaysFilterButton(30),
-              const SizedBox(width: 8),
-              _buildTagFilterButton("Ortho", "Ortho"),
-              const SizedBox(width: 8),
-              _buildTagFilterButton("RCT", "RCT"),
-            ],
-          ),
+          if (Item == Patient)
+            Row(
+              children: [
+                _buildDaysFilterButton(10),
+                const SizedBox(width: 8),
+                _buildDaysFilterButton(30),
+                const SizedBox(width: 8),
+                _buildTagFilterButton("Ortho", "Ortho"),
+                const SizedBox(width: 8),
+                _buildTagFilterButton("RCT", "RCT"),
+              ],
+            ),
           _buildSorters(),
         ],
       ),
