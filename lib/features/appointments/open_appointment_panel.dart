@@ -729,7 +729,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         //           widget.appointment.patient?.title ?? "",
         //           widget.appointment.patient?.age.toString() ?? "",
         //           widget.appointment.patient?.webPageLink.toString() ?? "",
-        //         );
+        //       });
         //       }),
         const Divider(direction: Axis.horizontal),
         Row(
@@ -848,10 +848,14 @@ class _PrescriptionInputState extends State<PrescriptionInput> {
   void initState() {
     super.initState();
     priceController = TextEditingController(
-      text: widget.appointment.prescriptionPrice.toStringAsFixed(0),
+      text: widget.appointment.prescriptionPrice == 0
+          ? ''
+          : widget.appointment.prescriptionPrice.toStringAsFixed(0),
     );
     paidController = TextEditingController(
-      text: widget.appointment.prescriptionPaid.toStringAsFixed(0),
+      text: widget.appointment.prescriptionPaid == 0
+          ? ''
+          : widget.appointment.prescriptionPaid.toStringAsFixed(0),
     );
   }
 
@@ -859,11 +863,17 @@ class _PrescriptionInputState extends State<PrescriptionInput> {
   void didUpdateWidget(covariant PrescriptionInput oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Update controllers if the model changes from outside
-    if (priceController.text != widget.appointment.prescriptionPrice.toStringAsFixed(0)) {
-      priceController.text = widget.appointment.prescriptionPrice.toStringAsFixed(0);
+    final priceText = widget.appointment.prescriptionPrice == 0
+        ? ''
+        : widget.appointment.prescriptionPrice.toStringAsFixed(0);
+    if (priceController.text != priceText) {
+      priceController.text = priceText;
     }
-    if (paidController.text != widget.appointment.prescriptionPaid.toStringAsFixed(0)) {
-      paidController.text = widget.appointment.prescriptionPaid.toStringAsFixed(0);
+    final paidText = widget.appointment.prescriptionPaid == 0
+        ? ''
+        : widget.appointment.prescriptionPaid.toStringAsFixed(0);
+    if (paidController.text != paidText) {
+      paidController.text = paidText;
     }
   }
 
