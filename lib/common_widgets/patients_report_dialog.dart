@@ -6,8 +6,14 @@ import 'package:flutter/material.dart' as material;
 class PatientDetailsDialog extends StatelessWidget {
   final List<PatientDetailRow> rows;
   final String? patientName;
+  final List<String> hiddenColumns;
 
-  const PatientDetailsDialog({super.key, required this.rows, this.patientName});
+  const PatientDetailsDialog({
+    super.key,
+    required this.rows,
+    this.patientName,
+    this.hiddenColumns = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +26,10 @@ class PatientDetailsDialog extends StatelessWidget {
       totalPaid += double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
     }
 
+    final double dialogWidth = MediaQuery.of(context).size.width * 0.7;
+
     return Container(
+      width: dialogWidth, // Set width to 70% of screen
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: material.Colors.white,
@@ -33,11 +42,8 @@ class PatientDetailsDialog extends StatelessWidget {
           ),
         ],
       ),
-      constraints: const BoxConstraints(
-        minWidth: 600,
-        maxWidth: 800,
-        minHeight: 300,
-        maxHeight: 600,
+      constraints: BoxConstraints(
+        maxWidth: dialogWidth,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -95,15 +101,18 @@ class PatientDetailsDialog extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 450,
+            width: dialogWidth,
+            height: 600,
             child: Column(
               children: [
                 Expanded(
                   child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
                     child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                      scrollDirection: Axis.vertical,
                       child: PatientDetailsTable(
                         rows: rows,
+                        hiddenColumns: hiddenColumns,
                       ),
                     ),
                   ),
@@ -115,7 +124,7 @@ class PatientDetailsDialog extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(left: 12.0),
                       child: Text(
-                        "Total Cost: $currency${totalCost.toStringAsFixed(2)}",
+                        "Total Cost: $currency${totalCost.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: material.Colors.blue,
@@ -124,7 +133,7 @@ class PatientDetailsDialog extends StatelessWidget {
                     ),
                     const SizedBox(width: 24),
                     Text(
-                      "Total Paid: $currency${totalPaid.toStringAsFixed(2)}",
+                      "Total Paid: $currency${totalPaid.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: material.Colors.green,
@@ -133,7 +142,7 @@ class PatientDetailsDialog extends StatelessWidget {
                     const SizedBox(width: 24),
                     if (totalPaid > totalCost)
                       Text(
-                        "Overpaid: $currency${(totalPaid - totalCost).toStringAsFixed(2)}",
+                        "Overpaid: $currency${(totalPaid - totalCost).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: material.Colors.orange,
@@ -141,7 +150,7 @@ class PatientDetailsDialog extends StatelessWidget {
                       )
                     else if (totalPaid < totalCost)
                       Text(
-                        "Due: $currency${(totalCost - totalPaid).toStringAsFixed(2)}",
+                        "Due: $currency${(totalCost - totalPaid).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: material.Colors.red,
