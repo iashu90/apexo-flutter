@@ -4,8 +4,13 @@ import 'package:intl/intl.dart';
 
 class PatientDetailsTable extends StatefulWidget {
   final List<PatientDetailRow> rows;
+  final List<String> hiddenColumns;
 
-  const PatientDetailsTable({super.key, required this.rows});
+  const PatientDetailsTable({
+    super.key,
+    required this.rows,
+    this.hiddenColumns = const [],
+  });
 
   @override
   State<PatientDetailsTable> createState() => _PatientDetailsTableState();
@@ -42,109 +47,199 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: DataTable(
-        headingRowColor: WidgetStateProperty .all(Colors.blueGrey.shade50),
-        headingTextStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-          color: Colors.blueGrey,
-          letterSpacing: 0.5,
-        ),
-        dataRowColor: WidgetStateProperty .resolveWith<Color?>(
-            (Set<MaterialState> states) {
-          if (states.contains(MaterialState.selected)) {
-            return Colors.blue.withOpacity(0.08);
-          }
-          return null;
-        }),
-        columns: [
-          DataColumn(
-            label: InkWell(
-              onTap: _toggleSort,
-              child: Row(
-                children: [
-                  const Text('Date',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 4),
-                  Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 16,
-                    color: Colors.blueGrey,
-                  ),
-                ],
-              ),
-            ),
+      child: Material(
+        elevation: 1,
+        borderRadius: BorderRadius.circular(8),
+        child: DataTable(
+          dataRowMinHeight: 40,
+          dataRowMaxHeight: 80,
+          headingRowColor: WidgetStateProperty.all(Colors.blueGrey.shade50),
+          headingTextStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 17,
+            color: Colors.blueGrey,
+            letterSpacing: 0.5,
           ),
-          if (_sortedRows.any((row) => row.patientName != null))
-            _plainColumn('Patient'),
-          _plainColumn('Teeth'),
-          _plainColumn('Treatment'),
-          _plainColumn('Prescription'),
-          _plainColumn('Cost'),
-          _plainColumn('Paid'),
-        ],
-        rows: List.generate(_sortedRows.length, (index) {
-          final row = _sortedRows[index];
-          final isEven = index % 2 == 0;
-          return DataRow(
-            color: WidgetStateProperty .all(
-                isEven ? Colors.grey.shade50 : Colors.white),
-            cells: [
-              DataCell(Row(
-                children: [
-                  // Circle tick indicator
-                  if (row.isDone != null)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color:
-                            row.isDone! ? Colors.green : Colors.grey.shade300,
-                        border: Border.all(
-                          color:
-                              row.isDone! ? Colors.green : Colors.grey.shade400,
-                          width: 2,
+          dataRowColor: WidgetStateProperty.resolveWith<Color?>(
+            (Set<MaterialState> states) {
+              if (states.contains(MaterialState.selected)) {
+                return Colors.blue.withOpacity(0.08);
+              }
+              return null;
+            },
+          ),
+          columns: [
+            if (!widget.hiddenColumns.contains('Date'))
+              _plainColumn(
+                'Date',
+                onTap: _toggleSort,
+                sorted: true,
+                ascending: _sortAscending,
+              ),
+            if (!widget.hiddenColumns.contains('Patient') &&
+                _sortedRows.any((row) => row.patientName != null))
+              _plainColumn('Patient'),
+            if (!widget.hiddenColumns.contains('Teeth')) _plainColumn('Teeth'),
+            if (!widget.hiddenColumns.contains('Treatment'))
+              _plainColumn('Treatment'),
+            if (!widget.hiddenColumns.contains('Prescription'))
+              _plainColumn('Prescription'),
+            if (!widget.hiddenColumns.contains('Cost')) _plainColumn('Cost'),
+            if (!widget.hiddenColumns.contains('Paid')) _plainColumn('Paid'),
+          ],
+          rows: List.generate(_sortedRows.length, (index) {
+            final row = _sortedRows[index];
+            final isEven = index % 2 == 0;
+            return DataRow(
+              color: WidgetStateProperty.all(
+                isEven ? Colors.grey.shade50 : Colors.white,
+              ),
+              cells: [
+                if (!widget.hiddenColumns.contains('Date'))
+                  _plainCell(
+                    Row(
+                      children: [
+                        if (row.isDone != null)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: row.isDone!
+                                  ? Colors.green
+                                  : Colors.grey.shade300,
+                              border: Border.all(
+                                color: row.isDone!
+                                    ? Colors.green
+                                    : Colors.grey.shade400,
+                                width: 2,
+                              ),
+                            ),
+                            child: row.isDone!
+                                ? const Icon(Icons.check,
+                                    size: 14, color: Colors.white)
+                                : null,
+                          ),
+                        Flexible(
+                          child: Text(
+                            row.date.isNotEmpty
+                                ? DateFormat(localSettings.dateFormat).format(
+                                    DateTime.tryParse(row.date) ??
+                                        DateTime(1900))
+                                : '',
+                            style: _cellTextStyle,
+                            softWrap: true,
+                            overflow: TextOverflow.visible,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (!widget.hiddenColumns.contains('Patient') &&
+                    row.patientName != null)
+                  _plainCell(
+                    Text(
+                      row.patientName!,
+                      style: _cellTextStyle.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.blueGrey.shade700,
+                      ),
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
+                    ),
+                  ),
+                if (!widget.hiddenColumns.contains('Teeth'))
+                  _plainCell(
+                    SizedBox(
+                      width: 180,
+                      child: Tooltip(
+                        message: row.teeth,
+                        child: Text(
+                          row.teeth,
+                          style: _teethTextStyle,
+                          softWrap: true,
+                          overflow: TextOverflow.visible,
+                          maxLines: 3,
                         ),
                       ),
-                      child: row.isDone!
-                          ? const Icon(Icons.check,
-                              size: 14, color: Colors.white)
-                          : null,
-                    ),
-                  Text(
-                    row.date.isNotEmpty
-                        ? DateFormat(localSettings.dateFormat).format(
-                            DateTime.tryParse(row.date) ?? DateTime(1900))
-                        : '',
-                    style: _cellTextStyle,
-                  ),
-                ],
-              )),
-              if (row.patientName != null)
-                _plainCell(Text(row.patientName!, style: _cellTextStyle)),
-              _plainCell(Text(row.teeth, style: _cellTextStyle)),
-              DataCell(
-                Tooltip(
-                  message: row.treatment,
-                  waitDuration: const Duration(milliseconds: 300),
-                  child: SizedBox(
-                    width: 180, // Fixed width for treatment cell
-                    child: Text(
-                      row.treatment,
-                      style: _cellTextStyle,
                     ),
                   ),
-                ),
-              ),
-              _plainCell(Text(row.prescription, style: _cellTextStyle)),
-              _plainCell(Text(row.cost, style: _cellTextStyle)),
-              _plainCell(Text(row.paid, style: _cellTextStyle)),
-            ],
-          );
-        }),
-        dividerThickness: 1.0,
+                if (!widget.hiddenColumns.contains('Treatment'))
+                  _plainCell(
+                    SizedBox(
+                      width: 180,
+                      child: Tooltip(
+                        message: row.treatment,
+                        child: Text(
+                          row.treatment,
+                          style: _cellTextStyle,
+                          softWrap: true,
+                          overflow: TextOverflow.visible,
+                          maxLines: 3,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (!widget.hiddenColumns.contains('Prescription'))
+                  _plainCell(
+                    SizedBox(
+                      width: 180,
+                      child: Tooltip(
+                        message: row.prescription,
+                        child: Text(
+                          row.prescription,
+                          style: _cellTextStyle,
+                          softWrap: true,
+                          overflow: TextOverflow.visible,
+                          maxLines: 3,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (!widget.hiddenColumns.contains('Cost'))
+                  _plainCell(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        row.cost,
+                        style: _cellTextStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.teal.shade700,
+                        ),
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+                if (!widget.hiddenColumns.contains('Paid'))
+                  _plainCell(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        row.paid,
+                        style: _cellTextStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.teal.shade700,
+                        ),
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          }),
+          dividerThickness: 0.7,
+          border: TableBorder(
+            horizontalInside: BorderSide(
+              color: Colors.grey.shade300,
+              width: 0.7,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -156,11 +251,31 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
     letterSpacing: 0.2,
   );
 
-  DataColumn _plainColumn(String label) {
+  final TextStyle _teethTextStyle = const TextStyle(
+      fontSize: 13,
+      color: Colors.deepOrange, // A nice blue, or pick your own
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.5);
+
+  DataColumn _plainColumn(String label,
+      {VoidCallback? onTap, bool? sorted, bool? ascending}) {
     return DataColumn(
-      label: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+      label: InkWell(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            if (sorted != null && sorted)
+              Icon(
+                ascending! ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 16,
+                color: Colors.blueGrey,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -168,7 +283,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
   DataCell _plainCell(Widget child) {
     return DataCell(
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: child,
       ),
     );

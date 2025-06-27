@@ -331,7 +331,6 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                     builder: (_) => Align(
                       alignment: Alignment.center,
                       child: Container(
-                        width: 1100,
                         color: Colors.white,
                         child: PatientDetailsDialog(
                             rows: item.patientDetails,

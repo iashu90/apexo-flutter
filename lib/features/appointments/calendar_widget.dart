@@ -648,31 +648,27 @@ class AppointmentCalendarTile<Item extends Appointment>
           children: [
             if (item.preOpNotes.isNotEmpty)
               Txt(item.preOpNotes, overflow: TextOverflow.ellipsis),
-            Row(
-              children: [
-                if (item.selectedTeeth != null && item.selectedTeeth.isNotEmpty)
-                  Txt(
-                    "${item.selectedTeeth.join(', ')}",
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: material.Colors.deepOrange,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                if (treatmentsStr.isNotEmpty &&
-                    item.selectedTeeth != null &&
-                    item.selectedTeeth.isNotEmpty)
-                  const SizedBox(width: 8),
-                if (treatmentsStr.isNotEmpty)
-                  Txt(
-                    treatmentsStr,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: material.Colors.teal,
-                    ),
-                  ),
-              ],
-            ),
+            if (item.selectedTeeth != null && item.selectedTeeth.isNotEmpty)
+              Txt(
+                "${item.selectedTeeth.join(', ')}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: material.Colors.deepOrange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            if (treatmentsStr.isNotEmpty &&
+                item.selectedTeeth != null &&
+                item.selectedTeeth.isNotEmpty)
+              const SizedBox(width: 8),
+            if (treatmentsStr.isNotEmpty)
+              Txt(
+                treatmentsStr,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: material.Colors.teal,
+                ),
+              ),
           ],
         ),
         leading: Row(children: [
@@ -705,7 +701,6 @@ class AppointmentCalendarTile<Item extends Appointment>
                 builder: (_) => Align(
                   alignment: Alignment.center,
                   child: Container(
-                    width: 1100,
                     color: Colors.white,
                     child: PatientDetailsDialog(
                         rows: item.patient?.patientDetails ?? [],

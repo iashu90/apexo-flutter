@@ -3,6 +3,7 @@ import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/dashboard/completed_pending.dart';
 import 'package:apexo/features/dashboard/completed_pending_bar.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/dashboard/doctor_patients_list.dart';
@@ -291,12 +292,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   builder: (_) => Align(
                     alignment: Alignment.center,
                     child: Container(
-                      width: 1200,
                       color: Colors.white,
                       child: PatientDetailsDialog(
-                        rows: dayAppointments.toPatientDetailRows(),
-                        patientName: "Patient",
-                      ),
+                          rows: dayAppointments.toPatientDetailRows(),
+                          patientName: "Patient",
+                          hiddenColumns: ['Prescription']),
                     ),
                   ),
                 );
@@ -315,14 +315,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   builder: (_) => Align(
                     alignment: Alignment.center,
                     child: Container(
-                      width: 1200,
                       color: Colors.white,
                       child: PatientDetailsDialog(
-                        rows: dayAppointments.toPatientDetailRows(
-                            usePrescription:
-                                true), // You can filter for prescription rows if needed
-                        patientName: "Patient",
-                      ),
+                          rows: dayAppointments.toPatientDetailRows(
+                              usePrescription:
+                                  true), // You can filter for prescription rows if needed
+                          patientName: "Patient",
+                          hiddenColumns: ['Treatment']),
                     ),
                   ),
                 );
@@ -456,56 +455,63 @@ class _DoctorAppointmentsSummaryWithDateState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CompletedVsPendingAppointmentsBar(
-          appointments: dayAppointments,
-        ),
+        // CompletedVsPendingAppointmentsBar(
+        //   appointments: dayAppointments,
+        // ),
         Container(
           alignment: Alignment.centerLeft,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 1100),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: SizedBox(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // PhonePatientLookup on the left
-                  SizedBox(
-                    width: 280, // or your preferred width
-                    child: PhonePatientLookup(
-                      patientCheckIn: (patient) {
-                        if (patient == null) return;
-
-                        final newAppointment = Appointment.fromJson({
-                          "patientID": patient.id,
-                        });
-                        setState(() {
-                          appointments.set(newAppointment);
-                          showSuccessInfoBar = true;
-                        });
-                        Future.delayed(const Duration(seconds: 3), () {
-                          if (mounted) {
-                            setState(() {
-                              showSuccessInfoBar = false;
-                            });
-                          }
-                        });
-                      },
-                      addAppointment: (patient) => openAppointment(
-                        Appointment.fromJson({
-                          "patientID": patient.id,
-                        }),
+                  // Wrap numbers and phone lookup in a Column
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CompletedVsPendingAppointmentsNumbers(
+                        appointments: dayAppointments,
                       ),
-                      onCreateNew: (phone) {
-                        openPatient(
-                          Patient.fromJson({
-                            "phone": phone,
-                            "title":
-                                "", // You can prompt for name in the panel if needed
-                          }),
-                          0, // or the tab index you want to open
-                        );
-                      },
-                    ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: 320, // or your preferred width
+                        child: PhonePatientLookup(
+                          patientCheckIn: (patient) {
+                            if (patient == null) return;
+                            final newAppointment = Appointment.fromJson({
+                              "patientID": patient.id,
+                            });
+                            setState(() {
+                              appointments.set(newAppointment);
+                              showSuccessInfoBar = true;
+                            });
+                            Future.delayed(const Duration(seconds: 3), () {
+                              if (mounted) {
+                                setState(() {
+                                  showSuccessInfoBar = false;
+                                });
+                              }
+                            });
+                          },
+                          addAppointment: (patient) => openAppointment(
+                            Appointment.fromJson({
+                              "patientID": patient.id,
+                            }),
+                          ),
+                          onCreateNew: (phone) {
+                            openPatient(
+                              Patient.fromJson({
+                                "phone": phone,
+                                "title": "",
+                              }),
+                              0,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(width: 12),
                   // Left: Doctors summary
