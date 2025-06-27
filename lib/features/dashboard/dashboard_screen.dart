@@ -474,7 +474,7 @@ class _DoctorAppointmentsSummaryWithDateState
                       CompletedVsPendingAppointmentsNumbers(
                         appointments: dayAppointments,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 24),
                       SizedBox(
                         width: 320, // or your preferred width
                         child: PhonePatientLookup(
@@ -513,7 +513,7 @@ class _DoctorAppointmentsSummaryWithDateState
                       ),
                     ],
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 24),
                   // Left: Doctors summary
                   Expanded(
                     flex: 2,
