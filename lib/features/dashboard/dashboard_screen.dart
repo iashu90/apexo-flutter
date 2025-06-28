@@ -280,6 +280,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
               FluentIcons.people,
               dashboardCtrl.newPatientsForDate(selectedDate).toString(),
               txt("newPatientsToday"),
+              onTap: () {
+                final newPatients =
+                    dashboardCtrl.newPatientsForDateObjects(selectedDate);
+                showDialog(
+                  context: context,
+                  builder: (_) => ContentDialog(
+                    title: Text(txt("newPatientsToday")),
+                    content: newPatients.isEmpty
+                        ? Text(txt("noNewPatientsToday"))
+                        : SizedBox(
+                            width: 350,
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: newPatients.length,
+                              separatorBuilder: (_, __) => const Divider(),
+                              itemBuilder: (context, idx) {
+                                final patient = newPatients[idx];
+                                return ListTile(
+                                  leading: Icon(FluentIcons.contact,
+                                      color: Colors.blue, size: 22),
+                                  title: Text(
+                                    patient.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: material
+                                          .Colors.black, // Highlight color
+                                    ),
+                                  ),
+                                  subtitle: patient.phone != null &&
+                                          patient.phone.isNotEmpty
+                                      ? Text(
+                                          patient.phone,
+                                          style: const TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 13,
+                                          ),
+                                        )
+                                      : null,
+                                );
+                              },
+                            ),
+                          ),
+                    actions: [
+                      Button(
+                        child: Text(txt("close")),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             dashboardSquare(
               Colors.teal,
@@ -321,7 +373,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               usePrescription:
                                   true), // You can filter for prescription rows if needed
                           patientName: "Patient",
-                          hiddenColumns: ['Treatment']),
+                          hiddenColumns: [
+                            'Treatment',
+                            'Teeth'
+                          ] // Hide treatment and prescription columns
+                          ),
                     ),
                   ),
                 );
@@ -336,6 +392,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   .length
                   .toString(),
               txt("nextDayAppointments"),
+              onTap: () {
+                changeDate(selectedDate.add(const Duration(days: 1)));
+              },
             ),
           ],
         ),
