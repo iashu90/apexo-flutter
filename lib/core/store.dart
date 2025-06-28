@@ -563,7 +563,8 @@ class Store<G extends Model> {
   }
 
   Future<void> hardDeleteLocal(String id) async {
-    observableMap.remove(id); // Remove from in-memory map
+    observableMap.remove(id);
+    notify();
     if (local != null) {
       final box = await local!.mainHiveBox;
       await box.delete(id); // Remove from Hive box

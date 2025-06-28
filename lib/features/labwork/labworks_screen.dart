@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
@@ -66,6 +67,25 @@ class _LabworksScreenState extends State<LabworksScreen> {
             child: StreamBuilder(
               stream: labworks.observableMap.stream,
               builder: (context, snapshot) {
+                final allLabworks = labworks.present.values.toList();
+
+                // Filter by date range if set
+                final filteredLabworks = allLabworks.where((labwork) {
+                  final lwDate = DateTime(
+                      labwork.date.year, labwork.date.month, labwork.date.day);
+                  if (_fromDate != null) {
+                    final from = DateTime(
+                        _fromDate!.year, _fromDate!.month, _fromDate!.day);
+                    if (lwDate.isBefore(from)) return false;
+                  }
+                  if (_toDate != null) {
+                    final to =
+                        DateTime(_toDate!.year, _toDate!.month, _toDate!.day);
+                    if (lwDate.isAfter(to)) return false;
+                  }
+                  return true;
+                }).toList();
+
                 return DataTable<Labwork>(
                   compact: true,
                   items: filteredLabworks,
@@ -193,7 +213,34 @@ class _LabworksScreenState extends State<LabworksScreen> {
                       icon: FluentIcons.manufacturing,
                       title: txt("add"),
                     ),
-                    archiveSelected(labworks)
+                    DataTableAction(
+                      icon: FluentIcons.delete,
+                      title: txt("delete"),
+                      callback: (ids) async {
+                        print("Selected IDs: $ids"); // Debug
+                        final names = ids
+                            .map((id) {
+                              final lw = labworks.get(id);
+                              if (lw == null) return null;
+                              return "${lw.patient?.title ?? "Unknown"} ${lw.title}";
+                            })
+                            .where((str) => str != null && str.isNotEmpty)
+                            .join("\n");
+                        final confirmed = await showConfirmDeleteDialog(
+                          context,
+                          message: "Are you sure you want to delete the selected lab works?",
+                          customDetails: names.isNotEmpty ? names : null,
+                        );
+                        if (confirmed == true) {
+                          final visibleIds = filteredLabworks.map((lw) => lw.id).toSet();
+                          final validSelectedIds = ids.where((id) => visibleIds.contains(id)).toList();
+                          for (final id in validSelectedIds) {
+                            await labworks.hardDelete(id);
+                          }
+                        }
+                      },
+                    ),
+                    archiveSelected(labworks),
                   ],
                   furtherActions: [
                     const SizedBox(width: 5),
