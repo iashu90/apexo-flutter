@@ -26,7 +26,7 @@ class PatientDetailsDialog extends StatelessWidget {
       totalPaid += double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
     }
 
-    final double dialogWidth = MediaQuery.of(context).size.width * 0.7;
+    final double dialogWidth = MediaQuery.of(context).size.width * 0.9;
 
     return Container(
       width: dialogWidth, // Set width to 70% of screen

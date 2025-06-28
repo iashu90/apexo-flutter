@@ -4,6 +4,7 @@ import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/demo_generator.dart';
+import 'package:flutter/material.dart';
 
 import 'patient_model.dart';
 import '../../services/login.dart';
@@ -67,8 +68,9 @@ class Patients extends Store<Patient> {
     return Set<String>.from(present.values.expand((doc) => doc.tags)).toList();
   }
 
-    List<String> get allTreatmentTags {
-    return Set<String>.from(present.values.expand((doc) => doc.treatmentTags)).toList();
+  List<String> get allTreatmentTags {
+    return Set<String>.from(present.values.expand((doc) => doc.treatmentTags))
+        .toList();
   }
 }
 

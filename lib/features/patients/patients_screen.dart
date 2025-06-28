@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -49,12 +50,51 @@ class _PatientsScreenState extends State<PatientsScreen> {
                     ),
                     archiveSelected(patients),
                     DataTableAction(
+                      callback: (ids) async {
+                        // Get the names of the selected patients
+                        final names = ids
+                            .map((id) => patients.get(id)?.title)
+                            .where((name) => name != null && name.isNotEmpty)
+                            .join(", ");
+
+                        final confirmed = await showConfirmDeleteDialog(
+                          context,
+                          message:
+                              "Are you sure you want to delete the selected patients?",
+                          customDetails: names.isNotEmpty
+                              ? ids
+                                  .map((id) => patients.get(id)?.title)
+                                  .where(
+                                      (name) => name != null && name.isNotEmpty)
+                                  .join("\n")
+                              : null,
+                        );
+                        if (confirmed == true) {
+                          for (final id in ids) {
+                            // Delete all appointments for this patient
+                            final relatedAppointments = appointments
+                                .present.values
+                                .where((a) => a.patientID == id)
+                                .toList();
+                            // Now delete the patient
+                            await patients.hardDelete(id);
+                            for (final appointment in relatedAppointments) {
+                              await appointments.hardDelete(appointment.id);
+                            }
+                          }
+                        }
+                      },
+                      icon: FluentIcons.delete,
+                      title: txt("delete"),
+                    ),
+                    DataTableAction(
                       callback: (ids) {
                         showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return ExportPatientsDialog(ids: ids);
-                            });
+                          context: context,
+                          builder: (BuildContext context) {
+                            return ExportPatientsDialog(ids: ids);
+                          },
+                        );
                       },
                       icon: FluentIcons.guid,
                       title: txt("exportSelected"),

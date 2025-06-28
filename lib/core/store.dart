@@ -68,7 +68,8 @@ class Store<G extends Model> {
 
     // setting up observers
     observableMap.observe((events) {
-      if (events[0].type == DictEventType.modify && events[0].id == "__ignore_view__") {
+      if (events[0].type == DictEventType.modify &&
+          events[0].id == "__ignore_view__") {
         // this is a view change not a storage change
         return;
       }
@@ -143,7 +144,9 @@ class Store<G extends Model> {
 
     if (remote!.isOnline && lastDeferred.isEmpty) {
       try {
-        await remote!.put(toWrite.entries.map((e) => RowToWriteRemotely(id: e.key, data: e.value)).toList());
+        await remote!.put(toWrite.entries
+            .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
+            .toList());
         changes.clear();
         onSyncEnd?.call();
         // while we have the connection lets synchronize
@@ -175,12 +178,15 @@ class Store<G extends Model> {
   }
 
   Future<SyncResult> _syncTry() async {
-    if (isDemo == true) return SyncResult(exception: "sync is disabled in demo mode");
+    if (isDemo == true)
+      return SyncResult(exception: "sync is disabled in demo mode");
     if (local == null || remote == null) {
-      return SyncResult(exception: "local/remote persistence layers are not defined");
+      return SyncResult(
+          exception: "local/remote persistence layers are not defined");
     }
 
-    if (remote!.isOnline == false) return SyncResult(exception: "remote server is offline");
+    if (remote!.isOnline == false)
+      return SyncResult(exception: "remote server is offline");
     try {
       int localVersion = await local!.getVersion();
       int remoteVersion = await remote!.getVersion();
@@ -193,13 +199,15 @@ class Store<G extends Model> {
       }
 
       // fetch updates since our local version
-      VersionedResult remoteUpdates = await remote!.getSince(version: localVersion);
+      VersionedResult remoteUpdates =
+          await remote!.getSince(version: localVersion);
 
       List<int> remoteLosersIndices = [];
 
       // check conflicts: last write wins
       deferred.removeWhere((dfID, deferredTimeStamp) {
-        int remoteConflictIndex = remoteUpdates.rows.indexWhere((r) => r.id == dfID);
+        int remoteConflictIndex =
+            remoteUpdates.rows.indexWhere((r) => r.id == dfID);
         if (remoteConflictIndex == -1) {
           // no conflict
           return false;
@@ -225,7 +233,8 @@ class Store<G extends Model> {
         remoteUpdates.rows.removeAt(index);
       }
 
-      Map<String, String> toLocalWrite = Map.fromEntries(remoteUpdates.rows.map((r) => MapEntry(r.id, r.data)));
+      Map<String, String> toLocalWrite = Map.fromEntries(
+          remoteUpdates.rows.map((r) => MapEntry(r.id, r.data)));
 
       // those will be built in the for loop below
       Map<String, String> toRemoteWrite = {};
@@ -242,7 +251,9 @@ class Store<G extends Model> {
           // so we would run the document handling first then the file handling
           fileHandling.add(() async {
             if (upload) {
-              final multipart = await MultipartFile.fromPath("imgs+", pathOrName, filename: basename(pathOrName));
+              final multipart = await MultipartFile.fromPath(
+                  "imgs+", pathOrName,
+                  filename: basename(pathOrName));
               await remote!.uploadImage(rowID, multipart);
             } else {
               await remote!.deleteImage(rowID, pathOrName);
@@ -257,7 +268,9 @@ class Store<G extends Model> {
         await local!.put(toLocalWrite);
       }
       if (toRemoteWrite.isNotEmpty) {
-        await remote!.put(toRemoteWrite.entries.map((e) => RowToWriteRemotely(id: e.key, data: e.value)).toList());
+        await remote!.put(toRemoteWrite.entries
+            .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
+            .toList());
       }
 
       // when all json related updates are done, we can handle files
@@ -283,7 +296,10 @@ class Store<G extends Model> {
 
       await reload();
       return SyncResult(
-          pulled: toLocalWrite.length, pushed: toRemoteWrite.length, conflicts: conflicts, exception: null);
+          pulled: toLocalWrite.length,
+          pushed: toRemoteWrite.length,
+          conflicts: conflicts,
+          exception: null);
     } catch (e, s) {
       logger("Error during synchronization: $e", s);
       return SyncResult(exception: e.toString());
@@ -415,8 +431,9 @@ class Store<G extends Model> {
   }
 
   Map<String, G> get present {
-    return Map<String, G>.fromEntries(docs.entries.where(
-        (entry) => ((showArchived?.call() ?? false) || entry.value.archived != true) && entry.value.locked != true));
+    return Map<String, G>.fromEntries(docs.entries.where((entry) =>
+        ((showArchived?.call() ?? false) || entry.value.archived != true) &&
+        entry.value.locked != true));
   }
 
   bool has(String id) {
@@ -460,8 +477,10 @@ class Store<G extends Model> {
   /// delete an image
   Future<void> deleteImg(String rowID, String name) async {
     onSyncStart?.call();
-    if (remote == null) throw Exception("remote persistence layer is not defined");
-    if (local == null) throw Exception("local persistence layer is not defined");
+    if (remote == null)
+      throw Exception("remote persistence layer is not defined");
+    if (local == null)
+      throw Exception("local persistence layer is not defined");
     Map<String, int> lastDeferred = await local!.getDeferred();
     if (remote!.isOnline && lastDeferred.isEmpty) {
       try {
@@ -492,14 +511,17 @@ class Store<G extends Model> {
   /// upload set of files to a certain row
   Future<void> uploadImg(String rowID, String path) async {
     onSyncStart?.call();
-    if (remote == null) throw Exception("remote persistence layer is not defined");
-    if (local == null) throw Exception("local persistence layer is not defined");
+    if (remote == null)
+      throw Exception("remote persistence layer is not defined");
+    if (local == null)
+      throw Exception("local persistence layer is not defined");
 
     Map<String, int> lastDeferred = await local!.getDeferred();
 
     if (remote!.isOnline && lastDeferred.isEmpty) {
       try {
-        final multipart = await MultipartFile.fromPath("imgs+", path, filename: basename(path));
+        final multipart = await MultipartFile.fromPath("imgs+", path,
+            filename: basename(path));
         await remote!.uploadImage(rowID, multipart);
         onSyncEnd?.call();
         synchronize();
@@ -532,6 +554,26 @@ class Store<G extends Model> {
     await Future.delayed(Duration(milliseconds: debounceMS + 2));
     while (changes.isNotEmpty) {
       await Future.delayed(const Duration(milliseconds: 30));
+    }
+  }
+
+  Future<void> hardDelete(String id) async {
+    await hardDeleteLocal(id);
+    await hardDeleteRemote(id);
+  }
+
+  Future<void> hardDeleteLocal(String id) async {
+    observableMap.remove(id); // Remove from in-memory map
+    if (local != null) {
+      final box = await local!.mainHiveBox;
+      await box.delete(id); // Remove from Hive box
+    }
+  }
+
+  Future<void> hardDeleteRemote(String id) async {
+    if (remote != null) {
+      await remote!
+          .deleteRow(id); // You need to implement deleteRow in SaveRemote
     }
   }
 }

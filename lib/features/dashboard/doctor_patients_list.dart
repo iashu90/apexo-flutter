@@ -1,4 +1,6 @@
+import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
@@ -6,6 +8,10 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart' as material;
+
+final GlobalKey<_PatientListWithHoverState> _patientListWithHoverKey =
+    GlobalKey();
 
 class DoctorPatientsList extends StatefulWidget {
   final Doctor? doctor;
@@ -81,6 +87,48 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                     ),
                   ),
                 ),
+                // Delete selected appointments button
+                Tooltip(
+                  message: txt("deleteSelectedAppointments"),
+                  child: IconButton(
+                    icon: Icon(FluentIcons.delete, color: Colors.red),
+                    onPressed: () async {
+                      final state = _patientListWithHoverKey.currentState;
+                      if (state != null && state.selectedIndexes.isNotEmpty) {
+                        // Prepare details for dialog
+                        final details = state.selectedIndexes
+                            .map((idx) {
+                              final a = state.widget.doctorAppointments[idx];
+                              final patient = patients.present[a.patientID];
+                              return patient?.title ?? 'Unknown';
+                            })
+                            .where((name) => name.isNotEmpty)
+                            .join('\n');
+
+                        final confirmed = await showConfirmDeleteDialog(
+                          context,
+                          message:
+                              "Are you sure you want to delete the selected appointments?",
+                          customDetails: details.isNotEmpty ? details : null,
+                        );
+                        if (confirmed == true) {
+                          final indexes = state.selectedIndexes.toList()
+                            ..sort((a, b) => b.compareTo(a));
+                          for (final idx in indexes) {
+                            final appointment =
+                                state.widget.doctorAppointments[idx];
+                            await appointments.hardDelete(appointment.id);
+                          }
+                          setState(() {
+                            state.selectedIndexes.clear();
+                          });
+                        }
+                      }
+                    },
+                  ),
+                ),
+                SizedBox(width: 16),
+                // Existing addAppointment icon button
                 Tooltip(
                   message: txt("addAppointment"),
                   child: IconButton(
@@ -114,10 +162,12 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
             ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: 150,
-                maxHeight: 400, // set your desired max height
+                maxHeight: 400,
               ),
               child: _PatientListWithHover(
+                key: _patientListWithHoverKey,
                 doctorAppointments: searchedAppointments,
+                selectedDate: widget.selectedDate,
               ),
             )
           ],
@@ -129,7 +179,12 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
 
 class _PatientListWithHover extends StatefulWidget {
   final List doctorAppointments;
-  const _PatientListWithHover({required this.doctorAppointments});
+  final DateTime selectedDate;
+  const _PatientListWithHover({
+    Key? key,
+    required this.doctorAppointments,
+    required this.selectedDate,
+  }) : super(key: key);
 
   @override
   State<_PatientListWithHover> createState() => _PatientListWithHoverState();
@@ -137,6 +192,24 @@ class _PatientListWithHover extends StatefulWidget {
 
 class _PatientListWithHoverState extends State<_PatientListWithHover> {
   int? hoveredIndex;
+  final Set<int> selectedIndexes = {};
+  DateTime? _lastDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastDate = widget.selectedDate;
+  }
+
+  @override
+  void didUpdateWidget(covariant _PatientListWithHover oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_lastDate != widget.selectedDate) {
+      selectedIndexes.clear();
+      _lastDate = widget.selectedDate;
+      setState(() {}); // Force rebuild to update checkboxes
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,29 +245,46 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                   ? Colors.blue.withOpacity(0.15)
                   : Colors.transparent,
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize: MainAxisSize.max,
                 children: [
-                  CheckboxTheme(
-                    data: CheckboxThemeData(
-                      checkedDecoration: WidgetStateProperty.all(
-                        BoxDecoration(
-                          color: a.isDone == true
+                  // Checkbox for selection
+                  Checkbox(
+                    checked: selectedIndexes.contains(index),
+                    onChanged: (checked) {
+                      setState(() {
+                        if (checked == true) {
+                          selectedIndexes.add(index);
+                        } else {
+                          selectedIndexes.remove(index);
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 10), // <-- Add this line for gap
+                  // Status circle close to patient name
+                  if (a.isDone != null)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8, left: 4),
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: a.isDone!
+                            ? Colors.green
+                            : material.Colors.grey[300],
+                        border: Border.all(
+                          color: a.isDone!
                               ? Colors.green
-                              : Colors.transparent,
-                          border: Border.all(
-                            color:
-                                a.isDone == true ? Colors.green : Colors.grey,
-                          ),
-                          borderRadius: BorderRadius.circular(6),
+                              : material.Colors.grey[400]!,
+                          width: 2,
                         ),
                       ),
+                      child: a.isDone!
+                          ? const Icon(FluentIcons.check_mark,
+                              size: 14, color: Colors.white)
+                          : null,
                     ),
-                    child: Checkbox(
-                      checked: a.isDone == true,
-                      onChanged: null, // disables interaction
-                    ),
-                  ),
-                  const SizedBox(width: 24),
+                  // Patient name and notes
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,7 +316,7 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                   ),
                   const SizedBox(width: 24),
                   SizedBox(
-                    width: 70, // Set a fixed width for time to align all times
+                    width: 70,
                     child: Text(
                       apptTime,
                       style: const TextStyle(

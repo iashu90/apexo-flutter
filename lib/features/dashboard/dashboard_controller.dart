@@ -1,6 +1,8 @@
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 
 class _DashboardController {
   _DashboardController() {
@@ -98,6 +100,17 @@ class _DashboardController {
       if (appointment.firstAppointmentForThisPatient == true) res++;
     }
     return res;
+  }
+
+  List<Patient> newPatientsForDateObjects(DateTime date) {
+    return appointmentsForDate(date)
+        .where((appointment) =>
+            appointment.firstAppointmentForThisPatient == true &&
+            appointment.patientID != null)
+        .map((appointment) => patients.get(appointment.patientID!))
+        .where((patient) => patient != null)
+        .cast<Patient>()
+        .toList();
   }
 }
 

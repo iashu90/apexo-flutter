@@ -45,6 +45,13 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
 
   @override
   Widget build(BuildContext context) {
+    // Calculate dynamic widths
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Adjust these fractions as needed for your layout
+    final teethColWidth = screenWidth * 0.14; // 13% of screen width
+    final treatmentColWidth = screenWidth * 0.20;
+    final prescriptionColWidth = screenWidth * 0.20;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Material(
@@ -152,7 +159,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                 if (!widget.hiddenColumns.contains('Teeth'))
                   _plainCell(
                     SizedBox(
-                      width: 180,
+                      width: teethColWidth,
                       child: Tooltip(
                         message: row.teeth,
                         child: Text(
@@ -168,7 +175,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                 if (!widget.hiddenColumns.contains('Treatment'))
                   _plainCell(
                     SizedBox(
-                      width: 180,
+                      width: treatmentColWidth,
                       child: Tooltip(
                         message: row.treatment,
                         child: Text(
@@ -184,7 +191,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                 if (!widget.hiddenColumns.contains('Prescription'))
                   _plainCell(
                     SizedBox(
-                      width: 180,
+                      width: prescriptionColWidth,
                       child: Tooltip(
                         message: row.prescription,
                         child: Text(

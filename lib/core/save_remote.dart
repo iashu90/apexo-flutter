@@ -113,9 +113,12 @@ class SaveRemote {
         );
 
         for (var item in pageResult.items) {
-          final ts = DateTime.parse(item.get<String>("updated")).millisecondsSinceEpoch;
-          result.add(Row(id: item.id, data: jsonEncode(item.data["data"]), ts: ts));
-          fullNamesCache.addAll({item.id: List<String>.from(item.data["imgs"])});
+          final ts = DateTime.parse(item.get<String>("updated"))
+              .millisecondsSinceEpoch;
+          result.add(
+              Row(id: item.id, data: jsonEncode(item.data["data"]), ts: ts));
+          fullNamesCache
+              .addAll({item.id: List<String>.from(item.data["imgs"])});
         }
 
         // handle pagination
@@ -130,17 +133,22 @@ class SaveRemote {
       }
     } while (nextPageExists);
 
-    return VersionedResult(result.isNotEmpty ? result.map((r) => r.ts).reduce(max) : 0, result);
+    return VersionedResult(
+        result.isNotEmpty ? result.map((r) => r.ts).reduce(max) : 0, result);
   }
 
   Future<int> getVersion() async {
     try {
-      final result =
-          await remoteRows.getList(sort: "-updated", perPage: 1, filter: 'store="$storeName"', fields: "updated");
+      final result = await remoteRows.getList(
+          sort: "-updated",
+          perPage: 1,
+          filter: 'store="$storeName"',
+          fields: "updated");
       if (result.items.isEmpty) {
         return 0;
       }
-      return DateTime.parse(result.items.first.get<String>("updated")).millisecondsSinceEpoch;
+      return DateTime.parse(result.items.first.get<String>("updated"))
+          .millisecondsSinceEpoch;
     } catch (e) {
       await checkOnline();
       throw Exception(e);
@@ -162,9 +170,8 @@ class SaveRemote {
       try {
         final batchOperation = pbInstance.createBatch();
         for (var item in chunk) {
-          batchOperation
-              .collection(dataCollectionName)
-              .upsert(body: {"store": storeName, "data": item.data, "id": item.id});
+          batchOperation.collection(dataCollectionName).upsert(
+              body: {"store": storeName, "data": item.data, "id": item.id});
         }
         await batchOperation.send();
       } catch (e) {
@@ -211,19 +218,25 @@ class SaveRemote {
       }
       late List<String> alreadyUploaded;
       try {
-        alreadyUploaded = List<String>.from((await remoteRows.getOne(rowID, fields: "imgs")).data["imgs"]);
+        alreadyUploaded = List<String>.from(
+            (await remoteRows.getOne(rowID, fields: "imgs")).data["imgs"]);
       } catch (e, s) {
         alreadyUploaded = [];
-        logger("Error while trying to get a list of already uploaded images: $e", s);
+        logger(
+            "Error while trying to get a list of already uploaded images: $e",
+            s);
       }
 
       // skip if file was already uploaded
-      if (alreadyUploaded.any((uploaded) => uploaded.contains(nameWithoutExt))) {
+      if (alreadyUploaded
+          .any((uploaded) => uploaded.contains(nameWithoutExt))) {
         return false;
       }
       inProgress.add(nameWithoutExt);
-      final updatedRecord = await remoteRows.update(rowID, files: [file], fields: "imgs");
-      fullNamesCache.addAll({rowID: List<String>.from(updatedRecord.data["imgs"])});
+      final updatedRecord =
+          await remoteRows.update(rowID, files: [file], fields: "imgs");
+      fullNamesCache
+          .addAll({rowID: List<String>.from(updatedRecord.data["imgs"])});
     } catch (e) {
       inProgress.remove(nameWithoutExt);
       await checkOnline();
@@ -236,8 +249,10 @@ class SaveRemote {
   Future<bool> deleteImage(String rowID, String imgName) async {
     try {
       final nameWithoutExt = p.basenameWithoutExtension(imgName);
-      final allFullNames = List<String>.from((await remoteRows.getOne(rowID, fields: "imgs")).data["imgs"]);
-      final fullNameToDelete = allFullNames.where((e) => e.contains(nameWithoutExt)).firstOrNull;
+      final allFullNames = List<String>.from(
+          (await remoteRows.getOne(rowID, fields: "imgs")).data["imgs"]);
+      final fullNameToDelete =
+          allFullNames.where((e) => e.contains(nameWithoutExt)).firstOrNull;
       if (fullNameToDelete == null) {
         return false;
       }
@@ -261,7 +276,9 @@ class SaveRemote {
         fullNames = List<String>.from(record.data["imgs"]);
       }
       fullNamesCache[rowID] = fullNames;
-      final candidates = fullNames.where((e) => e.contains(imageName.split(".").first)).toList();
+      final candidates = fullNames
+          .where((e) => e.contains(imageName.split(".").first))
+          .toList();
       if (candidates.isEmpty) {
         return null;
       } else {
@@ -271,6 +288,10 @@ class SaveRemote {
       await checkOnline();
       rethrow;
     }
+  }
+
+  Future<void> deleteRow(String id) async {
+    await remoteRows.delete(id);
   }
 
   Map<String, List<String>> fullNamesCache = {};
