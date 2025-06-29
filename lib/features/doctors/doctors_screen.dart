@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -35,6 +36,32 @@ class DoctorsScreen extends StatelessWidget {
                   callback: (_) => openDoctor(),
                   icon: FluentIcons.medical,
                   title: txt("add"),
+                ),
+                DataTableAction(
+                  icon: FluentIcons.delete,
+                  title: txt("delete"),
+                  enabled: (ids) => ids.isNotEmpty,
+                  callback: (ids) async {
+                    final names = ids
+                        .map((id) {
+                          final doc = doctors.get(id);
+                          if (doc == null) return null;
+                          return doc.title;
+                        })
+                        .where((str) => str != null && str.isNotEmpty)
+                        .join("\n");
+                    final confirmed = await showConfirmDeleteDialog(
+                      context,
+                      message:
+                          "Are you sure you want to delete the selected doctors?",
+                      customDetails: names.isNotEmpty ? names : null,
+                    );
+                    if (confirmed == true) {
+                      for (final id in ids) {
+                        await doctors.hardDelete(id);
+                      }
+                    }
+                  },
                 ),
                 archiveSelected(doctors)
               ],

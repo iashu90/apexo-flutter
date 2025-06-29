@@ -19,9 +19,7 @@ class Patient extends Model {
 
   List<PatientDetailRow> get patientDetails =>
       allAppointments.map((appointment) {
-        final dateStr = (appointment.date != null)
-            ? appointment.date.toString().substring(0, 10)
-            : '';
+        final dateStr = appointment.date;
 
         final costStr = '₹${(appointment.price ?? 0).toStringAsFixed(2)}';
         final paidStr = '₹${(appointment.paid ?? 0).toStringAsFixed(2)}';

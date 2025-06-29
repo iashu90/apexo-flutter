@@ -216,6 +216,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                     DataTableAction(
                       icon: FluentIcons.delete,
                       title: txt("delete"),
+                      enabled: (ids) => ids.isNotEmpty,
                       callback: (ids) async {
                         print("Selected IDs: $ids"); // Debug
                         final names = ids
@@ -228,12 +229,16 @@ class _LabworksScreenState extends State<LabworksScreen> {
                             .join("\n");
                         final confirmed = await showConfirmDeleteDialog(
                           context,
-                          message: "Are you sure you want to delete the selected lab works?",
+                          message:
+                              "Are you sure you want to delete the selected lab works?",
                           customDetails: names.isNotEmpty ? names : null,
                         );
                         if (confirmed == true) {
-                          final visibleIds = filteredLabworks.map((lw) => lw.id).toSet();
-                          final validSelectedIds = ids.where((id) => visibleIds.contains(id)).toList();
+                          final visibleIds =
+                              filteredLabworks.map((lw) => lw.id).toSet();
+                          final validSelectedIds = ids
+                              .where((id) => visibleIds.contains(id))
+                              .toList();
                           for (final id in validSelectedIds) {
                             await labworks.hardDelete(id);
                           }

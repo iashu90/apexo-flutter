@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
 import 'package:apexo/common_widgets/archive_selected.dart';
@@ -35,9 +36,38 @@ class ExpensesScreen extends StatelessWidget {
                         icon: FluentIcons.bill,
                         title: txt("add"),
                       ),
+                      DataTableAction(
+                        icon: FluentIcons.delete,
+                        title: txt("delete"),
+                        enabled: (ids) => ids.isNotEmpty,
+                        callback: (ids) async {
+                          final names = ids
+                              .map((id) {
+                                final exp = expenses.get(id);
+                                if (exp == null) return null;
+                                return "${exp.title} (${exp.issuer})";
+                              })
+                              .where((str) => str != null && str.isNotEmpty)
+                              .join("\n");
+                          final confirmed = await showConfirmDeleteDialog(
+                            context,
+                            message:
+                                "Are you sure you want to delete the selected expenses?",
+                            customDetails: names.isNotEmpty ? names : null,
+                          );
+                          if (confirmed == true) {
+                            for (final id in ids) {
+                              await expenses.hardDelete(id);
+                            }
+                          }
+                        },
+                      ),
                       archiveSelected(expenses)
                     ],
-                    furtherActions: [const SizedBox(width: 5), ArchiveToggle(notifier: expenses.notify)],
+                    furtherActions: [
+                      const SizedBox(width: 5),
+                      ArchiveToggle(notifier: expenses.notify)
+                    ],
                     onSelect: (item) => {openExpense(item)},
                     itemActions: [
                       ItemAction(

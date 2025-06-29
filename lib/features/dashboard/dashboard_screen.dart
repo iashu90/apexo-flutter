@@ -4,7 +4,6 @@ import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/dashboard/completed_pending.dart';
-import 'package:apexo/features/dashboard/completed_pending_bar.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/dashboard/doctor_patients_list.dart';
 import 'package:apexo/features/dashboard/phone_patient_look_up.dart';
@@ -262,7 +261,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   SingleChildScrollView buildTopSquares() {
     final dayAppointments = appointments.forDate(selectedDate);
-    final appointmentRows = dayAppointments.toPatientDetailRows();
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Padding(
@@ -279,50 +277,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Colors.blue,
               FluentIcons.people,
               dashboardCtrl.newPatientsForDate(selectedDate).toString(),
-              txt("newPatientsToday"),
+              "New Patients",
               onTap: () {
                 final newPatients =
                     dashboardCtrl.newPatientsForDateObjects(selectedDate);
+                if (newPatients.isEmpty) return;
                 showDialog(
                   context: context,
                   builder: (_) => ContentDialog(
-                    title: Text(txt("newPatientsToday")),
-                    content: newPatients.isEmpty
-                        ? Text(txt("noNewPatientsToday"))
-                        : SizedBox(
-                            width: 350,
-                            child: ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: newPatients.length,
-                              separatorBuilder: (_, __) => const Divider(),
-                              itemBuilder: (context, idx) {
-                                final patient = newPatients[idx];
-                                return ListTile(
-                                  leading: Icon(FluentIcons.contact,
-                                      color: Colors.blue, size: 22),
-                                  title: Text(
-                                    patient.title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16,
-                                      color: material
-                                          .Colors.black, // Highlight color
-                                    ),
-                                  ),
-                                  subtitle: patient.phone != null &&
-                                          patient.phone.isNotEmpty
-                                      ? Text(
-                                          patient.phone,
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 13,
-                                          ),
-                                        )
-                                      : null,
-                                );
-                              },
-                            ),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "New Patients",
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(FluentIcons.clear),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    content: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          DateFormat('d MMM yyyy').format(selectedDate),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: 350,
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: newPatients.length,
+                            separatorBuilder: (_, __) => const Divider(),
+                            itemBuilder: (context, idx) {
+                              final patient = newPatients[idx];
+                              return ListTile(
+                                leading: ItemTitle(
+                                  item: patient,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                     actions: [
                       Button(
                         child: Text(txt("close")),
@@ -348,6 +357,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: PatientDetailsDialog(
                           rows: dayAppointments.toPatientDetailRows(),
                           patientName: "Patient",
+                          initialDate : selectedDate,
                           hiddenColumns: ['Prescription']),
                     ),
                   ),
@@ -373,6 +383,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               usePrescription:
                                   true), // You can filter for prescription rows if needed
                           patientName: "Patient",
+                          initialDate: selectedDate,
                           hiddenColumns: [
                             'Treatment',
                             'Teeth'
