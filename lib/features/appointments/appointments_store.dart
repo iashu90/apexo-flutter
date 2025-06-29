@@ -151,7 +151,7 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
   /// [usePrescription] - if true, use prescriptionPrice/prescriptionPaid, else use price/paid
   List<PatientDetailRow> toPatientDetailRows({bool usePrescription = false}) {
     return map((appointment) {
-      final dateStr = appointment.date.toString().substring(0, 10);
+      final dateStr = appointment.date;
 
       final costStr = usePrescription
           ? '₹${appointment.prescriptionPrice.toStringAsFixed(2)}'

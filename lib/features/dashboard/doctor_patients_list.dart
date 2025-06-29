@@ -36,15 +36,17 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
 
   @override
   Widget build(BuildContext context) {
-    final doctorAppointments = widget.doctor == null
-        ? widget.appointmentsForDay // Show all for "All"
-        : widget.doctor!.id.isEmpty // Unassigned
-            ? widget.appointmentsForDay
-                .where((a) => a.operatorsIDs.isEmpty)
-                .toList()
-            : widget.appointmentsForDay
-                .where((a) => a.operatorsIDs.contains(widget.doctor!.id))
-                .toList();
+    final doctorAppointments = appointments.present.values.where((a) {
+      final isSameDay = a.date.year == widget.selectedDate.year &&
+          a.date.month == widget.selectedDate.month &&
+          a.date.day == widget.selectedDate.day;
+      final matchesDoctor = widget.doctor == null
+          ? true
+          : widget.doctor!.id.isEmpty
+              ? a.operatorsIDs.isEmpty
+              : a.operatorsIDs.contains(widget.doctor!.id);
+      return isSameDay && matchesDoctor;
+    }).toList();
 
     // Filter appointments based on selection
     final filteredAppointments = showCompleted == null
@@ -88,45 +90,48 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                   ),
                 ),
                 // Delete selected appointments button
-                Tooltip(
-                  message: txt("deleteSelectedAppointments"),
-                  child: IconButton(
-                    icon: Icon(FluentIcons.delete, color: Colors.red),
-                    onPressed: () async {
-                      final state = _patientListWithHoverKey.currentState;
-                      if (state != null && state.selectedIndexes.isNotEmpty) {
-                        // Prepare details for dialog
-                        final details = state.selectedIndexes
-                            .map((idx) {
-                              final a = state.widget.doctorAppointments[idx];
-                              final patient = patients.present[a.patientID];
-                              return patient?.title ?? 'Unknown';
-                            })
-                            .where((name) => name.isNotEmpty)
-                            .join('\n');
+                if (_patientListWithHoverKey
+                        .currentState?.selectedIndexes.isNotEmpty ==
+                    true)
+                  Tooltip(
+                    message: "Delete Appointments",
+                    child: IconButton(
+                      icon: Icon(FluentIcons.delete, color: Colors.red),
+                      onPressed: () async {
+                        final state = _patientListWithHoverKey.currentState;
+                        if (state != null && state.selectedIndexes.isNotEmpty) {
+                          // Prepare details for dialog
+                          final details = state.selectedIndexes
+                              .map((idx) {
+                                final a = state.widget.doctorAppointments[idx];
+                                final patient = patients.present[a.patientID];
+                                return patient?.title ?? 'Unknown';
+                              })
+                              .where((name) => name.isNotEmpty)
+                              .join('\n');
 
-                        final confirmed = await showConfirmDeleteDialog(
-                          context,
-                          message:
-                              "Are you sure you want to delete the selected appointments?",
-                          customDetails: details.isNotEmpty ? details : null,
-                        );
-                        if (confirmed == true) {
-                          final indexes = state.selectedIndexes.toList()
-                            ..sort((a, b) => b.compareTo(a));
-                          for (final idx in indexes) {
-                            final appointment =
-                                state.widget.doctorAppointments[idx];
-                            await appointments.hardDelete(appointment.id);
+                          final confirmed = await showConfirmDeleteDialog(
+                            context,
+                            message:
+                                "Are you sure you want to delete the selected appointments?",
+                            customDetails: details.isNotEmpty ? details : null,
+                          );
+                          if (confirmed == true) {
+                            final indexes = state.selectedIndexes.toList()
+                              ..sort((a, b) => b.compareTo(a));
+                            for (final idx in indexes) {
+                              final appointment =
+                                  state.widget.doctorAppointments[idx];
+                              await appointments.hardDelete(appointment.id);
+                            }
+                            setState(() {
+                              state.selectedIndexes.clear();
+                            });
                           }
-                          setState(() {
-                            state.selectedIndexes.clear();
-                          });
                         }
-                      }
-                    },
+                      },
+                    ),
                   ),
-                ),
                 SizedBox(width: 16),
                 // Existing addAppointment icon button
                 Tooltip(
@@ -168,6 +173,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                 key: _patientListWithHoverKey,
                 doctorAppointments: searchedAppointments,
                 selectedDate: widget.selectedDate,
+                onSelectionChanged: () => setState(() {}),
               ),
             )
           ],
@@ -180,10 +186,13 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
 class _PatientListWithHover extends StatefulWidget {
   final List doctorAppointments;
   final DateTime selectedDate;
+  final VoidCallback? onSelectionChanged;
+
   const _PatientListWithHover({
     Key? key,
     required this.doctorAppointments,
     required this.selectedDate,
+    this.onSelectionChanged,
   }) : super(key: key);
 
   @override
@@ -258,6 +267,7 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                           selectedIndexes.remove(index);
                         }
                       });
+                      widget.onSelectionChanged?.call();
                     },
                   ),
                   const SizedBox(width: 10), // <-- Add this line for gap

@@ -30,9 +30,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
 
   void _sortRows() {
     _sortedRows.sort((a, b) {
-      final aDate = DateTime.tryParse(a.date) ?? DateTime(1900);
-      final bDate = DateTime.tryParse(b.date) ?? DateTime(1900);
-      return _sortAscending ? aDate.compareTo(bDate) : bDate.compareTo(aDate);
+      return _sortAscending ? a.date.compareTo(b.date) : b.date.compareTo(a.date);
     });
   }
 
@@ -130,11 +128,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                           ),
                         Flexible(
                           child: Text(
-                            row.date.isNotEmpty
-                                ? DateFormat(localSettings.dateFormat).format(
-                                    DateTime.tryParse(row.date) ??
-                                        DateTime(1900))
-                                : '',
+                            DateFormat(localSettings.dateFormat).format(row.date),
                             style: _cellTextStyle,
                             softWrap: true,
                             overflow: TextOverflow.visible,
@@ -298,7 +292,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
 }
 
 class PatientDetailRow {
-  final String date;
+  final DateTime date;
   final String? patientName;
   final String cost;
   final String paid;

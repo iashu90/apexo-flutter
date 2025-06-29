@@ -50,6 +50,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                     ),
                     archiveSelected(patients),
                     DataTableAction(
+                      enabled: (ids) => ids.isNotEmpty,
                       callback: (ids) async {
                         // Get the names of the selected patients
                         final names = ids

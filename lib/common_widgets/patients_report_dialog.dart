@@ -2,18 +2,45 @@ import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
+import 'package:intl/intl.dart';
 
-class PatientDetailsDialog extends StatelessWidget {
+class PatientDetailsDialog extends StatefulWidget {
   final List<PatientDetailRow> rows;
   final String? patientName;
   final List<String> hiddenColumns;
+  final DateTime? initialDate; // <-- Make nullable
 
   const PatientDetailsDialog({
     super.key,
     required this.rows,
     this.patientName,
     this.hiddenColumns = const [],
+    this.initialDate, // <-- Nullable
   });
+
+  @override
+  State<PatientDetailsDialog> createState() => _PatientDetailsDialogState();
+}
+
+class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
+  late DateTime selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedDate = widget.initialDate ?? DateTime.now(); // Use now if null
+  }
+
+  List<PatientDetailRow> get filteredRows {
+    if (widget.initialDate == null) {
+      return widget.rows;
+    }
+    return widget.rows.where((row) {
+      return row.date.year == selectedDate.year &&
+          row.date.month == selectedDate.month &&
+          row.date.day == selectedDate.day;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +48,7 @@ class PatientDetailsDialog extends StatelessWidget {
     double totalPaid = 0;
     const currency = "₹";
 
-    for (final row in rows) {
+    for (final row in widget.rows) {
       totalCost += double.tryParse(row.cost.replaceAll(currency, '')) ?? 0;
       totalPaid += double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
     }
@@ -29,7 +56,7 @@ class PatientDetailsDialog extends StatelessWidget {
     final double dialogWidth = MediaQuery.of(context).size.width * 0.9;
 
     return Container(
-      width: dialogWidth, // Set width to 70% of screen
+      width: dialogWidth,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: material.Colors.white,
@@ -58,8 +85,9 @@ class PatientDetailsDialog extends StatelessWidget {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        patientName != null && patientName!.isNotEmpty
-                            ? "$patientName's Details"
+                        widget.patientName != null &&
+                                widget.patientName!.isNotEmpty
+                            ? "${widget.patientName}'s Details"
                             : "Patient Details",
                         style: const TextStyle(
                             fontWeight: FontWeight.w600, fontSize: 16),
@@ -96,6 +124,39 @@ class PatientDetailsDialog extends StatelessWidget {
                   ),
                 ],
               ),
+              // const SizedBox(height: 4),
+              // if (widget.initialDate != null) // <-- Only show if initialDate is not null
+              //   Row(
+              //     mainAxisAlignment: MainAxisAlignment.center,
+              //     children: [
+              //       IconButton(
+              //         icon: const Icon(FluentIcons.chevron_left),
+              //         onPressed: () {
+              //           setState(() {
+              //             selectedDate =
+              //                 selectedDate.subtract(const Duration(days: 1));
+              //           });
+              //         },
+              //       ),
+              //       Text(
+              //         DateFormat('d MMM yyyy').format(selectedDate),
+              //         style: const TextStyle(
+              //           fontSize: 15,
+              //           fontWeight: FontWeight.w500,
+              //           color: Colors.grey,
+              //         ),
+              //       ),
+              //       IconButton(
+              //         icon: const Icon(FluentIcons.chevron_right),
+              //         onPressed: () {
+              //           setState(() {
+              //             selectedDate =
+              //                 selectedDate.add(const Duration(days: 1));
+              //           });
+              //         },
+              //       ),
+              //     ],
+              //   ),
               const SizedBox(height: 2),
             ],
           ),
@@ -111,8 +172,8 @@ class PatientDetailsDialog extends StatelessWidget {
                     child: SingleChildScrollView(
                       scrollDirection: Axis.vertical,
                       child: PatientDetailsTable(
-                        rows: rows,
-                        hiddenColumns: hiddenColumns,
+                        rows: filteredRows,
+                        hiddenColumns: widget.hiddenColumns,
                       ),
                     ),
                   ),

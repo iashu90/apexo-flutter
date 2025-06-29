@@ -32,8 +32,14 @@ class DataTableAction {
   IconData icon;
   String? title;
   Widget? child;
-  DataTableAction(
-      {required this.callback, required this.icon, this.title, this.child});
+  bool Function(List<String>)? enabled;
+  DataTableAction({
+    required this.callback,
+    required this.icon,
+    this.title,
+    this.child,
+    this.enabled,
+  });
 }
 
 class DataTable<Item extends Model> extends StatefulWidget {
@@ -643,12 +649,15 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                   primaryItems: List.generate(widget.actions.length, (index) {
                     final action = widget.actions[index];
                     return CommandBarButton(
-                      onPressed: () {
-                        if (Navigator.canPop(context)) {
-                          Navigator.pop(context);
-                        }
-                        action.callback(checkedIds.toList());
-                      },
+                      onPressed: action.enabled == null ||
+                              action.enabled!(checkedIds.toList())
+                          ? () {
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              }
+                              action.callback(checkedIds.toList());
+                            }
+                          : null,
                       label: action.child ??
                           (action.title != null ? Txt(action.title!) : null),
                       icon: Icon(action.icon),
