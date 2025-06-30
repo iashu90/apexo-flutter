@@ -5,6 +5,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/que.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:intl/intl.dart';
 import '../core/model.dart';
 import '../utils/get_deterministic_item.dart';
 import '../utils/colors_without_yellow.dart';
@@ -97,16 +98,17 @@ class _ItemTitleState extends State<ItemTitle> {
                   strokeAlign: BorderSide.strokeAlignOutside),
             ),
             child: Container(
-              constraints:
-                  BoxConstraints(minWidth: widget.maxWidth < 100 ? widget.maxWidth : 100, maxWidth: widget.maxWidth),
+              constraints: BoxConstraints(
+                  minWidth: widget.maxWidth < 100 ? widget.maxWidth : 100,
+                  maxWidth: widget.maxWidth),
               padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Txt(
                     widget.item is Doctor
-                        ? 'Dr. ${widget.item.title}'
-                        : widget.item.title,
+                        ? 'Dr. ${toTitleCase(widget.item.title)}'
+                        : toTitleCase(widget.item.title),
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: widget.fontSize ?? 14),
                   ),
