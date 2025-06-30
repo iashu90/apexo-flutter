@@ -76,7 +76,6 @@ class En {
     "deliveredToPatient": "Delivered to Patient",
 
     // datatable
-    "archiveSelected": "Archive Selected",
     "searchPlaceholder": "Search...",
     "showHideArchived": "Show/Hide Archived",
     "showing": "Showing",

@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/delete_confirmation.dart';
+import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
@@ -238,7 +239,6 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
         final patient = patients.present[a.patientID];
         final patientName = patient?.title ?? 'Unknown';
         final apptTime = DateFormat('hh:mm a').format(a.date);
-
         return MouseRegion(
           onEnter: (_) => setState(() => hoveredIndex = index),
           onExit: (_) => setState(() => hoveredIndex = null),
@@ -268,6 +268,31 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                         }
                       });
                       widget.onSelectionChanged?.call();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(FluentIcons.money,
+                        color: material.Colors.green, size: 18),
+                    onPressed: () {
+                      if (patient != null &&
+                          patient.patientDetails != null &&
+                          patient.patientDetails.isNotEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                              color: Colors.white,
+                              child: PatientDetailsDialog(
+                                rows: patient
+                                    .patientDetails,
+                                patientName: patient.title,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
                     },
                   ),
                   const SizedBox(width: 10), // <-- Add this line for gap

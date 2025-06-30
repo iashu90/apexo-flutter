@@ -1,7 +1,6 @@
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/widget_keys.dart';
@@ -44,7 +43,6 @@ class CalendarScreen extends StatelessWidget {
                   value: appointments.doctorId(),
                 ),
                 const SizedBox(width: 5),
-                ArchiveToggle(notifier: appointments.notify)
               ],
               startDay: StartingDayOfWeek.values.firstWhere(
                   (v) => v.name == globalSettings.get("start_day_of_wk").value,

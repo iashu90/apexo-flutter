@@ -113,7 +113,9 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         }
         // Tag filter
         if (_activeTagFilter != null &&
-            !item.treatmentTags.contains(_activeTagFilter)) {
+            !item.treatmentTags
+                .map((t) => t.toLowerCase())
+                .contains(_activeTagFilter!.toLowerCase())) {
           return false;
         }
       }
@@ -509,13 +511,16 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
 
   String? _activeTagFilter;
   Widget _buildTagFilterButton(String tag, String label) {
+    final lowerTag = tag.toLowerCase();
+    final activeTag = _activeTagFilter?.toLowerCase();
+
     return FilledButton(
       style: ButtonStyle(
         backgroundColor: WidgetStatePropertyAll(
-          _activeTagFilter == tag ? Colors.blue : Colors.white.withOpacity(0.2),
+          activeTag == lowerTag ? Colors.blue : Colors.white.withOpacity(0.2),
         ),
         foregroundColor: WidgetStatePropertyAll(
-            _activeTagFilter == tag ? Colors.white : Colors.black),
+            activeTag == lowerTag ? Colors.white : Colors.black),
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         ),
@@ -523,7 +528,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       child: Text(label),
       onPressed: () {
         setState(() {
-          _activeTagFilter = _activeTagFilter == tag ? null : tag;
+          _activeTagFilter = activeTag == lowerTag ? null : tag;
         });
       },
     );

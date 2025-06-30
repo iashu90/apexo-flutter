@@ -60,7 +60,6 @@ class Ar implements En {
     "hello": "مرحبا",
 
     // datatable
-    "archiveSelected": "أرشفة المحدد",
     "searchPlaceholder": "بحث...",
     "showHideArchived": "إظهار/إخفاء المؤرشفة",
     "showing": "يتم إظهار",

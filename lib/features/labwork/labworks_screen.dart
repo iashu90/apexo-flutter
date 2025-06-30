@@ -2,8 +2,6 @@ import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
-import 'package:apexo/common_widgets/archive_selected.dart';
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/widget_keys.dart';
@@ -245,11 +243,9 @@ class _LabworksScreenState extends State<LabworksScreen> {
                         }
                       },
                     ),
-                    archiveSelected(labworks),
                   ],
                   furtherActions: [
                     const SizedBox(width: 5),
-                    ArchiveToggle(notifier: labworks.notify)
                   ],
                   onSelect: openLabwork,
                   itemActions: [

@@ -2,20 +2,19 @@ import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
-import 'package:intl/intl.dart';
 
 class PatientDetailsDialog extends StatefulWidget {
   final List<PatientDetailRow> rows;
   final String? patientName;
   final List<String> hiddenColumns;
-  final DateTime? initialDate; // <-- Make nullable
+  final DateTime? initialDate;
 
   const PatientDetailsDialog({
     super.key,
     required this.rows,
     this.patientName,
     this.hiddenColumns = const [],
-    this.initialDate, // <-- Nullable
+    this.initialDate,
   });
 
   @override
@@ -24,22 +23,36 @@ class PatientDetailsDialog extends StatefulWidget {
 
 class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
   late DateTime selectedDate;
+  bool showOnlyDue = false;
+  late List<PatientDetailRow> _rows;
 
   @override
   void initState() {
     super.initState();
-    selectedDate = widget.initialDate ?? DateTime.now(); // Use now if null
+    selectedDate = widget.initialDate ?? DateTime.now();
+    _rows = widget.rows;
   }
 
   List<PatientDetailRow> get filteredRows {
-    if (widget.initialDate == null) {
-      return widget.rows;
+    List<PatientDetailRow> base = widget.initialDate == null
+        ? widget.rows
+        : widget.rows
+            .where((row) =>
+                row.date.year == selectedDate.year &&
+                row.date.month == selectedDate.month &&
+                row.date.day == selectedDate.day)
+            .toList();
+
+    if (showOnlyDue) {
+      base = base.where((row) {
+        final paid =
+            double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        final cost =
+            double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        return paid < cost;
+      }).toList();
     }
-    return widget.rows.where((row) {
-      return row.date.year == selectedDate.year &&
-          row.date.month == selectedDate.month &&
-          row.date.day == selectedDate.day;
-    }).toList();
+    return base;
   }
 
   @override
@@ -48,12 +61,13 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
     double totalPaid = 0;
     const currency = "₹";
 
-    for (final row in widget.rows) {
+    for (final row in filteredRows) {
       totalCost += double.tryParse(row.cost.replaceAll(currency, '')) ?? 0;
       totalPaid += double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
     }
 
-    final double dialogWidth = MediaQuery.of(context).size.width * 0.9;
+    final double dialogWidth = MediaQuery.of(context).size.width * 0.95;
+    final double dialogHeight = MediaQuery.of(context).size.height * 0.80;
 
     return Container(
       width: dialogWidth,
@@ -85,8 +99,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        widget.patientName != null &&
-                                widget.patientName!.isNotEmpty
+                        widget.patientName != null && widget.patientName!.isNotEmpty
                             ? "${widget.patientName}'s Details"
                             : "Patient Details",
                         style: const TextStyle(
@@ -124,6 +137,47 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      showOnlyDue = !showOnlyDue;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: showOnlyDue ? material.Colors.blue : material.Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: showOnlyDue ? material.Colors.blue.shade700 : material.Colors.grey.shade400,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          FluentIcons.filter,
+                          color: showOnlyDue ? material.Colors.white : material.Colors.blue,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Show only due items",
+                          style: TextStyle(
+                            color: showOnlyDue ? material.Colors.white : material.Colors.blue.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               // const SizedBox(height: 4),
               // if (widget.initialDate != null) // <-- Only show if initialDate is not null
               //   Row(
@@ -163,7 +217,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
           const SizedBox(height: 16),
           SizedBox(
             width: dialogWidth,
-            height: 600,
+            height: dialogHeight,
             child: Column(
               children: [
                 Expanded(

@@ -1,6 +1,5 @@
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/features/stats/widgets/charts/bar.dart';
 import 'package:apexo/features/stats/widgets/charts/line.dart';
 import 'package:apexo/features/stats/widgets/charts/pie.dart';
@@ -237,7 +236,6 @@ class StatsScreen extends StatelessWidget {
       children: [
         _buildMemberFilter(),
         const SizedBox(width: 5),
-        const ArchiveToggle(),
       ],
     );
   }
