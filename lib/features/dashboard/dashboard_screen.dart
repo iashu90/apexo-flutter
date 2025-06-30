@@ -261,6 +261,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   SingleChildScrollView buildTopSquares() {
     final dayAppointments = appointments.forDate(selectedDate);
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Padding(
@@ -301,36 +302,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ],
                     ),
-                    content: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          DateFormat('d MMM yyyy').format(selectedDate),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                            fontStyle: FontStyle.italic,
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            DateFormat('d MMM yyyy').format(selectedDate),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: 350,
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: newPatients.length,
-                            separatorBuilder: (_, __) => const Divider(),
-                            itemBuilder: (context, idx) {
-                              final patient = newPatients[idx];
-                              return ListTile(
-                                leading: ItemTitle(
-                                  item: patient,
-                                ),
-                              );
-                            },
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: 350,
+                            height: 300,
+                            child: ListView.separated(
+                              itemCount: newPatients.length,
+                              separatorBuilder: (_, __) => const Divider(),
+                              itemBuilder: (context, idx) {
+                                final patient = newPatients[idx];
+                                return ListTile(
+                                  leading: ItemTitle(
+                                    item: patient,
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     actions: [
                       Button(
@@ -357,7 +360,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: PatientDetailsDialog(
                           rows: dayAppointments.toPatientDetailRows(),
                           patientName: "Patient",
-                          initialDate : selectedDate,
+                          initialDate: selectedDate,
                           hiddenColumns: ['Prescription']),
                     ),
                   ),
