@@ -6,8 +6,6 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
-import 'package:apexo/common_widgets/archive_selected.dart';
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/widget_keys.dart';
@@ -48,7 +46,6 @@ class _PatientsScreenState extends State<PatientsScreen> {
                       icon: FluentIcons.add_friend,
                       title: txt("add"),
                     ),
-                    archiveSelected(patients),
                     DataTableAction(
                       enabled: (ids) => ids.isNotEmpty,
                       callback: (ids) async {
@@ -103,7 +100,6 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   ],
                   furtherActions: [
                     const SizedBox(width: 5),
-                    ArchiveToggle(notifier: patients.notify)
                   ],
                   onSelect: openPatient,
                   itemActions: [

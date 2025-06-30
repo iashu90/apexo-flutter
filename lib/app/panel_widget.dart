@@ -241,12 +241,6 @@ class _PanelScreenState extends State<PanelScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              if (isNew == false &&
-                                  widget.panel.item.archived == true)
-                                _buildRestoreButton(),
-                              if (isNew == false &&
-                                  widget.panel.item.archived != true)
-                                _buildArchiveButton(),
                               _buildSaveButton(),
                               _buildCancelButton(),
                             ],
@@ -377,50 +371,6 @@ class _PanelScreenState extends State<PanelScreen> {
             ),
           );
         });
-  }
-
-  FilledButton _buildArchiveButton() {
-    return FilledButton(
-      onPressed: () {
-        setState(() {
-          widget.panel.item.archived = true;
-          widget.panel.store.archive(widget.panel.item.id);
-        });
-      },
-      style: greyButtonStyle.copyWith(
-        backgroundColor: const WidgetStatePropertyAll(Colors.grey),
-        textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-      ),
-      child: Row(
-        children: [
-          const Icon(FluentIcons.archive),
-          const SizedBox(width: 5),
-          Txt("${txt("archive")} ${txt(widget.panel.storeSingularName)}"),
-        ],
-      ),
-    );
-  }
-
-  FilledButton _buildRestoreButton() {
-    return FilledButton(
-      onPressed: () {
-        setState(() {
-          widget.panel.item.archived = null;
-          widget.panel.store.unarchive(widget.panel.item.id);
-        });
-      },
-      style: greyButtonStyle.copyWith(
-        textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-        backgroundColor: WidgetStatePropertyAll(Colors.teal),
-      ),
-      child: Row(
-        children: [
-          const Icon(FluentIcons.archive_undo),
-          const SizedBox(width: 5),
-          Txt("${txt("Restore")} ${txt(widget.panel.storeSingularName)}")
-        ],
-      ),
-    );
   }
 
   Acrylic _buildTabsControllers() {

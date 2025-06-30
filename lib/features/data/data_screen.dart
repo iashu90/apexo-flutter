@@ -37,17 +37,6 @@ class _DataScreenState extends State<DataScreen> {
                         child: TextBox(
                           controller: prescriptionController,
                           placeholder: "Enter prescription",
-                          onSubmitted: (value) {
-                            final val = value.trim();
-                            // Prescriptions prescriptions = Prescriptions();
-                            // prescriptions.title = val;
-                            // //if (val.isNotEmpty && !prescriptions.contains(val)) {
-                            // if (val.isNotEmpty) {
-                            //   setState(() {
-                            //     prescriptionController.clear();
-                            //   });
-                            // }
-                          },
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -55,7 +44,6 @@ class _DataScreenState extends State<DataScreen> {
                         child: const Text("Add"),
                         onPressed: () {
                           final val = prescriptionController.text.trim();
-                          //if (val.isNotEmpty && !prescriptions.contains(val)) {
                           if (val.isNotEmpty) {
                             setState(() {
                               Prescriptions prescriptions = Prescriptions();
@@ -69,54 +57,74 @@ class _DataScreenState extends State<DataScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // Wrap(
-                  //   spacing: 8,
-                  //   runSpacing: 8,
-                  //   children: prescriptions
-                  //       .map(
-                  //         (prescription) => Container(
-                  //           padding: const EdgeInsets.symmetric(
-                  //               horizontal: 12, vertical: 6),
-                  //           decoration: BoxDecoration(
-                  //             color: FluentTheme.of(context)
-                  //                 .accentColor
-                  //                 .withOpacity(0.12),
-                  //             borderRadius: BorderRadius.circular(20),
-                  //             border: Border.all(
-                  //               color: FluentTheme.of(context).accentColor,
-                  //               width: 1,
-                  //             ),
-                  //           ),
-                  //           child: Row(
-                  //             mainAxisSize: MainAxisSize.min,
-                  //             children: [
-                  //               Text(
-                  //                 prescription,
-                  //                 style: const TextStyle(
-                  //                     fontWeight: FontWeight.w500),
-                  //               ),
-                  //               const SizedBox(width: 6),
-                  //               Button(
-                  //                 style: ButtonStyle(
-                  //                   padding: ButtonState.all(EdgeInsets.zero),
-                  //                   backgroundColor:
-                  //                       ButtonState.all(Colors.transparent),
-                  //                 ),
-                  //                 child:
-                  //                     const Icon(FluentIcons.cancel, size: 16),
-                  //                 onPressed: () {
-                  //                   setState(() {
-                  //                     // Remove from your backend/store here if needed
-                  //                     // appointments.removePrescription(prescription); // You need to implement this method
-                  //                   });
-                  //                 },
-                  //               ),
-                  //             ],
-                  //           ),
-                  //         ),
-                  //       )
-                  //       .toList(),
-                  // ),
+                  StreamBuilder(
+                    stream: prescriptionsStore.observableMap.stream,
+                    builder: (context, snapshot) {
+                      final prescriptions = prescriptionsStore.present.values
+                          .map((p) => p.prescription)
+                          .toList();
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: prescriptions
+                            .map(
+                              (prescription) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: FluentTheme.of(context)
+                                      .accentColor
+                                      .withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: FluentTheme.of(context).accentColor,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      prescription,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Button(
+                                      style: ButtonStyle(
+                                        padding:
+                                            ButtonState.all(EdgeInsets.zero),
+                                        backgroundColor:
+                                            ButtonState.all(Colors.transparent),
+                                      ),
+                                      child: const Icon(FluentIcons.cancel,
+                                          size: 16),
+                                      onPressed: () {
+                                        setState(() {
+                                          Prescriptions? toDelete;
+                                          for (final p in prescriptionsStore
+                                              .present.values) {
+                                            if (p.prescription ==
+                                                prescription) {
+                                              toDelete = p;
+                                              break;
+                                            }
+                                          }
+                                          if (toDelete != null) {
+                                            prescriptionsStore
+                                                .hardDelete(toDelete.id);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),

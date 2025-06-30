@@ -59,7 +59,6 @@ class Es implements En {
     "hello": "Hola",
 
     // datatable
-    "archiveSelected": "Archivar seleccionados",
     "searchPlaceholder": "Buscar...",
     "showHideArchived": "Mostrar/Ocultar archivados",
     "showing": "Mostrando",

@@ -19,36 +19,24 @@ class PatientDetailsTable extends StatefulWidget {
 class _PatientDetailsTableState extends State<PatientDetailsTable> {
   bool _sortAscending = false; // Default to descending order
 
-  late List<PatientDetailRow> _sortedRows;
-
-  @override
-  void initState() {
-    super.initState();
-    _sortedRows = List.from(widget.rows);
-    _sortRows();
-  }
-
-  void _sortRows() {
-    _sortedRows.sort((a, b) {
-      return _sortAscending ? a.date.compareTo(b.date) : b.date.compareTo(a.date);
-    });
-  }
-
   void _toggleSort() {
     setState(() {
       _sortAscending = !_sortAscending;
-      _sortRows();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final sortedRows = List<PatientDetailRow>.from(widget.rows)
+      ..sort((a, b) =>
+          _sortAscending ? a.date.compareTo(b.date) : b.date.compareTo(a.date));
+
     // Calculate dynamic widths
     final screenWidth = MediaQuery.of(context).size.width;
     // Adjust these fractions as needed for your layout
-    final teethColWidth = screenWidth * 0.14; // 13% of screen width
-    final treatmentColWidth = screenWidth * 0.20;
-    final prescriptionColWidth = screenWidth * 0.20;
+    final teethColWidth = screenWidth * 0.10; // 13% of screen width
+    final treatmentColWidth = screenWidth * 0.12;
+    final prescriptionColWidth = screenWidth * 0.15;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -82,7 +70,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                 ascending: _sortAscending,
               ),
             if (!widget.hiddenColumns.contains('Patient') &&
-                _sortedRows.any((row) => row.patientName != null))
+                sortedRows.any((row) => row.patientName != null))
               _plainColumn('Patient'),
             if (!widget.hiddenColumns.contains('Teeth')) _plainColumn('Teeth'),
             if (!widget.hiddenColumns.contains('Treatment'))
@@ -92,8 +80,9 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
             if (!widget.hiddenColumns.contains('Cost')) _plainColumn('Cost'),
             if (!widget.hiddenColumns.contains('Paid')) _plainColumn('Paid'),
           ],
-          rows: List.generate(_sortedRows.length, (index) {
-            final row = _sortedRows[index];
+          rows: List.generate(sortedRows.length, (index) {
+            final row = sortedRows[index];
+
             final isEven = index % 2 == 0;
             return DataRow(
               color: WidgetStateProperty.all(
@@ -128,7 +117,8 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                           ),
                         Flexible(
                           child: Text(
-                            DateFormat(localSettings.dateFormat).format(row.date),
+                            DateFormat(localSettings.dateFormat)
+                                .format(row.date),
                             style: _cellTextStyle,
                             softWrap: true,
                             overflow: TextOverflow.visible,
@@ -206,7 +196,12 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                         row.cost,
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: Colors.teal.shade700,
+                          color: (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) == 0
+                              ? Colors.grey // Grey if cost is 0.0
+                              : (double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) <
+                                      (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
+                                  ? Colors.red // Red if not fully paid
+                                  : Colors.teal.shade700, // Teal otherwise
                         ),
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,
@@ -222,7 +217,12 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                         row.paid,
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: Colors.teal.shade700,
+                          color: (double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) == 0
+                              ? Colors.grey // Grey if paid is 0.0
+                              : (double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) <
+                                      (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
+                                  ? Colors.red // Red if not fully paid
+                                  : Colors.teal.shade700, // Teal otherwise
                         ),
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,

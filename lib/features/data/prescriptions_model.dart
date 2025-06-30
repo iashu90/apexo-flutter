@@ -10,9 +10,8 @@ class Prescriptions extends Model {
   }
 
   @override
-  Map<String, dynamic> toJson() {
-    final json = super.toJson();
-    if (prescription.isNotEmpty) json['prescription'] = prescription;
-    return json;
-  }
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'prescription': prescription,
+      };
 }

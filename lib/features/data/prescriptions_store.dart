@@ -11,6 +11,7 @@ import '../../services/archived.dart';
 import '../../features/login/login_controller.dart';
 
 const _storeName = "prescriptions";
+List<String>? _prescriptions;
 
 class PrescriptionsStore extends Store<Prescriptions> {
   PrescriptionsStore()
@@ -62,11 +63,10 @@ class PrescriptionsStore extends Store<Prescriptions> {
       };
     };
   }
-}
 
-List<String>? _prescriptions;
-List<String> get prescriptions {
-  return _prescriptions ??= [];
+  List<String> get prescriptions {
+    return present.values.map((p) => p.prescription).toList();
+  }
 }
 
 final prescriptionsStore = PrescriptionsStore();

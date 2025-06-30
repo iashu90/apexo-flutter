@@ -1,4 +1,5 @@
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -12,4 +13,5 @@ initializeStores() {
   globalSettings.init();
   labworks.init();
   expenses.init();
+  prescriptionsStore.init();
 }

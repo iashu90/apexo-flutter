@@ -1,8 +1,6 @@
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
-import 'package:apexo/common_widgets/archive_selected.dart';
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/common_widgets/datatable.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -62,11 +60,9 @@ class ExpensesScreen extends StatelessWidget {
                           }
                         },
                       ),
-                      archiveSelected(expenses)
                     ],
                     furtherActions: [
                       const SizedBox(width: 5),
-                      ArchiveToggle(notifier: expenses.notify)
                     ],
                     onSelect: (item) => {openExpense(item)},
                     itemActions: [

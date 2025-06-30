@@ -1,4 +1,3 @@
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -31,7 +30,6 @@ class AppointmentsListFooter extends StatelessWidget {
                     if (forDoctorID != null) "operatorsIDs": [forDoctorID],
                   }));
                 }),
-            const ArchiveToggle()
           ],
         ),
       ),

@@ -4,12 +4,14 @@ import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/features/appointments/treatment_model.dart';
+import 'package:apexo/features/data/prescriptions_model.dart';
+import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
-import 'package:apexo/utils/print/print_prescription.dart';
+
 import 'package:apexo/common_widgets/acrylic_button.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
@@ -60,11 +62,22 @@ void openAppointment([Appointment? appointment]) {
       body: InfoLabel(
         label: txt("prescription"),
         child: PrescriptionInput(
-          allPrescriptions: appointments.allPrescriptions,
+          allPrescriptions: prescriptionsStore.prescriptions,
           initialPrescriptions: editingCopy.prescriptions,
           panel: panel,
-          onChanged: (s) {
+          onChanged: (s) async {
             editingCopy.prescriptions = s;
+
+            // Add new prescriptions to the store/remote if they don't exist
+            for (final prescription in s) {
+              final exists = prescriptionsStore.present.values
+                  .any((p) => p.prescription == prescription);
+              if (!exists) {
+                Prescriptions prescriptions = Prescriptions();
+                prescriptions.prescription = prescription;
+                prescriptionsStore.set(prescriptions);
+              }
+            }
           },
           appointment: editingCopy,
         ),
@@ -405,9 +418,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     }
     // Initialize selectedTeethSet from the saved appointment value
     selectedTeethSet = Set<String>.from(widget.appointment.selectedTeeth ?? []);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      updateSelectedTreatments();
-    });
+    widget.appointment.treatmentGpayPaid = widget.appointment.treatmentGpayPaid;
   }
 
   void updateSelectedTreatments() {
@@ -781,6 +792,18 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             ),
           ],
         ),
+        const SizedBox(height: 10),
+        const Divider(direction: Axis.horizontal),
+        Checkbox(
+          checked: widget.appointment.treatmentGpayPaid,
+          onChanged: (checked) {
+            setState(() {
+              widget.appointment.treatmentGpayPaid = checked ?? false;
+            });
+          },
+          content: Txt("Paid via GPay"),
+        ),
+
         const Divider(direction: Axis.horizontal),
         Checkbox(
           checked: widget.appointment.isDone,
@@ -857,6 +880,8 @@ class _PrescriptionInputState extends State<PrescriptionInput> {
           ? ''
           : widget.appointment.prescriptionPaid.toStringAsFixed(0),
     );
+    widget.appointment.prescriptionGpayPaid =
+        widget.appointment.prescriptionGpayPaid;
   }
 
   @override
@@ -911,7 +936,8 @@ class _PrescriptionInputState extends State<PrescriptionInput> {
           children: [
             Expanded(
               child: InfoLabel(
-                label: "${txt("priceIn")} ${globalSettings.get("currency_______").value}",
+                label:
+                    "${txt("priceIn")} ${globalSettings.get("currency_______").value}",
                 child: CupertinoTextField(
                   key: WK.fieldAppointmentPrice,
                   controller: priceController,
@@ -929,7 +955,8 @@ class _PrescriptionInputState extends State<PrescriptionInput> {
             const SizedBox(width: 10),
             Expanded(
               child: InfoLabel(
-                label: "${txt("paidIn")} ${globalSettings.get("currency_______").value}",
+                label:
+                    "${txt("paidIn")} ${globalSettings.get("currency_______").value}",
                 child: CupertinoTextField(
                   key: WK.fieldAppointmentPayment,
                   controller: paidController,
@@ -945,6 +972,21 @@ class _PrescriptionInputState extends State<PrescriptionInput> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 20),
+        const Divider(direction: Axis.horizontal),
+        const SizedBox(height: 20),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Checkbox(
+            checked: widget.appointment.prescriptionGpayPaid,
+            onChanged: (checked) {
+              setState(() {
+                widget.appointment.prescriptionGpayPaid = checked ?? false;
+              });
+            },
+            content: Txt("Paid via GPay"),
+          ),
         ),
       ],
     );
