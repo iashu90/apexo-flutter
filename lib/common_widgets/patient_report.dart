@@ -79,6 +79,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
               _plainColumn('Prescription'),
             if (!widget.hiddenColumns.contains('Cost')) _plainColumn('Cost'),
             if (!widget.hiddenColumns.contains('Paid')) _plainColumn('Paid'),
+            if (!widget.hiddenColumns.contains('Mode')) _plainColumn('Mode'),
           ],
           rows: List.generate(sortedRows.length, (index) {
             final row = sortedRows[index];
@@ -196,10 +197,17 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                         row.cost,
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) == 0
+                          color: (double.tryParse(row.cost
+                                          .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                      0) ==
+                                  0
                               ? Colors.grey // Grey if cost is 0.0
-                              : (double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) <
-                                      (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
+                              : (double.tryParse(row.paid.replaceAll(
+                                              RegExp(r'[^\d.]'), '')) ??
+                                          0) <
+                                      (double.tryParse(row.cost.replaceAll(
+                                              RegExp(r'[^\d.]'), '')) ??
+                                          0)
                                   ? Colors.red // Red if not fully paid
                                   : Colors.teal.shade700, // Teal otherwise
                         ),
@@ -217,16 +225,46 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                         row.paid,
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: (double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) == 0
+                          color: (double.tryParse(row.paid
+                                          .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                      0) ==
+                                  0
                               ? Colors.grey // Grey if paid is 0.0
-                              : (double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) <
-                                      (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
+                              : (double.tryParse(row.paid.replaceAll(
+                                              RegExp(r'[^\d.]'), '')) ??
+                                          0) <
+                                      (double.tryParse(row.cost.replaceAll(
+                                              RegExp(r'[^\d.]'), '')) ??
+                                          0)
                                   ? Colors.red // Red if not fully paid
                                   : Colors.teal.shade700, // Teal otherwise
                         ),
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+                if (!widget.hiddenColumns.contains('Mode'))
+                  _plainCell(
+                    Align(
+                      alignment: Alignment.center,
+                      child: Text(
+                        (double.tryParse(row.paid
+                                        .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                    0) ==
+                                0
+                            ? ''
+                            : row.mode,
+                        style: _cellTextStyle.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: row.mode.toLowerCase() == 'gpay'
+                              ? Colors.green
+                              : Colors.brown,
+                        ),
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
@@ -300,6 +338,7 @@ class PatientDetailRow {
   final String treatment;
   final String teeth;
   final bool? isDone;
+  final String mode;
 
   PatientDetailRow({
     required this.date,
@@ -310,5 +349,6 @@ class PatientDetailRow {
     required this.treatment,
     required this.teeth,
     this.isDone,
+    this.mode = '',
   });
 }

@@ -7,6 +7,7 @@ import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/demo_generator.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/save_local.dart';
 import '../../core/save_remote.dart';
@@ -173,7 +174,14 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
           ? appointment.selectedTeeth.join(', ')
           : '';
 
-      final patientName = appointment.patient?.title ?? '';
+      final patientName = appointment.patient?.title != null
+          ? toTitleCase(appointment.patient!.title)
+          : 'Unknown';
+
+      final mode = (appointment.treatmentGpayPaid == true ||
+              appointment.prescriptionGpayPaid == true)
+          ? 'GPay'
+          : 'Cash';
 
       return PatientDetailRow(
         date: dateStr,
@@ -184,6 +192,7 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
         teeth: teethStr,
         isDone: appointment.isDone,
         patientName: patientName,
+        mode: mode,
       );
     }).toList();
   }
