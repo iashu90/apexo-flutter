@@ -237,7 +237,8 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
       itemBuilder: (context, index) {
         final a = widget.doctorAppointments[index];
         final patient = patients.present[a.patientID];
-        final patientName = patient?.title ?? 'Unknown';
+        final patientName =
+            patient?.title != null ? toTitleCase(patient!.title) : 'Unknown';
         final apptTime = DateFormat('hh:mm a').format(a.date);
         return MouseRegion(
           onEnter: (_) => setState(() => hoveredIndex = index),
@@ -285,8 +286,7 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                             child: Container(
                               color: Colors.white,
                               child: PatientDetailsDialog(
-                                rows: patient
-                                    .patientDetails,
+                                rows: patient.patientDetails,
                                 patientName: patient.title,
                               ),
                             ),

@@ -23,8 +23,9 @@ class PatientDetailsDialog extends StatefulWidget {
 
 class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
   late DateTime selectedDate;
-  bool showOnlyDue = false;
   late List<PatientDetailRow> _rows;
+  String modeFilter = 'All';
+  String dueFilter = 'All'; // Options: All, Due, Fully Paid
 
   @override
   void initState() {
@@ -43,13 +44,30 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                 row.date.day == selectedDate.day)
             .toList();
 
-    if (showOnlyDue) {
+    if (dueFilter == 'Due') {
       base = base.where((row) {
         final paid =
             double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
         final cost =
             double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
         return paid < cost;
+      }).toList();
+    } else if (dueFilter == 'Fully Paid') {
+      base = base.where((row) {
+        final paid =
+            double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        final cost =
+            double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        return paid >= cost && cost > 0;
+      }).toList();
+    }
+
+    if (modeFilter != 'All') {
+      base = base.where((row) {
+        final paid =
+            double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        // Only filter by mode if paid > 0
+        return paid > 0 && row.mode == modeFilter;
       }).toList();
     }
     return base;
@@ -99,7 +117,8 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        widget.patientName != null && widget.patientName!.isNotEmpty
+                        widget.patientName != null &&
+                                widget.patientName!.isNotEmpty
                             ? "${widget.patientName}'s Details"
                             : "Patient Details",
                         style: const TextStyle(
@@ -139,78 +158,73 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
               ),
               const SizedBox(height: 8),
               Center(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      showOnlyDue = !showOnlyDue;
-                    });
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: showOnlyDue ? material.Colors.blue : material.Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: showOnlyDue ? material.Colors.blue.shade700 : material.Colors.grey.shade400,
-                        width: 2,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Label for Payment Status filter
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Text(
+                        "Payment Status:",
+                        style: TextStyle(
+                          color: material.Colors.blue.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          FluentIcons.filter,
-                          color: showOnlyDue ? material.Colors.white : material.Colors.blue,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          "Show only due items",
-                          style: TextStyle(
-                            color: showOnlyDue ? material.Colors.white : material.Colors.blue.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                    // Due filter ComboBox
+                    ComboBox<String>(
+                      value: dueFilter,
+                      items: [
+                        ComboBoxItem(child: Text('All'), value: 'All'),
+                        ComboBoxItem(child: Text('Due'), value: 'Due'),
+                        ComboBoxItem(child: Text('Fully Paid'), value: 'Fully Paid'),
                       ],
+                      onChanged: (value) {
+                        setState(() {
+                          dueFilter = value ?? 'All';
+                        });
+                      },
+                      placeholder: const Text('Payment Status'),
+                      style: TextStyle(
+                        color: material.Colors.blue.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 24),
+                    // Label for Mode filter
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Text(
+                        "Mode:",
+                        style: TextStyle(
+                          color: material.Colors.blue.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    // Mode filter ComboBox
+                    ComboBox<String>(
+                      value: modeFilter,
+                      items: [
+                        ComboBoxItem(child: Text('All'), value: 'All'),
+                        ComboBoxItem(child: Text('Cash'), value: 'Cash'),
+                        ComboBoxItem(child: Text('GPay'), value: 'GPay'),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          modeFilter = value ?? 'All';
+                        });
+                      },
+                      placeholder: const Text('Mode'),
+                      style: TextStyle(
+                        color: material.Colors.blue.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              // const SizedBox(height: 4),
-              // if (widget.initialDate != null) // <-- Only show if initialDate is not null
-              //   Row(
-              //     mainAxisAlignment: MainAxisAlignment.center,
-              //     children: [
-              //       IconButton(
-              //         icon: const Icon(FluentIcons.chevron_left),
-              //         onPressed: () {
-              //           setState(() {
-              //             selectedDate =
-              //                 selectedDate.subtract(const Duration(days: 1));
-              //           });
-              //         },
-              //       ),
-              //       Text(
-              //         DateFormat('d MMM yyyy').format(selectedDate),
-              //         style: const TextStyle(
-              //           fontSize: 15,
-              //           fontWeight: FontWeight.w500,
-              //           color: Colors.grey,
-              //         ),
-              //       ),
-              //       IconButton(
-              //         icon: const Icon(FluentIcons.chevron_right),
-              //         onPressed: () {
-              //           setState(() {
-              //             selectedDate =
-              //                 selectedDate.add(const Duration(days: 1));
-              //           });
-              //         },
-              //       ),
-              //     ],
-              //   ),
               const SizedBox(height: 2),
             ],
           ),

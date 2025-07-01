@@ -39,6 +39,11 @@ class Patient extends Model {
             ? appointment.selectedTeeth.join(', ')
             : '';
 
+        final mode = (appointment.treatmentGpayPaid == true ||
+                appointment.prescriptionGpayPaid == true)
+            ? 'GPay'
+            : 'Cash';
+
         return PatientDetailRow(
           date: dateStr,
           cost: costStr,
@@ -47,6 +52,7 @@ class Patient extends Model {
           treatment: treatmentStr,
           teeth: teethStr,
           isDone: appointment.isDone,
+          mode: mode
         );
       }).toList();
 
