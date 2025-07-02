@@ -148,28 +148,29 @@ class _PatientAppointments extends StatelessWidget {
                     InfoBar(title: Txt(txt("noAppointmentsFound"))),
                   ]
                 : [
-                    ...List.generate(
-                      patient.allAppointments.length,
-                      (index) {
-                        final reversedIndex = patient.allAppointments.length - 1 - index;
-                        final appointment = patient.allAppointments[reversedIndex];
-                        String? difference;
-                        if (reversedIndex != patient.allAppointments.length - 1) {
-                          int differenceInDays = appointment.date
-                              .difference(patient.allAppointments[reversedIndex + 1].date)
-                              .inDays
-                              .abs();
-                          difference =
-                              "${txt("after")} $differenceInDays ${txt("day${(differenceInDays > 1) ? "s" : ""}")}";
-                        }
-                        return AppointmentCard(
-                          key: Key(appointment.id),
-                          appointment: appointment,
-                          difference: difference,
-                          hide: const [AppointmentSections.patient],
-                          number: reversedIndex + 1, // <-- Keep the appointment number as before
-                        );
-                      }),
+                    ...List.generate(patient.allAppointments.length, (index) {
+                      final reversedIndex =
+                          patient.allAppointments.length - 1 - index;
+                      final appointment =
+                          patient.allAppointments[reversedIndex];
+                      String? difference;
+                      if (reversedIndex != patient.allAppointments.length - 1) {
+                        int differenceInDays = appointment.date
+                            .difference(
+                                patient.allAppointments[reversedIndex + 1].date)
+                            .inDays
+                            .abs();
+                        difference =
+                            "${txt("before")} $differenceInDays ${txt("day${(differenceInDays > 1) ? "s" : ""}")}";
+                      }
+                      return AppointmentCard(
+                        key: Key(appointment.id),
+                        appointment: appointment,
+                        difference: difference,
+                        hide: const [AppointmentSections.patient],
+                        number: reversedIndex + 1,
+                      );
+                    }),
                     const Divider(),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 10, 12, 50),

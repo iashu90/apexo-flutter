@@ -50,6 +50,10 @@ class AppointmentCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(7, 15, 15, 0),
       child: Column(
         children: [
+          if (difference != null) ...[
+            _buildTimeDifference(),
+              _verticalSpacing(10),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -231,8 +235,6 @@ class AppointmentCard extends StatelessWidget {
               ),
             ],
           ),
-          _verticalSpacing(),
-          if (difference != null) _buildTimeDifference()
         ],
       ),
     );
