@@ -279,7 +279,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                       )
                     else if (totalPaid < totalCost)
                       Text(
-                        "Due: $currency${(totalCost - totalPaid).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
+                        "Balance: $currency${(totalCost - totalPaid).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: material.Colors.red,

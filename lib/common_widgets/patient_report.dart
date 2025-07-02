@@ -79,6 +79,8 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
               _plainColumn('Prescription'),
             if (!widget.hiddenColumns.contains('Cost')) _plainColumn('Cost'),
             if (!widget.hiddenColumns.contains('Paid')) _plainColumn('Paid'),
+            if (!widget.hiddenColumns.contains('Balance'))
+              _plainColumn('Balance'),
             if (!widget.hiddenColumns.contains('Mode')) _plainColumn('Mode'),
           ],
           rows: List.generate(sortedRows.length, (index) {
@@ -196,21 +198,13 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                       child: Text(
                         row.cost,
                         style: _cellTextStyle.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: (double.tryParse(row.cost
-                                          .replaceAll(RegExp(r'[^\d.]'), '')) ??
-                                      0) ==
-                                  0
-                              ? Colors.grey // Grey if cost is 0.0
-                              : (double.tryParse(row.paid.replaceAll(
-                                              RegExp(r'[^\d.]'), '')) ??
-                                          0) <
-                                      (double.tryParse(row.cost.replaceAll(
-                                              RegExp(r'[^\d.]'), '')) ??
-                                          0)
-                                  ? Colors.red // Red if not fully paid
-                                  : Colors.teal.shade700, // Teal otherwise
-                        ),
+                            fontWeight: FontWeight.w600,
+                            color: (double.tryParse(row.cost.replaceAll(
+                                            RegExp(r'[^\d.]'), '')) ??
+                                        0) <=
+                                    0
+                                ? Colors.grey
+                                : Colors.blue),
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
@@ -229,15 +223,46 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                                           .replaceAll(RegExp(r'[^\d.]'), '')) ??
                                       0) ==
                                   0
-                              ? Colors.grey // Grey if paid is 0.0
-                              : (double.tryParse(row.paid.replaceAll(
-                                              RegExp(r'[^\d.]'), '')) ??
-                                          0) <
-                                      (double.tryParse(row.cost.replaceAll(
-                                              RegExp(r'[^\d.]'), '')) ??
-                                          0)
-                                  ? Colors.red // Red if not fully paid
-                                  : Colors.teal.shade700, // Teal otherwise
+                              ? Colors.grey
+                              : Colors.green,
+                        ),
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+                if (!widget.hiddenColumns.contains('Balance'))
+                  _plainCell(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        (() {
+                          final cost = double.tryParse(
+                                  row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                              0;
+                          final paid = double.tryParse(
+                                  row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                              0;
+                          final balance = cost - paid;
+                          return balance == 0
+                              ? ''
+                              : '₹${balance.toStringAsFixed(2)}';
+                        })(),
+                        style: _cellTextStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: (() {
+                            final cost = double.tryParse(row.cost
+                                    .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                0;
+                            final paid = double.tryParse(row.paid
+                                    .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                0;
+                            final balance = cost - paid;
+                            if (cost <= 0) return Colors.green;
+                            if (balance > 0) return Colors.red;
+                            return Colors.teal.shade700;
+                          })(),
                         ),
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,

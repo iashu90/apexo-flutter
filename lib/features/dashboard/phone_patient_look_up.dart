@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:flutter/material.dart' as material;
+import 'package:intl/intl.dart';
 
 class PhonePatientLookup extends StatefulWidget {
   final void Function(Patient?) patientCheckIn;
@@ -139,7 +140,7 @@ class _PhonePatientLookupState extends State<PhonePatientLookup>
                 if (_lastInput.isNotEmpty)
                   _matchedPatients.isNotEmpty
                       ? SizedBox(
-                          height: 250, // Show up to ~4 results, adjust as needed
+                          height: 250,
                           child: ListView.builder(
                             itemCount: _matchedPatients.length > 6
                                 ? 6
@@ -162,10 +163,11 @@ class _PhonePatientLookupState extends State<PhonePatientLookup>
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
-                                          patient.title,
+                                          toTitleCase(patient.title),
                                           style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
