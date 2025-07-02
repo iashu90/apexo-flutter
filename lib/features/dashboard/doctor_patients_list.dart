@@ -154,6 +154,28 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                 ),
               ],
             ),
+            Builder(
+              builder: (context) {
+                // Build a map to count patient occurrences
+                final patientIdCounts =
+                    getPatientIdCounts(searchedAppointments);
+                // Count how many patients have more than one appointment
+                final duplicateCount =
+                    patientIdCounts.values.where((c) => c > 1).length;
+                return duplicateCount > 0
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 2.0),
+                        child: Text(
+                          '$duplicateCount patient${duplicateCount > 1 ? 's have' : ' has'} duplicate appointment${duplicateCount > 1 ? 's' : ''} today',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink();
+              },
+            ),
             const SizedBox(height: 8),
             TextBox(
               placeholder: 'Search patient by name or number',
@@ -223,23 +245,30 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
 
   @override
   Widget build(BuildContext context) {
+    // Build a map to count patient occurrences
+    final patientIdCounts = getPatientIdCounts(widget.doctorAppointments);
+
     return ListView.separated(
       itemCount: widget.doctorAppointments.length,
-      separatorBuilder: (context, idx) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-          child: Divider(
-            direction: Axis.horizontal,
-            style: DividerThemeData(
-              thickness: 1.0,
-              decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1)),
-            ),
-          )),
+      separatorBuilder: (context, idx) => Divider(
+        direction: Axis.horizontal,
+        style: DividerThemeData(
+          thickness: 1.0,
+          decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1)),
+        ),
+      ),
       itemBuilder: (context, index) {
         final a = widget.doctorAppointments[index];
         final patient = patients.present[a.patientID];
         final patientName =
             patient?.title != null ? toTitleCase(patient!.title) : 'Unknown';
         final apptTime = DateFormat('hh:mm a').format(a.date);
+
+        // Check if this patient is a duplicate in the list
+        final isDuplicate = (a.patientID != null &&
+            patientIdCounts[a.patientID] != null &&
+            patientIdCounts[a.patientID]! > 1);
+
         return MouseRegion(
           onEnter: (_) => setState(() => hoveredIndex = index),
           onExit: (_) => setState(() => hoveredIndex = null),
@@ -253,7 +282,9 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
               padding: const EdgeInsets.symmetric(vertical: 10),
               color: hoveredIndex == index
                   ? Colors.blue.withOpacity(0.15)
-                  : Colors.transparent,
+                  : isDuplicate
+                      ? Colors.orange.withOpacity(0.10) // Highlight duplicates
+                      : Colors.transparent,
               child: Row(
                 mainAxisSize: MainAxisSize.max,
                 children: [
@@ -280,18 +311,17 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                           patient.patientDetails != null &&
                           patient.patientDetails.isNotEmpty) {
                         showDialog(
-                          context: context,
-                          builder: (_) => Align(
-                            alignment: Alignment.center,
-                            child: Container(
-                              color: Colors.white,
-                              child: PatientDetailsDialog(
-                                rows: patient.patientDetails,
-                                patientName: patient.title,
-                              ),
-                            ),
-                          ),
-                        );
+                            context: context,
+                            builder: (_) => Align(
+                                  alignment: Alignment.center,
+                                  child: Container(
+                                    color: Colors.white,
+                                    child: PatientDetailsDialog(
+                                      rows: patient.patientDetails,
+                                      patientName: patient.title,
+                                    ),
+                                  ),
+                                ));
                       }
                     },
                   ),
@@ -372,4 +402,15 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
       },
     );
   }
+}
+
+Map<String, int> getPatientIdCounts(List appointments) {
+  final patientIdCounts = <String, int>{};
+  for (final a in appointments) {
+    final pid = a.patientID ?? '';
+    if (pid.isNotEmpty) {
+      patientIdCounts[pid] = (patientIdCounts[pid] ?? 0) + 1;
+    }
+  }
+  return patientIdCounts;
 }

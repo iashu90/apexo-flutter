@@ -141,62 +141,64 @@ class _PhonePatientLookupState extends State<PhonePatientLookup>
                   _matchedPatients.isNotEmpty
                       ? SizedBox(
                           height: 250,
-                          child: ListView.builder(
+                          child: ListView.separated(
                             itemCount: _matchedPatients.length > 6
                                 ? 6
                                 : _matchedPatients.length,
+                            separatorBuilder: (context, idx) => Divider(
+                              direction: Axis.horizontal,
+                              style: DividerThemeData(
+                                thickness: 1.0,
+                                decoration: BoxDecoration(
+                                    color: Colors.grey.withOpacity(0.1)),
+                              ),
+                            ),
                             itemBuilder: (context, idx) {
                               final patient = _matchedPatients[idx];
                               return Container(
                                 margin: const EdgeInsets.symmetric(vertical: 2),
-                                child: Card(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 4, horizontal: 8),
-                                  backgroundColor:
-                                      Colors.green.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(7),
-                                  child: Row(
-                                    children: [
-                                      const Icon(FluentIcons.contact,
-                                          color: material.Colors.green,
-                                          size: 16),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          toTitleCase(patient.title),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 4, horizontal: 8),
+                                child: Row(
+                                  children: [
+                                    const Icon(FluentIcons.contact,
+                                        color: material.Colors.green, size: 16),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        toTitleCase(patient.title),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
                                         ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          FluentIcons.profile_search,
-                                          color: material.Colors.blue,
-                                          size: 18,
-                                        ),
-                                        onPressed: () {
-                                          if (widget.addAppointment != null) {
-                                            widget.addAppointment!(patient);
-                                          }
-                                        },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        FluentIcons.profile_search,
+                                        color: material.Colors.blue,
+                                        size: 18,
                                       ),
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        icon: const Icon(
-                                          FluentIcons.accept,
-                                          color: material.Colors.green,
-                                          size: 18,
-                                        ),
-                                        onPressed: () {
-                                          widget.patientCheckIn(patient);
-                                          _showSuccessBanner();
-                                        },
+                                      onPressed: () {
+                                        if (widget.addAppointment != null) {
+                                          widget.addAppointment!(patient);
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      icon: const Icon(
+                                        FluentIcons.accept,
+                                        color: material.Colors.green,
+                                        size: 18,
                                       ),
-                                    ],
-                                  ),
+                                      onPressed: () {
+                                        widget.patientCheckIn(patient);
+                                        _showSuccessBanner();
+                                      },
+                                    ),
+                                  ],
                                 ),
                               );
                             },
