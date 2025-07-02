@@ -94,7 +94,7 @@ class _PanelScreenState extends State<PanelScreen> {
         autofocus: true,
         focusNode: focusNode,
         onKeyEvent: (value) {
-          if (value is KeyDownEvent &&
+          if ((value is KeyUpEvent || value is KeyDownEvent) &&
               value.logicalKey == LogicalKeyboardKey.escape &&
               routes.panels().isNotEmpty &&
               widget.panel.inProgress() == false) {
