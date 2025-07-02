@@ -408,13 +408,51 @@ class AppointmentCard extends StatelessWidget {
             ),
           ],
         ),
-        IconButton(
-          icon: const Icon(FluentIcons.edit, size: 17),
-          onPressed: () {
-            openAppointment(appointment);
-          },
-          iconButtonMode: IconButtonMode.large,
-        )
+        Row(
+          children: [
+            IconButton(
+              icon: Icon(FluentIcons.delete, size: 17, color: Colors.red),
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => ContentDialog(
+                    title: const Text('Delete Appointment'),
+                    content: const Text(
+                        'Are you sure you want to permanently delete this appointment? This action cannot be undone.'),
+                    actions: [
+                      Button(
+                        child: const Text('Cancel'),
+                        onPressed: () => Navigator.pop(ctx, false),
+                      ),
+                      FilledButton(
+                        style: ButtonStyle(
+                          backgroundColor:
+                              ButtonState.all(Colors.red), // Make button red
+                        ),
+                        child: const Text('Delete'),
+                        onPressed: () => Navigator.pop(context, true),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  // Perform hard delete logic here
+                  await appointments
+                      .hardDelete(appointment.id); // or your delete method
+                  if (Navigator.canPop(context)) Navigator.pop(context);
+                }
+              },
+              iconButtonMode: IconButtonMode.large,
+            ),
+            IconButton(
+              icon: const Icon(FluentIcons.edit, size: 17),
+              onPressed: () {
+                openAppointment(appointment);
+              },
+              iconButtonMode: IconButtonMode.large,
+            ),
+          ],
+        ),
       ],
     );
   }
