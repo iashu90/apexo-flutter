@@ -827,9 +827,15 @@ class _DoctorAppointmentsSummaryWithDateState
                                             : '');
                                     initials = initials.toUpperCase();
                                   }
-                                  final color = Colors.accentColors[
+                                  final List<AccentColor>
+                                      accentColorsWithoutYellow = Colors
+                                          .accentColors
+                                          .where((c) => c != Colors.yellow)
+                                          .toList();
+
+                                  final color = accentColorsWithoutYellow[
                                       doctor.id.hashCode %
-                                          Colors.accentColors.length];
+                                          accentColorsWithoutYellow.length];
 
                                   return MouseRegion(
                                     onEnter: (_) => setState(
