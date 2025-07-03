@@ -50,6 +50,9 @@ class WeekAgendaCalendarState<Item extends Appointment>
   final now = DateTime.now();
   bool? appointmentDayFilter;
 
+  // 1. In WeekAgendaCalendarState<Item>, add state for selected appointments:
+  Set<String> selectedAppointmentIds = {};
+
   double get calendarHeight {
     switch (calendarFormat) {
       case CalendarFormat.month:
@@ -132,15 +135,67 @@ class WeekAgendaCalendarState<Item extends Appointment>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            IconButton(
-                onPressed: () => widget.onAddNew(selectedDate),
-                icon: Row(
-                  children: [
-                    const Icon(FluentIcons.add_event, size: 17),
-                    const SizedBox(width: 10),
-                    Txt(txt("add"))
-                  ],
-                )),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => widget.onAddNew(selectedDate),
+                  icon: Row(
+                    children: [
+                      const Icon(FluentIcons.add_event, size: 17),
+                      const SizedBox(width: 10),
+                      Txt(txt("add"))
+                    ],
+                  ),
+                ),
+                // Add delete button if any selected
+                if (selectedAppointmentIds.isNotEmpty) ...[
+                  const SizedBox(width: 10),
+                  IconButton(
+                    icon: Icon(FluentIcons.delete, color: Colors.red),
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => ContentDialog(
+                          title: const Text('Delete Appointments'),
+                          content: Text(
+                              'Are you sure you want to permanently delete ${selectedAppointmentIds.length} appointment(s)? This action cannot be undone.'),
+                          actions: [
+                            Button(
+                              child: const Text('Cancel'),
+                              onPressed: () => Navigator.pop(ctx, false),
+                            ),
+                            FilledButton(
+                              style: ButtonStyle(
+                                backgroundColor: ButtonState.all(
+                                    Colors.red), // Make button red
+                              ),
+                              child: const Text('Delete'),
+                              onPressed: () => Navigator.pop(ctx, true),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        // Hard delete logic for each selected appointment
+                        for (final id in selectedAppointmentIds) {
+                          try {
+                            final appt =
+                                widget.items.firstWhere((a) => a.id == id);
+                            await appointments.hardDelete(appt.id);
+                          } catch (e) {
+                            // Item not found, skip
+                          }
+                        }
+                        setState(() {
+                          selectedAppointmentIds.clear();
+                        });
+                      }
+                    },
+                    iconButtonMode: IconButtonMode.large,
+                  ),
+                ],
+              ],
+            ),
             Row(
               children: widget.actions ?? [],
             ),
@@ -273,6 +328,17 @@ class WeekAgendaCalendarState<Item extends Appointment>
               },
               onSetTime: (item) {
                 widget.onSetTime(item);
+              },
+              // 3. In _buildAppointmentsList, pass selection state and callback:
+              isSelected: selectedAppointmentIds.contains(item.id),
+              onCheckboxChanged: (checked) {
+                setState(() {
+                  if (checked) {
+                    selectedAppointmentIds.add(item.id);
+                  } else {
+                    selectedAppointmentIds.remove(item.id);
+                  }
+                });
               },
             ),
           );
@@ -566,12 +632,16 @@ class AppointmentCalendarTile<Item extends Appointment>
   final Item item;
   final void Function(Item item) onSetTime;
   final void Function(Item item) onSelect;
+  final bool isSelected;
+  final void Function(bool checked)? onCheckboxChanged;
   const AppointmentCalendarTile({
     super.key,
     required this.context,
     required this.item,
     required this.onSetTime,
     required this.onSelect,
+    this.isSelected = false,
+    this.onCheckboxChanged,
   });
 
   final BuildContext context;
@@ -599,6 +669,76 @@ class AppointmentCalendarTile<Item extends Appointment>
         ),
       ),
       child: ListTile(
+        // Add a Row for checkbox and the rest of the leading widgets
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Checkbox(
+              checked: isSelected,
+              onChanged: (checked) {
+                if (onCheckboxChanged != null) {
+                  onCheckboxChanged!(checked ?? false);
+                }
+              },
+            ),
+            const SizedBox(width: 16),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(FluentIcons.money, size: 20),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      color: Colors.white,
+                      child: PatientDetailsDialog(
+                          rows: item.patient?.patientDetails ?? [],
+                          patient: item.patient,
+                          hiddenColumns: ['Prescription']),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+            const Divider(direction: Axis.vertical, size: 40),
+            routes.panels().where((p) => p.item.id == item.id).isNotEmpty
+                ? IconButton(
+                    icon: const Icon(FluentIcons.open_in_new_tab),
+                    onPressed: () {
+                      final index = routes
+                          .panels()
+                          .indexWhere((p) => p.item.id == item.id);
+                      if (index == -1) return;
+                      routes.bringPanelToFront(index);
+                    })
+                : Transform.scale(
+                    scale: 1,
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8, left: 4),
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: item.isDone == true
+                            ? Colors.green
+                            : material.Colors.grey[300],
+                        border: Border.all(
+                          color: item.isDone == true
+                              ? Colors.green
+                              : material.Colors.grey[400]!,
+                          width: 2,
+                        ),
+                      ),
+                      child: item.isDone == true
+                          ? const Icon(FluentIcons.check_mark,
+                              size: 14, color: Colors.white)
+                          : null,
+                    ),
+                  ),
+          ],
+        ),
         title: Row(
           children: [
             ItemTitle(item: item),
@@ -671,47 +811,6 @@ class AppointmentCalendarTile<Item extends Appointment>
               ),
           ],
         ),
-        leading: Row(children: [
-          routes.panels().where((p) => p.item.id == item.id).isNotEmpty
-              ? IconButton(
-                  icon: const Icon(FluentIcons.open_in_new_tab),
-                  onPressed: () {
-                    final index =
-                        routes.panels().indexWhere((p) => p.item.id == item.id);
-                    if (index == -1) return;
-                    routes.bringPanelToFront(index);
-                  })
-              : Transform.scale(
-                  scale: 1.25,
-                  child: Checkbox(
-                      checked: item.isDone,
-                      onChanged: (checked) {
-                        item.isDone = checked == true;
-                        appointments.set(item as Appointment);
-                      }),
-                ),
-          const SizedBox(width: 8),
-          const Divider(direction: Axis.vertical, size: 40),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(FluentIcons.money, size: 20),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => Align(
-                  alignment: Alignment.center,
-                  child: Container(
-                    color: Colors.white,
-                    child: PatientDetailsDialog(
-                        rows: item.patient?.patientDetails ?? [],
-                        patientName: item.patient?.title ?? ""),
-                  ),
-                ),
-              );
-            },
-          ),
-        ]),
-        onPressed: () => onSelect(item),
         trailing: SizedBox(
           width: 180,
           child: Row(
@@ -825,6 +924,7 @@ class AppointmentCalendarTile<Item extends Appointment>
             ],
           ),
         ),
+        onPressed: () => onSelect(item),
       ),
     );
   }

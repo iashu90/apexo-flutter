@@ -1,14 +1,16 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
+import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/dashboard/completed_pending.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/dashboard/doctor_patients_list.dart';
-import 'package:apexo/features/dashboard/phone_patient_look_up.dart';
+import 'package:apexo/features/dashboard/patient_look_up.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/item_title.dart';
@@ -359,7 +361,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: Colors.white,
                       child: PatientDetailsDialog(
                           rows: dayAppointments.toPatientDetailRows(),
-                          patientName: "Patient",
                           initialDate: selectedDate,
                           hiddenColumns: ['Date', 'Prescription']),
                     ),
@@ -385,7 +386,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           rows: dayAppointments.toPatientDetailRows(
                               usePrescription:
                                   true), // You can filter for prescription rows if needed
-                          patientName: "Patient",
                           initialDate: selectedDate,
                           hiddenColumns: [
                             'Date',
@@ -393,6 +393,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             'Teeth'
                           ] // Hide treatment and prescription columns
                           ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            dashboardSquare(
+              Colors.red,
+              FluentIcons.calculator_multiply,
+              dashboardCtrl.totalDueAmount().toStringAsFixed(2),
+              "Overall Due",
+              onTap: () {
+                final Map<String, double> patientCostMap = {};
+                final Map<String, double> patientPaidMap = {};
+
+                for (final a in appointments.present.values) {
+                  final patientId = a.patientID;
+                  if (patientId != null && patientId.isNotEmpty) {
+                    patientCostMap[patientId] =
+                        (patientCostMap[patientId] ?? 0) + a.price;
+                    patientPaidMap[patientId] =
+                        (patientPaidMap[patientId] ?? 0) + a.paid;
+                  }
+                }
+
+                final overallRows = patientCostMap.entries
+                    .map((entry) {
+                      final patient = patients.present[entry.key];
+                      final cost = patientCostMap[entry.key] ?? 0;
+                      final paid = patientPaidMap[entry.key] ?? 0;
+                      return PatientDetailRow(
+                          patient: patient,
+                          cost: cost.toStringAsFixed(2),
+                          paid: paid.toStringAsFixed(2),
+                          treatment: '',
+                          teeth: '',
+                          prescription: '',
+                          date: DateTime.now());
+                    })
+                    .where((row) => row.cost != '0.00')
+                    .toList(); // Optional: skip zero cost
+
+                showDialog(
+                  context: context,
+                  builder: (_) => Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      color: Colors.white,
+                      child: PatientDetailsDialog(
+                        rows: overallRows,
+                        hiddenColumns: const [
+                          'Treatment',
+                          'Teeth',
+                          'Prescription',
+                          'Date',
+                          'Mode',
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -551,7 +608,7 @@ class _DoctorAppointmentsSummaryWithDateState
                       const SizedBox(height: 24),
                       SizedBox(
                         width: 320, // or your preferred width
-                        child: PhonePatientLookup(
+                        child: PatientLookup(
                           patientCheckIn: (patient) {
                             if (patient == null) return;
                             final newAppointment = Appointment.fromJson({
@@ -1015,48 +1072,27 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
                   onChange(selectedDate.subtract(const Duration(days: 1))),
             ),
             const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: selectedDate,
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null && picked != selectedDate) {
-                  onChange(picked);
-                }
-              },
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                onEnter: (_) => setState(() => _isHovering = true),
-                onExit: (_) => setState(() => _isHovering = false),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  decoration: BoxDecoration(
-                    color: _isHovering
-                        ? Colors.blue.withOpacity(0.08)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
+            SizedBox(
+              width: 120, // Set a fixed width suitable for your content
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    DateFormat('d MMM yyyy').format(selectedDate),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: material.Colors.blue,
+                      decoration: _isHovering ? TextDecoration.underline : null,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.max,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        DateFormat('d MMM yyyy').format(selectedDate),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: material.Colors.blue,
-                          decoration:
-                              _isHovering ? TextDecoration.underline : null,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
                       Text(
                         DateFormat('EEEE').format(selectedDate) +
                             (DateUtils.isSameDay(selectedDate, DateTime.now())
@@ -1071,7 +1107,7 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
             ),
             const SizedBox(width: 8),

@@ -1,18 +1,19 @@
 import 'package:apexo/common_widgets/patient_report.dart';
+import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 
 class PatientDetailsDialog extends StatefulWidget {
   final List<PatientDetailRow> rows;
-  final String? patientName;
+  final Patient? patient;
   final List<String> hiddenColumns;
   final DateTime? initialDate;
 
   const PatientDetailsDialog({
     super.key,
     required this.rows,
-    this.patientName,
+    this.patient,
     this.hiddenColumns = const [],
     this.initialDate,
   });
@@ -117,9 +118,9 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        widget.patientName != null &&
-                                widget.patientName!.isNotEmpty
-                            ? "${widget.patientName}'s Details"
+                        (widget.patient != null &&
+                                (widget.patient!.title.isNotEmpty))
+                            ? "${widget.patient!.title}'s Details"
                             : "Patient Details",
                         style: const TextStyle(
                             fontWeight: FontWeight.w600, fontSize: 16),
@@ -178,7 +179,8 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                       items: [
                         ComboBoxItem(child: Text('All'), value: 'All'),
                         ComboBoxItem(child: Text('Due'), value: 'Due'),
-                        ComboBoxItem(child: Text('Fully Paid'), value: 'Fully Paid'),
+                        ComboBoxItem(
+                            child: Text('Fully Paid'), value: 'Fully Paid'),
                       ],
                       onChanged: (value) {
                         setState(() {

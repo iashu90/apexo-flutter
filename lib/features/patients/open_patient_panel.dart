@@ -343,6 +343,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
                 ],
                 placeholder: "${txt("phone")}...",
                 controller: TextEditingController(text: widget.patient.phone),

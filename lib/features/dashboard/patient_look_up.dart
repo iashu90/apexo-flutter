@@ -1,15 +1,16 @@
+import 'package:apexo/common_widgets/text_util.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
-class PhonePatientLookup extends StatefulWidget {
+class PatientLookup extends StatefulWidget {
   final void Function(Patient?) patientCheckIn;
   final void Function(String phone)? onCreateNew;
   final void Function(Patient patient)? addAppointment;
 
-  const PhonePatientLookup({
+  const PatientLookup({
     super.key,
     required this.patientCheckIn,
     this.onCreateNew,
@@ -17,10 +18,10 @@ class PhonePatientLookup extends StatefulWidget {
   });
 
   @override
-  State<PhonePatientLookup> createState() => _PhonePatientLookupState();
+  State<PatientLookup> createState() => _PatientLookupState();
 }
 
-class _PhonePatientLookupState extends State<PhonePatientLookup>
+class _PatientLookupState extends State<PatientLookup>
     with SingleTickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
   List<Patient> _matchedPatients = [];
@@ -39,7 +40,11 @@ class _PhonePatientLookupState extends State<PhonePatientLookup>
     setState(() {
       _lastInput = value.trim();
       _matchedPatients = patients.present.values
-          .where((p) => p.phone.trim().contains(_lastInput))
+          .where((p) =>
+              p.phone.trim().contains(_lastInput) ||
+              toTitleCase(p.title)
+                  .toLowerCase()
+                  .contains(_lastInput.toLowerCase()))
           .cast<Patient>()
           .toList();
     });
@@ -117,7 +122,7 @@ class _PhonePatientLookupState extends State<PhonePatientLookup>
                   padding: const EdgeInsets.only(
                       bottom: 8.0), // Padding below TextBox
                   child: TextBox(
-                    placeholder: "Enter phone number",
+                    placeholder: "Enter phone number or name",
                     controller: _controller,
                     onChanged: _onChanged,
                     keyboardType: TextInputType.phone,
@@ -165,13 +170,54 @@ class _PhonePatientLookupState extends State<PhonePatientLookup>
                                         color: material.Colors.green, size: 16),
                                     const SizedBox(width: 6),
                                     Expanded(
-                                      child: Text(
-                                        toTitleCase(patient.title),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          RichText(
+                                            text: highlightMatch(
+                                              toTitleCase(patient.title),
+                                              _lastInput,
+                                              const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                                color: Colors.grey,
+                                              ),
+                                              TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                                color: Colors.blue,
+                                                backgroundColor: Colors
+                                                    .yellow, // Optional: highlight background
+                                              ),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (patient.phone.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                  top: 2.0),
+                                              child: RichText(
+                                                text: highlightMatch(
+                                                  toTitleCase(patient.phone),
+                                                  _lastInput,
+                                                  const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
+                                                    color: Colors.grey,
+                                                  ),
+                                                  TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
+                                                    color: Colors.blue,
+                                                    backgroundColor: Colors
+                                                        .yellow, // Optional: highlight background
+                                                  ),
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                     IconButton(

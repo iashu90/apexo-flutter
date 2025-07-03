@@ -112,6 +112,13 @@ class _DashboardController {
         .cast<Patient>()
         .toList();
   }
+
+  double totalDueAmount() {
+    return appointments.present.values
+        .map((a) => (a.price - a.paid))
+        .where((due) => due > 0)
+        .fold(0.0, (sum, due) => sum + due);
+  }
 }
 
 final dashboardCtrl = _DashboardController();

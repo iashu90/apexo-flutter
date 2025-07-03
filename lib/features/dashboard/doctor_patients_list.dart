@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/common_widgets/text_util.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
@@ -179,11 +180,22 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
             const SizedBox(height: 8),
             TextBox(
               placeholder: 'Search patient by name or number',
+              controller: TextEditingController(text: _searchQuery),
               onChanged: (query) {
                 setState(() {
                   _searchQuery = query.trim().toLowerCase();
                 });
               },
+              suffix: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(FluentIcons.cancel),
+                      onPressed: () {
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
             ),
             const SizedBox(height: 12),
             // Patient list
@@ -196,6 +208,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                 key: _patientListWithHoverKey,
                 doctorAppointments: searchedAppointments,
                 selectedDate: widget.selectedDate,
+                searchQuery: _searchQuery,
                 onSelectionChanged: () => setState(() {}),
               ),
             )
@@ -210,11 +223,13 @@ class _PatientListWithHover extends StatefulWidget {
   final List doctorAppointments;
   final DateTime selectedDate;
   final VoidCallback? onSelectionChanged;
+  final String searchQuery;
 
   const _PatientListWithHover({
     Key? key,
     required this.doctorAppointments,
     required this.selectedDate,
+    required this.searchQuery,
     this.onSelectionChanged,
   }) : super(key: key);
 
@@ -317,15 +332,15 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                                   child: Container(
                                     color: Colors.white,
                                     child: PatientDetailsDialog(
-                                      rows: patient.patientDetails,
-                                      patientName: patient.title,
-                                    ),
+                                        rows: patient.patientDetails,
+                                        patient: patient,
+                                        hiddenColumns: ['Prescription']),
                                   ),
                                 ));
                       }
                     },
                   ),
-                  const SizedBox(width: 10), // <-- Add this line for gap
+                  const SizedBox(width: 10),
                   // Status circle close to patient name
                   if (a.isDone != null)
                     Container(
@@ -354,14 +369,23 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          patientName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                        RichText(
+                          text: highlightMatch(
+                            toTitleCase(patientName),
+                            widget.searchQuery,
+                            const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
+                            TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              color: Colors.blue,
+                              backgroundColor: Colors.yellow,
+                            ),
                           ),
                           overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
                         ),
                         if (a.preOpNotes != null && a.preOpNotes.isNotEmpty)
                           Padding(
