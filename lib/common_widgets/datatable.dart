@@ -341,8 +341,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                       child: Container(
                         color: Colors.white,
                         child: PatientDetailsDialog(
-                            rows: item.patientDetails,
-                            patientName: item.title ?? ""),
+                            rows: item.patientDetails, patient: item,
+                              hiddenColumns: ['Prescription']),
                       ),
                     ),
                   );

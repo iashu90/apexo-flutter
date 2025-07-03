@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/features/appointments/sittings_checkbox.dart';
 import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/features/data/prescriptions_model.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
@@ -390,6 +391,13 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   double originalPrice = 0;
   Set<String> selectedTeethSet = {};
   bool isAdult = true;
+  List<String> rctSittings = ["Access opening", "BMP", "Obturation", "PCS"];
+  List<bool> rctChecked = [false, false, false, false];
+  List<String> crownSittings = [
+    "Tooth preparation",
+    "Crown luting",
+  ];
+  List<bool> crownChecked = [false, false];
 
   void setToDone() {
     setState(() {
@@ -521,6 +529,36 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        // Show for RCT
+        if (selectedTreatments.contains("RCT")) ...[
+          SittingsCheckboxGroup(
+            label: "RCT Sittings",
+            sittings: rctSittings,
+            checked: rctChecked,
+            onChanged: (idx) {
+              setState(() {
+                rctChecked[idx] = !rctChecked[idx];
+              });
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+
+// Show for PFM or Zirconia crown
+        if (selectedTreatments.contains("crown")) ...[
+          SittingsCheckboxGroup(
+            label: "Crown Sittings",
+            sittings: crownSittings,
+            checked: crownChecked,
+            onChanged: (idx) {
+              setState(() {
+                crownChecked[idx] = !crownChecked[idx];
+              });
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
         TeethPicker(
           selectedTeeth: selectedTeethSet,
           isAdult: selectedTeethSet.every((t) =>

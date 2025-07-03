@@ -1,3 +1,4 @@
+import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -18,18 +19,64 @@ class PatientDetailsTable extends StatefulWidget {
 
 class _PatientDetailsTableState extends State<PatientDetailsTable> {
   bool _sortAscending = false; // Default to descending order
+  bool? _balanceSortAscending = false;
+  bool? _patientSortAscending = false;
+
+  String _lastSortColumn = 'balance';
 
   void _toggleSort() {
     setState(() {
       _sortAscending = !_sortAscending;
+      _lastSortColumn = 'date';
+    });
+  }
+
+  void _toggleBalanceSort() {
+    setState(() {
+      _balanceSortAscending =
+          _balanceSortAscending == null ? true : !_balanceSortAscending!;
+      _lastSortColumn = 'balance';
+    });
+  }
+
+  void _togglePatientSort() {
+    setState(() {
+      _patientSortAscending =
+          _patientSortAscending == null ? true : !_patientSortAscending!;
+      _lastSortColumn = 'patient';
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final sortedRows = List<PatientDetailRow>.from(widget.rows)
-      ..sort((a, b) =>
+    final sortedRows = List<PatientDetailRow>.from(widget.rows);
+
+    if (_lastSortColumn == 'balance' && _balanceSortAscending != null) {
+      sortedRows.sort((a, b) {
+        final aBalance =
+            (double.tryParse(a.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) -
+                (double.tryParse(a.paid.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                    0);
+        final bBalance =
+            (double.tryParse(b.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) -
+                (double.tryParse(b.paid.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                    0);
+        return _balanceSortAscending!
+            ? aBalance.compareTo(bBalance)
+            : bBalance.compareTo(aBalance);
+      });
+    } else if (_lastSortColumn == 'patient' && _patientSortAscending != null) {
+      sortedRows.sort((a, b) {
+        final aName = a.patient?.title ?? '';
+        final bName = b.patient?.title ?? '';
+        return _patientSortAscending!
+            ? aName.compareTo(bName)
+            : bName.compareTo(aName);
+      });
+    } else {
+      sortedRows.sort((a, b) =>
           _sortAscending ? a.date.compareTo(b.date) : b.date.compareTo(a.date));
+    }
 
     // Calculate dynamic widths
     final screenWidth = MediaQuery.of(context).size.width;
@@ -70,8 +117,15 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                 ascending: _sortAscending,
               ),
             if (!widget.hiddenColumns.contains('Patient') &&
-                sortedRows.any((row) => row.patientName != null))
-              _plainColumn('Patient'),
+                sortedRows.any((row) =>
+                    row.patient?.title != null &&
+                    row.patient?.title.isNotEmpty == true))
+              _plainColumn(
+                'Patient',
+                onTap: _togglePatientSort,
+                sorted: _patientSortAscending != null,
+                ascending: _patientSortAscending ?? false,
+              ),
             if (!widget.hiddenColumns.contains('Teeth')) _plainColumn('Teeth'),
             if (!widget.hiddenColumns.contains('Treatment'))
               _plainColumn('Treatment'),
@@ -80,7 +134,12 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
             if (!widget.hiddenColumns.contains('Cost')) _plainColumn('Cost'),
             if (!widget.hiddenColumns.contains('Paid')) _plainColumn('Paid'),
             if (!widget.hiddenColumns.contains('Balance'))
-              _plainColumn('Balance'),
+              _plainColumn(
+                'Balance',
+                onTap: _toggleBalanceSort,
+                sorted: _balanceSortAscending != null,
+                ascending: _balanceSortAscending ?? false,
+              ),
             if (!widget.hiddenColumns.contains('Mode')) _plainColumn('Mode'),
           ],
           rows: List.generate(sortedRows.length, (index) {
@@ -131,16 +190,35 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                     ),
                   ),
                 if (!widget.hiddenColumns.contains('Patient') &&
-                    row.patientName != null)
+                    row.patient != null)
                   _plainCell(
-                    Text(
-                      row.patientName!,
-                      style: _cellTextStyle.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: Colors.blueGrey.shade700,
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            toTitleCase(row.patient?.title ?? 'Unknown'),
+                            style: _cellTextStyle.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.blueGrey.shade700,
+                            ),
+                            softWrap: true,
+                            overflow: TextOverflow.visible,
+                          ),
+                          if (row.patient != null &&
+                              row.patient?.phone.isNotEmpty == true)
+                            Text(
+                              row.patient?.phone ?? "",
+                              textAlign: TextAlign.start,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                        ],
                       ),
-                      softWrap: true,
-                      overflow: TextOverflow.visible,
                     ),
                   ),
                 if (!widget.hiddenColumns.contains('Teeth'))
@@ -246,7 +324,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                               0;
                           final balance = cost - paid;
                           return balance == 0
-                              ? ''
+                              ? '₹0.0'
                               : '₹${balance.toStringAsFixed(2)}';
                         })(),
                         style: _cellTextStyle.copyWith(
@@ -259,9 +337,10 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                                     .replaceAll(RegExp(r'[^\d.]'), '')) ??
                                 0;
                             final balance = cost - paid;
-                            if (cost <= 0) return Colors.green;
+                            if (balance == 0) return Colors.grey;
                             if (balance > 0) return Colors.red;
-                            return Colors.teal.shade700;
+                            if (balance < 0) return Colors.green;
+                            return Colors.grey;
                           })(),
                         ),
                         softWrap: false,
@@ -356,7 +435,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
 
 class PatientDetailRow {
   final DateTime date;
-  final String? patientName;
+  final Patient? patient;
   final String cost;
   final String paid;
   final String prescription;
@@ -367,7 +446,7 @@ class PatientDetailRow {
 
   PatientDetailRow({
     required this.date,
-    this.patientName,
+    this.patient,
     required this.cost,
     required this.paid,
     required this.prescription,

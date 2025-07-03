@@ -174,10 +174,6 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
           ? appointment.selectedTeeth.join(', ')
           : '';
 
-      final patientName = appointment.patient?.title != null
-          ? toTitleCase(appointment.patient!.title)
-          : 'Unknown';
-
       final mode = (appointment.treatmentGpayPaid == true ||
               appointment.prescriptionGpayPaid == true)
           ? 'GPay'
@@ -191,7 +187,7 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
         treatment: treatmentStr,
         teeth: teethStr,
         isDone: appointment.isDone,
-        patientName: patientName,
+        patient: appointment.patient,
         mode: mode,
       );
     }).toList();
