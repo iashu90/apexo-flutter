@@ -94,8 +94,13 @@ class _PanelScreenState extends State<PanelScreen> {
         autofocus: true,
         focusNode: focusNode,
         onKeyEvent: (value) {
-          if ((value is KeyUpEvent || value is KeyDownEvent) &&
+          final focus = FocusManager.instance.primaryFocus;
+          final isTextFieldFocused = focus?.context?.widget is EditableText;
+
+          // Only handle Escape if not focused on a text field
+          if (value is KeyUpEvent &&
               value.logicalKey == LogicalKeyboardKey.escape &&
+              !isTextFieldFocused &&
               routes.panels().isNotEmpty &&
               widget.panel.inProgress() == false) {
             closeOrConfirmCancel();
