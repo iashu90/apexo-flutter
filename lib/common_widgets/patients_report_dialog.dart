@@ -3,6 +3,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
+import 'package:intl/intl.dart';
 
 class PatientDetailsDialog extends StatefulWidget {
   final List<PatientDetailRow> rows;
@@ -81,8 +82,12 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
     const currency = "₹";
 
     for (final row in filteredRows) {
-      totalCost += double.tryParse(row.cost.replaceAll(currency, '')) ?? 0;
-      totalPaid += double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
+      final cost = double.tryParse(row.cost.replaceAll(currency, '')) ?? 0;
+      final paid = double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
+      // Skip if cost is 0 and paid is greater than 0
+      if (cost == 0 && paid > 0) continue;
+      totalCost += cost;
+      totalPaid += paid;
     }
 
     final double dialogWidth = MediaQuery.of(context).size.width * 0.95;
@@ -117,15 +122,32 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                     flex: 1,
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: Text(
-                        (widget.patient != null &&
-                                (widget.patient!.title.isNotEmpty))
-                            ? "${widget.patient!.title}'s Details"
-                            : "Patient Details",
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 16),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            (widget.patient != null &&
+                                    (widget.patient!.title.isNotEmpty))
+                                ? "${widget.patient!.title}'s Details"
+                                : "Patient Details",
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 16),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          if (selectedDate != null &&
+                              widget.patient == null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2.0),
+                              child: Text(
+                                "Date: ${DateFormat('d MMM yyyy').format(selectedDate)}",
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: material.Colors.grey,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
@@ -244,6 +266,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                       child: PatientDetailsTable(
                         rows: filteredRows,
                         hiddenColumns: widget.hiddenColumns,
+                        initialDateSortAscending: false,
                       ),
                     ),
                   ),

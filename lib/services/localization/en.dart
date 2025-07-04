@@ -49,7 +49,7 @@ class En {
     "appointmentsToday": "Appointments today",
     "patientsToday": "Patients today",
     "newPatientsToday": "New patients today",
-    "paymentsMadeToday": "Payments made today",
+    "paymentsMadeToday": "Payments",
     "modeAdmin": "ADMIN",
     "modeUser": "USER",
     "modeOffline": "OFFLINE",
