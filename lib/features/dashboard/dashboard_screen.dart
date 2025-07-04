@@ -374,7 +374,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               dashboardCtrl
                   .prescriptionPaymentsForDate(selectedDate)
                   .toStringAsFixed(2),
-              "Prescriptions Payments",
+              "Prescriptions",
               onTap: () {
                 showDialog(
                   context: context,
@@ -455,19 +455,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 );
               },
             ),
-            dashboardSquare(
-              Colors.orange,
-              FluentIcons.calendar,
-              dashboardCtrl
-                  .appointmentsForDate(
-                      selectedDate.add(const Duration(days: 1)))
-                  .length
-                  .toString(),
-              txt("nextDayAppointments"),
-              onTap: () {
-                changeDate(selectedDate.add(const Duration(days: 1)));
-              },
-            ),
+            // dashboardSquare(
+            //   Colors.orange,
+            //   FluentIcons.calendar,
+            //   dashboardCtrl
+            //       .appointmentsForDate(
+            //           selectedDate.add(const Duration(days: 1)))
+            //       .length
+            //       .toString(),
+            //   txt("nextDayAppointments"),
+            //   onTap: () {
+            //     changeDate(selectedDate.add(const Duration(days: 1)));
+            //   },
+            // ),
           ],
         ),
       ),
@@ -489,7 +489,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           tint: color,
           shadowColor: color,
           child: SizedBox(
-            width: 220,
+            width: 200,
             child: Column(
               children: [
                 Padding(

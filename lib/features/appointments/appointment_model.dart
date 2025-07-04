@@ -135,9 +135,16 @@ class Appointment extends Model {
         double.parse((json["prescriptionPaid"] ?? prescriptionPaid).toString());
 
     /* 8 */ imgs = List<String>.from(json["imgs"] ?? imgs);
-    /* 9 */ date = (json["date"] != null
-        ? DateTime.fromMillisecondsSinceEpoch((json["date"] * 60000).toInt())
-        : date);
+    int? raw = json["date"];
+    if (raw != null) {
+      if (raw < 100000000000) {
+        // Old data: minutes since epoch
+        date = DateTime.fromMillisecondsSinceEpoch(raw * 60000);
+      } else {
+        // New data: milliseconds since epoch
+        date = DateTime.fromMillisecondsSinceEpoch(raw);
+      }
+    }
     /* 10 */ isDone = (json["isDone"] ?? isDone);
     /* 12 */ selectedTreatments =
         List<String>.from(json["selectedTreatments"] ?? []);
@@ -166,7 +173,7 @@ class Appointment extends Model {
       json['prescriptionPaid'] = prescriptionPaid;
     /* 8 */ if (imgs.isNotEmpty) json['imgs'] = imgs;
     /* 9 */ if (isDone != d.isDone) json['isDone'] = isDone;
-    /* 10 */ json['date'] = (date.millisecondsSinceEpoch / 60000).round();
+    json['date'] = date.millisecondsSinceEpoch;
     /* 12 */ if (selectedTreatments.isNotEmpty)
       json['selectedTreatments'] = selectedTreatments;
     /* 13 */ if (selectedTeeth.isNotEmpty)

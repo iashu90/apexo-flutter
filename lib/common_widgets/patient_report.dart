@@ -6,11 +6,15 @@ import 'package:intl/intl.dart';
 class PatientDetailsTable extends StatefulWidget {
   final List<PatientDetailRow> rows;
   final List<String> hiddenColumns;
+  final String initialSortColumn;
+  final bool initialDateSortAscending;
 
   const PatientDetailsTable({
     super.key,
     required this.rows,
     this.hiddenColumns = const [],
+    this.initialSortColumn = 'date',
+    this.initialDateSortAscending = false,
   });
 
   @override
@@ -18,16 +22,24 @@ class PatientDetailsTable extends StatefulWidget {
 }
 
 class _PatientDetailsTableState extends State<PatientDetailsTable> {
-  bool _sortAscending = false; // Default to descending order
+  bool _dateSortAscending = false;
   bool? _balanceSortAscending = false;
   bool? _patientSortAscending = false;
+  late String _lastSortColumn;
 
-  String _lastSortColumn = 'balance';
+  @override
+  void initState() {
+    super.initState();
+    _lastSortColumn = widget.initialSortColumn;
+    _dateSortAscending = widget.initialDateSortAscending;
+  }
 
   void _toggleSort() {
     setState(() {
-      _sortAscending = !_sortAscending;
+      _dateSortAscending = !_dateSortAscending;
       _lastSortColumn = 'date';
+      _balanceSortAscending = null;
+      _patientSortAscending = null;
     });
   }
 
@@ -36,6 +48,8 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
       _balanceSortAscending =
           _balanceSortAscending == null ? true : !_balanceSortAscending!;
       _lastSortColumn = 'balance';
+      _dateSortAscending = false;
+      _patientSortAscending = null;
     });
   }
 
@@ -44,6 +58,8 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
       _patientSortAscending =
           _patientSortAscending == null ? true : !_patientSortAscending!;
       _lastSortColumn = 'patient';
+      _dateSortAscending = false;
+      _balanceSortAscending = null;
     });
   }
 
@@ -55,12 +71,10 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
       sortedRows.sort((a, b) {
         final aBalance =
             (double.tryParse(a.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) -
-                (double.tryParse(a.paid.replaceAll(RegExp(r'[^\d.]'), '')) ??
-                    0);
+                (double.tryParse(a.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0);
         final bBalance =
             (double.tryParse(b.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) -
-                (double.tryParse(b.paid.replaceAll(RegExp(r'[^\d.]'), '')) ??
-                    0);
+                (double.tryParse(b.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0);
         return _balanceSortAscending!
             ? aBalance.compareTo(bBalance)
             : bBalance.compareTo(aBalance);
@@ -74,14 +88,14 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
             : bName.compareTo(aName);
       });
     } else {
-      sortedRows.sort((a, b) =>
-          _sortAscending ? a.date.compareTo(b.date) : b.date.compareTo(a.date));
+      sortedRows.sort((a, b) => _dateSortAscending
+          ? a.date.compareTo(b.date)
+          : b.date.compareTo(a.date));
     }
 
     // Calculate dynamic widths
     final screenWidth = MediaQuery.of(context).size.width;
-    // Adjust these fractions as needed for your layout
-    final teethColWidth = screenWidth * 0.10; // 13% of screen width
+    final teethColWidth = screenWidth * 0.10;
     final treatmentColWidth = screenWidth * 0.12;
     final prescriptionColWidth = screenWidth * 0.15;
 
@@ -113,8 +127,8 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
               _plainColumn(
                 'Date',
                 onTap: _toggleSort,
-                sorted: true,
-                ascending: _sortAscending,
+                sorted: _lastSortColumn == 'date',
+                ascending: _dateSortAscending,
               ),
             if (!widget.hiddenColumns.contains('Patient') &&
                 sortedRows.any((row) =>
@@ -123,7 +137,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
               _plainColumn(
                 'Patient',
                 onTap: _togglePatientSort,
-                sorted: _patientSortAscending != null,
+                sorted: _lastSortColumn == 'patient',
                 ascending: _patientSortAscending ?? false,
               ),
             if (!widget.hiddenColumns.contains('Teeth')) _plainColumn('Teeth'),
@@ -137,14 +151,13 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
               _plainColumn(
                 'Balance',
                 onTap: _toggleBalanceSort,
-                sorted: _balanceSortAscending != null,
+                sorted: _lastSortColumn == 'balance',
                 ascending: _balanceSortAscending ?? false,
               ),
             if (!widget.hiddenColumns.contains('Mode')) _plainColumn('Mode'),
           ],
           rows: List.generate(sortedRows.length, (index) {
             final row = sortedRows[index];
-
             final isEven = index % 2 == 0;
             return DataRow(
               color: WidgetStateProperty.all(
@@ -325,7 +338,9 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                           final balance = cost - paid;
                           return balance == 0
                               ? '₹0.0'
-                              : '₹${balance.toStringAsFixed(2)}';
+                              : (balance < 0
+                                  ? ''
+                                  : '₹${balance.toStringAsFixed(2)}');
                         })(),
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w600,
@@ -396,7 +411,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
 
   final TextStyle _teethTextStyle = const TextStyle(
       fontSize: 13,
-      color: Colors.deepOrange, // A nice blue, or pick your own
+      color: Colors.deepOrange,
       fontWeight: FontWeight.bold,
       letterSpacing: 0.5);
 
