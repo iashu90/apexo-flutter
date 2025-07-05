@@ -91,6 +91,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                   labelOrder: [
                     "Patient",
                     "Type",
+                    "Teeth",
                     "Units",
                     "Shade",
                     "Paid",
@@ -133,69 +134,209 @@ class _LabworksScreenState extends State<LabworksScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Row(
                       children: [
-                        Text("Filter by date:",
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
+                        SizedBox(
+                          width: 130,
+                          child: Text(
+                            "Filter by date:",
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
                         const SizedBox(width: 12),
-                        Button(
-                          child: Text(_fromDate == null
-                              ? "From"
-                              : DateFormat(localSettings.dateFormat)
-                                  .format(_fromDate!)),
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: _fromDate ?? DateTime.now(),
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                _fromDate = picked;
-                                // If start date is after end date, clear end date
-                                if (_toDate != null &&
-                                    _fromDate!.isAfter(_toDate!)) {
-                                  _toDate = null;
-                                }
-                              });
-                            }
-                          },
+                        SizedBox(
+                          width: 110,
+                          child: Button(
+                            child: Text(
+                              _fromDate == null
+                                  ? "From"
+                                  : DateFormat(localSettings.dateFormat)
+                                      .format(_fromDate!),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _fromDate ?? DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  _fromDate = picked;
+                                  if (_toDate != null &&
+                                      _fromDate!.isAfter(_toDate!)) {
+                                    _toDate = null;
+                                  }
+                                });
+                              }
+                            },
+                          ),
                         ),
-                        const SizedBox(width: 8),
-                        Button(
-                          child: Text(_toDate == null
-                              ? "To"
-                              : DateFormat(localSettings.dateFormat)
-                                  .format(_toDate!)),
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: _toDate ?? DateTime.now(),
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                _toDate = picked;
-                                // If end date is before start date, clear start date
-                                if (_fromDate != null &&
-                                    _toDate!.isBefore(_fromDate!)) {
-                                  _fromDate = null;
-                                }
-                              });
-                            }
-                          },
+                        const SizedBox(width: 20),
+                        SizedBox(
+                          width: 110,
+                          child: Button(
+                            child: Text(
+                              _toDate == null
+                                  ? "To"
+                                  : DateFormat(localSettings.dateFormat)
+                                      .format(_toDate!),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _toDate ?? DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  _toDate = picked;
+                                  if (_fromDate != null &&
+                                      _toDate!.isBefore(_fromDate!)) {
+                                    _fromDate = null;
+                                  }
+                                });
+                              }
+                            },
+                          ),
                         ),
+                        // Place the clear icon here, in its own SizedBox
                         if (_fromDate != null || _toDate != null) ...[
                           const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(FluentIcons.clear),
-                            onPressed: () => setState(() {
-                              _fromDate = null;
-                              _toDate = null;
-                            }),
+                          SizedBox(
+                            width: 40,
+                            height: 36,
+                            child: IconButton(
+                              icon: const Icon(FluentIcons.clear),
+                              onPressed: () => setState(() {
+                                _fromDate = null;
+                                _toDate = null;
+                              }),
+                            ),
                           ),
                         ],
+                        const SizedBox(
+                            width:
+                                16), // Add spacing before "This Month" button
+                        Button(
+                          style: ButtonStyle(
+                            backgroundColor: ButtonState.all(
+                              // Highlight if this month filter is active, else default
+                              (_fromDate != null &&
+                                      _toDate != null &&
+                                      _fromDate!.year == DateTime.now().year &&
+                                      _fromDate!.month ==
+                                          DateTime.now().month &&
+                                      _fromDate!.day == 1 &&
+                                      _toDate!.year == DateTime.now().year &&
+                                      _toDate!.month == DateTime.now().month &&
+                                      _toDate!.day ==
+                                          DateTime(DateTime.now().year,
+                                                  DateTime.now().month + 1, 0)
+                                              .day)
+                                  ? Colors.blue
+                                  : Colors.grey[30],
+                            ),
+                            foregroundColor: ButtonState.all(
+                              (_fromDate != null &&
+                                      _toDate != null &&
+                                      _fromDate!.year == DateTime.now().year &&
+                                      _fromDate!.month ==
+                                          DateTime.now().month &&
+                                      _fromDate!.day == 1 &&
+                                      _toDate!.year == DateTime.now().year &&
+                                      _toDate!.month == DateTime.now().month &&
+                                      _toDate!.day ==
+                                          DateTime(DateTime.now().year,
+                                                  DateTime.now().month + 1, 0)
+                                              .day)
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                            padding: ButtonState.all(const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(FluentIcons.filter,
+                                  color: (_fromDate != null &&
+                                          _toDate != null &&
+                                          _fromDate!.year ==
+                                              DateTime.now().year &&
+                                          _fromDate!.month ==
+                                              DateTime.now().month &&
+                                          _fromDate!.day == 1 &&
+                                          _toDate!.year ==
+                                              DateTime.now().year &&
+                                          _toDate!.month ==
+                                              DateTime.now().month &&
+                                          _toDate!.day ==
+                                              DateTime(
+                                                      DateTime.now().year,
+                                                      DateTime.now().month + 1,
+                                                      0)
+                                                  .day)
+                                      ? Colors.white
+                                      : Colors.black,
+                                  size: 18),
+                              const SizedBox(width: 6),
+                              Text(
+                                "This Month",
+                                style: TextStyle(
+                                  color: (_fromDate != null &&
+                                          _toDate != null &&
+                                          _fromDate!.year ==
+                                              DateTime.now().year &&
+                                          _fromDate!.month ==
+                                              DateTime.now().month &&
+                                          _fromDate!.day == 1 &&
+                                          _toDate!.year ==
+                                              DateTime.now().year &&
+                                          _toDate!.month ==
+                                              DateTime.now().month &&
+                                          _toDate!.day ==
+                                              DateTime(
+                                                      DateTime.now().year,
+                                                      DateTime.now().month + 1,
+                                                      0)
+                                                  .day)
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                          onPressed: () {
+                            final now = DateTime.now();
+                            final firstDay = DateTime(now.year, now.month, 1);
+                            final lastDay =
+                                DateTime(now.year, now.month + 1, 0);
+
+                            final isThisMonthActive = _fromDate != null &&
+                                _toDate != null &&
+                                _fromDate!.year == now.year &&
+                                _fromDate!.month == now.month &&
+                                _fromDate!.day == 1 &&
+                                _toDate!.year == now.year &&
+                                _toDate!.month == now.month &&
+                                _toDate!.day == lastDay.day;
+
+                            setState(() {
+                              if (isThisMonthActive) {
+                                // Toggle off filter
+                                _fromDate = null;
+                                _toDate = null;
+                              } else {
+                                // Toggle on filter
+                                _fromDate = firstDay;
+                                _toDate = lastDay;
+                              }
+                            });
+                          },
+                        ),
                         const Spacer(),
                         Expanded(
                           child: Center(

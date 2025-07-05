@@ -19,13 +19,18 @@ class TeethPicker extends StatefulWidget {
 }
 
 class _TeethPickerState extends State<TeethPicker> {
+  late Set<String> _adultSelected;
+  late Set<String> _kidSelected;
   late Set<String> _selected;
   bool isAdult = true;
+
   @override
   void initState() {
     super.initState();
-    _selected = Set<String>.from(widget.selectedTeeth);
     isAdult = widget.isAdult;
+    _adultSelected = isAdult ? Set<String>.from(widget.selectedTeeth) : {};
+    _kidSelected = !isAdult ? Set<String>.from(widget.selectedTeeth) : {};
+    _selected = isAdult ? _adultSelected : _kidSelected;
   }
 
   @override
@@ -34,6 +39,7 @@ class _TeethPickerState extends State<TeethPicker> {
     if (widget.isAdult != oldWidget.isAdult) {
       setState(() {
         isAdult = widget.isAdult;
+        _selected = isAdult ? _adultSelected : _kidSelected;
       });
     }
   }
@@ -44,6 +50,11 @@ class _TeethPickerState extends State<TeethPicker> {
         _selected.remove(tooth);
       } else {
         _selected.add(tooth);
+      }
+      if (isAdult) {
+        _adultSelected = _selected;
+      } else {
+        _kidSelected = _selected;
       }
       widget.onChanged(_selected);
     });
@@ -95,7 +106,7 @@ class _TeethPickerState extends State<TeethPicker> {
               onChanged: (value) {
                 setState(() {
                   isAdult = value;
-                  _selected.clear();
+                  _selected = isAdult ? _adultSelected : _kidSelected;
                   widget.onChanged(_selected);
                 });
               },

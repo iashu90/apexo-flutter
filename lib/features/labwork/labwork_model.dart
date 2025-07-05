@@ -21,6 +21,7 @@ class Labwork extends Model {
     final map = <String, String>{
       "Patient": patient?.title ?? "Unknown",
       "Type": typeOfWork,
+      "Teeth": selectedTeeth.map((e) => e.toString()).join(", "),
       "Units": noOfUnits.toString(),
       "Shade": shade,
       "Laboratory": lab,
@@ -56,7 +57,8 @@ class Labwork extends Model {
 
   @override
   String get title {
-    return DateFormat(localSettings.dateFormat, locale.s.$code).format(date);
+    //return DateFormat(localSettings.dateFormat, locale.s.$code).format(date);
+    return DateFormat("yyyy-MM-dd").format(date);
   }
 
   // id: id of the labwork (inherited from Model)
@@ -74,6 +76,7 @@ class Labwork extends Model {
   String shade = "";
   bool deliveredToDoctor = false;
   bool deliveredToPatient = false;
+  List<String> selectedTeeth = [];
 
   Labwork.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     operatorsIDs = List<String>.from(json["operatorsIDs"] ?? operatorsIDs);
@@ -91,6 +94,7 @@ class Labwork extends Model {
     shade = json["shade"] ?? shade;
     deliveredToDoctor = json["deliveredToDoctor"] ?? false;
     deliveredToPatient = json["deliveredToPatient"] ?? false;
+    selectedTeeth = List<String>.from(json['selectedTeeth'] ?? []);
   }
 
   @override
@@ -110,6 +114,7 @@ class Labwork extends Model {
     if (shade != d.shade) json['shade'] = shade;
     json['deliveredToDoctor'] = deliveredToDoctor;
     json['deliveredToPatient'] = deliveredToPatient;
+    if (selectedTeeth.isNotEmpty) json['selectedTeeth'] = selectedTeeth;
     return json;
   }
 }
