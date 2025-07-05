@@ -1,7 +1,7 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
+import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/common_widgets/call_button.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/operators_picker.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
@@ -11,6 +11,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 void openLabwork([Labwork? labwork]) {
   final editingCopy = Labwork.fromJson(labwork?.toJson() ?? {});
@@ -43,7 +44,7 @@ class _LabworkEditing extends StatefulWidget {
 
 class _LabworkEditingState extends State<_LabworkEditing> {
   final TextEditingController labNameController = TextEditingController();
-  final TextEditingController labPhoneController = TextEditingController();
+  Set<String> selectedTeethSet = {};
   final FocusNode labNameFocusNode = FocusNode();
   double pricePerUnit = 0;
 
@@ -51,16 +52,20 @@ class _LabworkEditingState extends State<_LabworkEditing> {
   void initState() {
     super.initState();
     labNameController.text = widget.labwork.lab;
-    labPhoneController.text = widget.labwork.phoneNumber;
     labNameController.addListener(() {
       setState(() {});
     });
+    selectedTeethSet = Set<String>.from(widget.labwork.selectedTeeth ?? []);
+    if ((widget.labwork.noOfUnits ?? 0) > 0) {
+      pricePerUnit = (widget.labwork.price ?? 0) / widget.labwork.noOfUnits;
+    } else {
+      pricePerUnit = 0;
+    }
   }
 
   @override
   void dispose() {
     labNameController.dispose();
-    labPhoneController.dispose();
     labNameFocusNode.dispose();
     super.dispose();
   }
@@ -112,29 +117,6 @@ class _LabworkEditingState extends State<_LabworkEditing> {
             ),
           ),
           InfoLabel(
-            label: "${txt("phone")}:",
-            child: AutoSuggestBox<String>(
-              key: WK.fieldLabworkPhoneNumber,
-              style: textFieldTextStyle(),
-              decoration: textFieldDecorationProperty(),
-              clearButtonEnabled: false,
-              placeholder: "${txt("phone")}...",
-              controller: labPhoneController,
-              noResultsFoundBuilder: (context) => Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Txt(txt("noSuggestions")),
-              ),
-              onChanged: (text, reason) {
-                widget.labwork.phoneNumber = text;
-              },
-              trailingIcon:
-                  CallIconButton(phoneNumber: widget.labwork.phoneNumber),
-              items: labworks.allPhones
-                  .map((pn) => AutoSuggestBoxItem<String>(value: pn, label: pn))
-                  .toList(),
-            ),
-          ),
-          InfoLabel(
             label: "${txt("orderNotes")}:",
             child: CupertinoTextField(
               key: WK.fieldLabworkOrderNotes,
@@ -146,6 +128,20 @@ class _LabworkEditingState extends State<_LabworkEditing> {
               maxLines: null,
             ),
           ),
+          TeethPicker(
+            selectedTeeth: selectedTeethSet,
+            isAdult: selectedTeethSet.every((t) =>
+                t.startsWith('1') ||
+                t.startsWith('2') ||
+                t.startsWith('3') ||
+                t.startsWith('4')),
+            onChanged: (teeth) {
+              setState(() {
+                selectedTeethSet = teeth;
+                widget.labwork.selectedTeeth = selectedTeethSet.toList();
+              });
+            },
+          ),
           InfoLabel(
             label: "${txt("typeOfWork")}:",
             child: ComboBox<String>(
@@ -153,12 +149,12 @@ class _LabworkEditingState extends State<_LabworkEditing> {
                   ? widget.labwork.typeOfWork
                   : null,
               items: [
-                "Crown",
-                "Bridge",
-                "Veneer",
+                "Zirconia",
+                "PFM",
+                "RPD",
                 "Denture",
                 "Implant",
-                "Inlay/Onlay",
+                "ESSIX",
                 "Other"
               ]
                   .map((type) =>
@@ -192,12 +188,13 @@ class _LabworkEditingState extends State<_LabworkEditing> {
             ),
           ),
           InfoLabel(
-            label: "${txt("pricePerUnit")}:",
+            label: "Price per Unit:",
             child: NumberBox(
               key: WK.fieldLabworkPricePerUnit,
               style: textFieldTextStyle(),
               clearButton: false,
               value: pricePerUnit,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               min: 0,
               onChanged: (n) {
                 setState(() {

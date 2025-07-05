@@ -68,18 +68,28 @@ class _PatientsScreenState extends State<PatientsScreen> {
                               : null,
                         );
                         if (confirmed == true) {
+                          // Gather all appointment delete futures
+                          final appointmentDeleteFutures = <Future>[];
                           for (final id in ids) {
-                            // Delete all appointments for this patient
                             final relatedAppointments = appointments
                                 .present.values
                                 .where((a) => a.patientID == id)
                                 .toList();
-                            // Now delete the patient
-                            await patients.hardDelete(id);
                             for (final appointment in relatedAppointments) {
-                              await appointments.hardDelete(appointment.id);
+                              appointmentDeleteFutures
+                                  .add(appointments.hardDelete(appointment.id));
                             }
                           }
+
+                          // Delete all patients in parallel
+                          final patientDeleteFutures =
+                              ids.map((id) => patients.hardDelete(id)).toList();
+
+                          // Wait for all deletes (appointments and patients) in parallel
+                          await Future.wait([
+                            ...appointmentDeleteFutures,
+                            ...patientDeleteFutures,
+                          ]);
                         }
                       },
                       icon: FluentIcons.delete,

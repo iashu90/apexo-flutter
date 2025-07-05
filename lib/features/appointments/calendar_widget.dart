@@ -151,7 +151,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
                 if (selectedAppointmentIds.isNotEmpty) ...[
                   const SizedBox(width: 10),
                   IconButton(
-                    icon: Icon(FluentIcons.delete, color: Colors.red),
+                    icon: Icon(FluentIcons.delete),
                     onPressed: () async {
                       final confirm = await showDialog<bool>(
                         context: context,
@@ -193,6 +193,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
                     },
                     iconButtonMode: IconButtonMode.large,
                   ),
+                    Txt(txt("delete"))
                 ],
               ],
             ),
