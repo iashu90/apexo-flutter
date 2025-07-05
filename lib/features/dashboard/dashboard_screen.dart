@@ -404,36 +404,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
               dashboardCtrl.totalDueAmount().toStringAsFixed(2),
               "Overall Due",
               onTap: () {
-                final Map<String, double> patientCostMap = {};
-                final Map<String, double> patientPaidMap = {};
+                final overallRows = patients.present.values
+                    .map((patient) {
+                      // Get all appointments for this patient
+                      final patientAppointments = appointments.present.values
+                          .where((a) => a.patientID == patient.id)
+                          .toList();
 
-                for (final a in appointments.present.values) {
-                  final patientId = a.patientID;
-                  if (patientId != null && patientId.isNotEmpty) {
-                    patientCostMap[patientId] =
-                        (patientCostMap[patientId] ?? 0) + a.price;
-                    patientPaidMap[patientId] =
-                        (patientPaidMap[patientId] ?? 0) + a.paid;
-                  }
-                }
+                      // Aggregate cost and paid
+                      final cost = patientAppointments.fold<double>(
+                          0, (sum, a) => sum + a.price);
+                      final paid = patientAppointments.fold<double>(
+                          0, (sum, a) => sum + a.paid);
 
-                final overallRows = patientCostMap.entries
-                    .map((entry) {
-                      final patient = patients.present[entry.key];
-                      final cost = patientCostMap[entry.key] ?? 0;
-                      final paid = patientPaidMap[entry.key] ?? 0;
-                      return PatientDetailRow(
+                      // Only show if there is a due
+                      if (cost > paid) {
+                        return PatientDetailRow(
                           patient: patient,
                           cost: cost.toStringAsFixed(2),
                           paid: paid.toStringAsFixed(2),
                           treatment: '',
                           teeth: '',
                           prescription: '',
-                          date: DateTime.now());
+                          date: DateTime.now(),
+                        );
+                      }
+                      return null;
                     })
-                    .where((row) => row.cost != '0.00')
-                    .toList(); // Optional: skip zero cost
-
+                    .whereType<PatientDetailRow>() // Remove nulls
+                    .toList();
                 showDialog(
                   context: context,
                   builder: (_) => Align(
@@ -631,11 +630,15 @@ class _DoctorAppointmentsSummaryWithDateState
                               "patientID": patient.id,
                             }),
                           ),
-                          onCreateNew: (phone) {
+                          onCreateNew: (searchQuery) {
+                            final isDigitsOnly =
+                                RegExp(r'^\d+$').hasMatch(searchQuery);
                             openPatient(
                               Patient.fromJson({
-                                "phone": phone,
-                                "title": "",
+                                if (isDigitsOnly)
+                                  "phone": searchQuery
+                                else
+                                  "title": searchQuery,
                               }),
                               0,
                             );
