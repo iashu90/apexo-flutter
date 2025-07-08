@@ -6,6 +6,7 @@ import 'package:apexo/core/store.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
+import 'package:apexo/features/doctors/doctors_screen.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -441,6 +442,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                             : item is Doctor
                                 ? PatientDetailsDialog(
                                     rows: item.doctorDetails,
+                                    doctorFilterDate: globalDoctorSelectedDate,
                                     hiddenColumns: [
                                       'Prescription',
                                       'Cost',
@@ -585,13 +587,9 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           if (Item == Patient)
             Row(
               children: [
-                _buildDaysFilterButton(10),
+                _buildDaysFilterComboBox([10, 30]),
                 const SizedBox(width: 8),
-                _buildDaysFilterButton(30),
-                const SizedBox(width: 8),
-                _buildTagFilterButton("Ortho", "Ortho"),
-                const SizedBox(width: 8),
-                _buildTagFilterButton("RCT", "RCT"),
+                _buildTagFilterComboBox(["Ortho", "RCT"]),
                 const SizedBox(width: 8),
                 if (_activeTagFilter == "RCT")
                   ComboBox<String>(
@@ -620,65 +618,42 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   int? _activeDaysFilter;
-  Widget _buildDaysFilterButton(int days) {
-    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
-    final selectedBg = Colors.blue;
-    final selectedFg = Colors.white;
-    final unselectedBg =
-        isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2);
-    final unselectedFg = isDark ? Colors.white : Colors.black;
 
-    return FilledButton(
-      style: ButtonStyle(
-        backgroundColor: WidgetStatePropertyAll(
-          _activeDaysFilter == days ? selectedBg : unselectedBg,
+  ComboBox<int?> _buildDaysFilterComboBox(List<int> daysOptions) {
+    return ComboBox<int?>(
+      value: _activeDaysFilter,
+      placeholder: const Text("Days Filter"),
+      items: [
+        const ComboBoxItem<int?>(value: null, child: Text("All")),
+        ...daysOptions.map(
+          (d) => ComboBoxItem<int?>(value: d, child: Text("> $d Days")),
         ),
-        foregroundColor: WidgetStatePropertyAll(
-          _activeDaysFilter == days ? selectedFg : unselectedFg,
-        ),
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        ),
-      ),
-      child: Text("> $days Days"),
-      onPressed: () {
+      ],
+      onChanged: (value) {
         setState(() {
-          _activeDaysFilter = _activeDaysFilter == days ? null : days;
+          _activeDaysFilter = value;
         });
       },
     );
   }
 
   String? _activeTagFilter;
-  Widget _buildTagFilterButton(String tag, String label) {
-    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
-    final lowerTag = tag.toLowerCase();
-    final activeTag = _activeTagFilter?.toLowerCase();
-
-    final selectedBg = Colors.blue;
-    final selectedFg = Colors.white;
-    final unselectedBg =
-        isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2);
-    final unselectedFg = isDark ? Colors.white : Colors.black;
-
-    final isSelected = activeTag == lowerTag;
-
-    return FilledButton(
-      style: ButtonStyle(
-        backgroundColor: WidgetStatePropertyAll(
-          isSelected ? selectedBg : unselectedBg,
+  ComboBox<String?> _buildTagFilterComboBox(List<String> tags) {
+    return ComboBox<String?>(
+      value: _activeTagFilter,
+      placeholder: const Text("Tag Filter"),
+      items: [
+        const ComboBoxItem<String?>(value: null, child: Text("All")),
+        ...tags.map(
+          (tag) => ComboBoxItem<String?>(
+            value: tag,
+            child: Text(tag),
+          ),
         ),
-        foregroundColor: WidgetStatePropertyAll(
-          isSelected ? selectedFg : unselectedFg,
-        ),
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        ),
-      ),
-      child: Text(label),
-      onPressed: () {
+      ],
+      onChanged: (value) {
         setState(() {
-          _activeTagFilter = isSelected ? null : tag;
+          _activeTagFilter = value;
         });
       },
     );
