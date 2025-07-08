@@ -7,7 +7,6 @@ import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/demo_generator.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/save_local.dart';
 import '../../core/save_remote.dart';
@@ -150,7 +149,7 @@ extension AppointmentsDateExtension on Appointments {
 
 extension AppointmentListToPatientDetailRows on List<Appointment> {
   /// [usePrescription] - if true, use prescriptionPrice/prescriptionPaid, else use price/paid
-  List<PatientDetailRow> toPatientDetailRows({bool usePrescription = false}) {
+  List<ReportDetailRow> toPatientDetailRows({bool usePrescription = false}) {
     return map((appointment) {
       final dateStr = appointment.date;
 
@@ -179,7 +178,7 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
           ? 'GPay'
           : 'Cash';
 
-      return PatientDetailRow(
+      return ReportDetailRow(
         date: dateStr,
         cost: costStr,
         paid: paidStr,
@@ -211,5 +210,7 @@ final List<Treatment> allTreatments = [
   Treatment(name: 'Wisdom Teeth Extraction', price: 1000, multiplier: true),
   Treatment(name: 'Impaction', price: 2500, multiplier: true),
 ];
+final List<String> rctSittings = ["Access opening", "BMP", "Obturation", "PCS"];
+final List<String> crownSittings = ["Tooth preparation", "Crown luting"];
 
 final appointments = Appointments();

@@ -54,9 +54,8 @@ class ExpensesScreen extends StatelessWidget {
                             customDetails: names.isNotEmpty ? names : null,
                           );
                           if (confirmed == true) {
-                            for (final id in ids) {
-                              await expenses.hardDelete(id);
-                            }
+                            await Future.wait(
+                                ids.map((id) => expenses.hardDelete(id)));
                           }
                         },
                       ),

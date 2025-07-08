@@ -3,12 +3,16 @@ import 'dart:math';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/core/store.dart';
+import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:intl/intl.dart';
 import '../utils/colors_without_yellow.dart';
 import '../core/model.dart';
 import 'item_title.dart';
@@ -118,8 +122,34 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                 .contains(_activeTagFilter!.toLowerCase())) {
           return false;
         }
+
+        if (_activeTagFilter == "RCT" &&
+            _activeSubTreatmentFilter != null &&
+            _activeSubTreatmentFilter!.isNotEmpty) {
+          // Only show if ANY appointment has the selected sub-treatment
+          final hasSubTreatment = item.allAppointments.any((appointment) =>
+              appointment.selectedTreatments.contains("RCT") &&
+              appointment.subTreatments.contains(_activeSubTreatmentFilter));
+          if (!hasSubTreatment) return false;
+        }
+        // Search filter
+        if (_searchValue.isNotEmpty) {
+          if (_searchStartsWith) {
+            return item.title
+                .toLowerCase()
+                .startsWith(_searchValue.toLowerCase());
+          } else {
+            return (item.title
+                    .toLowerCase()
+                    .contains(_searchValue.toLowerCase()) ||
+                (item is Patient &&
+                    item.phone
+                        .toLowerCase()
+                        .contains(_searchValue.toLowerCase())));
+          }
+        }
       }
-      // Search filter
+      // ...existing code for non-patient items...
       final words =
           _searchValue.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
       final searchIn = (item.title +
@@ -183,11 +213,12 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   String _searchValue = '';
+  bool _searchStartsWith = false;
 
-  setSearchTerm(String value) {
+  void setSearchTerm(String value, {bool startsWith = false}) {
     setState(() {
-      // Don't modify the controller directly, just use the value for filtering
       _searchValue = value;
+      _searchStartsWith = startsWith;
       _updateFilteredItems();
     });
   }
@@ -226,6 +257,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       children: [
         _buildCommandBar(),
         _buildListController(),
+        if (Item == Patient) _buildAlphabetFilter(),
         if (widget.customHeader != null) widget.customHeader!,
         _buildItemsList(context),
       ],
@@ -239,6 +271,59 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   final contextMenuControllers = <String, FlyoutController>{};
+
+  Widget _buildAlphabetFilter() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Wrap(
+        spacing: 4,
+        children: List.generate(26, (i) {
+          final letter = String.fromCharCode(65 + i);
+          final isSelected = _searchValue.toUpperCase() == letter;
+          return FilledButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(
+                isSelected ? Colors.blue : Colors.white.withOpacity(0.2),
+              ),
+              foregroundColor: WidgetStatePropertyAll(
+                  isSelected ? Colors.white : Colors.black),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              ),
+            ),
+            child: Text(letter),
+            onPressed: () {
+              if (isSelected) {
+                setSearchTerm('', startsWith: false); // Reset to all
+              } else {
+                setSearchTerm(letter, startsWith: true);
+              }
+            },
+          );
+        })
+          ..add(
+            FilledButton(
+              style: ButtonStyle(
+                foregroundColor: WidgetStatePropertyAll(
+                    _searchValue.isEmpty ? Colors.white : Colors.black),
+                backgroundColor: WidgetStatePropertyAll(
+                  _searchValue.isEmpty
+                      ? Colors.blue
+                      : Colors.white.withOpacity(0.2),
+                ),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+              ),
+              child: const Text("All"),
+              onPressed: () {
+                setSearchTerm('', startsWith: false);
+              },
+            ),
+          ),
+      ),
+    );
+  }
 
   Expanded _buildItemsList(BuildContext context) {
     final sorted = [...sortedItems]; // caching those two for easier computation
@@ -327,7 +412,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildCheckBox(isChecked, item),
-            if (item is Patient) ...[
+            if (item is Patient || item is Doctor) ...[
               const SizedBox(width: 8),
               const Divider(direction: Axis.vertical, size: 40),
               const SizedBox(width: 8),
@@ -340,9 +425,25 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                       alignment: Alignment.center,
                       child: Container(
                         color: Colors.white,
-                        child: PatientDetailsDialog(
-                            rows: item.patientDetails, patient: item,
-                              hiddenColumns: ['Prescription']),
+                        child: item is Patient
+                            ? PatientDetailsDialog(
+                                rows: item.patientDetails,
+                                patient: item,
+                                hiddenColumns: ['Prescription', 'Doc Paid'],
+                              )
+                            : item is Doctor
+                                ? PatientDetailsDialog(
+                                    rows: item.doctorDetails,
+                                    hiddenColumns: [
+                                      'Prescription',
+                                      'Cost',
+                                      'Paid',
+                                      'Balance',
+                                      'Mode',
+                                    ],
+                                    fromWhere: PatientDetailsSource.doctor,
+                                  )
+                                : const SizedBox.shrink(),
                       ),
                     ),
                   );
@@ -430,17 +531,23 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                   key: Key(item.id),
                   radius: widget.compact ? 1 : 20,
                   item: item),
-              ...nonEmptyLabels.map((labelTitle) {
+              ...nonEmptyLabels.expand((labelTitle) {
                 if (widget.columnBuilders != null &&
                     widget.columnBuilders!.containsKey(labelTitle)) {
-                  return widget.columnBuilders![labelTitle]!(item);
+                  return [
+                    widget.columnBuilders![labelTitle]!(item),
+                    const SizedBox(width: 8), // <-- Add spacing here
+                  ];
                 }
-                return _buildLabelPill(
-                  labelTitle,
-                  item,
-                  colorsWithoutYellow[
-                      getCycledNumber(nonEmptyLabels.indexOf(labelTitle))],
-                );
+                return [
+                  _buildLabelPill(
+                    labelTitle,
+                    item,
+                    colorsWithoutYellow[
+                        getCycledNumber(nonEmptyLabels.indexOf(labelTitle))],
+                  ),
+                  const SizedBox(width: 8), // <-- Add spacing here
+                ];
               }),
             ],
           ),
@@ -460,6 +567,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     );
   }
 
+  String? _activeSubTreatmentFilter;
   Padding _buildListController() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 5, 10, 0),
@@ -477,6 +585,25 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                 _buildTagFilterButton("Ortho", "Ortho"),
                 const SizedBox(width: 8),
                 _buildTagFilterButton("RCT", "RCT"),
+                const SizedBox(width: 8),
+                if (_activeTagFilter == "RCT")
+                  ComboBox<String>(
+                    placeholder: const Text("Sub Treatment"),
+                    value: _activeSubTreatmentFilter,
+                    items: [
+                      const ComboBoxItem<String>(
+                          value: null, child: Text("Select")),
+                      ...rctSittings.map((sitting) => ComboBoxItem<String>(
+                            value: sitting,
+                            child: Text(sitting),
+                          )),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _activeSubTreatmentFilter = value;
+                      });
+                    },
+                  ),
               ],
             ),
           _buildSorters(),
@@ -763,7 +890,7 @@ class DataTablePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      textDirection: TextDirection.ltr,
+      // textDirection: TextDirection.LTR,
       children: [
         Container(
           decoration: BoxDecoration(

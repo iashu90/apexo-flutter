@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class PatientDetailsTable extends StatefulWidget {
-  final List<PatientDetailRow> rows;
+  final List<ReportDetailRow> rows;
   final List<String> hiddenColumns;
   final String initialSortColumn;
   final bool initialDateSortAscending;
@@ -25,6 +25,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
   bool _dateSortAscending = false;
   bool? _balanceSortAscending = false;
   bool? _patientSortAscending = false;
+  bool? _docPaidSortAscending = false;
   late String _lastSortColumn;
 
   @override
@@ -40,6 +41,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
       _lastSortColumn = 'date';
       _balanceSortAscending = null;
       _patientSortAscending = null;
+      _docPaidSortAscending = null;
     });
   }
 
@@ -50,6 +52,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
       _lastSortColumn = 'balance';
       _dateSortAscending = false;
       _patientSortAscending = null;
+      _docPaidSortAscending = null;
     });
   }
 
@@ -60,21 +63,35 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
       _lastSortColumn = 'patient';
       _dateSortAscending = false;
       _balanceSortAscending = null;
+      _docPaidSortAscending = null;
+    });
+  }
+
+  void _toggleDocPaidSort() {
+    setState(() {
+      _docPaidSortAscending =
+          _docPaidSortAscending == null ? true : !_docPaidSortAscending!;
+      _lastSortColumn = 'docPaid';
+      _dateSortAscending = false;
+      _balanceSortAscending = null;
+      _patientSortAscending = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final sortedRows = List<PatientDetailRow>.from(widget.rows);
+    final sortedRows = List<ReportDetailRow>.from(widget.rows);
 
     if (_lastSortColumn == 'balance' && _balanceSortAscending != null) {
       sortedRows.sort((a, b) {
         final aBalance =
             (double.tryParse(a.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) -
-                (double.tryParse(a.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0);
+                (double.tryParse(a.paid.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                    0);
         final bBalance =
             (double.tryParse(b.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0) -
-                (double.tryParse(b.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0);
+                (double.tryParse(b.paid.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                    0);
         return _balanceSortAscending!
             ? aBalance.compareTo(bBalance)
             : bBalance.compareTo(aBalance);
@@ -87,6 +104,14 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
             ? aName.compareTo(bName)
             : bName.compareTo(aName);
       });
+    } else if (_lastSortColumn == 'docPaid' && _docPaidSortAscending != null) {
+      sortedRows.sort((a, b) {
+        final aDocPaid = double.tryParse(a.doctorPay.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        final bDocPaid = double.tryParse(b.doctorPay.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        return _docPaidSortAscending!
+            ? aDocPaid.compareTo(bDocPaid)
+            : bDocPaid.compareTo(aDocPaid);
+    });
     } else {
       sortedRows.sort((a, b) => _dateSortAscending
           ? a.date.compareTo(b.date)
@@ -155,6 +180,13 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                 ascending: _balanceSortAscending ?? false,
               ),
             if (!widget.hiddenColumns.contains('Mode')) _plainColumn('Mode'),
+            if (!widget.hiddenColumns.contains('Doc Paid'))
+              _plainColumn(
+                'Doc Paid',
+                onTap: _toggleDocPaidSort,
+                sorted: _lastSortColumn == 'docPaid',
+                ascending: _docPaidSortAscending ?? false,
+              ),
           ],
           rows: List.generate(sortedRows.length, (index) {
             final row = sortedRows[index];
@@ -387,6 +419,22 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                       ),
                     ),
                   ),
+                if (!widget.hiddenColumns.contains('Doc Paid'))
+                  _plainCell(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        row.doctorPay,
+                        style: _cellTextStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.purple,
+                        ),
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
               ],
             );
           }),
@@ -448,7 +496,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
   }
 }
 
-class PatientDetailRow {
+class ReportDetailRow {
   final DateTime date;
   final Patient? patient;
   final String cost;
@@ -458,8 +506,9 @@ class PatientDetailRow {
   final String teeth;
   final bool? isDone;
   final String mode;
+  final String doctorPay;
 
-  PatientDetailRow({
+  ReportDetailRow({
     required this.date,
     this.patient,
     required this.cost,
@@ -469,5 +518,6 @@ class PatientDetailRow {
     required this.teeth,
     this.isDone,
     this.mode = '',
+    this.doctorPay = '',
   });
 }

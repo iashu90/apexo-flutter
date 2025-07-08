@@ -193,7 +193,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
                     },
                     iconButtonMode: IconButtonMode.large,
                   ),
-                    Txt(txt("delete"))
+                  Txt(txt("delete"))
                 ],
               ],
             ),
@@ -648,16 +648,24 @@ class AppointmentCalendarTile<Item extends Appointment>
   final BuildContext context;
 
   Widget build(BuildContext context) {
-    // Only show treatments that are checked/selected by the doctor
     String treatmentsStr = '';
     if (allTreatments is List<Treatment> && item.selectedTreatments is List) {
       final selectedNames =
           item.selectedTreatments.map((e) => e.toString()).toSet();
-      treatmentsStr = (allTreatments as List<Treatment>)
+      final mainTreatments = (allTreatments as List<Treatment>)
           .where((t) => selectedNames.contains(t.name))
           .map((t) => t.name)
           .where((s) => s.trim().isNotEmpty)
           .join(', ');
+
+      // Add sub-treatments if any
+      if (item.subTreatments != null &&
+          item.subTreatments is List &&
+          item.subTreatments.isNotEmpty) {
+        treatmentsStr = "$mainTreatments - ${item.subTreatments.join(', ')}";
+      } else {
+        treatmentsStr = mainTreatments;
+      }
     } else {
       treatmentsStr = '';
     }
@@ -696,7 +704,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                       child: PatientDetailsDialog(
                           rows: item.patient?.patientDetails ?? [],
                           patient: item.patient,
-                          hiddenColumns: ['Prescription']),
+                          hiddenColumns: ['Prescription', 'Doc Paid']),
                     ),
                   ),
                 );

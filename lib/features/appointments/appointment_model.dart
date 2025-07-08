@@ -106,6 +106,7 @@ class Appointment extends Model {
   /* 5 */ List<String> prescriptions = [];
   /* 6 */ double price = 0;
   /* 7 */ double paid = 0;
+  double paidToDoctor = 0;
   /* 6a */ double prescriptionPrice = 0;
 /* 7a */ double prescriptionPaid = 0;
   /* 8 */ List<String> imgs = [];
@@ -115,6 +116,7 @@ class Appointment extends Model {
   String discountType = 'flat'; // or 'percent'
 
   /* 12 */ List<String> selectedTreatments = [];
+  List<String> subTreatments = [];
   /* 13 */ List<String> selectedTeeth = [];
   bool treatmentGpayPaid = false;
   bool prescriptionGpayPaid = false;
@@ -129,6 +131,8 @@ class Appointment extends Model {
     /* 5 */ postOpNotes = json["postOpNotes"] ?? postOpNotes;
     /* 6 */ price = double.parse((json["price"] ?? price).toString());
     /* 7 */ paid = double.parse((json["paid"] ?? paid).toString());
+    paidToDoctor =
+        double.parse((json["paidToDoctor"] ?? paidToDoctor).toString());
     prescriptionPrice = double.parse(
         (json["prescriptionPrice"] ?? prescriptionPrice).toString());
     prescriptionPaid =
@@ -149,6 +153,7 @@ class Appointment extends Model {
     /* 12 */ selectedTreatments =
         List<String>.from(json["selectedTreatments"] ?? []);
     /* 13 */ selectedTeeth = List<String>.from(json['selectedTeeth'] ?? []);
+    subTreatments = List<String>.from(json['subTreatments'] ?? []);
     // In fromJson:
     discount = (json['discount'] ?? 0).toDouble();
     discountType = json['discountType'] ?? 'flat';
@@ -167,6 +172,7 @@ class Appointment extends Model {
     /* 5 */ if (postOpNotes != d.postOpNotes) json['postOpNotes'] = postOpNotes;
     /* 6 */ if (price != d.price) json['price'] = price;
     /* 7 */ if (paid != d.paid) json['paid'] = paid;
+    if (paidToDoctor != d.paidToDoctor) json['paidToDoctor'] = paidToDoctor;
     if (prescriptionPrice != d.prescriptionPrice)
       json['prescriptionPrice'] = prescriptionPrice;
     if (prescriptionPaid != d.prescriptionPaid)
@@ -176,6 +182,7 @@ class Appointment extends Model {
     json['date'] = date.millisecondsSinceEpoch;
     /* 12 */ if (selectedTreatments.isNotEmpty)
       json['selectedTreatments'] = selectedTreatments;
+    json['subTreatments'] = subTreatments;
     /* 13 */ if (selectedTeeth.isNotEmpty)
       json['selectedTeeth'] = selectedTeeth;
     if (discount != d.discount) json['discount'] = discount;

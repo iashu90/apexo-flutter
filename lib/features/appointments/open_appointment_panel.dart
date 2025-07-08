@@ -391,12 +391,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   double originalPrice = 0;
   Set<String> selectedTeethSet = {};
   bool isAdult = true;
-  List<String> rctSittings = ["Access opening", "BMP", "Obturation", "PCS"];
   List<bool> rctChecked = [false, false, false, false];
-  List<String> crownSittings = [
-    "Tooth preparation",
-    "Crown luting",
-  ];
   List<bool> crownChecked = [false, false];
 
   void setToDone() {
@@ -427,6 +422,14 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     // Initialize selectedTeethSet from the saved appointment value
     selectedTeethSet = Set<String>.from(widget.appointment.selectedTeeth ?? []);
     widget.appointment.treatmentGpayPaid = widget.appointment.treatmentGpayPaid;
+    for (int i = 0; i < rctSittings.length; i++) {
+      rctChecked[i] = widget.appointment.subTreatments.contains(rctSittings[i]);
+    }
+    // Set initial checked state for Crown sittings
+    for (int i = 0; i < crownSittings.length; i++) {
+      crownChecked[i] =
+          widget.appointment.subTreatments.contains(crownSittings[i]);
+    }
   }
 
   void updateSelectedTreatments() {
@@ -539,6 +542,11 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             onChanged: (idx) {
               setState(() {
                 rctChecked[idx] = !rctChecked[idx];
+                // Update subTreatments with selected RCT sittings
+                widget.appointment.subTreatments = [
+                  for (int i = 0; i < rctSittings.length; i++)
+                    if (rctChecked[i]) rctSittings[i]
+                ];
               });
             },
           ),
@@ -546,7 +554,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         ],
 
 // Show for PFM or Zirconia crown
-        if (selectedTreatments.contains("crown")) ...[
+        if (selectedTreatments
+            .any((t) => t.toLowerCase().contains("crown"))) ...[
           SittingsCheckboxGroup(
             label: "Crown Sittings",
             sittings: crownSittings,
@@ -554,6 +563,11 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             onChanged: (idx) {
               setState(() {
                 crownChecked[idx] = !crownChecked[idx];
+                // Update subTreatments with selected Crown sittings
+                widget.appointment.subTreatments = [
+                  for (int i = 0; i < crownSittings.length; i++)
+                    if (crownChecked[i]) crownSittings[i]
+                ];
               });
             },
           ),

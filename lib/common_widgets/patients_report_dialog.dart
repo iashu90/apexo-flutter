@@ -5,11 +5,14 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
+enum PatientDetailsSource { patient, dashboard, doctor }
+
 class PatientDetailsDialog extends StatefulWidget {
-  final List<PatientDetailRow> rows;
+  final List<ReportDetailRow> rows;
   final Patient? patient;
   final List<String> hiddenColumns;
   final DateTime? initialDate;
+  final PatientDetailsSource fromWhere;
 
   const PatientDetailsDialog({
     super.key,
@@ -17,6 +20,7 @@ class PatientDetailsDialog extends StatefulWidget {
     this.patient,
     this.hiddenColumns = const [],
     this.initialDate,
+    this.fromWhere = PatientDetailsSource.patient,
   });
 
   @override
@@ -25,7 +29,7 @@ class PatientDetailsDialog extends StatefulWidget {
 
 class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
   late DateTime selectedDate;
-  late List<PatientDetailRow> _rows;
+  late List<ReportDetailRow> _rows;
   String modeFilter = 'All';
   String dueFilter = 'All'; // Options: All, Due, Fully Paid
 
@@ -36,8 +40,8 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
     _rows = widget.rows;
   }
 
-  List<PatientDetailRow> get filteredRows {
-    List<PatientDetailRow> base = widget.initialDate == null
+  List<ReportDetailRow> get filteredRows {
+    List<ReportDetailRow> base = widget.initialDate == null
         ? widget.rows
         : widget.rows
             .where((row) =>
@@ -77,6 +81,8 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isFromDoctor = widget.fromWhere == PatientDetailsSource.doctor;
+
     double totalCost = 0;
     double totalPaid = 0;
     const currency = "₹";
@@ -126,17 +132,20 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            (widget.patient != null &&
-                                    (widget.patient!.title.isNotEmpty))
-                                ? "${widget.patient!.title}'s Details"
-                                : "Patient Details",
+                            widget.fromWhere == PatientDetailsSource.doctor
+                                ? "Doctor Details"
+                                : (widget.patient != null &&
+                                        widget.patient!.title.isNotEmpty)
+                                    ? "${widget.patient!.title}'s Details"
+                                    : "Patient Details",
                             style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 16),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
-                          if (selectedDate != null &&
-                              widget.patient == null)
+                          if (selectedDate != null && widget.patient == null)
                             Padding(
                               padding: const EdgeInsets.only(top: 2.0),
                               child: Text(
@@ -180,75 +189,76 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                 ],
               ),
               const SizedBox(height: 8),
-              Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Label for Payment Status filter
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Text(
-                        "Payment Status:",
+              if (!isFromDoctor)
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Label for Payment Status filter
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Text(
+                          "Payment Status:",
+                          style: TextStyle(
+                            color: material.Colors.blue.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      // Due filter ComboBox
+                      ComboBox<String>(
+                        value: dueFilter,
+                        items: [
+                          ComboBoxItem(child: Text('All'), value: 'All'),
+                          ComboBoxItem(child: Text('Due'), value: 'Due'),
+                          ComboBoxItem(
+                              child: Text('Fully Paid'), value: 'Fully Paid'),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            dueFilter = value ?? 'All';
+                          });
+                        },
+                        placeholder: const Text('Payment Status'),
                         style: TextStyle(
                           color: material.Colors.blue.shade700,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                    // Due filter ComboBox
-                    ComboBox<String>(
-                      value: dueFilter,
-                      items: [
-                        ComboBoxItem(child: Text('All'), value: 'All'),
-                        ComboBoxItem(child: Text('Due'), value: 'Due'),
-                        ComboBoxItem(
-                            child: Text('Fully Paid'), value: 'Fully Paid'),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          dueFilter = value ?? 'All';
-                        });
-                      },
-                      placeholder: const Text('Payment Status'),
-                      style: TextStyle(
-                        color: material.Colors.blue.shade700,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(width: 24),
+                      // Label for Mode filter
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Text(
+                          "Mode:",
+                          style: TextStyle(
+                            color: material.Colors.blue.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                    // Label for Mode filter
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Text(
-                        "Mode:",
+                      // Mode filter ComboBox
+                      ComboBox<String>(
+                        value: modeFilter,
+                        items: [
+                          ComboBoxItem(child: Text('All'), value: 'All'),
+                          ComboBoxItem(child: Text('Cash'), value: 'Cash'),
+                          ComboBoxItem(child: Text('GPay'), value: 'GPay'),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            modeFilter = value ?? 'All';
+                          });
+                        },
+                        placeholder: const Text('Mode'),
                         style: TextStyle(
                           color: material.Colors.blue.shade700,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                    // Mode filter ComboBox
-                    ComboBox<String>(
-                      value: modeFilter,
-                      items: [
-                        ComboBoxItem(child: Text('All'), value: 'All'),
-                        ComboBoxItem(child: Text('Cash'), value: 'Cash'),
-                        ComboBoxItem(child: Text('GPay'), value: 'GPay'),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          modeFilter = value ?? 'All';
-                        });
-                      },
-                      placeholder: const Text('Mode'),
-                      style: TextStyle(
-                        color: material.Colors.blue.shade700,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
               const SizedBox(height: 2),
             ],
           ),
@@ -272,46 +282,47 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12.0),
-                      child: Text(
-                        "Total Cost: $currency${totalCost.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
+                if (!isFromDoctor)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12.0),
+                        child: Text(
+                          "Total Cost: $currency${totalCost.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: material.Colors.blue,
+                              fontSize: 16),
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Text(
+                        "Total Paid: $currency${totalPaid.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: material.Colors.blue,
+                            color: material.Colors.green,
                             fontSize: 16),
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                    Text(
-                      "Total Paid: $currency${totalPaid.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: material.Colors.green,
-                          fontSize: 16),
-                    ),
-                    const SizedBox(width: 24),
-                    if (totalPaid > totalCost)
-                      Text(
-                        "Overpaid: $currency${(totalPaid - totalCost).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: material.Colors.orange,
-                            fontSize: 16),
-                      )
-                    else if (totalPaid < totalCost)
-                      Text(
-                        "Balance: $currency${(totalCost - totalPaid).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: material.Colors.red,
-                            fontSize: 16),
-                      ),
-                  ],
-                ),
+                      const SizedBox(width: 24),
+                      if (totalPaid > totalCost)
+                        Text(
+                          "Overpaid: $currency${(totalPaid - totalCost).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: material.Colors.orange,
+                              fontSize: 16),
+                        )
+                      else if (totalPaid < totalCost)
+                        Text(
+                          "Balance: $currency${(totalCost - totalPaid).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: material.Colors.red,
+                              fontSize: 16),
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),

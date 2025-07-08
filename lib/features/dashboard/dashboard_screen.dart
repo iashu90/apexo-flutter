@@ -30,6 +30,8 @@ import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 
+DateTime globalSelectedDate = DateTime.now();
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -38,12 +40,13 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  DateTime selectedDate = DateTime.now();
+  DateTime selectedDate = globalSelectedDate;
   bool showSuccessBanner = false;
 
   void changeDate(DateTime newDate) {
     setState(() {
       selectedDate = newDate;
+      globalSelectedDate = newDate;
     });
   }
 
@@ -362,7 +365,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: PatientDetailsDialog(
                           rows: dayAppointments.toPatientDetailRows(),
                           initialDate: selectedDate,
-                          hiddenColumns: ['Date', 'Prescription']),
+                          hiddenColumns: ['Date', 'Prescription', 'Doc Paid']),
                     ),
                   ),
                 );
@@ -390,7 +393,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           hiddenColumns: [
                             'Date',
                             'Treatment',
-                            'Teeth'
+                            'Teeth',
+                            'Doc Paid'
                           ] // Hide treatment and prescription columns
                           ),
                     ),
@@ -419,7 +423,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                       // Only show if there is a due
                       if (cost > paid) {
-                        return PatientDetailRow(
+                        return ReportDetailRow(
                           patient: patient,
                           cost: cost.toStringAsFixed(2),
                           paid: paid.toStringAsFixed(2),
@@ -431,7 +435,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       }
                       return null;
                     })
-                    .whereType<PatientDetailRow>() // Remove nulls
+                    .whereType<ReportDetailRow>() // Remove nulls
                     .toList();
                 showDialog(
                   context: context,
@@ -447,6 +451,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           'Prescription',
                           'Date',
                           'Mode',
+                          'Doc Paid',
                         ],
                       ),
                     ),
@@ -1076,7 +1081,7 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
             ),
             const SizedBox(width: 8),
             SizedBox(
-              width: 120, // Set a fixed width suitable for your content
+              width: 120,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
