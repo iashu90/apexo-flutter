@@ -53,7 +53,10 @@ extension DoctorPayments on Doctor {
 
         final treatmentStr = (appointment.selectedTreatments != null &&
                 appointment.selectedTreatments.isNotEmpty)
-            ? appointment.selectedTreatments.join(', ')
+            ? appointment.subTreatments != null &&
+                    appointment.subTreatments.isNotEmpty
+                ? "${appointment.selectedTreatments.join(', ')} - ${appointment.subTreatments.join(', ')}"
+                : appointment.selectedTreatments.join(', ')
             : '';
 
         final teethStr = (appointment.selectedTeeth != null &&
@@ -116,8 +119,8 @@ class Doctor extends Model {
     return _labels ??= {
       "Appointments": allAppointments.length.toString(),
       "Paid": totalPaidToDoctor.toString(),
-      "Total Appointments": allAppointments.length.toString(),
-      "Total Paid": totalPaidToDoctor.toString(),
+      // "Total Appointments": allAppointments.length.toString(),
+      // "Total Paid": totalPaidToDoctor.toString(),
     };
   }
 
