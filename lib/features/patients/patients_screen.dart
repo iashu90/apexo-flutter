@@ -135,7 +135,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                       },
                     ),
                   ],
-                  hiddenColumns: ["Pay"],
+                  hiddenColumns: ["Pay", 'Doc Paid'],
                   columnBuilders: {
                     "Price": (patient) => patient.outstandingPayments == 0
                         ? const SizedBox.shrink()

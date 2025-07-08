@@ -30,8 +30,10 @@ class _AppLogoState extends State<AppLogo> {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle =
-        TextStyle(color: (FluentTheme.of(context).iconTheme.color ?? Colors.grey).withValues(alpha: 0.4), fontSize: 12);
+    final textStyle = TextStyle(
+        color: (FluentTheme.of(context).iconTheme.color ?? Colors.grey)
+            .withValues(alpha: 0.4),
+        fontSize: 12);
     return Center(
       key: WK.appLogo,
       child: Padding(
@@ -43,9 +45,19 @@ class _AppLogoState extends State<AppLogo> {
               height: 50,
             ),
             const SizedBox(width: 5),
-            Text("Dr.Nowfar Dental Clinic", style: textStyle),
-            const SizedBox(width: 5),
-            Text(version, style: textStyle)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Dr.Nowfar Dental Clinic", style: textStyle),
+                const SizedBox(height: 2),
+                Text(version, style: textStyle),
+                const SizedBox(height: 2),
+                Text(
+                  "07 July 2025",
+                  style: textStyle,
+                ),
+              ],
+            ),
           ],
         ),
       ),

@@ -121,11 +121,12 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                           if (confirmed == true) {
                             final indexes = state.selectedIndexes.toList()
                               ..sort((a, b) => b.compareTo(a));
-                            for (final idx in indexes) {
+                            final futures = indexes.map((idx) {
                               final appointment =
                                   state.widget.doctorAppointments[idx];
-                              await appointments.hardDelete(appointment.id);
-                            }
+                              return appointments.hardDelete(appointment.id);
+                            }).toList();
+                            await Future.wait(futures);
                             setState(() {
                               state.selectedIndexes.clear();
                             });
@@ -290,7 +291,7 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
           child: GestureDetector(
             onTap: () {
               if (patient != null) {
-                openPatient(patient, 2);
+                openPatient(patient, 1);
               }
             },
             child: Container(
@@ -334,7 +335,10 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                                     child: PatientDetailsDialog(
                                         rows: patient.patientDetails,
                                         patient: patient,
-                                        hiddenColumns: ['Prescription']),
+                                        hiddenColumns: [
+                                          'Prescription',
+                                          'Doc Paid'
+                                        ]),
                                   ),
                                 ));
                       }

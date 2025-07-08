@@ -19,6 +19,7 @@ import 'package:intl/intl.dart' as intl;
 enum AppointmentSections {
   patient,
   doctors,
+  doctorsPaid,
   photos,
   preNotes,
   postNotes,
@@ -52,7 +53,7 @@ class AppointmentCard extends StatelessWidget {
         children: [
           if (difference != null) ...[
             _buildTimeDifference(),
-              _verticalSpacing(10),
+            _verticalSpacing(10),
           ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,10 +62,7 @@ class AppointmentCard extends StatelessWidget {
                 key: WK.acSideIcons,
                 children: [
                   _doneCheckBox(color),
-                  if (appointment.archived == true) ...[
-                    _verticalSpacing(10),
-                    const Icon(FluentIcons.archive),
-                  ] else if (appointment.isMissed == true) ...[
+                  if (appointment.isMissed == true) ...[
                     _verticalSpacing(10),
                     Icon(FluentIcons.event_date_missed12, color: color),
                   ] else if (!appointment.fullPaid) ...[
@@ -116,6 +114,59 @@ class AppointmentCard extends StatelessWidget {
                             ),
                             FluentIcons.medical,
                             color,
+                          ),
+                        ],
+                        if (!hide.contains(AppointmentSections.doctorsPaid)) ...[
+                          ..._betweenSections,
+                          Row(
+                            children: [
+                              Icon(FluentIcons.money,
+                                  size: 16, color: color.withOpacity(0.7)),
+                              const SizedBox(width: 4),
+                              Acrylic(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(50)),
+                                elevation: 100,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 3),
+                                  child: Txt(
+                                    "Doctor Paid",
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 70,
+                                child: TextFormBox(
+                                  initialValue: appointment.paidToDoctor
+                                      .toStringAsFixed(2),
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(fontSize: 13),
+                                  keyboardType: TextInputType.numberWithOptions(
+                                      decimal: true),
+                                  onFieldSubmitted: (value) {
+                                    final newValue =
+                                        double.tryParse(value) ?? 0.0;
+                                    if (newValue != appointment.paidToDoctor) {
+                                      appointment.paidToDoctor = newValue;
+                                      appointments.set(appointment);
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Txt(
+                                globalSettings.get("currency_______").value,
+                                style: const TextStyle(
+                                    fontSize: 13, color: Colors.grey),
+                              ),
+                            ],
                           ),
                         ],
                         if (appointment.imgs.isNotEmpty &&
@@ -171,33 +222,24 @@ class AppointmentCard extends StatelessWidget {
                             txt("treatment"),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: appointment.selectedTreatments.map((t) {
-                                // Check if it's a sub-treatment (format: Parent::Child)
-                                if (t.contains('::')) {
-                                  final parts = t.split('::');
-                                  return Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 18.0, top: 2, bottom: 2),
-                                    child: Txt(
-                                      parts[1],
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500),
-                                    ),
-                                  );
-                                } else {
-                                  return Padding(
+                              children: [
+                                for (int i = 0;
+                                    i < appointment.selectedTreatments.length;
+                                    i++)
+                                  Padding(
                                     padding: const EdgeInsets.only(
                                         top: 2, bottom: 2),
                                     child: Txt(
-                                      t,
+                                      appointment.subTreatments.isNotEmpty
+                                          ? "${appointment.selectedTreatments[i]} - ${appointment.subTreatments.join(', ')}"
+                                          : appointment.selectedTreatments[i],
                                       style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
-                                  );
-                                }
-                              }).toList(),
+                                  ),
+                              ],
                             ),
                             FluentIcons.medical,
                             color,

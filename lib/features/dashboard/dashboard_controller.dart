@@ -114,10 +114,20 @@ class _DashboardController {
   }
 
   double totalDueAmount() {
-    return appointments.present.values
-        .map((a) => (a.price - a.paid))
-        .where((due) => due > 0)
-        .fold(0.0, (sum, due) => sum + due);
+    double totalDue = 0;
+    for (final patient in patients.present.values) {
+      final patientAppointments = appointments.present.values
+          .where((a) => a.patientID == patient.id)
+          .toList();
+      final cost =
+          patientAppointments.fold<double>(0, (sum, a) => sum + a.price);
+      final paid =
+          patientAppointments.fold<double>(0, (sum, a) => sum + a.paid);
+      if (cost > paid) {
+        totalDue += (cost - paid);
+      }
+    }
+    return totalDue;
   }
 }
 

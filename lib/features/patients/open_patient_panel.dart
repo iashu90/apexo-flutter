@@ -1,14 +1,12 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/print/print_link.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/call_button.dart';
-import 'package:apexo/common_widgets/dental_chart.dart';
 import 'package:apexo/common_widgets/qrlink.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -44,11 +42,11 @@ Future<Patient> openPatient([Patient? patient, int initialTabIndex = 0]) {
       icon: FluentIcons.medication_admin,
       body: _PatientDetails(editingCopy, panel),
     ),
-    PanelTab(
-      title: txt("dentalNotes"),
-      icon: FluentIcons.teeth,
-      body: DentalChart(patient: editingCopy),
-    ),
+    // PanelTab(
+    //   title: txt("dentalNotes"),
+    //   icon: FluentIcons.teeth,
+    //   body: DentalChart(patient: editingCopy),
+    // ),
     // Add other tabs as needed...
     PanelTab(
       title: txt("appointments"),
@@ -58,13 +56,13 @@ Future<Patient> openPatient([Patient? patient, int initialTabIndex = 0]) {
       onlyIfSaved: true,
       padding: 0,
     ),
-    PanelTab(
-      title: txt("patientPage"),
-      icon: FluentIcons.q_r_code,
-      body: _PatientWebPage(editingCopy),
-      onlyIfSaved: true,
-      footer: _PrintQRButton(editingCopy),
-    ),
+    // PanelTab(
+    //   title: txt("patientPage"),
+    //   icon: FluentIcons.q_r_code,
+    //   body: _PatientWebPage(editingCopy),
+    //   onlyIfSaved: true,
+    //   footer: _PrintQRButton(editingCopy),
+    // ),
   ];
 
   // Assign the tabs to the panel
@@ -167,7 +165,10 @@ class _PatientAppointments extends StatelessWidget {
                         key: Key(appointment.id),
                         appointment: appointment,
                         difference: difference,
-                        hide: const [AppointmentSections.patient],
+                        hide: const [
+                          AppointmentSections.patient,
+                          AppointmentSections.doctorsPaid
+                        ],
                         number: reversedIndex + 1,
                       );
                     }),

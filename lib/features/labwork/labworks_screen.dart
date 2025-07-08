@@ -357,7 +357,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
                       title: txt("delete"),
                       enabled: (ids) => ids.isNotEmpty,
                       callback: (ids) async {
-                        print("Selected IDs: $ids"); // Debug
                         final names = ids
                             .map((id) {
                               final lw = labworks.get(id);
@@ -378,9 +377,8 @@ class _LabworksScreenState extends State<LabworksScreen> {
                           final validSelectedIds = ids
                               .where((id) => visibleIds.contains(id))
                               .toList();
-                          for (final id in validSelectedIds) {
-                            await labworks.hardDelete(id);
-                          }
+                          await Future.wait(validSelectedIds
+                              .map((id) => labworks.hardDelete(id)));
                         }
                       },
                     ),

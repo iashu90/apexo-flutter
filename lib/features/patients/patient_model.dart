@@ -17,7 +17,7 @@ class Patient extends Model {
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
-  List<PatientDetailRow> get patientDetails =>
+  List<ReportDetailRow> get patientDetails =>
       allAppointments.map((appointment) {
         final dateStr = appointment.date;
 
@@ -44,7 +44,7 @@ class Patient extends Model {
             ? 'GPay'
             : 'Cash';
 
-        return PatientDetailRow(
+        return ReportDetailRow(
           date: dateStr,
           cost: costStr,
           paid: paidStr,

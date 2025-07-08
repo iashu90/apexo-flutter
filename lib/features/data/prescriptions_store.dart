@@ -32,9 +32,7 @@ class PrescriptionsStore extends Store<Prescriptions> {
     super.init();
     observableMap.observe((_) => _prescriptions = null);
     observableMap.observe((_) {
-      for (var prescription in observableMap.values) {
-        print(prescription);
-      }
+      _prescriptions = observableMap.values.map((p) => p.prescription).toList();
     });
     login.activators[_storeName] = () async {
       await loaded;

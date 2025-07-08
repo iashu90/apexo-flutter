@@ -38,12 +38,10 @@ class SittingsCheckboxGroup extends StatelessWidget {
       ));
       rows.add(const SizedBox(height: 6));
     }
-    return InfoLabel(
-      label: label,
-      child: Column(
+    return  Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: rows,
-      ),
-    );
+      );
+
   }
 }

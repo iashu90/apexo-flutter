@@ -2,11 +2,13 @@ import 'package:apexo/app/navbar_widget.dart';
 import 'package:apexo/app/panel_widget.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/back_button.dart';
+import 'package:apexo/common_widgets/backup_status_widget.dart';
 import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/services/backups.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/en.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -27,6 +29,12 @@ class ApexoApp extends StatelessWidget {
   StatelessElement createElement() {
     Future.delayed(const Duration(milliseconds: 1000), () {
       showDialogsIfNeeded();
+      if (!bContext.mounted) {
+        // If the context is not mounted, we cannot show dialogs or interact with the UI
+        print('Context is not mounted, skipping backup.');
+        return;
+      }
+      // backups.backupToDriveOncePerDay(bContext);
     });
     return super.createElement();
   }
@@ -39,13 +47,17 @@ class ApexoApp extends StatelessWidget {
           return FluentApp(
             key: WK.fluentApp,
             locale: Locale(locale.s.$code),
-            theme: localSettings.selectedTheme == ThemeMode.dark ? FluentThemeData.dark() : FluentThemeData.light(),
+            theme: localSettings.selectedTheme == ThemeMode.dark
+                ? FluentThemeData.dark()
+                : FluentThemeData.light(),
             home: CupertinoTheme(
               data: localSettings.selectedTheme == ThemeMode.dark
                   ? const CupertinoThemeData(brightness: Brightness.dark)
                   : const CupertinoThemeData(brightness: Brightness.light),
               child: FluentTheme(
-                data: localSettings.selectedTheme == ThemeMode.dark ? FluentThemeData.dark() : FluentThemeData(),
+                data: localSettings.selectedTheme == ThemeMode.dark
+                    ? FluentThemeData.dark()
+                    : FluentThemeData(),
                 child: MStreamBuilder(
                   streams: [
                     version.latest.stream,
@@ -63,7 +75,10 @@ class ApexoApp extends StatelessWidget {
                       fit: StackFit.expand,
                       children: [
                         buildAppLayout(),
-                        if (routes.showBottomNav() && routes.panels().isEmpty && launch.open()) const BottomNavBar()
+                        if (routes.showBottomNav() &&
+                            routes.panels().isEmpty &&
+                            launch.open())
+                          const BottomNavBar()
                       ],
                     );
                   },
@@ -181,7 +196,15 @@ class ApexoApp extends StatelessWidget {
               : NavigationPane(
                   autoSuggestBox: const CurrentUser(key: WK.currentUserSection),
                   autoSuggestBoxReplacement: const Icon(FluentIcons.contact),
-                  header: const AppLogo(),
+                  header: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const AppLogo(),
+                      const SizedBox(height: 8),
+                      //const BackupStatusWidget(),
+                    ],
+                  ),
                   selected: routes.currentRouteIndex(),
                   displayMode: PaneDisplayMode.auto,
                   toggleable: false,
