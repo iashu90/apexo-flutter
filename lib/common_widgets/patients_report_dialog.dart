@@ -12,6 +12,7 @@ class PatientDetailsDialog extends StatefulWidget {
   final Patient? patient;
   final List<String> hiddenColumns;
   final DateTime? initialDate;
+  final DateTime? doctorFilterDate;
   final PatientDetailsSource fromWhere;
 
   const PatientDetailsDialog({
@@ -20,6 +21,7 @@ class PatientDetailsDialog extends StatefulWidget {
     this.patient,
     this.hiddenColumns = const [],
     this.initialDate,
+    this.doctorFilterDate,
     this.fromWhere = PatientDetailsSource.patient,
   });
 
@@ -29,14 +31,17 @@ class PatientDetailsDialog extends StatefulWidget {
 
 class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
   late DateTime selectedDate;
+  late DateTime doctorFilterDate;
   late List<ReportDetailRow> _rows;
   String modeFilter = 'All';
   String dueFilter = 'All'; // Options: All, Due, Fully Paid
+  bool doctorOnlyToday = true;
 
   @override
   void initState() {
     super.initState();
     selectedDate = widget.initialDate ?? DateTime.now();
+    doctorFilterDate = widget.doctorFilterDate ?? DateTime.now();
     _rows = widget.rows;
   }
 
@@ -49,6 +54,15 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                 row.date.month == selectedDate.month &&
                 row.date.day == selectedDate.day)
             .toList();
+
+    if (widget.fromWhere == PatientDetailsSource.doctor && doctorOnlyToday) {
+      base = base
+          .where((row) =>
+              row.date.year == doctorFilterDate.year &&
+              row.date.month == doctorFilterDate.month &&
+              row.date.day == doctorFilterDate.day)
+          .toList();
+    }
 
     if (dueFilter == 'Due') {
       base = base.where((row) {
@@ -163,16 +177,43 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                   Expanded(
                     flex: 1,
                     child: Center(
-                      child: Text(
-                        globalSettings.get("prescriptionFot").value,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: material.Colors.blue.shade600,
-                        ),
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            globalSettings.get("prescriptionFot").value,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              color: material.Colors.blue.shade600,
+                            ),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          if (widget.fromWhere ==
+                              PatientDetailsSource.doctor) ...[
+                            const SizedBox(width: 16),
+                            Checkbox(
+                              checked: doctorOnlyToday,
+                              onChanged: (val) {
+                                setState(() {
+                                  doctorOnlyToday = val ?? false;
+                                  // You can add your filter logic here if needed
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "Only Today",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -313,7 +354,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                               color: material.Colors.orange,
                               fontSize: 16),
                         )
-                      else if (totalPaid < totalCost)
+                      else
                         Text(
                           "Balance: $currency${(totalCost - totalPaid).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
                           style: const TextStyle(

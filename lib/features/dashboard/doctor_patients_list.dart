@@ -35,6 +35,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
   // null = show all, true = show completed, false = show pending
   bool? showCompleted;
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +182,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
             const SizedBox(height: 8),
             TextBox(
               placeholder: 'Search patient by name or number',
-              controller: TextEditingController(text: _searchQuery),
+              controller: _searchController,
               onChanged: (query) {
                 setState(() {
                   _searchQuery = query.trim().toLowerCase();
@@ -193,6 +194,7 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                       onPressed: () {
                         setState(() {
                           _searchQuery = '';
+                          _searchController.clear();
                         });
                       },
                     )

@@ -111,7 +111,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   furtherActions: [
                     const SizedBox(width: 5),
                   ],
-                  onSelect: openPatient,
+                  onSelect: (patient) => openPatient(patient, 1),
                   itemActions: [
                     ItemAction(
                       icon: FluentIcons.add_event,
