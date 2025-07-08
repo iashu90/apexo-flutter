@@ -541,7 +541,17 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             checked: rctChecked,
             onChanged: (idx) {
               setState(() {
-                rctChecked[idx] = !rctChecked[idx];
+                if (rctChecked[idx]) {
+                  // Unchecking: uncheck this and all after
+                  for (int i = idx; i < rctChecked.length; i++) {
+                    rctChecked[i] = false;
+                  }
+                } else {
+                  // Checking: check this and all before
+                  for (int i = 0; i <= idx; i++) {
+                    rctChecked[i] = true;
+                  }
+                }
                 // Update subTreatments with selected RCT sittings
                 widget.appointment.subTreatments = [
                   for (int i = 0; i < rctSittings.length; i++)
@@ -584,6 +594,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             setState(() {
               selectedTeethSet = teeth;
               widget.appointment.selectedTeeth = selectedTeethSet.toList();
+              updateSelectedTreatments();
             });
           },
         ),

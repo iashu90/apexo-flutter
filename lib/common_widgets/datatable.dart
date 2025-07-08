@@ -60,6 +60,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
   final List<String> hiddenColumns;
   final Map<String, Widget Function(Item)>? columnBuilders;
   final Widget? customHeader;
+  final Widget? commandBarHeader;
   final void Function(List<Item>)? onFilterChanged;
 
   const DataTable({
@@ -78,6 +79,7 @@ class DataTable<Item extends Model> extends StatefulWidget {
     this.customHeader,
     this.onFilterChanged,
     this.hiddenColumns = const [],
+    this.commandBarHeader,
   });
 
   @override
@@ -273,6 +275,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   final contextMenuControllers = <String, FlyoutController>{};
 
   Widget _buildAlphabetFilter() {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+    final selectedBg = isDark ? Colors.blue : Colors.blue;
+    final selectedFg = Colors.white;
+    final unselectedBg =
+        isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2);
+    final unselectedFg = isDark ? Colors.white : Colors.black;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Wrap(
@@ -283,10 +292,10 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           return FilledButton(
             style: ButtonStyle(
               backgroundColor: WidgetStatePropertyAll(
-                isSelected ? Colors.blue : Colors.white.withOpacity(0.2),
+                isSelected ? selectedBg : unselectedBg,
               ),
               foregroundColor: WidgetStatePropertyAll(
-                  isSelected ? Colors.white : Colors.black),
+                  isSelected ? selectedFg : unselectedFg),
               padding: const WidgetStatePropertyAll(
                 EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               ),
@@ -305,11 +314,9 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             FilledButton(
               style: ButtonStyle(
                 foregroundColor: WidgetStatePropertyAll(
-                    _searchValue.isEmpty ? Colors.white : Colors.black),
+                    _searchValue.isEmpty ? selectedFg : unselectedFg),
                 backgroundColor: WidgetStatePropertyAll(
-                  _searchValue.isEmpty
-                      ? Colors.blue
-                      : Colors.white.withOpacity(0.2),
+                  _searchValue.isEmpty ? selectedBg : unselectedBg,
                 ),
                 padding: const WidgetStatePropertyAll(
                   EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -614,15 +621,21 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
 
   int? _activeDaysFilter;
   Widget _buildDaysFilterButton(int days) {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+    final selectedBg = Colors.blue;
+    final selectedFg = Colors.white;
+    final unselectedBg =
+        isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2);
+    final unselectedFg = isDark ? Colors.white : Colors.black;
+
     return FilledButton(
       style: ButtonStyle(
         backgroundColor: WidgetStatePropertyAll(
-          _activeDaysFilter == days
-              ? Colors.blue
-              : Colors.white.withOpacity(0.2),
+          _activeDaysFilter == days ? selectedBg : unselectedBg,
         ),
         foregroundColor: WidgetStatePropertyAll(
-            _activeDaysFilter == days ? Colors.white : Colors.black),
+          _activeDaysFilter == days ? selectedFg : unselectedFg,
+        ),
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         ),
@@ -638,16 +651,26 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
 
   String? _activeTagFilter;
   Widget _buildTagFilterButton(String tag, String label) {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
     final lowerTag = tag.toLowerCase();
     final activeTag = _activeTagFilter?.toLowerCase();
+
+    final selectedBg = Colors.blue;
+    final selectedFg = Colors.white;
+    final unselectedBg =
+        isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2);
+    final unselectedFg = isDark ? Colors.white : Colors.black;
+
+    final isSelected = activeTag == lowerTag;
 
     return FilledButton(
       style: ButtonStyle(
         backgroundColor: WidgetStatePropertyAll(
-          activeTag == lowerTag ? Colors.blue : Colors.white.withOpacity(0.2),
+          isSelected ? selectedBg : unselectedBg,
         ),
         foregroundColor: WidgetStatePropertyAll(
-            activeTag == lowerTag ? Colors.white : Colors.black),
+          isSelected ? selectedFg : unselectedFg,
+        ),
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         ),
@@ -655,7 +678,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       child: Text(label),
       onPressed: () {
         setState(() {
-          _activeTagFilter = activeTag == lowerTag ? null : tag;
+          _activeTagFilter = isSelected ? null : tag;
         });
       },
     );
@@ -799,6 +822,15 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                 ),
               ),
             ),
+            if (widget.commandBarHeader != null) ...[
+              const Spacer(),
+              Align(
+                alignment: Alignment.center,
+                child: widget.commandBarHeader!,
+              ),
+              const Spacer(),
+              const Spacer(),
+            ],
             const Divider(size: 20, direction: Axis.vertical),
             DataTableSearchField(
               onChanged: setSearchTerm,

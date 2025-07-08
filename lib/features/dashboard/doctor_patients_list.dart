@@ -263,6 +263,13 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
   Widget build(BuildContext context) {
     // Build a map to count patient occurrences
     final patientIdCounts = getPatientIdCounts(widget.doctorAppointments);
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+    final baseTextColor = isDark ? Colors.white : material.Colors.black87;
+    final highlightTextColor =
+        isDark ? material.Colors.yellow[200]! : Colors.blue;
+    final highlightBgColor = isDark
+        ? Colors.yellow.withOpacity(0.25)
+        : Colors.yellow.withOpacity(0.5);
 
     return ListView.separated(
       itemCount: widget.doctorAppointments.length,
@@ -377,16 +384,16 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                           text: highlightMatch(
                             toTitleCase(patientName),
                             widget.searchQuery,
-                            const TextStyle(
+                            TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
-                              color: Colors.grey,
+                              color: baseTextColor,
                             ),
                             TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
-                              color: Colors.blue,
-                              backgroundColor: Colors.yellow,
+                              color: highlightTextColor,
+                              backgroundColor: highlightBgColor,
                             ),
                           ),
                           overflow: TextOverflow.ellipsis,

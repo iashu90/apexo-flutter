@@ -91,7 +91,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
       final cost = double.tryParse(row.cost.replaceAll(currency, '')) ?? 0;
       final paid = double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
       // Skip if cost is 0 and paid is greater than 0
-      if (cost == 0 && paid > 0) continue;
+      // if (cost == 0 && paid > 0) continue;
       totalCost += cost;
       totalPaid += paid;
     }

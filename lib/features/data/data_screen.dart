@@ -1,7 +1,9 @@
+import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/data/prescriptions_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/services.dart';
 
 class DataScreen extends StatefulWidget {
   const DataScreen({super.key});
@@ -12,14 +14,16 @@ class DataScreen extends StatefulWidget {
 
 class _DataScreenState extends State<DataScreen> {
   final TextEditingController prescriptionController = TextEditingController();
+  final TextEditingController treatmentController = TextEditingController();
 
+  final List<Treatment> treatments = [];
   @override
   Widget build(BuildContext context) {
     // Get all prescriptions from the appointments store
     // final prescriptions = appointments.allPrescriptions;
 
     return ScaffoldPage(
-      header: PageHeader(title: Text("App Data")),
+      header: PageHeader(title: Text(txt("data"))),
       content: Padding(
         padding: const EdgeInsets.only(top: 10),
         child: ListView(
@@ -130,9 +134,157 @@ class _DataScreenState extends State<DataScreen> {
             ),
             DataSectionItem(
               title: "Treatment",
-              description: "Description for section 2.",
+              description: "Add and manage treatments.",
               icon: FluentIcons.table,
-              content: const Text("Content of Section 2"),
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // Remove the TextBox, just keep the Add button
+                      Button(
+                        child: const Text("Add"),
+                        onPressed: () async {
+                          final val = await showDialog<Map<String, dynamic>>(
+                            context: context,
+                            builder: (context) {
+                              final dialogController = TextEditingController();
+                              final priceController = TextEditingController();
+                              bool isMultiple = false;
+                              return StatefulBuilder(
+                                builder: (context, setState) => ContentDialog(
+                                  title: const Text("Add Treatment"),
+                                  content: IntrinsicHeight(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 160,
+                                          child: TextBox(
+                                            controller: dialogController,
+                                            placeholder: "Enter treatment",
+                                            autofocus: true,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        SizedBox(
+                                          width: 80,
+                                          child: TextBox(
+                                            controller: priceController,
+                                            placeholder: "Price",
+                                            inputFormatters: [
+                                              FilteringTextInputFormatter
+                                                  .digitsOnly
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Checkbox(
+                                          checked: isMultiple,
+                                          onChanged: (v) => setState(
+                                              () => isMultiple = v ?? false),
+                                        ),
+                                        const Text("Multiple"),
+                                      ],
+                                    ),
+                                  ),
+                                  actions: [
+                                    Button(
+                                      child: const Text("Cancel"),
+                                      onPressed: () => Navigator.pop(context),
+                                    ),
+                                    FilledButton(
+                                      child: const Text("Add"),
+                                      onPressed: () {
+                                        final name =
+                                            dialogController.text.trim();
+                                        final price =
+                                            priceController.text.trim();
+                                        if (name.isNotEmpty) {
+                                          Navigator.pop(context, {
+                                            'name': name,
+                                            'price': price,
+                                            'multiple': isMultiple,
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                          if (val != null &&
+                              val['name'].isNotEmpty &&
+                              !treatments.any((t) => t.name == val['name'])) {
+                            setState(() {
+                              treatments.add(
+                                Treatment(
+                                  name: val['name'],
+                                  price:
+                                      double.tryParse(val['price'] ?? '') ?? 0,
+                                  multiplier: val['multiple'] ?? false,
+                                ),
+                              );
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: treatments
+                        .map(
+                          (treatment) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: FluentTheme.of(context)
+                                  .accentColor
+                                  .withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: FluentTheme.of(context).accentColor,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "${treatment.name} (₹${treatment.price.toStringAsFixed(0)})"
+                                  "${treatment.multiplier ? ' ×' : ''}",
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w500),
+                                ),
+                                const SizedBox(width: 6),
+                                Button(
+                                  style: ButtonStyle(
+                                    padding: ButtonState.all(EdgeInsets.zero),
+                                    backgroundColor:
+                                        ButtonState.all(Colors.transparent),
+                                  ),
+                                  child:
+                                      const Icon(FluentIcons.cancel, size: 16),
+                                  onPressed: () {
+                                    setState(() {
+                                      treatments.remove(treatment);
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  )
+                ],
+              ),
             ),
           ],
         ),

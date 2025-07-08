@@ -53,7 +53,7 @@ class _AppLogoState extends State<AppLogo> {
                 Text(version, style: textStyle),
                 const SizedBox(height: 2),
                 Text(
-                  "07 July 2025",
+                  "08 July 2025",
                   style: textStyle,
                 ),
               ],

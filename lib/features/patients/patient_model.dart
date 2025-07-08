@@ -28,10 +28,12 @@ class Patient extends Model {
                 appointment.prescriptions.isNotEmpty)
             ? appointment.prescriptions.join(', ')
             : '';
-
         final treatmentStr = (appointment.selectedTreatments != null &&
                 appointment.selectedTreatments.isNotEmpty)
-            ? appointment.selectedTreatments.map((t) => t).join(', ')
+            ? appointment.subTreatments != null &&
+                    appointment.subTreatments.isNotEmpty
+                ? "${appointment.selectedTreatments.join(', ')} - ${appointment.subTreatments.join(', ')}"
+                : appointment.selectedTreatments.join(', ')
             : '';
 
         final teethStr = (appointment.selectedTeeth != null &&
@@ -45,15 +47,14 @@ class Patient extends Model {
             : 'Cash';
 
         return ReportDetailRow(
-          date: dateStr,
-          cost: costStr,
-          paid: paidStr,
-          prescription: prescriptionStr,
-          treatment: treatmentStr,
-          teeth: teethStr,
-          isDone: appointment.isDone,
-          mode: mode
-        );
+            date: dateStr,
+            cost: costStr,
+            paid: paidStr,
+            prescription: prescriptionStr,
+            treatment: treatmentStr,
+            teeth: teethStr,
+            isDone: appointment.isDone,
+            mode: mode);
       }).toList();
 
   List<Appointment>? _doneAppointmentsCached;

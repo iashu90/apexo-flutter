@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/date_selector_row.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -9,12 +10,12 @@ import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import "../../common_widgets/datatable.dart";
 import 'package:flutter/material.dart' as material;
 
 final dataTableKey = GlobalKey<DataTableState<Doctor>>();
+DateTime globalDoctorSelectedDate = DateTime.now();
 
 class DoctorsScreen extends StatefulWidget {
   const DoctorsScreen({super.key});
@@ -23,11 +24,18 @@ class DoctorsScreen extends StatefulWidget {
 }
 
 class _DoctorsScreenState extends State<DoctorsScreen> {
-  DateTime selectedDate = DateTime.now();
+  void changeDate(DateTime newDate) {
+    setState(() {
+      globalDoctorSelectedDate = newDate;
+    });
+  }
+
   bool onlyToday = true;
 
   @override
   Widget build(BuildContext context) {
+    final selectedDate = globalDoctorSelectedDate;
+
     // Filter doctors based on onlyToday
     final filteredDoctors = onlyToday
         ? doctors.present.values
@@ -52,14 +60,14 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                 Expanded(
                   child: DataTable<Doctor>(
                     key: dataTableKey,
-                    customHeader: _buildDoctorDateFilterButton(),
+                    commandBarHeader: _buildDoctorDateFilterButton(),
                     items: filteredDoctors,
                     store: doctors,
                     labelOrder: [
                       "Appointments",
                       "Paid",
-                      "Total Appointments",
-                      "Total Paid",
+                      // "Total Appointments",
+                      // "Total Paid",
                     ],
                     columnBuilders: {
                       "Appointments": (doctor) {
@@ -75,8 +83,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                           ),
                           child: Text(
                             "Appointments: ${appointmentsToday.toString()}",
-                            style: TextStyle(
-                              color: Colors.blue,
+                            style: const TextStyle(
+                              color: material.Colors.blue,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -96,13 +104,13 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(6),
+                            color: Colors.green.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            "Paid ₹${paidToday.toStringAsFixed(2)}",
-                            style: TextStyle(
-                              color: Colors.blue,
+                            "Paid ₹${paidToday.toStringAsFixed(0)}",
+                            style: const TextStyle(
+                              color: material.Colors.green,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -175,42 +183,14 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   }
 
   Widget _buildDoctorDateFilterButton() {
-    final date = selectedDate ?? DateTime.now();
+    final selectedDate = globalDoctorSelectedDate;
     return Center(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(FluentIcons.chevron_left),
-            onPressed: () {
-              setState(() {
-                selectedDate = date.subtract(const Duration(days: 1));
-              });
-            },
-          ),
-          material.TextButton(
-            style: material.TextButton.styleFrom(
-              foregroundColor: Colors.blue,
-            ),
-            child: Text(
-              DateFormat('d MMM yyyy').format(date),
-              style: TextStyle(
-                color: Colors.blue,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-            onPressed: () {
-              setState(() {});
-            },
-          ),
-          IconButton(
-            icon: const Icon(FluentIcons.chevron_right),
-            onPressed: () {
-              setState(() {
-                selectedDate = date.add(const Duration(days: 1));
-              });
-            },
+          DateSelectorRow(
+            selectedDate: selectedDate,
+            onChange: changeDate,
           ),
           const SizedBox(width: 16),
           Checkbox(
@@ -225,7 +205,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           const Text(
             "Only today",
             style: TextStyle(
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w400,
               fontSize: 15,
             ),
           ),
