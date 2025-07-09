@@ -589,26 +589,10 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               children: [
                 _buildDaysFilterComboBox([10, 30]),
                 const SizedBox(width: 8),
-                _buildTagFilterComboBox(["Ortho", "RCT"]),
+                _buildTagFilterComboBox(["Ortho", "RCT" ,"Crown"]),
                 const SizedBox(width: 8),
                 if (_activeTagFilter == "RCT")
-                  ComboBox<String>(
-                    placeholder: const Text("Sub Treatment"),
-                    value: _activeSubTreatmentFilter,
-                    items: [
-                      const ComboBoxItem<String>(
-                          value: null, child: Text("Select")),
-                      ...rctSittings.map((sitting) => ComboBoxItem<String>(
-                            value: sitting,
-                            child: Text(sitting),
-                          )),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _activeSubTreatmentFilter = value;
-                      });
-                    },
-                  ),
+                  _buildSubTreatmentComboBox(rctSittings),
               ],
             ),
           _buildSorters(),
@@ -654,6 +638,35 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       onChanged: (value) {
         setState(() {
           _activeTagFilter = value;
+          // Reset sub treatment when switching to RCT or away from RCT
+          if (value != "RCT") {
+            _activeSubTreatmentFilter = null;
+          } else if (_activeSubTreatmentFilter == null) {
+            // Already null, do nothing
+          } else {
+            _activeSubTreatmentFilter = null;
+          }
+        });
+      },
+    );
+  }
+
+  ComboBox<String?> _buildSubTreatmentComboBox(List<String> subTreatments) {
+    return ComboBox<String?>(
+      placeholder: const Text("Sub Treatment"),
+      value: _activeSubTreatmentFilter,
+      items: [
+        const ComboBoxItem<String?>(value: null, child: Text("Select")),
+        ...subTreatments.map(
+          (sitting) => ComboBoxItem<String?>(
+            value: sitting,
+            child: Text(sitting),
+          ),
+        ),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _activeSubTreatmentFilter = value;
         });
       },
     );

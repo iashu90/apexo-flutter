@@ -19,7 +19,8 @@ class Labwork extends Model {
   @override
   Map<String, String> get labels {
     final map = <String, String>{
-      "Patient": patient?.title ?? "Unknown",
+      "Patient":
+          patient != null ? "${patient!.title}\n${patient!.phone}" : "Unknown",
       "Type": typeOfWork,
       "Teeth": selectedTeeth.map((e) => e.toString()).join(", "),
       "Units": noOfUnits.toString(),
