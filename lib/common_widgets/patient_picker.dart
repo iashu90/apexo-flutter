@@ -9,7 +9,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 class PatientPicker extends StatelessWidget {
   final void Function(String? id) onChanged;
   final String? value;
-  const PatientPicker({super.key, required this.onChanged, required this.value});
+  const PatientPicker(
+      {super.key, required this.onChanged, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -19,12 +20,19 @@ class PatientPicker extends StatelessWidget {
         Patient? tapped = patients.get(tag.value ?? "");
         openPatient(tapped);
       },
-      suggestions: patients.present.values.map((e) => TagInputItem(value: e.id, label: e.title)).toList(),
+      suggestions: patients.present.values
+          .map((e) => TagInputItem(
+                value: e.id,
+                label: "${e.title}-${e.phone}",
+              ))
+          .toList(),
       onChanged: (s) {
         if (s.isEmpty) return onChanged(null);
         onChanged(s.first.value ?? "");
       },
-      initialValue: value != null ? [TagInputItem(value: value!, label: patients.get(value!)!.title)] : [],
+      initialValue: value != null
+          ? [TagInputItem(value: value!, label: patients.get(value!)!.title)]
+          : [],
       strict: true,
       limit: 1,
       placeholder: txt("selectPatient"),

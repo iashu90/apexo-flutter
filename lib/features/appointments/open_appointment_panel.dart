@@ -283,16 +283,26 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                 ),
                 const SizedBox(width: 5),
                 if (widget.appointment.patientID == null)
-                  AcrylicButton(
-                      icon: FluentIcons.add_friend,
-                      text: txt("newPatient"),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: material.Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        FluentIcons.add,
+                        color: material.Colors.white, // White icon
+                      ),
                       onPressed: () async {
                         final newPatientId = uuid();
                         final newPatient = await openPatient(
-                            Patient.fromJson({"id": newPatientId}));
+                          Patient.fromJson({"id": newPatientId}),
+                        );
                         routes.closePanel(newPatientId);
                         widget.appointment.patientID = newPatient.id;
-                      })
+                      },
+                    ),
+                  ),
               ]),
         ),
         InfoLabel(
@@ -541,17 +551,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             checked: rctChecked,
             onChanged: (idx) {
               setState(() {
-                if (rctChecked[idx]) {
-                  // Unchecking: uncheck this and all after
-                  for (int i = idx; i < rctChecked.length; i++) {
-                    rctChecked[i] = false;
-                  }
-                } else {
-                  // Checking: check this and all before
-                  for (int i = 0; i <= idx; i++) {
-                    rctChecked[i] = true;
-                  }
-                }
+                // Toggle only the selected index
+                rctChecked[idx] = !rctChecked[idx];
                 // Update subTreatments with selected RCT sittings
                 widget.appointment.subTreatments = [
                   for (int i = 0; i < rctSittings.length; i++)
