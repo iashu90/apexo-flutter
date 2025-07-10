@@ -19,7 +19,10 @@ class CalendarScreen extends StatelessWidget {
       key: WK.calendarScreen,
       padding: EdgeInsets.zero,
       content: MStreamBuilder(
-          streams: [appointments.observableMap.stream, appointments.doctorId.stream],
+          streams: [
+            appointments.observableMap.stream,
+            appointments.doctorId.stream
+          ],
           builder: (context, snapshot) {
             return WeekAgendaCalendar<Appointment>(
               items: appointments.filtered.values.toList(),
@@ -53,7 +56,8 @@ class CalendarScreen extends StatelessWidget {
               },
               onSelect: openAppointment,
               onAddNew: (selectedDate) {
-                openAppointment(Appointment.fromJson({"date": selectedDate.millisecondsSinceEpoch / 60000}));
+                openAppointment(Appointment.fromJson(
+                    {"date": selectedDate.millisecondsSinceEpoch}));
               },
             );
           }),
