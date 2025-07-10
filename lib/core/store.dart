@@ -87,7 +87,17 @@ class Store<G extends Model> {
       return;
     }
     Iterable<String> all = await local!.getAll();
-    Iterable<G> modeled = all.map((x) => modeling(_deSerialize(x)));
+    Iterable<G> modeled = all.map((x) {
+      try {
+        final decoded = _deSerialize(x);
+        if (decoded is Map<String, dynamic>) {
+          return modeling(decoded);
+        }
+      } catch (_) {
+        print("Corrupt data in local storage: $x");
+      }
+      return null;
+    }).whereType<G>();
     // silent for persistence
     observableMap.silently(() {
       observableMap.clear();
