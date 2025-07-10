@@ -113,6 +113,22 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   List<Item> get filteredItems {
     return widget.items.where((item) {
       if (Item == Patient && item is Patient) {
+        // Quick Filter
+        if (_activeQuickFilter != null) {
+          if (_activeQuickFilter == "Due") {
+            if (item.outstandingPayments <= 0) return false;
+          } else if (_activeQuickFilter == "Overpaid") {
+            if (item.outstandingPayments >= 0) return false;
+          } else if (_activeQuickFilter == "No Mobile") {
+            if (item.phone.trim().isNotEmpty) return false;
+          } else if (_activeQuickFilter == "No Name") {
+            if (item.title.trim().isNotEmpty) return false;
+          } else if (_activeQuickFilter == "Wrong Phone") {
+            // Remove all non-digit characters and check length
+            final digits = item.phone.replaceAll(RegExp(r'\D'), '');
+            if (digits.length == 10) return false;
+          }
+        }
         // Days filter
         if (_activeDaysFilter != null &&
             (item.daysSinceLastAppointment ?? 0) <= _activeDaysFilter!) {
@@ -587,9 +603,12 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           if (Item == Patient)
             Row(
               children: [
+                _buildQuickFilterComboBox(
+                    ["Due", "Overpaid", "No Mobile", "No Name", "Wrong Phone"]),
+                const SizedBox(width: 8),
                 _buildDaysFilterComboBox([10, 30]),
                 const SizedBox(width: 8),
-                _buildTagFilterComboBox(["Ortho", "RCT" ,"Crown"]),
+                _buildTagFilterComboBox(["Ortho", "RCT", "Crown"]),
                 const SizedBox(width: 8),
                 if (_activeTagFilter == "RCT")
                   _buildSubTreatmentComboBox(rctSittings),
@@ -616,6 +635,28 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       onChanged: (value) {
         setState(() {
           _activeDaysFilter = value;
+        });
+      },
+    );
+  }
+
+  String? _activeQuickFilter;
+  ComboBox<String?> _buildQuickFilterComboBox(List<String> quickOptions) {
+    return ComboBox<String?>(
+      value: _activeQuickFilter,
+      placeholder: const Text("Quick Filter"),
+      items: [
+        const ComboBoxItem<String?>(value: null, child: Text("All")),
+        ...quickOptions.map(
+          (option) => ComboBoxItem<String?>(
+            value: option,
+            child: Text(option),
+          ),
+        ),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _activeQuickFilter = value;
         });
       },
     );

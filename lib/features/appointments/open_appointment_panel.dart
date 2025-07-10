@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/features/appointments/previous_treatment_info.dart';
 import 'package:apexo/features/appointments/sittings_checkbox.dart';
 import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/features/data/prescriptions_model.dart';
@@ -13,7 +14,6 @@ import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 
-import 'package:apexo/common_widgets/acrylic_button.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/common_widgets/operators_picker.dart';
@@ -440,6 +440,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
       crownChecked[i] =
           widget.appointment.subTreatments.contains(crownSittings[i]);
     }
+    originalPrice = widget.appointment.price;
+    _applyDiscount();
   }
 
   void updateSelectedTreatments() {
@@ -476,7 +478,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     widget.appointment.discount = discount;
     widget.appointment.discountType = discountType;
 
-    priceController.text = finalPrice == 0 ? '' : finalPrice.toStringAsFixed(0);
+    priceController.text =
+        finalPrice == 0 ? '0' : finalPrice.toStringAsFixed(0);
     widget.appointment.price = finalPrice;
     setState(() {});
   }
@@ -582,8 +585,19 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               });
             },
           ),
-          const SizedBox(height: 8),
         ],
+        PreviousTreatmentInfo(
+          appointments: (appointments.present.values
+                  .where((a) =>
+                      a.id != widget.appointment.id &&
+                      a.patientID == widget.appointment.patientID &&
+                      a.date.isBefore(widget.appointment.date))
+                  .toList()
+                ..sort((a, b) => b.date.compareTo(a.date)))
+              .take(5)
+              .toList(),
+        ),
+        const SizedBox(height: 8),
         TeethPicker(
           selectedTeeth: selectedTeethSet,
           isAdult: selectedTeethSet.every((t) =>
@@ -708,7 +722,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             ],
           ),
         ),
-        if (discountController.text.trim().isNotEmpty && discountedPrice > 0)
+        if (discountController.text.trim().isNotEmpty &&
+            discountValue <= originalPrice)
           Container(
             margin: const EdgeInsets.symmetric(vertical: 8),
             padding: const EdgeInsets.all(12),
@@ -752,7 +767,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                     const Spacer(),
                     Text(
                       discountValue == 0
-                          ? ''
+                          ? "0 ${globalSettings.get("currency_______").value}"
                           : "-${discountValue.toStringAsFixed(0)} ${globalSettings.get("currency_______").value}",
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
@@ -775,7 +790,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                     const Spacer(),
                     Text(
                       discountedPrice == 0
-                          ? ''
+                          ? "0 ${globalSettings.get("currency_______").value}"
                           : "${discountedPrice.toStringAsFixed(0)} ${globalSettings.get("currency_______").value}",
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
