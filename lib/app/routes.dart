@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/dashboard/dashboard_screen.dart';
@@ -282,6 +283,10 @@ class _Routes {
     if (currentRouteIndex() == allRoutes.indexOf(route)) return;
     history.add(currentRouteIndex());
     currentRouteIndex(allRoutes.indexOf(route));
+    ActivityLogger.logAction(
+      "Route ${route.title} Clicked",
+      screen: "Navigation",
+    );
     if (currentRoute.onSelect != null) {
       currentRoute.onSelect!();
     }

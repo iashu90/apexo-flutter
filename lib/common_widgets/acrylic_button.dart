@@ -1,3 +1,4 @@
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -9,7 +10,12 @@ class AcrylicButton extends StatelessWidget {
   final Gradient? gradient;
 
   const AcrylicButton(
-      {super.key, required this.icon, required this.text, required this.onPressed, this.gradient, this.elevation = 1});
+      {super.key,
+      required this.icon,
+      required this.text,
+      required this.onPressed,
+      this.gradient,
+      this.elevation = 1});
   @override
   Widget build(BuildContext context) {
     return Acrylic(
@@ -26,7 +32,11 @@ class AcrylicButton extends StatelessWidget {
           icon: Row(
             children: [Icon(icon), const SizedBox(width: 5), Txt(text)],
           ),
-          onPressed: onPressed,
+          onPressed: () {
+            ActivityLogger.logAction("AcrylicButton Clicked",
+                screen: "AcrylicButton", data: {"text": text});
+            onPressed?.call();
+          },
         ),
       ),
     );

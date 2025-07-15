@@ -1,3 +1,4 @@
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -32,8 +33,18 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
           children: [
             IconButton(
               icon: const Icon(FluentIcons.chevron_left),
-              onPressed: () =>
-                  onChange(selectedDate.subtract(const Duration(days: 1))),
+              onPressed: () {
+                final newDate = selectedDate.subtract(const Duration(days: 1));
+                ActivityLogger.logAction(
+                  "Date Backward Clicked",
+                  screen: "DateSelectorRow",
+                  data: {
+                    "from": selectedDate.toIso8601String(),
+                    "to": newDate.toIso8601String(),
+                  },
+                );
+                onChange(newDate);
+              },
             ),
             const SizedBox(width: 8),
             SizedBox(
@@ -60,6 +71,14 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
                                 lastDate: DateTime(2100),
                               );
                               if (picked != null) {
+                                ActivityLogger.logAction(
+                                  "Date Selected",
+                                  screen: "DateSelectorRow",
+                                  data: {
+                                    "from": selectedDate.toIso8601String(),
+                                    "to": picked.toIso8601String(),
+                                  },
+                                );
                                 onChange(picked);
                               }
                             },
@@ -105,8 +124,18 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
             const SizedBox(width: 8),
             IconButton(
               icon: const Icon(FluentIcons.chevron_right),
-              onPressed: () =>
-                  onChange(selectedDate.add(const Duration(days: 1))),
+              onPressed: () {
+                final newDate = selectedDate.add(const Duration(days: 1));
+                ActivityLogger.logAction(
+                  "Date Forward Clicked",
+                  screen: "DateSelectorRow",
+                  data: {
+                    "from": selectedDate.toIso8601String(),
+                    "to": newDate.toIso8601String(),
+                  },
+                );
+                onChange(newDate);
+              },
             ),
             const SizedBox(width: 20),
             if (!DateUtils.isSameDay(selectedDate, DateTime.now()))
@@ -118,7 +147,17 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
                       Icon(FluentIcons.refresh),
                     ],
                   ),
-                  onPressed: () => onChange(DateTime.now()),
+                  onPressed: () {
+                    ActivityLogger.logAction(
+                      "Go To Today Clicked",
+                      screen: "DateSelectorRow",
+                      data: {
+                        "from": selectedDate.toIso8601String(),
+                        "to": DateTime.now().toIso8601String(),
+                      },
+                    );
+                    onChange(DateTime.now());
+                  },
                   style: ButtonStyle(
                     padding: ButtonState.all(
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

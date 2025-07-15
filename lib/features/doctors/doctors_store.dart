@@ -51,7 +51,14 @@ class Doctors extends Store<Doctor> {
 
       return () async {
         loginCtrl.loadingIndicator("Synchronizing doctors");
+        print("Before clear: ${docs.length}");
+        await local?.clear();
+        print(
+            "Local Doctors box keys after clear: ${(await local!.mainHiveBox).keys}");
+        await deleteMemoryAndLoadFromPersistence();
+        print("After clear: ${docs.length}");
         await synchronize();
+        print("After sync: ${docs.length}");
         networkActions.syncCallbacks[_storeName] = synchronize;
         networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
 

@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/date_selector_row.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -120,7 +121,13 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                     },
                     actions: [
                       DataTableAction(
-                        callback: (_) => openDoctor(),
+                        callback: (_) {
+                          ActivityLogger.logAction(
+                            "Add Doctor Clicked",
+                            screen: "DoctorsScreen",
+                          );
+                          openDoctor();
+                        },
                         icon: FluentIcons.medical,
                         title: txt("add"),
                       ),
@@ -137,6 +144,14 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                               })
                               .where((str) => str != null && str.isNotEmpty)
                               .join("\n");
+                          ActivityLogger.logAction(
+                            "Delete Doctors Clicked",
+                            screen: "DoctorsScreen",
+                            data: {
+                              "doctorIds": ids,
+                              "doctorNames": names,
+                            },
+                          );
                           final confirmed = await showConfirmDeleteDialog(
                             context,
                             message:
@@ -196,6 +211,11 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           Checkbox(
             checked: onlyToday,
             onChanged: (value) {
+              ActivityLogger.logAction(
+                "Doctor OnlyToday Filter Changed",
+                screen: "DoctorsScreen",
+                data: {"onlyToday selected": value},
+              );
               setState(() {
                 onlyToday = value ?? true;
               });

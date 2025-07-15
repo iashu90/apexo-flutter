@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/core/store.dart';
-import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_screen.dart';
@@ -13,7 +13,6 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:intl/intl.dart';
 import '../utils/colors_without_yellow.dart';
 import '../core/model.dart';
 import 'item_title.dart';
@@ -252,15 +251,28 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     });
   }
 
-  setSortBy(int? index) {
+  void setSortBy(int? index) {
     setState(() {
       sortBy = index ?? -1;
+      ActivityLogger.logAction(
+        "Sort By Selected",
+        screen: Item.toString(),
+        data: {
+          "SortBy":
+              sortBy == -1 ? widget.defaultSortingName : nonNullLabels[sortBy],
+        },
+      );
     });
   }
 
-  toggleSortDirection() {
+  void toggleSortDirection() {
     setState(() {
       sortDirection = sortDirection * -1;
+      ActivityLogger.logAction(
+        "Sort Direction Toggled",
+        screen: Item.toString(),
+        data: {"SortDirection": sortDirection > 0 ? "Ascending" : "Descending"},
+      );
     });
   }
 
@@ -287,6 +299,19 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     if (widget.onFilterChanged != null) {
       widget.onFilterChanged!(filteredItems);
     }
+
+    ActivityLogger.logAction(
+      "Filter Applied",
+      screen: Item.toString(),
+      data: {
+        "QuickFilter": _activeQuickFilter,
+        "DaysFilter": _activeDaysFilter,
+        "TagFilter": _activeTagFilter,
+        "SubTreatmentFilter": _activeSubTreatmentFilter,
+        "SearchValue": _searchValue,
+        "ResultsFound": filteredItems.length,
+      },
+    );
   }
 
   final contextMenuControllers = <String, FlyoutController>{};
@@ -319,6 +344,11 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             ),
             child: Text(letter),
             onPressed: () {
+              ActivityLogger.logAction(
+                "Alphabet Filter Clicked",
+                screen: Item.toString(),
+                data: {"letter": letter, "isSelected": isSelected},
+              );
               if (isSelected) {
                 setSearchTerm('', startsWith: false); // Reset to all
               } else {
@@ -341,6 +371,11 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               ),
               child: const Text("All"),
               onPressed: () {
+                ActivityLogger.logAction(
+                  "Alphabet Filter Clicked",
+                  screen: Item.toString(),
+                  data: {"letter": "All", "isSelected": _searchValue.isEmpty},
+                );
                 setSearchTerm('', startsWith: false);
               },
             ),
@@ -396,7 +431,14 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               foregroundColor: const WidgetStatePropertyAll(Colors.white),
               shape: WidgetStatePropertyAll(RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(200)))),
-          onPressed: showMore,
+          onPressed: () {
+            ActivityLogger.logAction(
+              "Show More Clicked",
+              screen: Item.toString(),
+              data: {},
+            );
+            showMore();
+          },
           child: const Icon(FluentIcons.double_chevron_down),
         ),
       ),
@@ -443,6 +485,14 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               IconButton(
                 icon: const Icon(FluentIcons.money, size: 20),
                 onPressed: () {
+                  ActivityLogger.logAction(
+                    "Report Dialog Opened",
+                    screen: Item.toString(),
+                    data: {
+                      "Patient": item?.title ?? "",
+                      "itemType": Item.toString()
+                    },
+                  );
                   showDialog(
                     context: context,
                     builder: (_) => Align(
@@ -477,7 +527,14 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             ],
           ],
         ),
-        onPressed: () => widget.onSelect(item),
+        onPressed: () {
+          ActivityLogger.logAction(
+            "Item Selected",
+            screen: Item.toString(),
+            data: {"itemId": item.id, "itemTitle": item.title},
+          );
+          widget.onSelect(item);
+        },
         trailing: FlyoutTarget(
             controller: contextMenuControllers[item.id]!,
             child: IconButton(
@@ -486,6 +543,11 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                 child: const Icon(FluentIcons.more),
               ),
               onPressed: () {
+                ActivityLogger.logAction(
+                  "Context Menu Opened",
+                  screen: Item.toString(),
+                  data: {"itemId": item.id, "itemTitle": item.title},
+                );
                 contextMenuControllers[item.id]!.showFlyout(
                   barrierDismissible: true,
                   dismissOnPointerMoveAway: false,
@@ -496,7 +558,17 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                         MenuFlyoutItem(
                           text: Txt(item.title),
                           leading: const Icon(FluentIcons.edit),
-                          onPressed: () => widget.onSelect(item),
+                          onPressed: () {
+                            ActivityLogger.logAction(
+                              "Edit Item Clicked",
+                              screen: Item.toString(),
+                              data: {
+                                "itemId": item.id,
+                                "itemTitle": item.title
+                              },
+                            );
+                            widget.onSelect(item);
+                          },
                           closeAfterClick: true,
                         ),
                         if (widget.itemActions.isNotEmpty)
@@ -505,7 +577,17 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                           MenuFlyoutItem(
                             leading: Icon(action.icon),
                             text: Txt(action.title),
-                            onPressed: () => action.callback(item.id),
+                            onPressed: () {
+                              ActivityLogger.logAction(
+                                "Item Action Clicked",
+                                screen: Item.toString(),
+                                data: {
+                                  "action": action.title,
+                                  "itemId": item.id
+                                },
+                              );
+                              action.callback(item.id);
+                            },
                             closeAfterClick: true,
                           ),
                         if (routes
@@ -518,9 +600,21 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                                 : FluentIcons.archive),
                             text: Txt(txt(
                                 item.archived == true ? "restore" : "archive")),
-                            onPressed: () => item.archived == true
-                                ? widget.store.unarchive(item.id)
-                                : widget.store.archive(item.id),
+                            onPressed: () {
+                              ActivityLogger.logAction(
+                                item.archived == true
+                                    ? "Restore Clicked"
+                                    : "Archive Clicked",
+                                screen: Item.toString(),
+                                data: {
+                                  "itemId": item.id,
+                                  "itemTitle": item.title
+                                },
+                              );
+                              item.archived == true
+                                  ? widget.store.unarchive(item.id)
+                                  : widget.store.archive(item.id);
+                            },
                             closeAfterClick: true,
                           )
                       ]);
@@ -587,7 +681,18 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       child: Checkbox(
         key: Key("dt_cb_${item.id}"),
         checked: isChecked,
-        onChanged: (checked) => itemSelectToggle(item, checked),
+        onChanged: (checked) {
+          ActivityLogger.logAction(
+            checked == true ? "Item Checked" : "Item Unchecked",
+            screen: Item.toString(),
+            data: {
+              "itemId": item.id,
+              "itemTitle": item.title,
+              "checked": checked,
+            },
+          );
+          itemSelectToggle(item, checked);
+        },
       ),
     );
   }
@@ -635,6 +740,11 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       onChanged: (value) {
         setState(() {
           _activeDaysFilter = value;
+          ActivityLogger.logAction(
+            "Day Filter Selected",
+            screen: Item.toString(),
+            data: {"DayFilter": value},
+          );
         });
       },
     );
@@ -657,6 +767,11 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       onChanged: (value) {
         setState(() {
           _activeQuickFilter = value;
+          ActivityLogger.logAction(
+            "Quick Filter Selected",
+            screen: Item.toString(),
+            data: {"QuickFilter": value},
+          );
         });
       },
     );
@@ -679,6 +794,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       onChanged: (value) {
         setState(() {
           _activeTagFilter = value;
+
+          ActivityLogger.logAction(
+            "Tag Filter Selected",
+            screen: Item.toString(),
+            data: {"TagFilter": value},
+          );
+
           // Reset sub treatment when switching to RCT or away from RCT
           if (value != "RCT") {
             _activeSubTreatmentFilter = null;
@@ -708,6 +830,12 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       onChanged: (value) {
         setState(() {
           _activeSubTreatmentFilter = value;
+
+          ActivityLogger.logAction(
+            "SubTreatment Filter Selected",
+            screen: Item.toString(),
+            data: {"SubTreatmentFilter": value},
+          );
         });
       },
     );
@@ -836,6 +964,14 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                       onPressed: action.enabled == null ||
                               action.enabled!(checkedIds.toList())
                           ? () {
+                              ActivityLogger.logAction(
+                                "CommandBar Action Clicked",
+                                screen: Item.toString(),
+                                data: {
+                                  "action": action.title,
+                                  "checkedIds": checkedIds.toList()
+                                },
+                              );
                               if (Navigator.canPop(context)) {
                                 Navigator.pop(context);
                               }
@@ -1031,6 +1167,11 @@ class _DataTableSearchFieldState extends State<DataTableSearchField> {
               : IconButton(
                   icon: const Icon(FluentIcons.clear),
                   onPressed: () {
+                    ActivityLogger.logAction(
+                      "Search Cleared",
+                      screen: "DataTable",
+                      data: {},
+                    );
                     _controller.clear();
                     widget.onChanged("");
                   },

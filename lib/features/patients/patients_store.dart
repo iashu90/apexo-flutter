@@ -53,10 +53,15 @@ class Patients extends Store<Patient> {
 
       return () async {
         loginCtrl.loadingIndicator("Synchronizing patients");
+        print("Before clear: ${docs.length}");
+        await local?.clear();
+        print("Local patient box keys after clear: ${(await local!.mainHiveBox).keys}");
+        await deleteMemoryAndLoadFromPersistence();
+        print("After clear: ${docs.length}");
         await synchronize();
+        print("After sync: ${docs.length}");
         networkActions.syncCallbacks[_storeName] = synchronize;
         networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
-
         network.onOnline[_storeName] = synchronize;
         network.onOffline[_storeName] = cancelRealtimeSub;
       };

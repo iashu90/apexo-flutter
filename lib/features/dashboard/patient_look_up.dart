@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/text_util.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -227,6 +228,15 @@ class _PatientLookupState extends State<PatientLookup>
                                         size: 18,
                                       ),
                                       onPressed: () {
+                                        ActivityLogger.logAction(
+                                          "Add Appointment Clicked",
+                                          screen: "PatientLookup",
+                                          data: {
+                                            "patientId": patient.id,
+                                            "patientName": patient.title,
+                                            "patientPhone": patient.phone,
+                                          },
+                                        );
                                         if (widget.addAppointment != null) {
                                           widget.addAppointment!(patient);
                                         }
@@ -240,6 +250,15 @@ class _PatientLookupState extends State<PatientLookup>
                                         size: 18,
                                       ),
                                       onPressed: () {
+                                        ActivityLogger.logAction(
+                                          "Patient Check-In Clicked",
+                                          screen: "PatientLookup",
+                                          data: {
+                                            "patientId": patient.id,
+                                            "patientName": patient.title,
+                                            "patientPhone": patient.phone,
+                                          },
+                                        );
                                         widget.patientCheckIn(patient);
                                         _showSuccessBanner();
                                       },
@@ -268,11 +287,19 @@ class _PatientLookupState extends State<PatientLookup>
                                 ),
                               ),
                               IconButton(
-                                  icon: const Icon(FluentIcons.add_friend,
-                                      color: material.Colors.orange, size: 18),
-                                  onPressed: widget.onCreateNew != null
-                                      ? () => widget.onCreateNew!(_lastInput)
-                                      : null),
+                                icon: const Icon(FluentIcons.add_friend,
+                                    color: material.Colors.orange, size: 18),
+                                onPressed: widget.onCreateNew != null
+                                    ? () {
+                                        ActivityLogger.logAction(
+                                          "Add New Patient Clicked",
+                                          screen: "PatientLookup",
+                                          data: {"input": _lastInput},
+                                        );
+                                        widget.onCreateNew!(_lastInput);
+                                      }
+                                    : null,
+                              ),
                             ],
                           ),
                         ),
