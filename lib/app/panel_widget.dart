@@ -5,6 +5,7 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/observable.dart';
@@ -53,6 +54,7 @@ class _PanelScreenState extends State<PanelScreen> {
   @override
   void initState() {
     super.initState();
+    ActivityLogger.logPanel(widget.panel.runtimeType.toString(), "Opened");
     isNew = widget.panel.store.get(widget.panel.item.id) == null;
     saveButtonCheckTimer =
         Timer.periodic(const Duration(milliseconds: 750), (_) {
@@ -97,28 +99,38 @@ class _PanelScreenState extends State<PanelScreen> {
           final focus = FocusManager.instance.primaryFocus;
           final isTextFieldFocused = focus?.context?.widget is EditableText;
 
-          // Only handle Escape if not focused on a text field
+          // Escape key: close panel if not focused on a text field
           if (value is KeyUpEvent &&
               value.logicalKey == LogicalKeyboardKey.escape &&
               !isTextFieldFocused &&
               routes.panels().isNotEmpty &&
               widget.panel.inProgress() == false) {
+            ActivityLogger.logPanel(widget.panel.runtimeType.toString(),
+                "Escape Key Pressed - Panel Close Attempt");
             closeOrConfirmCancel();
             return;
           }
 
+          // Ctrl key pressed/released
           if (value.logicalKey == LogicalKeyboardKey.controlLeft ||
               value.logicalKey == LogicalKeyboardKey.controlLeft) {
             if (value is KeyDownEvent) {
               ctrlPressed = true;
+              ActivityLogger.logPanel(
+                  widget.panel.runtimeType.toString(), "Ctrl Key Down");
             } else {
               ctrlPressed = false;
+              ActivityLogger.logPanel(
+                  widget.panel.runtimeType.toString(), "Ctrl Key Up");
             }
           }
 
+          // Ctrl+Tab: switch tabs
           if (value is KeyDownEvent &&
               value.logicalKey == LogicalKeyboardKey.tab &&
               ctrlPressed) {
+            ActivityLogger.logPanel(widget.panel.runtimeType.toString(),
+                "Ctrl+Tab Pressed - Tab Switch");
             if (widget.panel.selectedTab() == widget.panel.tabs.length - 1) {
               widget.panel.selectedTab(0);
             } else {
@@ -265,7 +277,21 @@ class _PanelScreenState extends State<PanelScreen> {
           stream: widget.panel.hasUnsavedChanges.stream,
           builder: (context, _) {
             return FilledButton(
-              onPressed: closeOrConfirmCancel,
+              onPressed: () {
+                ActivityLogger.logAction(
+                  widget.panel.hasUnsavedChanges()
+                      ? "Cancel Button Clicked"
+                      : "Close Button Clicked",
+                  screen: widget.panel.runtimeType.toString(),
+                  data: {
+                    "itemId": widget.panel.item.id,
+                    "itemType": widget.panel.item.runtimeType.toString(),
+                    "itemTitle": widget.panel.item.title,
+                    "hasUnsavedChanges": widget.panel.hasUnsavedChanges(),
+                  },
+                );
+                closeOrConfirmCancel();
+              },
               style: greyButtonStyle.copyWith(
                 textStyle:
                     const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
@@ -294,6 +320,16 @@ class _PanelScreenState extends State<PanelScreen> {
           return FilledButton(
             onPressed: () {
               if (widget.panel.hasUnsavedChanges()) {
+                ActivityLogger.logAction(
+                  "Save Button Clicked",
+                  screen: widget.panel.runtimeType.toString(),
+                  data: {
+                    "itemId": widget.panel.item.id,
+                    "itemType": widget.panel.item.runtimeType.toString(),
+                    "itemTitle": widget.panel.item.title,
+                    "isNew": isNew,
+                  },
+                );
                 widget.panel.store.set(widget.panel.item);
                 widget.panel.savedJson = jsonEncode(widget.panel.item.toJson());
                 widget.panel.identifier = widget.panel.item.id;
@@ -335,6 +371,15 @@ class _PanelScreenState extends State<PanelScreen> {
             onPressed: (!widget.panel.hasValidTitle())
                 ? null
                 : () {
+                    ActivityLogger.logAction(
+                      "Check-in Button Clicked",
+                      screen: widget.panel.runtimeType.toString(),
+                      data: {
+                        "itemId": widget.panel.item.id,
+                        "itemType": widget.panel.item.runtimeType.toString(),
+                        "itemTitle": widget.panel.item.title,
+                      },
+                    );
                     final newAppointment = Appointment.fromJson(
                         {"patientID": widget.panel.item.id});
                     appointments.set(newAppointment);
@@ -529,6 +574,8 @@ class _PanelScreenState extends State<PanelScreen> {
 
   void closeOrConfirmCancel() {
     if (widget.panel.hasUnsavedChanges() == false) {
+      ActivityLogger.logPanel(
+          widget.panel.runtimeType.toString(), "Closed - w/o unsaved changes");
       routes.closePanel(widget.panel.item.id);
     } else {
       confirmCancelController.showFlyout(builder: (context) {
@@ -548,6 +595,9 @@ class _PanelScreenState extends State<PanelScreen> {
                             WidgetStatePropertyAll(Colors.warningPrimaryColor)),
                     onPressed: () {
                       Flyout.of(context).close();
+                      ActivityLogger.logPanel(
+                          widget.panel.runtimeType.toString(),
+                          "Closed - with unsaved changes");
                       routes.closePanel(widget.panel.item.id);
                     },
                     child: Row(

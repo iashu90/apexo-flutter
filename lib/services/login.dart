@@ -15,7 +15,7 @@ class _LoginService extends ObservablePersistingObject {
 
   String url = "";
   String email = "";
-  String password = "";
+  String password = "F";
   String token = "";
   String adminCollectionId = "__UNDEFINED__";
 
@@ -35,7 +35,8 @@ class _LoginService extends ObservablePersistingObject {
 
   bool get isAdmin {
     final tokenSegments = token.split(".");
-    if (tokenSegments.length == 3 && decode(tokenSegments[1]).contains(adminCollectionId)) {
+    if (tokenSegments.length == 3 &&
+        decode(tokenSegments[1]).contains(adminCollectionId)) {
       return true;
     }
 
@@ -59,11 +60,13 @@ class _LoginService extends ObservablePersistingObject {
 
   Future<String> authenticateWithPassword(String email, String password) async {
     try {
-      final auth = await pb!.collection("_superusers").authWithPassword(email, password);
+      final auth =
+          await pb!.collection("_superusers").authWithPassword(email, password);
       adminCollectionId = auth.record.collectionId;
       return auth.token;
     } catch (e) {
-      final auth = await pb!.collection("users").authWithPassword(email, password);
+      final auth =
+          await pb!.collection("users").authWithPassword(email, password);
       return auth.token;
     }
   }
@@ -96,7 +99,8 @@ class _LoginService extends ObservablePersistingObject {
       try {
         // email and password authentication
         if (credentials.length == 2) {
-          token = await authenticateWithPassword(credentials[0], credentials[1]);
+          token =
+              await authenticateWithPassword(credentials[0], credentials[1]);
           email = credentials[0];
           url = inputURL;
         }
@@ -114,12 +118,17 @@ class _LoginService extends ObservablePersistingObject {
         try {
           try {
             loginCtrl.loadingIndicator("Verifying collections");
-            await pb!.collection(dataCollectionName).getList(page: 1, perPage: 1);
-            await pb!.collection(publicCollectionName).getList(page: 1, perPage: 1);
+            await pb!
+                .collection(dataCollectionName)
+                .getList(page: 1, perPage: 1);
+            await pb!
+                .collection(publicCollectionName)
+                .getList(page: 1, perPage: 1);
           } catch (e) {
             launch.isFirstLaunch(true);
             if (isAdmin) {
-              loginCtrl.loadingIndicator("Creating collections for the first time");
+              loginCtrl
+                  .loadingIndicator("Creating collections for the first time");
               await initializePocketbase(pb!);
             } else {
               logger(
@@ -129,20 +138,23 @@ class _LoginService extends ObservablePersistingObject {
             }
           }
         } catch (e) {
-          throw Exception("Error while creating the collection for the first time: $e");
+          throw Exception(
+              "Error while creating the collection for the first time: $e");
         }
       } catch (e, s) {
         if (e.runtimeType != ClientException) {
           loginCtrl.loginError("Error while logging-in: $e.");
         } else if ((e as ClientException).statusCode == 404) {
-          loginCtrl.loginError("Invalid server, make sure PocketBase is installed and running.");
+          loginCtrl.loginError(
+              "Invalid server, make sure PocketBase is installed and running.");
         } else if (e.statusCode == 400) {
           loginCtrl.loginError("Invalid email or password.");
         } else if (e.statusCode == 0) {
           loginCtrl.loginError(
               "Unable to connect, please check your internet connection, firewall, or the server URL field.");
         } else {
-          loginCtrl.loginError("Unknown client exception while authenticating: $e.");
+          loginCtrl
+              .loginError("Unknown client exception while authenticating: $e.");
         }
         logger("Could not login due to the following error: $e", s, 2);
         return loginCtrl.finishedLoginProcess(loginCtrl.loginError());

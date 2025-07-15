@@ -1,3 +1,4 @@
+import 'package:apexo/core/activity_logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 
@@ -60,7 +61,14 @@ Future<bool?> showConfirmDeleteDialog(
       actions: [
         Button(
           child: const Text('Cancel'),
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: () {
+            ActivityLogger.logAction(
+              "Delete Confirmation Cancelled",
+              screen: "DeleteConfirmationDialog",
+              data: {"message": baseMessage, "details": customDetails},
+            );
+            Navigator.pop(context, false);
+          },
         ),
         FilledButton(
           style: ButtonStyle(
@@ -68,7 +76,14 @@ Future<bool?> showConfirmDeleteDialog(
                 ButtonState.all(material.Colors.red), // Make button red
           ),
           child: const Text('Delete'),
-          onPressed: () => Navigator.pop(context, true),
+          onPressed: () {
+            ActivityLogger.logAction(
+              "Delete Confirmed",
+              screen: "DeleteConfirmationDialog",
+              data: {"message": baseMessage, "details": customDetails},
+            );
+            Navigator.pop(context, true);
+          },
         ),
       ],
     ),

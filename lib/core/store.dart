@@ -86,22 +86,38 @@ class Store<G extends Model> {
     if (local == null) {
       return;
     }
-    Iterable<String> all = await local!.getAll();
-    Iterable<G> modeled = all.map((x) {
+    final box = await local!.mainHiveBox;
+    final keys = box.keys.cast<String>().toList();
+    final values = box.values.toList();
+
+    List<String> keysToDelete = [];
+    List<G> modeled = [];
+
+    for (int i = 0; i < values.length; i++) {
+      final key = keys[i];
+      final value = values[i];
       try {
-        final decoded = _deSerialize(x);
+        final decoded = _deSerialize(value);
         if (decoded is Map<String, dynamic>) {
-          return modeling(decoded);
+          modeled.add(modeling(decoded));
+        } else {
+          keysToDelete.add(key);
         }
       } catch (_) {
-        print("Corrupt data in local storage: $x");
+        print("Corrupt data in local storage: $value");
+        keysToDelete.add(key);
       }
-      return null;
-    }).whereType<G>();
+    }
+
+    // Remove corrupted entries
+    for (final key in keysToDelete) {
+      await box.delete(key);
+    }
+
     // silent for persistence
     observableMap.silently(() {
       observableMap.clear();
-      observableMap.setAll(modeled.toList());
+      observableMap.setAll(modeled);
     });
     // but loud for view
     observableMap.notifyView();

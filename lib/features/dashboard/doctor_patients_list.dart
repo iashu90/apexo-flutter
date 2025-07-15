@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/text_util.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
@@ -143,6 +144,15 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                   child: IconButton(
                     icon: Icon(FluentIcons.add, color: Colors.blue),
                     onPressed: () {
+                      ActivityLogger.logAction(
+                        "Add Appointment Clicked",
+                        screen: "DashboardScreen",
+                        data: {
+                          "doctorId": widget.doctor?.id,
+                          "doctorName": widget.doctor?.title,
+                          "selectedDate": widget.selectedDate.toIso8601String(),
+                        },
+                      );
                       if (widget.doctor != null) {
                         openAppointment(Appointment.fromJson({
                           "operatorsIDs": [widget.doctor!.id],
@@ -192,6 +202,16 @@ class _DoctorPatientsListState extends State<DoctorPatientsList> {
                   ? IconButton(
                       icon: const Icon(FluentIcons.cancel),
                       onPressed: () {
+                        ActivityLogger.logAction(
+                          "Search Clear Clicked",
+                          screen: "DashboardScreen",
+                          data: {
+                            "doctorId": widget.doctor?.id,
+                            "doctorName": widget.doctor?.title,
+                            "selectedDate":
+                                widget.selectedDate.toIso8601String(),
+                          },
+                        );
                         setState(() {
                           _searchQuery = '';
                           _searchController.clear();
@@ -299,6 +319,16 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
           onExit: (_) => setState(() => hoveredIndex = null),
           child: GestureDetector(
             onTap: () {
+              ActivityLogger.logAction(
+                "Patient Row Clicked",
+                screen: "DashboardScreen",
+                data: {
+                  "patientId": patient?.id,
+                  "patientName": patientName,
+                  "appointmentId": a.id,
+                  "appointmentTime": apptTime,
+                },
+              );
               if (patient != null) {
                 openPatient(patient, 1);
               }
@@ -317,6 +347,18 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                   Checkbox(
                     checked: selectedIndexes.contains(index),
                     onChanged: (checked) {
+                      ActivityLogger.logAction(
+                        checked == true
+                            ? "Patient Row Selected"
+                            : "Patient Row Deselected",
+                        screen: "DashboardScreen",
+                        data: {
+                          "patientId": patient?.id,
+                          "patientName": patientName,
+                          "appointmentId": a.id,
+                          "appointmentTime": apptTime,
+                        },
+                      );
                       setState(() {
                         if (checked == true) {
                           selectedIndexes.add(index);
@@ -332,6 +374,16 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                     icon: const Icon(FluentIcons.money,
                         color: material.Colors.green, size: 18),
                     onPressed: () {
+                      ActivityLogger.logAction(
+                        "Patient Report Dialog Opened",
+                        screen: "DashboardScreen",
+                        data: {
+                          "patientId": patient?.id,
+                          "patientName": patientName,
+                          "appointmentId": a.id,
+                          "appointmentTime": apptTime,
+                        },
+                      );
                       if (patient != null &&
                           patient.patientDetails != null &&
                           patient.patientDetails.isNotEmpty) {

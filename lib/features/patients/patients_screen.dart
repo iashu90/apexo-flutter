@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -41,6 +42,10 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   actions: [
                     DataTableAction(
                       callback: (_) async {
+                        ActivityLogger.logAction(
+                          "Add Patient Clicked",
+                          screen: "PatientsScreen",
+                        );
                         openPatient();
                       },
                       icon: FluentIcons.add_friend,
@@ -54,6 +59,12 @@ class _PatientsScreenState extends State<PatientsScreen> {
                             .map((id) => patients.get(id)?.title)
                             .where((name) => name != null && name.isNotEmpty)
                             .join(", ");
+
+                        ActivityLogger.logAction(
+                          "Delete Patients Clicked",
+                          screen: "PatientsScreen",
+                          data: {"patientNames": names},
+                        );
 
                         final confirmed = await showConfirmDeleteDialog(
                           context,
@@ -75,6 +86,18 @@ class _PatientsScreenState extends State<PatientsScreen> {
                                 .present.values
                                 .where((a) => a.patientID == id)
                                 .toList();
+                            ActivityLogger.logAction(
+                              "Appointments To Be Deleted",
+                              screen: "PatientsScreen",
+                              data: {
+                                "patientId": id,
+                                "patientName": patients.get(id)?.title,
+                                "appointmentsCount": relatedAppointments.length,
+                                "appointmentIds": relatedAppointments
+                                    .map((a) => a.id)
+                                    .toList(),
+                              },
+                            );
                             for (final appointment in relatedAppointments) {
                               appointmentDeleteFutures
                                   .add(appointments.hardDelete(appointment.id));
@@ -97,6 +120,11 @@ class _PatientsScreenState extends State<PatientsScreen> {
                     ),
                     DataTableAction(
                       callback: (ids) {
+                        ActivityLogger.logAction(
+                          "Export Selected Patients Clicked",
+                          screen: "PatientsScreen",
+                          data: {"ids": ids},
+                        );
                         showDialog(
                           context: context,
                           builder: (BuildContext context) {

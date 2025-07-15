@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:http/http.dart' as http;
@@ -104,12 +105,33 @@ class SaveRemote {
 
     do {
       try {
+        ActivityLogger.logApi(
+          pbInstance.baseURL + "/api/collections/data/records",
+          "GET",
+          params: {
+            "filter": 'updated>"$date"&&store="$storeName"',
+            "sort": "updated",
+            "perPage": 900,
+            "page": currentPage,
+            "fields": "data,id,updated,imgs",
+          },
+        );
+
         final pageResult = await remoteRows.getList(
           filter: 'updated>"$date"&&store="$storeName"',
           sort: "updated",
           perPage: 900,
           page: currentPage,
           fields: "data,id,updated,imgs",
+        );
+
+        ActivityLogger.logApi(
+          pbInstance.baseURL + "/api/collections/data/records",
+          "GET_RESPONSE",
+          params: {
+            "response": pageResult.items.map((item) => item.data).toList(),
+            "status": pageResult.totalPages,
+          },
         );
 
         for (var item in pageResult.items) {
@@ -128,6 +150,7 @@ class SaveRemote {
           nextPageExists = false;
         }
       } catch (e) {
+        ActivityLogger.logException(e, null, "getSince");
         await checkOnline();
         rethrow;
       }

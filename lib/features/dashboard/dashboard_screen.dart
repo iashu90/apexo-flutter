@@ -3,6 +3,7 @@ import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/date_selector_row.dart';
 import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/dashboard/completed_pending.dart';
@@ -484,7 +485,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: GestureDetector(
-        onTap: onTap,
+        onTap: () {
+          ActivityLogger.logAction(
+            "Dashboard $subtitle Clicked",
+            screen: "DashboardScreen",
+          );
+          if (onTap != null) onTap();
+        },
         child: Acrylic(
           elevation: 50,
           luminosityAlpha: 1,
@@ -679,6 +686,14 @@ class _DoctorAppointmentsSummaryWithDateState
                                   icon:
                                       Icon(FluentIcons.add, color: Colors.blue),
                                   onPressed: () {
+                                    ActivityLogger.logAction(
+                                      "Add Appointment Clicked",
+                                      screen: "DashboardScreen",
+                                      data: {
+                                        "selectedDate":
+                                            selectedDate.toIso8601String(),
+                                      },
+                                    );
                                     openAppointment(Appointment.fromJson({}));
                                   },
                                 ),
