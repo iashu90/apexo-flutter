@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/patient_report.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -223,7 +224,17 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                       alignment: Alignment.centerRight,
                       child: IconButton(
                         icon: const Icon(FluentIcons.cancel),
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          ActivityLogger.logAction(
+                            "Patient Details Dialog Closed by Icon",
+                            screen: "PatientDetailsDialog",
+                            data: {
+                              "patientId": widget.patient?.id,
+                              "patientName": widget.patient?.title,
+                            },
+                          );
+                          Navigator.of(context).pop();
+                        },
                       ),
                     ),
                   ),
@@ -258,6 +269,15 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                         onChanged: (value) {
                           setState(() {
                             dueFilter = value ?? 'All';
+                            ActivityLogger.logAction(
+                              "Payment Status Filter Changed",
+                              screen: "PatientDetailsDialog",
+                              data: {
+                                "patientId": widget.patient?.id,
+                                "patientName": widget.patient?.title,
+                                "dueFilter": dueFilter,
+                              },
+                            );
                           });
                         },
                         placeholder: const Text('Payment Status'),
@@ -287,6 +307,15 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                           ComboBoxItem(child: Text('GPay'), value: 'GPay'),
                         ],
                         onChanged: (value) {
+                          ActivityLogger.logAction(
+                            "Mode Filter Changed",
+                            screen: "PatientDetailsDialog",
+                            data: {
+                              "patientId": widget.patient?.id,
+                              "patientName": widget.patient?.title,
+                              "modeFilter": modeFilter,
+                            },
+                          );
                           setState(() {
                             modeFilter = value ?? 'All';
                           });
@@ -372,7 +401,17 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
             alignment: Alignment.centerRight,
             child: Button(
               child: const Text("Close"),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                ActivityLogger.logAction(
+                  "Patient Details Dialog Closed",
+                  screen: "PatientDetailsDialog",
+                  data: {
+                    "patientId": widget.patient?.id,
+                    "patientName": widget.patient?.title,
+                  },
+                );
+                Navigator.of(context).pop();
+              },
             ),
           ),
         ],
