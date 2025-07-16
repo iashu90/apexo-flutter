@@ -324,9 +324,8 @@ class _PanelScreenState extends State<PanelScreen> {
                   "Save Button Clicked",
                   screen: widget.panel.runtimeType.toString(),
                   data: {
-                    "itemId": widget.panel.item.id,
+                    "item": widget.panel.item.toJson().toString(),
                     "itemType": widget.panel.item.runtimeType.toString(),
-                    "itemTitle": widget.panel.item.title,
                     "isNew": isNew,
                   },
                 );
