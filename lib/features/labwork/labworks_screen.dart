@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/delete_confirmation.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
@@ -155,6 +156,14 @@ class _LabworksScreenState extends State<LabworksScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             onPressed: () async {
+                              ActivityLogger.logAction(
+                                "Labworks From Date Picker Opened",
+                                screen: "LabworksScreen",
+                                data: {
+                                  "currentFromDate":
+                                      _fromDate?.toIso8601String()
+                                },
+                              );
                               final picked = await showDatePicker(
                                 context: context,
                                 initialDate: _fromDate ?? DateTime.now(),
@@ -169,6 +178,11 @@ class _LabworksScreenState extends State<LabworksScreen> {
                                     _toDate = null;
                                   }
                                 });
+                                ActivityLogger.logAction(
+                                  "Labworks From Date Selected",
+                                  screen: "LabworksScreen",
+                                  data: {"fromDate": picked.toIso8601String()},
+                                );
                               }
                             },
                           ),
@@ -185,6 +199,13 @@ class _LabworksScreenState extends State<LabworksScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             onPressed: () async {
+                              ActivityLogger.logAction(
+                                "Labworks To Date Picker Opened",
+                                screen: "LabworksScreen",
+                                data: {
+                                  "currentToDate": _toDate?.toIso8601String()
+                                },
+                              );
                               final picked = await showDatePicker(
                                 context: context,
                                 initialDate: _toDate ?? DateTime.now(),
@@ -199,6 +220,11 @@ class _LabworksScreenState extends State<LabworksScreen> {
                                     _fromDate = null;
                                   }
                                 });
+                                ActivityLogger.logAction(
+                                  "Labworks To Date Selected",
+                                  screen: "LabworksScreen",
+                                  data: {"toDate": picked.toIso8601String()},
+                                );
                               }
                             },
                           ),
@@ -211,10 +237,20 @@ class _LabworksScreenState extends State<LabworksScreen> {
                             height: 36,
                             child: IconButton(
                               icon: const Icon(FluentIcons.clear),
-                              onPressed: () => setState(() {
-                                _fromDate = null;
-                                _toDate = null;
-                              }),
+                              onPressed: () {
+                                ActivityLogger.logAction(
+                                  "Labworks Date Filter Cleared",
+                                  screen: "LabworksScreen",
+                                  data: {
+                                    "fromDate": _fromDate?.toIso8601String(),
+                                    "toDate": _toDate?.toIso8601String()
+                                  },
+                                );
+                                setState(() {
+                                  _fromDate = null;
+                                  _toDate = null;
+                                });
+                              },
                             ),
                           ),
                         ],
@@ -324,6 +360,16 @@ class _LabworksScreenState extends State<LabworksScreen> {
                                 _toDate!.month == now.month &&
                                 _toDate!.day == lastDay.day;
 
+                            ActivityLogger.logAction(
+                              "Labworks This Month Filter Clicked",
+                              screen: "LabworksScreen",
+                              data: {
+                                "isThisMonthActive": isThisMonthActive,
+                                "fromDate": _fromDate?.toIso8601String(),
+                                "toDate": _toDate?.toIso8601String(),
+                              },
+                            );
+
                             setState(() {
                               if (isThisMonthActive) {
                                 // Toggle off filter
@@ -348,7 +394,13 @@ class _LabworksScreenState extends State<LabworksScreen> {
                   ),
                   actions: [
                     DataTableAction(
-                      callback: (_) => openLabwork(),
+                      callback: (_) {
+                        ActivityLogger.logAction(
+                          "Add Labwork Clicked",
+                          screen: "LabworksScreen",
+                        );
+                        openLabwork();
+                      },
                       icon: FluentIcons.manufacturing,
                       title: txt("add"),
                     ),
@@ -365,6 +417,14 @@ class _LabworksScreenState extends State<LabworksScreen> {
                             })
                             .where((str) => str != null && str.isNotEmpty)
                             .join("\n");
+                        ActivityLogger.logAction(
+                          "Delete Labworks Clicked",
+                          screen: "LabworksScreen",
+                          data: {
+                            "labworkIds": ids,
+                            "labworkNames": names,
+                          },
+                        );
                         final confirmed = await showConfirmDeleteDialog(
                           context,
                           message:
@@ -393,6 +453,13 @@ class _LabworksScreenState extends State<LabworksScreen> {
                       title: txt("callLaboratory"),
                       callback: (id) {
                         final lab = labworks.get(id);
+                        ActivityLogger.logAction(
+                          "Call Laboratory Clicked",
+                          screen: "LabworksScreen",
+                          data: {
+                            "labwork": lab?.toJson().toString(),
+                          },
+                        );
                         if (lab == null) return;
                         launchUrl(Uri.parse('tel:${lab.phoneNumber}'));
                       },

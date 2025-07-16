@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -138,7 +139,14 @@ class WeekAgendaCalendarState<Item extends Appointment>
             Row(
               children: [
                 IconButton(
-                  onPressed: () => widget.onAddNew(selectedDate),
+                  onPressed: () {
+                    ActivityLogger.logAction(
+                      "Add Appointment Clicked",
+                      screen: "CalendarWidget",
+                      data: {"selectedDate": selectedDate.toIso8601String()},
+                    );
+                    widget.onAddNew(selectedDate);
+                  },
                   icon: Row(
                     children: [
                       const Icon(FluentIcons.add_event, size: 17),
@@ -153,6 +161,15 @@ class WeekAgendaCalendarState<Item extends Appointment>
                   IconButton(
                     icon: Icon(FluentIcons.delete),
                     onPressed: () async {
+                      ActivityLogger.logAction(
+                        "Delete Appointments Clicked",
+                        screen: "CalendarWidget",
+                        data: {
+                          "selectedAppointmentIds":
+                              selectedAppointmentIds.toList(),
+                          "selectedDate": selectedDate.toIso8601String(),
+                        },
+                      );
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => ContentDialog(
@@ -162,7 +179,19 @@ class WeekAgendaCalendarState<Item extends Appointment>
                           actions: [
                             Button(
                               child: const Text('Cancel'),
-                              onPressed: () => Navigator.pop(ctx, false),
+                              onPressed: () {
+                                ActivityLogger.logAction(
+                                  "Delete Appointments Cancelled",
+                                  screen: "CalendarWidget",
+                                  data: {
+                                    "selectedAppointmentIds":
+                                        selectedAppointmentIds.toList(),
+                                    "selectedDate":
+                                        selectedDate.toIso8601String(),
+                                  },
+                                );
+                                Navigator.pop(ctx, false);
+                              },
                             ),
                             FilledButton(
                               style: ButtonStyle(
@@ -170,7 +199,19 @@ class WeekAgendaCalendarState<Item extends Appointment>
                                     Colors.red), // Make button red
                               ),
                               child: const Text('Delete'),
-                              onPressed: () => Navigator.pop(ctx, true),
+                              onPressed: () {
+                                ActivityLogger.logAction(
+                                  "Delete Appointments Confirmed",
+                                  screen: "CalendarWidget",
+                                  data: {
+                                    "selectedAppointmentIds":
+                                        selectedAppointmentIds.toList(),
+                                    "selectedDate":
+                                        selectedDate.toIso8601String(),
+                                  },
+                                );
+                                Navigator.pop(ctx, true);
+                              },
                             ),
                           ],
                         ),
@@ -266,7 +307,14 @@ class WeekAgendaCalendarState<Item extends Appointment>
               const Divider(size: 20, direction: Axis.vertical),
               if (!isSameDay(day, DateTime.now()))
                 IconButton(
-                  onPressed: _goToToday,
+                  onPressed: () {
+                    ActivityLogger.logAction(
+                      "Go To Today Clicked",
+                      screen: "CalendarWidget",
+                      data: {"from": selectedDate.toIso8601String()},
+                    );
+                    _goToToday();
+                  },
                   iconButtonMode: IconButtonMode.large,
                   icon: Row(
                     children: [
@@ -304,6 +352,14 @@ class WeekAgendaCalendarState<Item extends Appointment>
         },
       ),
       onDaySelected: (newDate, focusedDay) {
+        ActivityLogger.logAction(
+          "Calendar Day Selected",
+          screen: "CalendarWidget",
+          data: {
+            "from": selectedDate.toIso8601String(),
+            "to": newDate.toIso8601String(),
+          },
+        );
         setState(() => selectedDate = newDate);
       },
     );
@@ -417,6 +473,11 @@ class WeekAgendaCalendarState<Item extends Appointment>
               // Completed appointments with filter
               GestureDetector(
                 onTap: () {
+                  ActivityLogger.logAction(
+                    "Completed Appointments Filter Clicked",
+                    screen: "CalendarWidget",
+                    data: {"selectedDate": selectedDate.toIso8601String()},
+                  );
                   setState(() {
                     // Filter to show only completed
                     appointmentDayFilter = true;
@@ -451,8 +512,12 @@ class WeekAgendaCalendarState<Item extends Appointment>
               // Pending appointments with filter
               GestureDetector(
                 onTap: () {
+                  ActivityLogger.logAction(
+                    "Pending Appointments Filter Clicked",
+                    screen: "CalendarWidget",
+                    data: {"selectedDate": selectedDate.toIso8601String()},
+                  );
                   setState(() {
-                    // Filter to show only pending
                     appointmentDayFilter = false;
                   });
                 },
@@ -486,6 +551,11 @@ class WeekAgendaCalendarState<Item extends Appointment>
                 IconButton(
                   icon: const Icon(FluentIcons.clear),
                   onPressed: () {
+                    ActivityLogger.logAction(
+                      "Appointment Filter Cleared",
+                      screen: "CalendarWidget",
+                      data: {"selectedDate": selectedDate.toIso8601String()},
+                    );
                     setState(() {
                       appointmentDayFilter = null;
                     });
@@ -685,6 +755,17 @@ class AppointmentCalendarTile<Item extends Appointment>
             Checkbox(
               checked: isSelected,
               onChanged: (checked) {
+                ActivityLogger.logAction(
+                  checked == true
+                      ? "Appointment Checked"
+                      : "Appointment Unchecked",
+                  screen: "CalendarWidget",
+                  data: {
+                    "appointmentId": item.id,
+                    "appointmentTitle": item.title,
+                    "checked": checked,
+                  },
+                );
                 if (onCheckboxChanged != null) {
                   onCheckboxChanged!(checked ?? false);
                 }
@@ -695,6 +776,15 @@ class AppointmentCalendarTile<Item extends Appointment>
             IconButton(
               icon: const Icon(FluentIcons.money, size: 20),
               onPressed: () {
+                ActivityLogger.logAction(
+                  "Patient Report Dialog Opened",
+                  screen: "CalendarWidget",
+                  data: {
+                    "patientId": item.patient?.id,
+                    "patientName": item.patient?.title,
+                    "appointmentId": item.id,
+                  },
+                );
                 showDialog(
                   context: context,
                   builder: (_) => Align(
@@ -933,7 +1023,17 @@ class AppointmentCalendarTile<Item extends Appointment>
             ],
           ),
         ),
-        onPressed: () => onSelect(item),
+        onPressed: () {
+          ActivityLogger.logAction(
+            "Appointment Tile Clicked",
+            screen: "CalendarWidget",
+            data: {
+              "appointmentId": item.id,
+              "appointmentTitle": item.title,
+            },
+          );
+          onSelect(item);
+        },
       ),
     );
   }
