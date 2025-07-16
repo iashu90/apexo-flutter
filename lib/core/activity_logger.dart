@@ -3,8 +3,14 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 
 class ActivityLogger {
-  static final String _logDir = Directory.current.path; // Default location
+  static final String _logDir = "${Directory.current.path}/.log"; // Use .log folder
+
   static File get _logFile {
+    // Ensure the .log directory exists
+    final dir = Directory(_logDir);
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
     final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
     return File('$_logDir/activity_log_$dateStr.txt');
   }
