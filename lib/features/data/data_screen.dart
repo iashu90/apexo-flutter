@@ -1,3 +1,4 @@
+import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/data/prescriptions_model.dart';
@@ -19,9 +20,6 @@ class _DataScreenState extends State<DataScreen> {
   final List<Treatment> treatments = [];
   @override
   Widget build(BuildContext context) {
-    // Get all prescriptions from the appointments store
-    // final prescriptions = appointments.allPrescriptions;
-
     return ScaffoldPage(
       header: PageHeader(title: Text(txt("data"))),
       content: Padding(
@@ -49,6 +47,11 @@ class _DataScreenState extends State<DataScreen> {
                         onPressed: () {
                           final val = prescriptionController.text.trim();
                           if (val.isNotEmpty) {
+                            ActivityLogger.logAction(
+                              "Prescription Added",
+                              screen: "DataScreen",
+                              data: {"prescription": val},
+                            );
                             setState(() {
                               Prescriptions prescriptions = Prescriptions();
                               prescriptions.prescription = val;
@@ -104,6 +107,11 @@ class _DataScreenState extends State<DataScreen> {
                                       child: const Icon(FluentIcons.cancel,
                                           size: 16),
                                       onPressed: () {
+                                        ActivityLogger.logAction(
+                                          "Prescription Deleted",
+                                          screen: "DataScreen",
+                                          data: {"prescription": prescription},
+                                        );
                                         setState(() {
                                           Prescriptions? toDelete;
                                           for (final p in prescriptionsStore
