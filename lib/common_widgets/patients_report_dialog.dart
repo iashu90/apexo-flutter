@@ -88,7 +88,12 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
         final paid =
             double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
         // Only filter by mode if paid > 0
-        return paid > 0 && row.treatmentPaymentMode == modeFilter;
+        final showPrescriptionMode = !widget.hiddenColumns.contains('P.Mode');
+        final paymentModeValue = showPrescriptionMode
+            ? row.preceptionPaymentMode
+            : row.treatmentPaymentMode;
+
+        return paid > 0 && paymentModeValue == modeFilter;
       }).toList();
     }
     return base;
