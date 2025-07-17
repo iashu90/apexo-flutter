@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/core/model.dart';
+import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/utils/encode.dart';
@@ -41,10 +42,10 @@ class Patient extends Model {
             ? appointment.selectedTeeth.join(', ')
             : '';
 
-        final mode = (appointment.treatmentGpayPaid == true ||
-                appointment.prescriptionGpayPaid == true)
-            ? 'GPay'
-            : 'Cash';
+        final treatmentPaymentMode =
+            appointment.treatmentGpayPaid == true ? 'GPay' : 'Cash';
+        final preceptionPaymentMode =
+            appointment.prescriptionGpayPaid == true ? 'GPay' : 'Cash';
 
         return ReportDetailRow(
             date: dateStr,
@@ -54,7 +55,9 @@ class Patient extends Model {
             treatment: treatmentStr,
             teeth: teethStr,
             isDone: appointment.isDone,
-            mode: mode);
+            treatmentPaymentMode: treatmentPaymentMode,
+            preceptionPaymentMode: preceptionPaymentMode,
+          );
       }).toList();
 
   List<Appointment>? _doneAppointmentsCached;
@@ -173,6 +176,12 @@ class Patient extends Model {
 
     for (var i = 0; i < tags.length; i++) {
       buildingLabels[List.generate(i + 1, (_) => "\u200B").join("")] = tags[i];
+    }
+
+    final labworksCount =
+        labworks.present.values.where((lw) => lw.patientID == id).length;
+    if (labworksCount > 0) {
+      buildingLabels["Labworks"] = labworksCount.toString();
     }
 
     return buildingLabels;

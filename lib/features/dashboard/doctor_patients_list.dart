@@ -398,6 +398,7 @@ class _PatientListWithHoverState extends State<_PatientListWithHover> {
                                         patient: patient,
                                         hiddenColumns: [
                                           'Prescription',
+                                          'P.Mode',
                                           'Doc Paid'
                                         ]),
                                   ),

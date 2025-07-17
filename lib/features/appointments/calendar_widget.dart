@@ -794,7 +794,11 @@ class AppointmentCalendarTile<Item extends Appointment>
                       child: PatientDetailsDialog(
                           rows: item.patient?.patientDetails ?? [],
                           patient: item.patient,
-                          hiddenColumns: ['Prescription', 'Doc Paid']),
+                          hiddenColumns: [
+                            'Prescription',
+                            'P.Mode',
+                            'Doc Paid'
+                          ]),
                     ),
                   ),
                 );

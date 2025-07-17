@@ -88,7 +88,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
         final paid =
             double.tryParse(row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
         // Only filter by mode if paid > 0
-        return paid > 0 && row.mode == modeFilter;
+        return paid > 0 && row.treatmentPaymentMode == modeFilter;
       }).toList();
     }
     return base;
@@ -258,32 +258,45 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                         ),
                       ),
                       // Due filter ComboBox
-                      ComboBox<String>(
-                        value: dueFilter,
-                        items: [
-                          ComboBoxItem(child: Text('All'), value: 'All'),
-                          ComboBoxItem(child: Text('Due'), value: 'Due'),
-                          ComboBoxItem(
-                              child: Text('Fully Paid'), value: 'Fully Paid'),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            dueFilter = value ?? 'All';
-                            ActivityLogger.logAction(
-                              "Payment Status Filter Changed",
-                              screen: "PatientDetailsDialog",
-                              data: {
-                                "patientId": widget.patient?.id,
-                                "patientName": widget.patient?.title,
-                                "dueFilter": dueFilter,
-                              },
-                            );
-                          });
-                        },
-                        placeholder: const Text('Payment Status'),
-                        style: TextStyle(
-                          color: material.Colors.blue.shade700,
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        decoration: getFilterBoxDecoration(dueFilter != 'All'),
+                        child: ComboBox<String>(
+                          value: dueFilter,
+                          items: [
+                            const ComboBoxItem(
+                              child: Text('All'),
+                              value: 'All',
+                            ),
+                            const ComboBoxItem(
+                              child: Text('Due'),
+                              value: 'Due',
+                            ),
+                            const ComboBoxItem(
+                              child: Text(
+                                'Fully Paid',
+                              ),
+                              value: 'Fully Paid',
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              dueFilter = value ?? 'All';
+                              ActivityLogger.logAction(
+                                "Payment Status Filter Changed",
+                                screen: "PatientDetailsDialog",
+                                data: {
+                                  "patientId": widget.patient?.id,
+                                  "patientName": widget.patient?.title,
+                                  "dueFilter": dueFilter,
+                                },
+                              );
+                            });
+                          },
+                          placeholder: const Text('Payment Status'),
+                          style: TextStyle(
+                            color: material.Colors.blue.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 24),
@@ -299,31 +312,43 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                         ),
                       ),
                       // Mode filter ComboBox
-                      ComboBox<String>(
-                        value: modeFilter,
-                        items: [
-                          ComboBoxItem(child: Text('All'), value: 'All'),
-                          ComboBoxItem(child: Text('Cash'), value: 'Cash'),
-                          ComboBoxItem(child: Text('GPay'), value: 'GPay'),
-                        ],
-                        onChanged: (value) {
-                          ActivityLogger.logAction(
-                            "Mode Filter Changed",
-                            screen: "PatientDetailsDialog",
-                            data: {
-                              "patientId": widget.patient?.id,
-                              "patientName": widget.patient?.title,
-                              "modeFilter": modeFilter,
-                            },
-                          );
-                          setState(() {
-                            modeFilter = value ?? 'All';
-                          });
-                        },
-                        placeholder: const Text('Mode'),
-                        style: TextStyle(
-                          color: material.Colors.blue.shade700,
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        decoration: getFilterBoxDecoration(modeFilter != 'All'),
+                        child: ComboBox<String>(
+                          value: modeFilter,
+                          items: [
+                            ComboBoxItem(
+                              child: Text('All'),
+                              value: 'All',
+                            ),
+                            ComboBoxItem(
+                              child: Text('Cash'),
+                              value: 'Cash',
+                            ),
+                            ComboBoxItem(
+                              child: Text('GPay'),
+                              value: 'GPay',
+                            ),
+                          ],
+                          onChanged: (value) {
+                            ActivityLogger.logAction(
+                              "Mode Filter Changed",
+                              screen: "PatientDetailsDialog",
+                              data: {
+                                "patientId": widget.patient?.id,
+                                "patientName": widget.patient?.title,
+                                "modeFilter": modeFilter,
+                              },
+                            );
+                            setState(() {
+                              modeFilter = value ?? 'All';
+                            });
+                          },
+                          placeholder: const Text('Mode'),
+                          style: TextStyle(
+                            color: material.Colors.blue.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -416,6 +441,25 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
           ),
         ],
       ),
+    );
+  }
+
+  BoxDecoration getFilterBoxDecoration(bool isSelected) {
+    return BoxDecoration(
+      color: isSelected ? Colors.blue : Colors.transparent,
+      borderRadius: BorderRadius.circular(5),
+      boxShadow: isSelected
+          ? [
+              BoxShadow(
+                color: Colors.blue.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ]
+          : [],
+      border: isSelected
+          ? Border.all(color: Colors.blue, width: 2)
+          : Border.all(color: Colors.transparent, width: 0),
     );
   }
 }

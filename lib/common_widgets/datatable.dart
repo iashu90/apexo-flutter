@@ -118,14 +118,16 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             if (item.outstandingPayments <= 0) return false;
           } else if (_activeQuickFilter == "Overpaid") {
             if (item.outstandingPayments >= 0) return false;
-          } else if (_activeQuickFilter == "No Mobile") {
-            if (item.phone.trim().isNotEmpty) return false;
           } else if (_activeQuickFilter == "No Name") {
             if (item.title.trim().isNotEmpty) return false;
           } else if (_activeQuickFilter == "Wrong Phone") {
             // Remove all non-digit characters and check length
             final digits = item.phone.replaceAll(RegExp(r'\D'), '');
             if (digits.length == 10) return false;
+          } else if (_activeQuickFilter == "No Visit") {
+            if (item.daysSinceLastAppointment != null) return false;
+          } else if (_activeQuickFilter == "Visited Today") {
+            if (item.daysSinceLastAppointment != 0) return false;
           }
         }
         // Days filter
@@ -503,7 +505,11 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                             ? PatientDetailsDialog(
                                 rows: item.patientDetails,
                                 patient: item,
-                                hiddenColumns: ['Prescription', 'Doc Paid'],
+                                hiddenColumns: [
+                                  'Prescription',
+                                  'P.Mode',
+                                  'Doc Paid'
+                                ],
                               )
                             : item is Doctor
                                 ? PatientDetailsDialog(
@@ -514,7 +520,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                                       'Cost',
                                       'Paid',
                                       'Balance',
-                                      'Mode',
+                                      'P.Mode',
                                     ],
                                     fromWhere: PatientDetailsSource.doctor,
                                   )
@@ -708,8 +714,14 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           if (Item == Patient)
             Row(
               children: [
-                _buildQuickFilterComboBox(
-                    ["Due", "Overpaid", "No Mobile", "No Name", "Wrong Phone"]),
+                _buildQuickFilterComboBox([
+                  "Due",
+                  "Overpaid",
+                  "No Visit",
+                  "Visited Today",
+                  "No Name",
+                  "Invalid Phone"
+                ]),
                 const SizedBox(width: 8),
                 _buildDaysFilterComboBox([10, 30]),
                 const SizedBox(width: 8),
@@ -725,119 +737,158 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     );
   }
 
-  int? _activeDaysFilter;
+  BoxDecoration getFilterBoxDecoration(bool isSelected) {
+    return BoxDecoration(
+      color: isSelected ? Colors.blue : Colors.transparent,
+      borderRadius: BorderRadius.circular(5),
+      boxShadow: isSelected
+          ? [
+              BoxShadow(
+                color: Colors.blue.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ]
+          : [],
+      border: isSelected
+          ? Border.all(color: Colors.blue, width: 2)
+          : Border.all(color: Colors.transparent, width: 0),
+    );
+  }
 
-  ComboBox<int?> _buildDaysFilterComboBox(List<int> daysOptions) {
-    return ComboBox<int?>(
-      value: _activeDaysFilter,
-      placeholder: const Text("Days Filter"),
-      items: [
-        const ComboBoxItem<int?>(value: null, child: Text("All")),
-        ...daysOptions.map(
-          (d) => ComboBoxItem<int?>(value: d, child: Text("> $d Days")),
-        ),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _activeDaysFilter = value;
-          ActivityLogger.logAction(
-            "Day Filter Selected",
-            screen: Item.toString(),
-            data: {"DayFilter": value},
-          );
-        });
-      },
+  int? _activeDaysFilter;
+  Widget _buildDaysFilterComboBox(List<int> daysOptions) {
+    final isSelected = _activeDaysFilter != null;
+    return Container(
+      decoration: getFilterBoxDecoration(isSelected),
+      child: ComboBox<int?>(
+        value: _activeDaysFilter,
+        placeholder: const Text("Days Filter"),
+        items: [
+          const ComboBoxItem<int?>(value: null, child: Text("All")),
+          ...daysOptions.map(
+            (d) => ComboBoxItem<int?>(value: d, child: Text("> $d Days")),
+          ),
+        ],
+        onChanged: (value) {
+          setState(() {
+            _activeDaysFilter = value;
+            ActivityLogger.logAction(
+              "Day Filter Selected",
+              screen: Item.toString(),
+              data: {"DayFilter": value},
+            );
+          });
+        },
+      ),
     );
   }
 
   String? _activeQuickFilter;
-  ComboBox<String?> _buildQuickFilterComboBox(List<String> quickOptions) {
-    return ComboBox<String?>(
-      value: _activeQuickFilter,
-      placeholder: const Text("Quick Filter"),
-      items: [
-        const ComboBoxItem<String?>(value: null, child: Text("All")),
-        ...quickOptions.map(
-          (option) => ComboBoxItem<String?>(
-            value: option,
-            child: Text(option),
+  Widget _buildQuickFilterComboBox(List<String> quickOptions) {
+    final isSelected = _activeQuickFilter != null;
+    return Container(
+      decoration: getFilterBoxDecoration(isSelected),
+      child: ComboBox<String?>(
+        value: _activeQuickFilter,
+        placeholder: const Text("Quick Filter"),
+        items: [
+          const ComboBoxItem<String?>(value: null, child: Text("All")),
+          ...quickOptions.map(
+            (option) => ComboBoxItem<String?>(
+              value: option,
+              child: Text(
+                option,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.black,
+                ),
+              ),
+            ),
           ),
-        ),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _activeQuickFilter = value;
-          ActivityLogger.logAction(
-            "Quick Filter Selected",
-            screen: Item.toString(),
-            data: {"QuickFilter": value},
-          );
-        });
-      },
+        ],
+        onChanged: (value) {
+          setState(() {
+            _activeQuickFilter = value;
+            ActivityLogger.logAction(
+              "Quick Filter Selected",
+              screen: Item.toString(),
+              data: {"QuickFilter": value},
+            );
+          });
+        },
+      ),
     );
   }
 
   String? _activeTagFilter;
-  ComboBox<String?> _buildTagFilterComboBox(List<String> tags) {
-    return ComboBox<String?>(
-      value: _activeTagFilter,
-      placeholder: const Text("Tag Filter"),
-      items: [
-        const ComboBoxItem<String?>(value: null, child: Text("All")),
-        ...tags.map(
-          (tag) => ComboBoxItem<String?>(
-            value: tag,
-            child: Text(tag),
+  Widget _buildTagFilterComboBox(List<String> tags) {
+    final isSelected = _activeTagFilter != null;
+    return Container(
+      decoration: getFilterBoxDecoration(isSelected),
+      child: ComboBox<String?>(
+        value: _activeTagFilter,
+        placeholder: const Text("Tag Filter"),
+        items: [
+          const ComboBoxItem<String?>(value: null, child: Text("All")),
+          ...tags.map(
+            (tag) => ComboBoxItem<String?>(
+              value: tag,
+              child: Text(tag),
+            ),
           ),
-        ),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _activeTagFilter = value;
+        ],
+        onChanged: (value) {
+          setState(() {
+            _activeTagFilter = value;
 
-          ActivityLogger.logAction(
-            "Tag Filter Selected",
-            screen: Item.toString(),
-            data: {"TagFilter": value},
-          );
+            ActivityLogger.logAction(
+              "Tag Filter Selected",
+              screen: Item.toString(),
+              data: {"TagFilter": value},
+            );
 
-          // Reset sub treatment when switching to RCT or away from RCT
-          if (value != "RCT") {
-            _activeSubTreatmentFilter = null;
-          } else if (_activeSubTreatmentFilter == null) {
-            // Already null, do nothing
-          } else {
-            _activeSubTreatmentFilter = null;
-          }
-        });
-      },
+            // Reset sub treatment when switching to RCT or away from RCT
+            if (value != "RCT") {
+              _activeSubTreatmentFilter = null;
+            } else if (_activeSubTreatmentFilter == null) {
+              // Already null, do nothing
+            } else {
+              _activeSubTreatmentFilter = null;
+            }
+          });
+        },
+      ),
     );
   }
 
-  ComboBox<String?> _buildSubTreatmentComboBox(List<String> subTreatments) {
-    return ComboBox<String?>(
-      placeholder: const Text("Sub Treatment"),
-      value: _activeSubTreatmentFilter,
-      items: [
-        const ComboBoxItem<String?>(value: null, child: Text("Select")),
-        ...subTreatments.map(
-          (sitting) => ComboBoxItem<String?>(
-            value: sitting,
-            child: Text(sitting),
+  Widget _buildSubTreatmentComboBox(List<String> subTreatments) {
+    final isSelected = _activeSubTreatmentFilter != null;
+    return Container(
+      decoration: getFilterBoxDecoration(isSelected),
+      child: ComboBox<String?>(
+        placeholder: const Text("Sub Treatment"),
+        value: _activeSubTreatmentFilter,
+        items: [
+          const ComboBoxItem<String?>(value: null, child: Text("Select")),
+          ...subTreatments.map(
+            (sitting) => ComboBoxItem<String?>(
+              value: sitting,
+              child: Text(sitting),
+            ),
           ),
-        ),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _activeSubTreatmentFilter = value;
+        ],
+        onChanged: (value) {
+          setState(() {
+            _activeSubTreatmentFilter = value;
 
-          ActivityLogger.logAction(
-            "SubTreatment Filter Selected",
-            screen: Item.toString(),
-            data: {"SubTreatmentFilter": value},
-          );
-        });
-      },
+            ActivityLogger.logAction(
+              "SubTreatment Filter Selected",
+              screen: Item.toString(),
+              data: {"SubTreatmentFilter": value},
+            );
+          });
+        },
+      ),
     );
   }
 
