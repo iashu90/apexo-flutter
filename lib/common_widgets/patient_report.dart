@@ -106,12 +106,14 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
       });
     } else if (_lastSortColumn == 'docPaid' && _docPaidSortAscending != null) {
       sortedRows.sort((a, b) {
-        final aDocPaid = double.tryParse(a.doctorPay.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
-        final bDocPaid = double.tryParse(b.doctorPay.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        final aDocPaid =
+            double.tryParse(a.doctorPay.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        final bDocPaid =
+            double.tryParse(b.doctorPay.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
         return _docPaidSortAscending!
             ? aDocPaid.compareTo(bDocPaid)
             : bDocPaid.compareTo(aDocPaid);
-    });
+      });
     } else {
       sortedRows.sort((a, b) => _dateSortAscending
           ? a.date.compareTo(b.date)
@@ -396,7 +398,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                       ),
                     ),
                   ),
-                if (!widget.hiddenColumns.contains('Mode'))
+                if (!widget.hiddenColumns.contains('T.Mode'))
                   _plainCell(
                     Align(
                       alignment: Alignment.center,
@@ -406,12 +408,37 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                                     0) ==
                                 0
                             ? ''
-                            : row.mode,
+                            : row.treatmentPaymentMode,
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w500,
-                          color: row.mode.toLowerCase() == 'gpay'
-                              ? Colors.green
-                              : Colors.brown,
+                          color:
+                              row.treatmentPaymentMode.toLowerCase() == 'gpay'
+                                  ? Colors.green
+                                  : Colors.brown,
+                        ),
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                if (!widget.hiddenColumns.contains('P.Mode'))
+                  _plainCell(
+                    Align(
+                      alignment: Alignment.center,
+                      child: Text(
+                        (double.tryParse(row.paid
+                                        .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                    0) ==
+                                0
+                            ? ''
+                            : row.preceptionPaymentMode,
+                        style: _cellTextStyle.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color:
+                              row.preceptionPaymentMode.toLowerCase() == 'gpay'
+                                  ? Colors.green
+                                  : Colors.brown,
                         ),
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,
@@ -505,7 +532,8 @@ class ReportDetailRow {
   final String treatment;
   final String teeth;
   final bool? isDone;
-  final String mode;
+  final String treatmentPaymentMode;
+  final String preceptionPaymentMode;
   final String doctorPay;
 
   ReportDetailRow({
@@ -517,7 +545,8 @@ class ReportDetailRow {
     required this.treatment,
     required this.teeth,
     this.isDone,
-    this.mode = '',
+    this.treatmentPaymentMode = '',
+    this.preceptionPaymentMode = '',
     this.doctorPay = '',
   });
 }

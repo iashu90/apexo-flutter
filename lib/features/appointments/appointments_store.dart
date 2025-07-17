@@ -112,7 +112,8 @@ class Appointments extends Store<Appointment> {
         loginCtrl.loadingIndicator("Synchronizing appointments");
         print("Before clear: ${docs.length}");
         await local?.clear();
-        print("Local Appointments box keys after clear: ${(await local!.mainHiveBox).keys}");
+        print(
+            "Local Appointments box keys after clear: ${(await local!.mainHiveBox).keys}");
         await deleteMemoryAndLoadFromPersistence();
         print("After clear: ${docs.length}");
         await synchronize();
@@ -179,10 +180,10 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
           ? appointment.selectedTeeth.join(', ')
           : '';
 
-      final mode = (appointment.treatmentGpayPaid == true ||
-              appointment.prescriptionGpayPaid == true)
-          ? 'GPay'
-          : 'Cash';
+      final treatmentPaymentMode =
+          appointment.treatmentGpayPaid == true ? 'GPay' : 'Cash';
+      final preceptionPaymentMode =
+          appointment.prescriptionGpayPaid == true ? 'GPay' : 'Cash';
 
       return ReportDetailRow(
         date: dateStr,
@@ -193,7 +194,8 @@ extension AppointmentListToPatientDetailRows on List<Appointment> {
         teeth: teethStr,
         isDone: appointment.isDone,
         patient: appointment.patient,
-        mode: mode,
+        treatmentPaymentMode: treatmentPaymentMode,
+        preceptionPaymentMode: preceptionPaymentMode,
       );
     }).toList();
   }

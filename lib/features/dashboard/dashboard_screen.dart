@@ -366,7 +366,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: PatientDetailsDialog(
                           rows: dayAppointments.toPatientDetailRows(),
                           initialDate: selectedDate,
-                          hiddenColumns: ['Date', 'Prescription', 'Doc Paid']),
+                          hiddenColumns: [
+                            'Date',
+                            'Prescription',
+                            'P.Mode',
+                            'Doc Paid'
+                          ]),
                     ),
                   ),
                 );
@@ -394,6 +399,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           hiddenColumns: [
                             'Date',
                             'Treatment',
+                            'T.Mode',
                             'Teeth',
                             'Doc Paid'
                           ] // Hide treatment and prescription columns
