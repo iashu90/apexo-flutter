@@ -116,7 +116,60 @@ class AppointmentCard extends StatelessWidget {
                             color,
                           ),
                         ],
-                        if (!hide.contains(AppointmentSections.doctorsPaid)) ...[
+                        if (!hide
+                            .contains(AppointmentSections.doctorsPaid)) ...[
+                          ..._betweenSections,
+                          Row(
+                            children: [
+                              Icon(FluentIcons.money,
+                                  size: 16, color: color.withOpacity(0.7)),
+                              const SizedBox(width: 4),
+                              Acrylic(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(50)),
+                                elevation: 100,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 3),
+                                  child: Txt(
+                                    "Price To Pay Doctor",
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 70,
+                                child: TextFormBox(
+                                  initialValue: appointment.priceToPayDoctor
+                                      .toStringAsFixed(2),
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(fontSize: 13),
+                                  keyboardType: TextInputType.numberWithOptions(
+                                      decimal: true),
+                                  onFieldSubmitted: (value) {
+                                    final newValue =
+                                        double.tryParse(value) ?? 0.0;
+                                    if (newValue !=
+                                        appointment.priceToPayDoctor) {
+                                      appointment.priceToPayDoctor = newValue;
+                                      appointments.set(appointment);
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Txt(
+                                globalSettings.get("currency_______").value,
+                                style: const TextStyle(
+                                    fontSize: 13, color: Colors.grey),
+                              ),
+                            ],
+                          ),
                           ..._betweenSections,
                           Row(
                             children: [

@@ -106,6 +106,7 @@ class Appointment extends Model {
   /* 5 */ List<String> prescriptions = [];
   /* 6 */ double price = 0;
   /* 7 */ double paid = 0;
+  double priceToPayDoctor = 0;
   double paidToDoctor = 0;
   /* 6a */ double prescriptionPrice = 0;
 /* 7a */ double prescriptionPaid = 0;
@@ -131,6 +132,9 @@ class Appointment extends Model {
     /* 5 */ postOpNotes = json["postOpNotes"] ?? postOpNotes;
     /* 6 */ price = double.parse((json["price"] ?? price).toString());
     /* 7 */ paid = double.parse((json["paid"] ?? paid).toString());
+    priceToPayDoctor =
+        double.parse((json["priceToPayDoctor"] ?? priceToPayDoctor).toString());
+
     paidToDoctor =
         double.parse((json["paidToDoctor"] ?? paidToDoctor).toString());
     prescriptionPrice = double.parse(
@@ -172,6 +176,8 @@ class Appointment extends Model {
     /* 5 */ if (postOpNotes != d.postOpNotes) json['postOpNotes'] = postOpNotes;
     /* 6 */ if (price != d.price) json['price'] = price;
     /* 7 */ if (paid != d.paid) json['paid'] = paid;
+    if (priceToPayDoctor != d.priceToPayDoctor)
+      json['priceToPayDoctor'] = priceToPayDoctor;
     if (paidToDoctor != d.paidToDoctor) json['paidToDoctor'] = paidToDoctor;
     if (prescriptionPrice != d.prescriptionPrice)
       json['prescriptionPrice'] = prescriptionPrice;

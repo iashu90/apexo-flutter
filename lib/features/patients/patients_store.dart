@@ -72,10 +72,6 @@ class Patients extends Store<Patient> {
     return Set<String>.from(present.values.expand((doc) => doc.tags)).toList();
   }
 
-  List<String> get allTreatmentTags {
-    return Set<String>.from(present.values.expand((doc) => doc.treatmentTags))
-        .toList();
-  }
 }
 
 final patients = Patients();

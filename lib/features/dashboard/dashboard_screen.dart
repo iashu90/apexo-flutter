@@ -370,7 +370,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             'Date',
                             'Prescription',
                             'P.Mode',
-                            'Doc Paid'
+                            'Doc Paid',
+                            'TotalDocPay'
                           ]),
                     ),
                   ),
@@ -401,7 +402,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             'Treatment',
                             'T.Mode',
                             'Teeth',
-                            'Doc Paid'
+                            'Doc Paid',
+                            'TotalDocPay'
                           ] // Hide treatment and prescription columns
                           ),
                     ),
@@ -457,8 +459,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           'Teeth',
                           'Prescription',
                           'Date',
-                          'Mode',
+                          'T.Mode',
+                          'P.Mode',
                           'Doc Paid',
+                          'TotalDocPay',
                         ],
                       ),
                     ),

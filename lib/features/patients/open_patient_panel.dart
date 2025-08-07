@@ -1,6 +1,10 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
+import 'package:apexo/common_widgets/labwork_card.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/labwork/labwork_model.dart';
+import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -135,119 +139,198 @@ class _PatientWebPage extends StatelessWidget {
 class _PatientAppointments extends StatelessWidget {
   final Patient patient;
   const _PatientAppointments(this.patient);
+
   @override
   Widget build(BuildContext context) {
     return MStreamBuilder(
-        streams: [appointments.observableMap.stream, showArchived.stream],
-        builder: (context, snapshot) {
+      streams: [
+        appointments.observableMap.stream,
+        showArchived.stream,
+        labworks.observableMap.stream
+      ],
+      builder: (context, snapshot) {
+        // Gather all appointments and labworks, sort by date descending
+        final allItems = [
+          ...patient.allAppointments.map((a) => {
+                "type": "appointment",
+                "date": a.date,
+                "appointment": a,
+              }),
+          ...labworks.present.values
+              .where((lw) => lw.patientID == patient.id)
+              .map((lw) => {
+                    "type": "labwork",
+                    "date": lw.date ?? DateTime.now(),
+                    "labwork": lw,
+                  }),
+        ];
+
+        allItems.sort((a, b) {
+          final dateA = a["date"] as DateTime?;
+          final dateB = b["date"] as DateTime?;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          return dateB.compareTo(dateA);
+        });
+
+        if (allItems.isEmpty) {
           return Column(
-            children: patient.allAppointments.isEmpty
-                ? [
-                    InfoBar(title: Txt(txt("noAppointmentsFound"))),
-                  ]
-                : [
-                    ...List.generate(patient.allAppointments.length, (index) {
-                      final reversedIndex =
-                          patient.allAppointments.length - 1 - index;
-                      final appointment =
-                          patient.allAppointments[reversedIndex];
-                      String? difference;
-                      if (reversedIndex != patient.allAppointments.length - 1) {
-                        int differenceInDays = appointment.date
-                            .difference(
-                                patient.allAppointments[reversedIndex + 1].date)
-                            .inDays
-                            .abs();
-                        difference =
-                            "${txt("before")} $differenceInDays ${txt("day${(differenceInDays > 1) ? "s" : ""}")}";
-                      }
-                      return AppointmentCard(
-                        key: Key(appointment.id),
-                        appointment: appointment,
-                        difference: difference,
-                        hide: const [
-                          AppointmentSections.patient,
-                          AppointmentSections.doctorsPaid
-                        ],
-                        number: reversedIndex + 1,
-                      );
-                    }),
-                    const Divider(),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 10, 12, 50),
-                      child: Acrylic(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5)),
-                        elevation: 50,
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(5),
-                              boxShadow: kElevationToShadow[4],
-                              border: Border(
-                                  top: BorderSide(
-                                color: (colorBasedOnPayments(
-                                            patient.paymentsMade,
-                                            patient.pricesGiven) ??
-                                        FluentTheme.of(context).cardColor)
-                                    .withValues(alpha: 0.3),
-                                width: 5,
-                              ))),
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 5),
-                                child: Txt(
-                                    "${txt("paymentSummary")} (${globalSettings.get("currency_______").value})",
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey)),
-                              ),
-                              const SizedBox(height: 10),
-                              const Divider(),
-                              const SizedBox(height: 15),
-                              Wrap(
-                                alignment: WrapAlignment.center,
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: [
-                                  PaymentPill(
-                                    finalTextColor: Colors.grey,
-                                    title: txt("cost"),
-                                    amount: patient.pricesGiven.toString(),
-                                    color: Colors.white,
-                                  ),
-                                  PaymentPill(
-                                    finalTextColor: Colors.grey,
-                                    title: txt("paid"),
-                                    amount: patient.paymentsMade.toString(),
-                                    color: Colors.white,
-                                  ),
-                                  PaymentPill(
-                                    finalTextColor: Colors.grey,
-                                    title: patient.overPaid
-                                        ? txt("overpaid")
-                                        : patient.underPaid
-                                            ? txt("underpaid")
-                                            : txt("fullyPaid"),
-                                    amount: (patient.paymentsMade -
-                                            patient.pricesGiven)
-                                        .abs()
-                                        .toString(),
-                                  )
-                                ],
-                              ),
-                            ],
+            children: [
+              InfoBar(title: Txt(txt("noAppointmentsFound"))),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Acrylic(
+                    elevation: 20,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          Icon(FluentIcons.calendar, color: Colors.blue),
+                          const SizedBox(width: 6),
+                          Txt(
+                            "${txt("appointments")}: ${patient.allAppointments.length}",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        ),
+                          const SizedBox(width: 20),
+                          Icon(FluentIcons.test_beaker, color: Colors.blue),
+                          const SizedBox(width: 6),
+                          Txt(
+                            "${txt("labworks")}: ${labworks.present.values.where((lw) => lw.patientID == patient.id).length}",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+            ...List.generate(allItems.length, (index) {
+              final item = allItems[index];
+              final isAppointment = item["type"] == "appointment";
+              final date = item["date"] as DateTime;
+
+              String? difference;
+              if (index != 0) {
+                final prevDate = allItems[index - 1]["date"] as DateTime;
+                int differenceInDays = date.difference(prevDate).inDays.abs();
+                difference =
+                    "${txt("before")} $differenceInDays ${txt("day${(differenceInDays > 1) ? "s" : ""}")}";
+              }
+
+              if (isAppointment) {
+                final appointment = item["appointment"] as Appointment;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AppointmentCard(
+                      key: Key(appointment.id),
+                      appointment: appointment,
+                      difference: difference,
+                      hide: const [
+                        AppointmentSections.patient,
+                        AppointmentSections.doctorsPaid
+                      ],
+                      number: index + 1,
+                    ),
                   ],
-          );
-        });
+                );
+              } else {
+                final lw = item["labwork"] as Labwork;
+                return LabworkCard(
+                  labwork: lw,
+                  number: index + 1,
+                  difference: difference,
+                );
+              }
+            }),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 12, 50),
+              child: Acrylic(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5)),
+                elevation: 50,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(5),
+                      boxShadow: kElevationToShadow[4],
+                      border: Border(
+                          top: BorderSide(
+                        color: (colorBasedOnPayments(patient.paymentsMade,
+                                    patient.pricesGiven) ??
+                                FluentTheme.of(context).cardColor)
+                            .withValues(alpha: 0.3),
+                        width: 5,
+                      ))),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: Txt(
+                            "${txt("paymentSummary")} (${globalSettings.get("currency_______").value})",
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey)),
+                      ),
+                      const SizedBox(height: 10),
+                      const Divider(),
+                      const SizedBox(height: 15),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          PaymentPill(
+                            finalTextColor: Colors.grey,
+                            title: txt("cost"),
+                            amount: patient.pricesGiven.toString(),
+                            color: Colors.white,
+                          ),
+                          PaymentPill(
+                            finalTextColor: Colors.grey,
+                            title: txt("paid"),
+                            amount: patient.paymentsMade.toString(),
+                            color: Colors.white,
+                          ),
+                          PaymentPill(
+                            finalTextColor: Colors.grey,
+                            title: patient.overPaid
+                                ? txt("overpaid")
+                                : patient.underPaid
+                                    ? txt("underpaid")
+                                    : txt("fullyPaid"),
+                            amount: (patient.paymentsMade - patient.pricesGiven)
+                                .abs()
+                                .toString(),
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -394,27 +477,6 @@ class _PatientDetailsState extends State<_PatientDetails> {
             strict: false,
             limit: 9999,
             placeholder: "${txt("patientTags")}...",
-          ),
-        ),
-        InfoLabel(
-          label: "${txt("treatmentTags")}:",
-          isHeader: true,
-          child: TagInputWidget(
-            key: WK
-                .fieldTreatmentTags, // You may want to create a new key for treatment tags
-            suggestions: patients.allTreatmentTags
-                .map((t) => TagInputItem(value: t, label: t))
-                .toList(),
-            onChanged: (tags) {
-              widget.patient.treatmentTags = List<String>.from(
-                  tags.map((e) => e.value).where((e) => e != null));
-            },
-            initialValue: (widget.patient.treatmentTags ?? [])
-                .map((e) => TagInputItem(value: e, label: e))
-                .toList(),
-            strict: false,
-            limit: 9999,
-            placeholder: "${txt("treatmentTags")}...",
           ),
         ),
         const SizedBox(height: 30),

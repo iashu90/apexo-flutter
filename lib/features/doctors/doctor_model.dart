@@ -80,7 +80,8 @@ extension DoctorPayments on Doctor {
           treatmentPaymentMode: treatmentPaymentMode,
           preceptionPaymentMode: preceptionPaymentMode,
           patient: patient,
-          doctorPay: '₹${(appointment.paidToDoctor ?? 0).toStringAsFixed(2)}',
+          doctorPaid: '₹${(appointment.paidToDoctor ?? 0).toStringAsFixed(2)}',
+          doctorTotalPay: '₹${appointment.priceToPayDoctor.toStringAsFixed(2)}',
         );
       }).toList();
 }
