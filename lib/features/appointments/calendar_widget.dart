@@ -797,7 +797,8 @@ class AppointmentCalendarTile<Item extends Appointment>
                           hiddenColumns: [
                             'Prescription',
                             'P.Mode',
-                            'Doc Paid'
+                            'Doc Paid',
+                            'TotalDocPay'
                           ]),
                     ),
                   ),

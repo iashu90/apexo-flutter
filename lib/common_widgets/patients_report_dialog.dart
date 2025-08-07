@@ -108,8 +108,19 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
     const currency = "₹";
 
     for (final row in filteredRows) {
-      final cost = double.tryParse(row.cost.replaceAll(currency, '')) ?? 0;
-      final paid = double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
+      double cost = 0;
+      double paid = 0;
+
+      // If doctor object, use doctorTotalPay and doctorPaid
+      if (widget.fromWhere == PatientDetailsSource.doctor) {
+        cost =
+            double.tryParse(row.doctorTotalPay.replaceAll(currency, '')) ?? 0;
+        paid = double.tryParse(row.doctorPaid.replaceAll(currency, '')) ?? 0;
+      } else {
+        cost = double.tryParse(row.cost.replaceAll(currency, '')) ?? 0;
+        paid = double.tryParse(row.paid.replaceAll(currency, '')) ?? 0;
+      }
+
       // Skip if cost is 0 and paid is greater than 0
       // if (cost == 0 && paid > 0) continue;
       totalCost += cost;
@@ -382,47 +393,47 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                if (!isFromDoctor)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 12.0),
-                        child: Text(
-                          "Total Cost: $currency${totalCost.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: material.Colors.blue,
-                              fontSize: 16),
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      Text(
-                        "Total Paid: $currency${totalPaid.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
+                // if (!isFromDoctor)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12.0),
+                      child: Text(
+                        "Total Cost: $currency${totalCost.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: material.Colors.green,
+                            color: material.Colors.blue,
                             fontSize: 16),
                       ),
-                      const SizedBox(width: 24),
-                      if (totalPaid > totalCost)
-                        Text(
-                          "Overpaid: $currency${(totalPaid - totalCost).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: material.Colors.orange,
-                              fontSize: 16),
-                        )
-                      else
-                        Text(
-                          "Balance: $currency${(totalCost - totalPaid).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: material.Colors.red,
-                              fontSize: 16),
-                        ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 24),
+                    Text(
+                      "Total Paid: $currency${totalPaid.toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: material.Colors.green,
+                          fontSize: 16),
+                    ),
+                    const SizedBox(width: 24),
+                    if (totalPaid > totalCost)
+                      Text(
+                        "Overpaid: $currency${(totalPaid - totalCost).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: material.Colors.orange,
+                            fontSize: 16),
+                      )
+                    else
+                      Text(
+                        "Balance: $currency${(totalCost - totalPaid).toStringAsFixed(2).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: material.Colors.red,
+                            fontSize: 16),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),

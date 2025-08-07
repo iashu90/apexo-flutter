@@ -217,6 +217,7 @@ final List<Treatment> allTreatments = [
   Treatment(name: 'Normal Extraction', price: 800, multiplier: true),
   Treatment(name: 'Wisdom Teeth Extraction', price: 1000, multiplier: true),
   Treatment(name: 'Impaction', price: 2500, multiplier: true),
+  Treatment(name: 'Ortho', price: 0),
 ];
 final List<String> rctSittings = ["Access opening", "BMP", "Obturation", "PCS"];
 final List<String> crownSittings = ["Tooth preparation", "Crown luting"];

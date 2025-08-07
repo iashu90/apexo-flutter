@@ -107,9 +107,11 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
     } else if (_lastSortColumn == 'docPaid' && _docPaidSortAscending != null) {
       sortedRows.sort((a, b) {
         final aDocPaid =
-            double.tryParse(a.doctorPay.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+            double.tryParse(a.doctorPaid.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                0;
         final bDocPaid =
-            double.tryParse(b.doctorPay.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+            double.tryParse(b.doctorPaid.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                0;
         return _docPaidSortAscending!
             ? aDocPaid.compareTo(bDocPaid)
             : bDocPaid.compareTo(aDocPaid);
@@ -174,14 +176,8 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
               _plainColumn('Prescription'),
             if (!widget.hiddenColumns.contains('Cost')) _plainColumn('Cost'),
             if (!widget.hiddenColumns.contains('Paid')) _plainColumn('Paid'),
-            if (!widget.hiddenColumns.contains('Balance'))
-              _plainColumn(
-                'Balance',
-                onTap: _toggleBalanceSort,
-                sorted: _lastSortColumn == 'balance',
-                ascending: _balanceSortAscending ?? false,
-              ),
-            if (!widget.hiddenColumns.contains('Mode')) _plainColumn('Mode'),
+            if (!widget.hiddenColumns.contains('TotalDocPay'))
+              _plainColumn('Total Doc Pay'),
             if (!widget.hiddenColumns.contains('Doc Paid'))
               _plainColumn(
                 'Doc Paid',
@@ -189,6 +185,16 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                 sorted: _lastSortColumn == 'docPaid',
                 ascending: _docPaidSortAscending ?? false,
               ),
+            if (!widget.hiddenColumns.contains('Balance'))
+              _plainColumn(
+                'Balance',
+                onTap: _toggleBalanceSort,
+                sorted: _lastSortColumn == 'balance',
+                ascending: _balanceSortAscending ?? false,
+              ),
+            if (!widget.hiddenColumns.contains('T.Mode') ||
+                !widget.hiddenColumns.contains('P.Mode'))
+              _plainColumn('Mode'),
           ],
           rows: List.generate(sortedRows.length, (index) {
             final row = sortedRows[index];
@@ -357,28 +363,47 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                       ),
                     ),
                   ),
+                if (!widget.hiddenColumns.contains('TotalDocPay'))
+                  _plainCell(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        row.doctorTotalPay ??
+                            '', // Make sure this field exists in ReportDetailRow
+                        style: _cellTextStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: const Color.fromARGB(255, 243, 157, 28),
+                        ),
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+                if (!widget.hiddenColumns.contains('Doc Paid'))
+                  _plainCell(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        row.doctorPaid,
+                        style: _cellTextStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.purple,
+                        ),
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
                 if (!widget.hiddenColumns.contains('Balance'))
                   _plainCell(
                     Align(
                       alignment: Alignment.centerRight,
                       child: Text(
                         (() {
-                          final cost = double.tryParse(
-                                  row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ??
-                              0;
-                          final paid = double.tryParse(
-                                  row.paid.replaceAll(RegExp(r'[^\d.]'), '')) ??
-                              0;
-                          final balance = cost - paid;
-                          return balance == 0
-                              ? '₹0.0'
-                              : (balance < 0
-                                  ? ''
-                                  : '₹${balance.toStringAsFixed(2)}');
-                        })(),
-                        style: _cellTextStyle.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: (() {
+                          if (widget.hiddenColumns.contains('TotalDocPay')) {
+                            // Patient object: use cost - paid
                             final cost = double.tryParse(row.cost
                                     .replaceAll(RegExp(r'[^\d.]'), '')) ??
                                 0;
@@ -386,10 +411,56 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                                     .replaceAll(RegExp(r'[^\d.]'), '')) ??
                                 0;
                             final balance = cost - paid;
-                            if (balance == 0) return Colors.grey;
-                            if (balance > 0) return Colors.red;
-                            if (balance < 0) return Colors.green;
-                            return Colors.grey;
+                            return balance == 0
+                                ? '₹0.0'
+                                : (balance < 0
+                                    ? ''
+                                    : '₹${balance.toStringAsFixed(2)}');
+                          } else {
+                            // Doctor object: use doctorTotalPay - doctorPaid
+                            final totalPay = double.tryParse(row.doctorTotalPay
+                                    .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                0;
+                            final paid = double.tryParse(row.doctorPaid
+                                    .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                0;
+                            final balance = totalPay - paid;
+                            return balance == 0
+                                ? '₹0.0'
+                                : (balance < 0
+                                    ? ''
+                                    : '₹${balance.toStringAsFixed(2)}');
+                          }
+                        })(),
+                        style: _cellTextStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: (() {
+                            if (widget.hiddenColumns.contains('TotalDocPay')) {
+                              final cost = double.tryParse(row.cost
+                                      .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                  0;
+                              final paid = double.tryParse(row.paid
+                                      .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                  0;
+                              final balance = cost - paid;
+                              if (balance == 0) return Colors.grey;
+                              if (balance > 0) return Colors.red;
+                              if (balance < 0) return Colors.green;
+                              return Colors.grey;
+                            } else {
+                              final totalPay = double.tryParse(row
+                                      .doctorTotalPay
+                                      .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                  0;
+                              final paid = double.tryParse(row.doctorPaid
+                                      .replaceAll(RegExp(r'[^\d.]'), '')) ??
+                                  0;
+                              final balance = totalPay - paid;
+                              if (balance == 0) return Colors.grey;
+                              if (balance > 0) return Colors.red;
+                              if (balance < 0) return Colors.green;
+                              return Colors.grey;
+                            }
                           })(),
                         ),
                         softWrap: false,
@@ -443,22 +514,6 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                if (!widget.hiddenColumns.contains('Doc Paid'))
-                  _plainCell(
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        row.doctorPay,
-                        style: _cellTextStyle.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.purple,
-                        ),
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
                       ),
                     ),
                   ),
@@ -534,7 +589,8 @@ class ReportDetailRow {
   final bool? isDone;
   final String treatmentPaymentMode;
   final String preceptionPaymentMode;
-  final String doctorPay;
+  final String doctorPaid;
+  final String doctorTotalPay;
 
   ReportDetailRow({
     required this.date,
@@ -547,6 +603,7 @@ class ReportDetailRow {
     this.isDone,
     this.treatmentPaymentMode = '',
     this.preceptionPaymentMode = '',
-    this.doctorPay = '',
+    this.doctorPaid = '',
+    this.doctorTotalPay = '',
   });
 }

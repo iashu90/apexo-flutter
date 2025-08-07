@@ -135,15 +135,16 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             (item.daysSinceLastAppointment ?? 0) <= _activeDaysFilter!) {
           return false;
         }
-        // Tag filter
-        if (_activeTagFilter != null &&
-            !item.treatmentTags
-                .map((t) => t.toLowerCase())
-                .contains(_activeTagFilter!.toLowerCase())) {
+        // Treatment filter
+        if (_activeTreatmentFilter != null &&
+            !item.allAppointments.any((appointment) =>
+                appointment.selectedTreatments.any((t) => t
+                    .toLowerCase()
+                    .contains(_activeTreatmentFilter!.toLowerCase())))) {
           return false;
         }
 
-        if (_activeTagFilter == "RCT" &&
+        if (_activeTreatmentFilter == "RCT" &&
             _activeSubTreatmentFilter != null &&
             _activeSubTreatmentFilter!.isNotEmpty) {
           // Only show if ANY appointment has the selected sub-treatment
@@ -308,7 +309,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       data: {
         "QuickFilter": _activeQuickFilter,
         "DaysFilter": _activeDaysFilter,
-        "TagFilter": _activeTagFilter,
+        "TreatmentFilter": _activeTreatmentFilter,
         "SubTreatmentFilter": _activeSubTreatmentFilter,
         "SearchValue": _searchValue,
         "ResultsFound": filteredItems.length,
@@ -491,7 +492,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                     "Report Dialog Opened",
                     screen: Item.toString(),
                     data: {
-                      "Patient": item?.title ?? "",
+                      Item.toString(): item?.title ?? "",
                       "itemType": Item.toString()
                     },
                   );
@@ -508,7 +509,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                                 hiddenColumns: [
                                   'Prescription',
                                   'P.Mode',
-                                  'Doc Paid'
+                                  'Doc Paid',
+                                  'TotalDocPay'
                                 ],
                               )
                             : item is Doctor
@@ -519,8 +521,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                                       'Prescription',
                                       'Cost',
                                       'Paid',
-                                      'Balance',
                                       'P.Mode',
+                                      'T.Mode'
                                     ],
                                     fromWhere: PatientDetailsSource.doctor,
                                   )
@@ -725,10 +727,12 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                 const SizedBox(width: 8),
                 _buildDaysFilterComboBox([10, 30]),
                 const SizedBox(width: 8),
-                _buildTagFilterComboBox(["Ortho", "RCT", "Crown"]),
+                _buildTagFilterComboBox(),
                 const SizedBox(width: 8),
-                if (_activeTagFilter == "RCT")
+                if (_activeTreatmentFilter == "RCT")
                   _buildSubTreatmentComboBox(rctSittings),
+                if (_activeTreatmentFilter == "Crown")
+                  _buildSubTreatmentComboBox(crownSittings),
               ],
             ),
           _buildSorters(),
@@ -767,7 +771,14 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         items: [
           const ComboBoxItem<int?>(value: null, child: Text("All")),
           ...daysOptions.map(
-            (d) => ComboBoxItem<int?>(value: d, child: Text("> $d Days")),
+            (d) => ComboBoxItem<int?>(
+                value: d,
+                child: Text(
+                  "> $d Days",
+                  style: TextStyle(
+                    color: isSelected ? Colors.blue : Colors.black,
+                  ),
+                )),
           ),
         ],
         onChanged: (value) {
@@ -820,41 +831,81 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     );
   }
 
-  String? _activeTagFilter;
-  Widget _buildTagFilterComboBox(List<String> tags) {
-    final isSelected = _activeTagFilter != null;
+  String? _activeTreatmentFilter;
+  Widget _buildTagFilterComboBox() {
+    final isSelected = _activeTreatmentFilter != null;
+    // Static treatments to show at the top
+    final staticTreatments = ["RCT", "Ortho", "Crown"];
+    final removeTreatments = [
+      "Zirconia Crowns",
+      "PFM Crowns"
+    ]; // Add any treatment names you want to remove
+
+    final staticTreatmentsLower =
+        staticTreatments.map((s) => s.toLowerCase()).toSet();
+    final removeTreatmentsLower =
+        removeTreatments.map((s) => s.toLowerCase()).toSet();
+
+    final dynamicTreatments = allTreatments
+        .map((treatment) => treatment.name)
+        .where((name) =>
+            !staticTreatmentsLower.contains(name.toLowerCase()) &&
+            !removeTreatmentsLower.contains(name.toLowerCase()))
+        .toList();
+    // Dynamic treatments from allTreatments, excluding static ones
+
     return Container(
       decoration: getFilterBoxDecoration(isSelected),
       child: ComboBox<String?>(
-        value: _activeTagFilter,
-        placeholder: const Text("Tag Filter"),
+        value: _activeTreatmentFilter,
+        placeholder: const Text("Treatment Filter"),
         items: [
           const ComboBoxItem<String?>(value: null, child: Text("All")),
-          ...tags.map(
-            (tag) => ComboBoxItem<String?>(
-              value: tag,
-              child: Text(tag),
+          // Static treatments at the top
+          ...staticTreatments.map(
+            (name) => ComboBoxItem<String?>(
+              value: name,
+              child: Text(
+                name,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.black,
+                ),
+              ),
+            ),
+          ),
+          // Divider
+          const ComboBoxItem<String?>(
+              value: "__divider__",
+              child: Divider(
+                style: DividerThemeData(
+                  decoration: BoxDecoration(
+                    color: Colors.grey,
+                  ),
+                ),
+              )),
+          // Dynamic treatments
+          ...dynamicTreatments.map(
+            (name) => ComboBoxItem<String?>(
+              value: name,
+              child: Text(
+                name,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.black,
+                ),
+              ),
             ),
           ),
         ],
         onChanged: (value) {
+          // Prevent selecting the divider
+          if (value == "__divider__") return;
           setState(() {
-            _activeTagFilter = value;
-
+            _activeTreatmentFilter = value;
             ActivityLogger.logAction(
-              "Tag Filter Selected",
+              "Treatment Filter Selected",
               screen: Item.toString(),
-              data: {"TagFilter": value},
+              data: {"TreatmentFilter": value},
             );
-
-            // Reset sub treatment when switching to RCT or away from RCT
-            if (value != "RCT") {
-              _activeSubTreatmentFilter = null;
-            } else if (_activeSubTreatmentFilter == null) {
-              // Already null, do nothing
-            } else {
-              _activeSubTreatmentFilter = null;
-            }
           });
         },
       ),
@@ -873,7 +924,12 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           ...subTreatments.map(
             (sitting) => ComboBoxItem<String?>(
               value: sitting,
-              child: Text(sitting),
+              child: Text(
+                sitting,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.black,
+                ),
+              ),
             ),
           ),
         ],

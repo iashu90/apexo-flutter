@@ -157,7 +157,6 @@ class En {
     "address": "Address",
     "notes": "Notes",
     "patientTags": "Medical History",
-    "treatmentTags": "Treatment tags",
     "male": "Male",
     "female": "Female",
     "noAppointmentsFound":
@@ -203,7 +202,7 @@ class En {
     "doctorNotAvailable":
         "One of the selected doctors might not be available on the selected date.",
     "time": "Time",
-    "preOperativeNotes": "Pre-operative notes",
+    "preOperativeNotes": "Chief complaints",
     "selectDoctors": "Select Doctors",
     "selectPatient": "Select Patient",
     "operativeDetails": "Operative Details",
