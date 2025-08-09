@@ -244,7 +244,7 @@ class AppointmentCard extends StatelessWidget {
                             !hide.contains(AppointmentSections.preNotes)) ...[
                           ..._betweenSections,
                           _buildSection(
-                            txt("pre-opNotes"),
+                            "Chief complaints",
                             Txt(
                               appointment.preOpNotes,
                               style: const TextStyle(

@@ -120,7 +120,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             if (item.outstandingPayments >= 0) return false;
           } else if (_activeQuickFilter == "No Name") {
             if (item.title.trim().isNotEmpty) return false;
-          } else if (_activeQuickFilter == "Wrong Phone") {
+          } else if (_activeQuickFilter == "Invalid Phone") {
             // Remove all non-digit characters and check length
             final digits = item.phone.replaceAll(RegExp(r'\D'), '');
             if (digits.length == 10) return false;
