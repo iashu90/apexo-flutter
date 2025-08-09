@@ -136,10 +136,16 @@ class _PatientWebPage extends StatelessWidget {
   }
 }
 
-class _PatientAppointments extends StatelessWidget {
+class _PatientAppointments extends StatefulWidget {
   final Patient patient;
   const _PatientAppointments(this.patient);
 
+  @override
+  _PatientAppointmentsState createState() => _PatientAppointmentsState();
+}
+
+class _PatientAppointmentsState extends State<_PatientAppointments> {
+ int filterType = 0; 
   @override
   Widget build(BuildContext context) {
     return MStreamBuilder(
@@ -149,20 +155,26 @@ class _PatientAppointments extends StatelessWidget {
         labworks.observableMap.stream
       ],
       builder: (context, snapshot) {
+         final patient = widget.patient;
         // Gather all appointments and labworks, sort by date descending
+        final allAppointments = patient.allAppointments;
+        final allLabworks = labworks.present.values
+            .where((lw) => lw.patientID == patient.id)
+            .toList();
+// Add these state variables in your _PatientAppointments widget (if using StatefulWidget, else convert to one)
         final allItems = [
-          ...patient.allAppointments.map((a) => {
-                "type": "appointment",
-                "date": a.date,
-                "appointment": a,
-              }),
-          ...labworks.present.values
-              .where((lw) => lw.patientID == patient.id)
-              .map((lw) => {
-                    "type": "labwork",
-                    "date": lw.date ?? DateTime.now(),
-                    "labwork": lw,
-                  }),
+          if (filterType == 0 || filterType == 1)
+            ...allAppointments.map((a) => {
+                  "type": "appointment",
+                  "date": a.date,
+                  "appointment": a,
+                }),
+          if (filterType == 0 || filterType == 2)
+            ...allLabworks.map((lw) => {
+                  "type": "labwork",
+                  "date": lw.date ?? DateTime.now(),
+                  "labwork": lw,
+                }),
         ];
 
         allItems.sort((a, b) {
@@ -189,29 +201,78 @@ class _PatientAppointments extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Acrylic(
-                    elevation: 20,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: Row(
-                        children: [
-                          Icon(FluentIcons.calendar, color: Colors.blue),
-                          const SizedBox(width: 6),
-                          Txt(
-                            "${txt("appointments")}: ${patient.allAppointments.length}",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 20),
-                          Icon(FluentIcons.test_beaker, color: Colors.blue),
-                          const SizedBox(width: 6),
-                          Txt(
-                            "${txt("labworks")}: ${labworks.present.values.where((lw) => lw.patientID == patient.id).length}",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        filterType = filterType == 1
+                            ? 0
+                            : 1; // Toggle between both and appointments only
+                      });
+                    },
+                    child: Acrylic(
+                      elevation: filterType == 1 ? 40 : 20,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              FluentIcons.calendar,
+                              color:
+                                  filterType == 1 ? Colors.blue : Colors.grey,
+                            ),
+                            const SizedBox(width: 6),
+                            Txt(
+                              "${txt("appointments")}: ${allAppointments.length}",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: filterType == 1
+                                    ? Colors.blue
+                                    : Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        filterType = filterType == 2
+                            ? 0
+                            : 2; // Toggle between both and labworks only
+                      });
+                    },
+                    child: Acrylic(
+                      elevation: filterType == 2 ? 40 : 20,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              FluentIcons.test_beaker,
+                              color:
+                                  filterType == 2 ? Colors.blue : Colors.grey,
+                            ),
+                            const SizedBox(width: 6),
+                            Txt(
+                              "${txt("labworks")}: ${allLabworks.length}",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: filterType == 2
+                                    ? Colors.blue
+                                    : Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

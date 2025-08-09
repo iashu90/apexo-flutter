@@ -502,6 +502,35 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InfoLabel(
+              label: "Diagnosis:",
+              child: TagInputWidget(
+                key: WK.fieldAppointmentDiagnosis,
+                suggestions: [
+                  // You can define a list of diagnosis options, or use allTreatments if you want
+                  ...allDiagnosis.map((d) => TagInputItem(
+                        value: d,
+                        label: d,
+                      )),
+                ],
+                onChanged: (s) {
+                  setState(() {
+                    widget.appointment.diagnosis = s
+                        .where((x) => x.value != null)
+                        .map((x) => x.value!)
+                        .toList();
+                  });
+                },
+                initialValue: [
+                  ...(widget.appointment.diagnosis ?? [])
+                      .map((v) => TagInputItem(value: v, label: v)),
+                ],
+                strict: false,
+                limit: 999,
+                placeholder: "Diagnosis...",
+              ),
+            ),
+            const SizedBox(height: 10),
+            InfoLabel(
               label: "${txt("treatment")}:",
               child: TagInputWidget(
                 key: WK.fieldAppointmentTreatments,

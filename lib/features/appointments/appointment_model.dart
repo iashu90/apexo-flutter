@@ -105,6 +105,7 @@ class Appointment extends Model {
   /* 4 */ String postOpNotes = "";
   /* 5 */ List<String> prescriptions = [];
   /* 6 */ double price = 0;
+  double discountedPrice = 0;
   /* 7 */ double paid = 0;
   double priceToPayDoctor = 0;
   double paidToDoctor = 0;
@@ -115,6 +116,7 @@ class Appointment extends Model {
   /* 10 */ bool isDone = false;
   double discount = 0.0;
   String discountType = 'flat'; // or 'percent'
+  List<String> diagnosis = [];
 
   /* 12 */ List<String> selectedTreatments = [];
   List<String> subTreatments = [];
@@ -131,6 +133,8 @@ class Appointment extends Model {
     /* 4 */ preOpNotes = json["preOpNotes"] ?? preOpNotes;
     /* 5 */ postOpNotes = json["postOpNotes"] ?? postOpNotes;
     /* 6 */ price = double.parse((json["price"] ?? price).toString());
+    discountedPrice =
+        double.parse((json["discountedPrice"] ?? discountedPrice).toString());
     /* 7 */ paid = double.parse((json["paid"] ?? paid).toString());
     priceToPayDoctor =
         double.parse((json["priceToPayDoctor"] ?? priceToPayDoctor).toString());
@@ -163,6 +167,7 @@ class Appointment extends Model {
     discountType = json['discountType'] ?? 'flat';
     treatmentGpayPaid = json['treatmentGpayPaid'] ?? false;
     prescriptionGpayPaid = json['prescriptionGpayPaid'] ?? false;
+    diagnosis = List<String>.from(json['diagnosis'] ?? []);
   }
 
   @override
@@ -175,6 +180,8 @@ class Appointment extends Model {
     /* 4 */ if (preOpNotes != d.preOpNotes) json['preOpNotes'] = preOpNotes;
     /* 5 */ if (postOpNotes != d.postOpNotes) json['postOpNotes'] = postOpNotes;
     /* 6 */ if (price != d.price) json['price'] = price;
+    if (discountedPrice != d.discountedPrice)
+      json['discountedPrice'] = discountedPrice;
     /* 7 */ if (paid != d.paid) json['paid'] = paid;
     if (priceToPayDoctor != d.priceToPayDoctor)
       json['priceToPayDoctor'] = priceToPayDoctor;
@@ -195,6 +202,7 @@ class Appointment extends Model {
     if (discountType != d.discountType) json['discountType'] = discountType;
     json['treatmentGpayPaid'] = treatmentGpayPaid;
     json['prescriptionGpayPaid'] = prescriptionGpayPaid;
+    json['diagnosis'] = diagnosis;
     json.remove("title"); // remove since it is a computed value in this case
 
     return json;

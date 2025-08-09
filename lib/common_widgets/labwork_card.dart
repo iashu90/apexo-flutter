@@ -89,7 +89,6 @@ class LabworkCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        ..._betweenSections,
 
                         if (labwork.lab != null && labwork.lab.isNotEmpty) ...[
                           ..._betweenSections,
