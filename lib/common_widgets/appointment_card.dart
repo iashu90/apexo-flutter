@@ -23,6 +23,7 @@ enum AppointmentSections {
   photos,
   preNotes,
   postNotes,
+  diagnosis,
   prescriptions,
   pay
 }
@@ -254,15 +255,26 @@ class AppointmentCard extends StatelessWidget {
                             color,
                           ),
                         ],
-                        if (appointment.postOpNotes.isNotEmpty &&
-                            !hide.contains(AppointmentSections.postNotes)) ...[
+                        if (appointment.diagnosis.isNotEmpty &&
+                            !hide.contains(AppointmentSections.diagnosis)) ...[
                           ..._betweenSections,
                           _buildSection(
-                            txt("post-opNotes"),
-                            Txt(
-                              appointment.postOpNotes,
-                              style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w500),
+                            "Diagnosis",
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: appointment.diagnosis
+                                  .map((d) => Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 2),
+                                        child: Txt(
+                                          d.trim(),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ))
+                                  .toList(),
                             ),
                             FluentIcons.quick_note,
                             color,
