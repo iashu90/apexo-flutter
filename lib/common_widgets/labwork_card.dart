@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:apexo/features/labwork/labworks_store.dart';
+import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:apexo/features/labwork/labwork_model.dart';
@@ -87,6 +89,83 @@ class LabworkCard extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            SizedBox(width: 5),
+                            Row(
+                               mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  icon: Icon(FluentIcons.delete,
+                                      size: 17, color: Colors.red),
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => ContentDialog(
+                                        title: const Text('Delete Labwork'),
+                                        content: RichText(
+                                          text: TextSpan(
+                                            style: FluentTheme.of(context)
+                                                .typography
+                                                .body,
+                                            children: [
+                                              const TextSpan(
+                                                text:
+                                                    'Are you sure you want to permanently delete this labwork dated ',
+                                              ),
+                                              TextSpan(
+                                                text: intl.DateFormat(
+                                                        "E d/MM/yyyy - hh:mm a",
+                                                        locale.s.$code)
+                                                    .format(labwork.date ??
+                                                        DateTime.now()),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.warningPrimaryColor, // Highlight the date
+                                                ),
+                                              ),
+                                              const TextSpan(
+                                                text:
+                                                    '? This action cannot be undone.',
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        actions: [
+                                          Button(
+                                            child: const Text('Cancel'),
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, false),
+                                          ),
+                                          FilledButton(
+                                            style: ButtonStyle(
+                                              backgroundColor:
+                                                  ButtonState.all(Colors.red),
+                                            ),
+                                            child: const Text('Delete'),
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      // Perform hard delete logic here
+                                      await labworks.hardDelete(
+                                          labwork.id); // or your delete method
+                                      if (Navigator.canPop(context))
+                                        Navigator.pop(context);
+                                    }
+                                  },
+                                  iconButtonMode: IconButtonMode.large,
+                                ),
+                                IconButton(
+                                  icon: const Icon(FluentIcons.edit, size: 17),
+                                  onPressed: () {
+                                    openLabwork(labwork);
+                                  },
+                                  iconButtonMode: IconButtonMode.large,
+                                ),
+                              ],
+                            ),
                           ],
                         ),
 
@@ -100,6 +179,17 @@ class LabworkCard extends StatelessWidget {
                             _buildSection("Type of work", labwork.typeOfWork,
                                 FluentIcons.add_work, color),
                           ],
+                          if (labwork.selectedTeeth != null &&
+                              labwork.selectedTeeth.isNotEmpty) ...[
+                            ..._betweenSections,
+                            _buildSection(
+                              "Teeth",
+                              labwork.selectedTeeth
+                                  .join(', '), // Show as comma separated string
+                              FluentIcons.add_field,
+                              color,
+                            ),
+                          ],
                           if (labwork.noOfUnits != null) ...[
                             ..._betweenSections,
                             _buildSection(
@@ -108,6 +198,7 @@ class LabworkCard extends StatelessWidget {
                                 FluentIcons.number_field,
                                 color),
                           ],
+                          SizedBox(height: 10),
                         ],
                       ],
                     ),
