@@ -92,6 +92,11 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   int sortBy = -1;
   int sortDirection = 1;
   int slice = 20;
+  // Cache: item.id -> normalized searchable text
+  final Map<String, String> _searchBlobById = {};
+
+  // Cache: item.id -> labels map reference per frame lifecycle
+  final Map<String, Map<String, String>> _labelsById = {};
 
   /// labels must be cached since this computation would
   /// occur too many times on every rebuild
@@ -102,6 +107,27 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     return _labels ??= widget.items.fold(<String>{},
         (labels, item) => labels..addAll((item.labels.keys.toList()))).toList()
       ..sort((a, b) => a.compareTo(b));
+  }
+
+  Map<String, String> _labelsFor(Item item) {
+    return _labelsById.putIfAbsent(item.id, () => item.labels);
+  }
+
+  String _searchBlobFor(Item item) {
+    return _searchBlobById.putIfAbsent(item.id, () {
+      final itemLabels = _labelsFor(item);
+      return (item.title +
+              (item is Patient ? item.phone : '') +
+              jsonEncode(itemLabels.values.toList()))
+          .toLowerCase()
+          .replaceAll(RegExp("أ|إ"), "ا");
+    });
+  }
+
+  void _clearDerivedCaches() {
+    _searchBlobById.clear();
+    _labelsById.clear();
+    _labels = null;
   }
 
   List<String> get nonNullLabels {
@@ -165,11 +191,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
 
       final words =
           _searchValue.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
-      final searchIn = (item.title +
-              (item is Patient ? item.phone : '') +
-              jsonEncode(item.labels.values.toList()))
-          .toLowerCase()
-          .replaceAll(RegExp("أ|إ"), "ا");
+      final searchIn = _searchBlobFor(item);
       final bool allTermsFound = words
               .map((word) => searchIn.contains(word))
               .where((x) => x == true)
@@ -199,7 +221,10 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     } else {
       final labelKey = labels[sortBy];
       final sorted = List<_SortableItem<Item>>.from(
-        result.map((e) => _SortableItem(e.labels[labelKey] ?? "", e)),
+        result.map((e) {
+          final itemLabels = _labelsFor(e);
+          return _SortableItem(itemLabels[labelKey] ?? "", e);
+        }),
         growable: true,
       )..sort((a, b) {
           if (double.tryParse(a.value) != null &&
@@ -235,6 +260,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     setState(() {
       _searchValue = value;
       _searchStartsWith = startsWith;
+      slice = 20;
       _updateFilteredItems();
     });
   }
@@ -278,6 +304,17 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   void initState() {
     super.initState();
     sortDirection = widget.defaultSortDirection;
+    _clearDerivedCaches();
+  }
+
+  @override
+  void didUpdateWidget(covariant DataTable<Item> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.items, widget.items) ||
+        oldWidget.items.length != widget.items.length ||
+        oldWidget.labelOrder != widget.labelOrder) {
+      _clearDerivedCaches();
+    }
   }
 
   @override
@@ -453,189 +490,174 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   _buildSingleItem(Item item, bool isChecked) {
-    return Container(
-      padding: widget.compact
-          ? EdgeInsets.zero
-          : const EdgeInsets.symmetric(vertical: 1.5),
+    final title = Container(
+      margin: const EdgeInsets.fromLTRB(5, 5, 5, 0),
       decoration: BoxDecoration(
-        color: isChecked
-            ? FluentTheme.of(context).selectionColor.withValues(alpha: 0.05)
-            : null,
-        border: Border(
-          bottom:
-              BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
-        ),
+        borderRadius: BorderRadius.circular(3),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(0),
-        title: Container(
-          margin: const EdgeInsets.fromLTRB(5, 5, 5, 0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(3),
-          ),
-          child: Row(
-            children: [
-              Divider(direction: Axis.vertical, size: widget.compact ? 1 : 45),
-              _buildInnerRow(item),
-              Divider(direction: Axis.vertical, size: widget.compact ? 1 : 45),
-            ],
-          ),
-        ),
-        leading: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildCheckBox(isChecked, item),
-            if (item is Patient || item is Doctor) ...[
-              const SizedBox(width: 8),
-              const Divider(direction: Axis.vertical, size: 40),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(FluentIcons.money, size: 20),
-                onPressed: () {
-                  ActivityLogger.logAction(
-                    "Report Dialog Opened",
-                    screen: Item.toString(),
-                    data: {
-                      Item.toString(): item?.title ?? "",
-                      "itemType": Item.toString()
-                    },
-                  );
-                  showDialog(
-                    context: context,
-                    builder: (_) => Align(
-                      alignment: Alignment.center,
-                      child: Container(
-                        color: Colors.white,
-                        child: item is Patient
+      child: Row(
+        children: [
+          Divider(direction: Axis.vertical, size: widget.compact ? 1 : 45),
+          _buildInnerRow(item),
+          Divider(direction: Axis.vertical, size: widget.compact ? 1 : 45),
+        ],
+      ),
+    );
+
+    final leading = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildCheckBox(isChecked, item),
+        if (item is Patient || item is Doctor) ...[
+          const SizedBox(width: 8),
+          const Divider(direction: Axis.vertical, size: 40),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(FluentIcons.money, size: 20),
+            onPressed: () {
+              ActivityLogger.logAction(
+                "Report Dialog Opened",
+                screen: Item.toString(),
+                data: {
+                  Item.toString(): item.title,
+                  "itemType": Item.toString(),
+                },
+              );
+              showDialog(
+                context: context,
+                builder: (_) => Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    color: Colors.white,
+                    child: item is Patient
+                        ? PatientDetailsDialog(
+                            rows: item.patientDetails,
+                            patient: item,
+                            hiddenColumns: [
+                              'Prescription',
+                              'P.Mode',
+                              'Doc Paid',
+                              'TotalDocPay'
+                            ],
+                          )
+                        : item is Doctor
                             ? PatientDetailsDialog(
-                                rows: item.patientDetails,
-                                patient: item,
+                                rows: item.doctorDetails,
+                                doctorFilterDate: globalDoctorSelectedDate,
                                 hiddenColumns: [
                                   'Prescription',
+                                  'Cost',
+                                  'Paid',
                                   'P.Mode',
-                                  'Doc Paid',
-                                  'TotalDocPay'
+                                  'T.Mode'
                                 ],
+                                fromWhere: PatientDetailsSource.doctor,
                               )
-                            : item is Doctor
-                                ? PatientDetailsDialog(
-                                    rows: item.doctorDetails,
-                                    doctorFilterDate: globalDoctorSelectedDate,
-                                    hiddenColumns: [
-                                      'Prescription',
-                                      'Cost',
-                                      'Paid',
-                                      'P.Mode',
-                                      'T.Mode'
-                                    ],
-                                    fromWhere: PatientDetailsSource.doctor,
-                                  )
-                                : const SizedBox.shrink(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ],
+                            : const SizedBox.shrink(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ],
+    );
+
+    final trailing = FlyoutTarget(
+      controller: contextMenuControllers[item.id]!,
+      child: IconButton(
+        icon: Container(
+          padding: const EdgeInsets.all(5),
+          child: const Icon(FluentIcons.more),
         ),
         onPressed: () {
           ActivityLogger.logAction(
-            "Item Selected",
+            "Context Menu Opened",
             screen: Item.toString(),
             data: {"itemId": item.id, "itemTitle": item.title},
           );
-          widget.onSelect(item);
+          contextMenuControllers[item.id]!.showFlyout(
+            barrierDismissible: true,
+            dismissOnPointerMoveAway: false,
+            dismissWithEsc: true,
+            builder: (context) {
+              return StatefulBuilder(builder: (context, setState) {
+                return MenuFlyout(items: [
+                  MenuFlyoutItem(
+                    text: Txt(item.title),
+                    leading: const Icon(FluentIcons.edit),
+                    onPressed: () {
+                      ActivityLogger.logAction(
+                        "Edit Item Clicked",
+                        screen: Item.toString(),
+                        data: {"itemId": item.id, "itemTitle": item.title},
+                      );
+                      widget.onSelect(item);
+                    },
+                    closeAfterClick: true,
+                  ),
+                  if (widget.itemActions.isNotEmpty)
+                    const MenuFlyoutSeparator(),
+                  for (var action in widget.itemActions)
+                    MenuFlyoutItem(
+                      leading: Icon(action.icon),
+                      text: Txt(action.title),
+                      onPressed: () {
+                        ActivityLogger.logAction(
+                          "Item Action Clicked",
+                          screen: Item.toString(),
+                          data: {"action": action.title, "itemId": item.id},
+                        );
+                        action.callback(item.id);
+                      },
+                      closeAfterClick: true,
+                    ),
+                  if (routes
+                      .panels()
+                      .where((p) => p.item.id == item.id)
+                      .isEmpty)
+                    MenuFlyoutItem(
+                      leading: Icon(item.archived == true
+                          ? FluentIcons.archive_undo
+                          : FluentIcons.archive),
+                      text: Txt(
+                          txt(item.archived == true ? "restore" : "archive")),
+                      onPressed: () {
+                        ActivityLogger.logAction(
+                          item.archived == true
+                              ? "Restore Clicked"
+                              : "Archive Clicked",
+                          screen: Item.toString(),
+                          data: {"itemId": item.id, "itemTitle": item.title},
+                        );
+                        item.archived == true
+                            ? widget.store.unarchive(item.id)
+                            : widget.store.archive(item.id);
+                      },
+                      closeAfterClick: true,
+                    ),
+                ]);
+              });
+            },
+          );
         },
-        trailing: FlyoutTarget(
-            controller: contextMenuControllers[item.id]!,
-            child: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(5),
-                child: const Icon(FluentIcons.more),
-              ),
-              onPressed: () {
-                ActivityLogger.logAction(
-                  "Context Menu Opened",
-                  screen: Item.toString(),
-                  data: {"itemId": item.id, "itemTitle": item.title},
-                );
-                contextMenuControllers[item.id]!.showFlyout(
-                  barrierDismissible: true,
-                  dismissOnPointerMoveAway: false,
-                  dismissWithEsc: true,
-                  builder: (context) {
-                    return StatefulBuilder(builder: (context, setState) {
-                      return MenuFlyout(items: [
-                        MenuFlyoutItem(
-                          text: Txt(item.title),
-                          leading: const Icon(FluentIcons.edit),
-                          onPressed: () {
-                            ActivityLogger.logAction(
-                              "Edit Item Clicked",
-                              screen: Item.toString(),
-                              data: {
-                                "itemId": item.id,
-                                "itemTitle": item.title
-                              },
-                            );
-                            widget.onSelect(item);
-                          },
-                          closeAfterClick: true,
-                        ),
-                        if (widget.itemActions.isNotEmpty)
-                          const MenuFlyoutSeparator(),
-                        for (var action in widget.itemActions)
-                          MenuFlyoutItem(
-                            leading: Icon(action.icon),
-                            text: Txt(action.title),
-                            onPressed: () {
-                              ActivityLogger.logAction(
-                                "Item Action Clicked",
-                                screen: Item.toString(),
-                                data: {
-                                  "action": action.title,
-                                  "itemId": item.id
-                                },
-                              );
-                              action.callback(item.id);
-                            },
-                            closeAfterClick: true,
-                          ),
-                        if (routes
-                            .panels()
-                            .where((p) => p.item.id == item.id)
-                            .isEmpty)
-                          MenuFlyoutItem(
-                            leading: Icon(item.archived == true
-                                ? FluentIcons.archive_undo
-                                : FluentIcons.archive),
-                            text: Txt(txt(
-                                item.archived == true ? "restore" : "archive")),
-                            onPressed: () {
-                              ActivityLogger.logAction(
-                                item.archived == true
-                                    ? "Restore Clicked"
-                                    : "Archive Clicked",
-                                screen: Item.toString(),
-                                data: {
-                                  "itemId": item.id,
-                                  "itemTitle": item.title
-                                },
-                              );
-                              item.archived == true
-                                  ? widget.store.unarchive(item.id)
-                                  : widget.store.archive(item.id);
-                            },
-                            closeAfterClick: true,
-                          )
-                      ]);
-                    });
-                  },
-                );
-              },
-            )),
       ),
+    );
+
+    return _DataTableRowShell(
+      compact: widget.compact,
+      isChecked: isChecked,
+      leading: leading,
+      title: title,
+      trailing: trailing,
+      onPressed: () {
+        ActivityLogger.logAction(
+          "Item Selected",
+          screen: Item.toString(),
+          data: {"itemId": item.id, "itemTitle": item.title},
+        );
+        widget.onSelect(item);
+      },
     );
   }
 
@@ -1146,11 +1168,15 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   Widget _buildLabelPill(String l, Item item, [Color? color]) {
-    var selected = _searchValue.toLowerCase() == item.labels[l]?.toLowerCase();
+    final itemLabels = _labelsFor(item);
+    final labelValue = itemLabels[l] ?? "";
+    final selected = _searchValue.toLowerCase() == labelValue.toLowerCase();
+
     color = color ??
         colorsWithoutYellow[
             ((labels.indexOf(l) / labels.length) * colorsWithoutYellow.length)
                 .floor()];
+
     return Padding(
       padding: const EdgeInsets.all(2),
       child: GestureDetector(
@@ -1158,7 +1184,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           if (selected) {
             setSearchTerm("");
           } else {
-            setSearchTerm((item.labels[l] ?? "").toLowerCase());
+            setSearchTerm(labelValue.toLowerCase());
           }
         },
         child: DataTablePill(
@@ -1169,13 +1195,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(item.labels[l] ?? ""),
+                    Text(labelValue),
                     if (item.outstandingPayments != 0) ...[
                       const SizedBox(width: 4),
                       Icon(
                         item.outstandingPayments > 0
-                            ? material.Icons.trending_down // red for underpaid
-                            : material.Icons.trending_up, // green for overpaid
+                            ? material.Icons.trending_down
+                            : material.Icons.trending_up,
                         color: item.outstandingPayments > 0
                             ? Colors.red
                             : Colors.green,
@@ -1189,8 +1215,50 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                     ],
                   ],
                 )
-              : Txt(item.labels[l] ?? ""),
+              : Txt(labelValue),
         ),
+      ),
+    );
+  }
+}
+
+class _DataTableRowShell extends StatelessWidget {
+  final bool compact;
+  final bool isChecked;
+  final Widget leading;
+  final Widget title;
+  final Widget trailing;
+  final VoidCallback onPressed;
+
+  const _DataTableRowShell({
+    required this.compact,
+    required this.isChecked,
+    required this.leading,
+    required this.title,
+    required this.trailing,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding:
+          compact ? EdgeInsets.zero : const EdgeInsets.symmetric(vertical: 1.5),
+      decoration: BoxDecoration(
+        color: isChecked
+            ? FluentTheme.of(context).selectionColor.withValues(alpha: 0.05)
+            : null,
+        border: Border(
+          bottom:
+              BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(0),
+        leading: leading,
+        title: title,
+        trailing: trailing,
+        onPressed: onPressed,
       ),
     );
   }
