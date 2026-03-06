@@ -30,6 +30,7 @@ import 'package:flutter/material.dart' as material;
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
+import 'package:apexo/features/dashboard/overall_due_helper.dart';
 
 DateTime globalSelectedDate = DateTime.now();
 
@@ -280,6 +281,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               dashboardCtrl.appointmentsForDate(selectedDate).length.toString(),
               txt("appointmentsToday"),
             ),
+
             dashboardSquare(
               Colors.blue,
               FluentIcons.people,
@@ -417,35 +419,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               dashboardCtrl.totalDueAmount().toStringAsFixed(2),
               "Overall Due",
               onTap: () {
-                final overallRows = patients.present.values
-                    .map((patient) {
-                      // Get all appointments for this patient
-                      final patientAppointments = appointments.present.values
-                          .where((a) => a.patientID == patient.id)
-                          .toList();
+                final result = OverallDueHelper.compute(
+                  appointments: appointments.present.values,
+                  patientsById: patients.present,
+                );
 
-                      // Aggregate cost and paid
-                      final cost = patientAppointments.fold<double>(
-                          0, (sum, a) => sum + a.price);
-                      final paid = patientAppointments.fold<double>(
-                          0, (sum, a) => sum + a.paid);
-
-                      // Only show if there is a due
-                      if (cost > paid) {
-                        return ReportDetailRow(
-                          patient: patient,
-                          cost: cost.toStringAsFixed(2),
-                          paid: paid.toStringAsFixed(2),
-                          treatment: '',
-                          teeth: '',
-                          prescription: '',
-                          date: DateTime.now(),
-                        );
-                      }
-                      return null;
-                    })
-                    .whereType<ReportDetailRow>() // Remove nulls
-                    .toList();
                 showDialog(
                   context: context,
                   builder: (_) => Align(
@@ -453,7 +431,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Container(
                       color: Colors.white,
                       child: PatientDetailsDialog(
-                        rows: overallRows,
+                        rows: result.rows,
                         hiddenColumns: const [
                           'Treatment',
                           'Teeth',

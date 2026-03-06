@@ -3,6 +3,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/features/dashboard/overall_due_helper.dart';
 
 class _DashboardController {
   _DashboardController() {
@@ -10,6 +11,7 @@ class _DashboardController {
       // nullify the cache
       _thisMonthAppointments = null;
       _todayAppointments = null;
+      _totalDueAmount = null;
     });
   }
 
@@ -113,21 +115,18 @@ class _DashboardController {
         .toList();
   }
 
+  double? _totalDueAmount;
+
   double totalDueAmount() {
-    double totalDue = 0;
-    for (final patient in patients.present.values) {
-      final patientAppointments = appointments.present.values
-          .where((a) => a.patientID == patient.id)
-          .toList();
-      final cost =
-          patientAppointments.fold<double>(0, (sum, a) => sum + a.price);
-      final paid =
-          patientAppointments.fold<double>(0, (sum, a) => sum + a.paid);
-      if (cost > paid) {
-        totalDue += (cost - paid);
-      }
-    }
-    return totalDue;
+    if (_totalDueAmount != null) return _totalDueAmount!;
+
+    final result = OverallDueHelper.compute(
+      appointments: appointments.present.values,
+      patientsById: patients.present,
+    );
+
+    _totalDueAmount = result.totalDue;
+    return _totalDueAmount!;
   }
 }
 
