@@ -17,6 +17,7 @@ import '../utils/colors_without_yellow.dart';
 import '../core/model.dart';
 import 'item_title.dart';
 import 'package:flutter/material.dart' as material;
+import 'dart:async';
 
 class _SortableItem<Item> {
   String value;
@@ -109,10 +110,9 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         .toList();
   }
 
-  List<Item> get filteredItems {
+  List<Item> _computeFilteredItems() {
     return widget.items.where((item) {
       if (Item == Patient && item is Patient) {
-        // Quick Filter
         if (_activeQuickFilter != null) {
           if (_activeQuickFilter == "Due") {
             if (item.outstandingPayments <= 0) return false;
@@ -121,7 +121,6 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           } else if (_activeQuickFilter == "No Name") {
             if (item.title.trim().isNotEmpty) return false;
           } else if (_activeQuickFilter == "Invalid Phone") {
-            // Remove all non-digit characters and check length
             final digits = item.phone.replaceAll(RegExp(r'\D'), '');
             if (digits.length == 10) return false;
           } else if (_activeQuickFilter == "No Visit") {
@@ -130,12 +129,12 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             if (item.daysSinceLastAppointment != 0) return false;
           }
         }
-        // Days filter
+
         if (_activeDaysFilter != null &&
             (item.daysSinceLastAppointment ?? 0) <= _activeDaysFilter!) {
           return false;
         }
-        // Treatment filter
+
         if (_activeTreatmentFilter != null &&
             !item.allAppointments.any((appointment) =>
                 appointment.selectedTreatments.any((t) => t
@@ -147,34 +146,27 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         if (_activeTreatmentFilter == "RCT" &&
             _activeSubTreatmentFilter != null &&
             _activeSubTreatmentFilter!.isNotEmpty) {
-          // Only show if ANY appointment has the selected sub-treatment
           final hasSubTreatment = item.allAppointments.any((appointment) =>
               appointment.selectedTreatments.contains("RCT") &&
-              appointment.subTreatments.contains(_activeSubTreatmentFilter));
+              appointment.subTreatments.contains(_activeSubTreatmentFilter!));
           if (!hasSubTreatment) return false;
         }
-        // Search filter
+
         if (_searchValue.isNotEmpty) {
+          final searchLower = _searchValue.toLowerCase();
           if (_searchStartsWith) {
-            return item.title
-                .toLowerCase()
-                .startsWith(_searchValue.toLowerCase());
+            return item.title.toLowerCase().startsWith(searchLower);
           } else {
-            return (item.title
-                    .toLowerCase()
-                    .contains(_searchValue.toLowerCase()) ||
-                (item is Patient &&
-                    item.phone
-                        .toLowerCase()
-                        .contains(_searchValue.toLowerCase())));
+            return item.title.toLowerCase().contains(searchLower) ||
+                item.phone.toLowerCase().contains(searchLower);
           }
         }
       }
-      // ...existing code for non-patient items...
+
       final words =
           _searchValue.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
       final searchIn = (item.title +
-              (item is Patient ? (item.phone) : '') +
+              (item is Patient ? item.phone : '') +
               jsonEncode(item.labels.values.toList()))
           .toLowerCase()
           .replaceAll(RegExp("أ|إ"), "ا");
@@ -184,7 +176,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               .length ==
           words.length;
       return allTermsFound;
-    }).toList();
+    }).toList(growable: false);
   }
 
   String removeNonNumbers(String input) {
@@ -197,17 +189,19 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     return input;
   }
 
-  List<Item> get sortedItems {
-    List<Item> result = List<Item>.from(filteredItems);
+  List<Item> _computeSortedItems(List<Item> filteredItems) {
+    List<Item> result = List<Item>.from(filteredItems, growable: true);
+
     if (sortBy < 0) {
-      result.sort((a, b) {
-        return a.title.toLowerCase().compareTo(b.title.toLowerCase()) *
-            sortDirection;
-      });
+      result.sort((a, b) =>
+          a.title.toLowerCase().compareTo(b.title.toLowerCase()) *
+          sortDirection);
     } else {
+      final labelKey = labels[sortBy];
       final sorted = List<_SortableItem<Item>>.from(
-          result.map((e) => _SortableItem(e.labels[labels[sortBy]] ?? "", e)))
-        ..sort((a, b) {
+        result.map((e) => _SortableItem(e.labels[labelKey] ?? "", e)),
+        growable: true,
+      )..sort((a, b) {
           if (double.tryParse(a.value) != null &&
               double.tryParse(b.value) != null) {
             return double.parse(a.value).compareTo(double.parse(b.value)) *
@@ -221,7 +215,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             return a.value.compareTo(b.value) * sortDirection;
           }
         });
-      result = sorted.map((e) => e.item).toList();
+
+      result = sorted.map((e) => e.item).toList(growable: false);
     }
 
     return result.sublist(0, min(result.length, slice));
@@ -293,14 +288,22 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         _buildListController(),
         if (Item == Patient) _buildAlphabetFilter(),
         if (widget.customHeader != null) widget.customHeader!,
-        _buildItemsList(context),
+        // _buildItemsList(context),
+        Builder(
+          builder: (context) {
+            final filtered = _computeFilteredItems();
+            final sorted = _computeSortedItems(filtered);
+            return _buildItemsList(context, filtered, sorted);
+          },
+        ),
       ],
     );
   }
 
   void _updateFilteredItems() {
+    final filtered = _computeFilteredItems();
     if (widget.onFilterChanged != null) {
-      widget.onFilterChanged!(filteredItems);
+      widget.onFilterChanged!(filtered);
     }
 
     ActivityLogger.logAction(
@@ -312,7 +315,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         "TreatmentFilter": _activeTreatmentFilter,
         "SubTreatmentFilter": _activeSubTreatmentFilter,
         "SearchValue": _searchValue,
-        "ResultsFound": filteredItems.length,
+        "ResultsFound": filtered.length,
       },
     );
   }
@@ -387,10 +390,11 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     );
   }
 
-  Expanded _buildItemsList(BuildContext context) {
-    final sorted = [...sortedItems]; // caching those two for easier computation
-    final filtered = [...filteredItems];
-
+  Expanded _buildItemsList(
+    BuildContext context,
+    List<Item> filtered,
+    List<Item> sorted,
+  ) {
     for (var item in filtered) {
       contextMenuControllers.putIfAbsent(item.id, () => FlyoutController());
     }
@@ -640,10 +644,12 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   Expanded _buildInnerRow(Item item) {
-    var nonEmptyLabels = labels
-        .where((l) => item.labels[l] != null)
+    final itemLabels = item.labels;
+    final nonEmptyLabels = labels
+        .where((l) => itemLabels[l] != null)
         .where((l) => !widget.hiddenColumns.contains(l))
-        .toList();
+        .toList(growable: false);
+
     return Expanded(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -655,25 +661,29 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ItemTitle(
-                  key: Key(item.id),
-                  radius: widget.compact ? 1 : 20,
-                  item: item),
-              ...nonEmptyLabels.expand((labelTitle) {
+                key: Key(item.id),
+                radius: widget.compact ? 1 : 20,
+                item: item,
+              ),
+              ...nonEmptyLabels.asMap().entries.expand((entry) {
+                final index = entry.key;
+                final labelTitle = entry.value;
+
                 if (widget.columnBuilders != null &&
                     widget.columnBuilders!.containsKey(labelTitle)) {
                   return [
                     widget.columnBuilders![labelTitle]!(item),
-                    const SizedBox(width: 8), // <-- Add spacing here
+                    const SizedBox(width: 8),
                   ];
                 }
+
                 return [
                   _buildLabelPill(
                     labelTitle,
                     item,
-                    colorsWithoutYellow[
-                        getCycledNumber(nonEmptyLabels.indexOf(labelTitle))],
+                    colorsWithoutYellow[getCycledNumber(index)],
                   ),
-                  const SizedBox(width: 8), // <-- Add spacing here
+                  const SizedBox(width: 8),
                 ];
               }),
             ],
@@ -706,13 +716,19 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   String? _activeSubTreatmentFilter;
+
   Padding _buildListController() {
+    final filtered = _computeFilteredItems();
+    final shownCount = _computeSortedItems(filtered).length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 5, 10, 0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildItemsNumIndicator(),
+          _buildItemsNumIndicator(
+            filteredCount: filtered.length,
+            shownCount: shownCount,
+          ),
           if (Item == Patient)
             Row(
               children: [
@@ -983,19 +999,22 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     );
   }
 
-  Widget _buildItemsNumIndicator() {
-    final filtered = [...filteredItems];
+  Widget _buildItemsNumIndicator({
+    required int filteredCount,
+    required int shownCount,
+  }) {
     return Row(
       children: [
         Txt(
-          "${txt("showing")} ${sortedItems.length}/${filtered.length}",
+          "${txt("showing")} $shownCount/$filteredCount",
           style: TextStyle(
-              color: Colors.grey.toAccentColor().lightest,
-              fontSize: 11,
-              fontWeight: FontWeight.bold),
+            color: Colors.grey.toAccentColor().lightest,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         Visibility(
-          visible: filtered.isNotEmpty,
+          visible: filteredCount > 0,
           maintainSize: true,
           maintainAnimation: true,
           maintainState: true,
@@ -1263,6 +1282,14 @@ class DataTableSearchField extends StatefulWidget {
 
 class _DataTableSearchFieldState extends State<DataTableSearchField> {
   final TextEditingController _controller = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1287,7 +1314,12 @@ class _DataTableSearchFieldState extends State<DataTableSearchField> {
           placeholder: widget.placeholder.isEmpty
               ? "🔍 ${txt("searchPlaceholder")}"
               : "${txt("filter")}: ${widget.placeholder}",
-          onChanged: widget.onChanged,
+          onChanged: (value) {
+            _debounce?.cancel();
+            _debounce = Timer(const Duration(milliseconds: 150), () {
+              widget.onChanged(value);
+            });
+          },
           controller: _controller,
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(5),
