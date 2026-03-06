@@ -87,14 +87,9 @@ class Patient extends Model {
     return birth;
   }
 
-  double get paymentsMade {
-    return doneAppointments.fold(0.0, (value, element) => value + element.paid);
-  }
+  double get paymentsMade => _financialStats.paymentsMade;
 
-  double get pricesGiven {
-    return doneAppointments.fold(
-        0.0, (value, element) => value + element.price);
-  }
+  double get pricesGiven => _financialStats.pricesGiven;
 
   bool get overPaid {
     return paymentsMade > pricesGiven;
@@ -112,10 +107,7 @@ class Patient extends Model {
     return pricesGiven - paymentsMade;
   }
 
-  int? get daysSinceLastAppointment {
-    if (doneAppointments.isEmpty) return null;
-    return DateTime.now().difference(doneAppointments.last.date).inDays;
-  }
+  int? get daysSinceLastAppointment => _financialStats.daysSinceLastAppointment;
 
   @override
   get avatar {
@@ -219,6 +211,7 @@ class Patient extends Model {
     nullifyCachedAppointments(_) {
       _doneAppointmentsCached = null;
       _allAppointmentsCached = null;
+      _financialStatsCached = null;
     }
 
     showArchived.observe(nullifyCachedAppointments);
@@ -248,4 +241,47 @@ class Patient extends Model {
     /* 8 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
     return json;
   }
+
+  _PatientFinancialStats? _financialStatsCached;
+
+  _PatientFinancialStats get _financialStats {
+    if (_financialStatsCached != null) return _financialStatsCached!;
+
+    double paid = 0.0;
+    double price = 0.0;
+    DateTime? lastDoneDate;
+
+    for (final appointment in allAppointments) {
+      if (appointment.isDone != true) continue;
+
+      paid += appointment.paid;
+      price += appointment.price;
+
+      if (lastDoneDate == null || appointment.date.isAfter(lastDoneDate)) {
+        lastDoneDate = appointment.date;
+      }
+    }
+
+    _financialStatsCached = _PatientFinancialStats(
+      paymentsMade: paid,
+      pricesGiven: price,
+      daysSinceLastAppointment: lastDoneDate == null
+          ? null
+          : DateTime.now().difference(lastDoneDate).inDays,
+    );
+
+    return _financialStatsCached!;
+  }
+}
+
+class _PatientFinancialStats {
+  final double paymentsMade;
+  final double pricesGiven;
+  final int? daysSinceLastAppointment;
+
+  const _PatientFinancialStats({
+    required this.paymentsMade,
+    required this.pricesGiven,
+    required this.daysSinceLastAppointment,
+  });
 }
