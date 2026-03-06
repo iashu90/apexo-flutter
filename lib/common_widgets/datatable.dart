@@ -253,6 +253,10 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     });
   }
 
+// Default initial filter for Patient table to reduce first-render cost
+  static const bool _defaultPatientAlphabetFilterEnabled = true;
+  static const String _defaultPatientAlphabet = 'A';
+
   String _searchValue = '';
   bool _searchStartsWith = false;
 
@@ -305,6 +309,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     super.initState();
     sortDirection = widget.defaultSortDirection;
     _clearDerivedCaches();
+
+    // Reduce first paint cost on huge patient datasets.
+    // By default show only names starting with "A" instead of "All".
+    if (Item == Patient && _defaultPatientAlphabetFilterEnabled) {
+      _searchValue = _defaultPatientAlphabet;
+      _searchStartsWith = true;
+    }
   }
 
   @override
@@ -314,6 +325,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         oldWidget.items.length != widget.items.length ||
         oldWidget.labelOrder != widget.labelOrder) {
       _clearDerivedCaches();
+    }
+    // If this DataTable is reused across different item types, keep defaults sane.
+    if (Item == Patient &&
+        _defaultPatientAlphabetFilterEnabled &&
+        _searchValue.isEmpty) {
+      _searchValue = _defaultPatientAlphabet;
+      _searchStartsWith = true;
     }
   }
 
@@ -366,6 +384,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     final unselectedBg =
         isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2);
     final unselectedFg = isDark ? Colors.white : Colors.black;
+    final activeUpper = _searchValue.toUpperCase();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -373,7 +392,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         spacing: 4,
         children: List.generate(26, (i) {
           final letter = String.fromCharCode(65 + i);
-          final isSelected = _searchValue.toUpperCase() == letter;
+          final isSelected = activeUpper == letter;
           return FilledButton(
             style: ButtonStyle(
               backgroundColor: WidgetStatePropertyAll(
