@@ -9,6 +9,7 @@ import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
 import 'package:apexo/features/patients/patients_screen.dart';
+import 'package:apexo/features/patients/patients_screen_v2.dart';
 import 'package:apexo/features/stats/screen_stats.dart';
 import 'package:apexo/services/admins.dart';
 import 'package:apexo/services/backups.dart';
@@ -167,6 +168,19 @@ class _Routes {
           title: txt("patients"),
           identifier: "patients",
           navbarTitle: txt("patients"),
+          icon: FluentIcons.medication_admin,
+          screen: PatientsScreenV2.new,
+          accessible: permissions.list[1] || login.isAdmin,
+          onSelect: () async {
+            await doctors.synchronize();
+            await patients.synchronize();
+            appointments.synchronize();
+          },
+        ),
+        Route(
+          title: "Patients (Old)",
+          identifier: "patients_old",
+          navbarTitle: "Old Patients",
           icon: FluentIcons.medication_admin,
           screen: PatientsScreen.new,
           accessible: permissions.list[1] || login.isAdmin,
