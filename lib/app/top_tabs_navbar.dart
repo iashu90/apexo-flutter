@@ -63,6 +63,7 @@ class TopTabsNavBar extends StatelessWidget {
       'dashboard',
       'dashboard_old',
       'patients',
+      'patients_old',
       'calendar',
       'doctors',
       'statistics',
@@ -105,7 +106,8 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = route.identifier == app_routes.routes.currentRoute.identifier;
+    final active =
+        route.identifier == app_routes.routes.currentRoute.identifier;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -116,9 +118,7 @@ class _TabButton extends StatelessWidget {
           curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: active
-                ? ApexoThemeColors.navActiveTab
-                : Colors.transparent,
+            color: active ? ApexoThemeColors.navActiveTab : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: active
