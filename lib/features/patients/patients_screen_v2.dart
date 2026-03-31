@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -26,8 +28,17 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   String _selectedAlphabet = 'A';
   String _sortBy = 'name';
   bool _sortAscending = true;
+  int _currentPage = 1;
 
-  static const List<String> _topRanges = ['1Week', '1Month', '1Year', 'All'];
+  static const int _pageSize = 200;
+
+  static const List<String> _topRanges = [
+    '1Week',
+    '1Month',
+    '6Months',
+    '1Year',
+    'All',
+  ];
 
   @override
   void initState() {
@@ -35,11 +46,13 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     _searchController.addListener(() {
       setState(() {
         _query = _searchController.text.trim().toLowerCase();
+        _currentPage = 1;
       });
     });
     _listSearchController.addListener(() {
       setState(() {
         _listQuery = _listSearchController.text.trim().toLowerCase();
+        _currentPage = 1;
       });
     });
   }
@@ -63,6 +76,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         return now.subtract(const Duration(days: 30));
       case '1Year':
         return now.subtract(const Duration(days: 365));
+      case '6Months':
+        return now.subtract(const Duration(days: 182));
       case 'All':
       default:
         return null;
@@ -77,6 +92,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         _sortBy = key;
         _sortAscending = true;
       }
+      _currentPage = 1;
     });
   }
 
@@ -115,6 +131,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
           ],
           builder: (context, _) {
             final allPatients = patients.present.values.toList(growable: false);
+            final uniquePatientCount = allPatients
+                .map((p) => p.id)
+                .where((id) => id.trim().isNotEmpty)
+                .toSet()
+                .length;
             final allAppointments =
                 appointments.present.values.toList(growable: false);
 
@@ -153,6 +174,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             }
 
             final ageBuckets = _ageBuckets(allPatients);
+            final genderBuckets = _genderBuckets(allPatients);
+            final paymentModeBuckets = _paymentModeBuckets(allAppointments);
 
             final rangeStart = _rangeStart(_topRange, now);
             final topPatientsByVisits = allPatients
@@ -182,7 +205,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                 .toList(growable: false)
               ..sort((a, b) => b.value.compareTo(a.value));
 
-            final filteredPatients = allPatients.where((patient) {
+            final preAlphabetPatients = allPatients.where((patient) {
               final name = patient.title.toLowerCase();
               final phone = patient.phone.toLowerCase();
 
@@ -194,12 +217,15 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   name.contains(_listQuery) ||
                   phone.contains(_listQuery);
 
+              return topSearchMatches && listSearchMatches;
+            }).toList(growable: false);
+
+            final filteredPatients = preAlphabetPatients.where((patient) {
+              if (_selectedAlphabet == 'All') return true;
               final titleTrimmed = patient.title.trim();
               final firstLetter =
                   titleTrimmed.isEmpty ? '' : titleTrimmed[0].toUpperCase();
-              final alphabetMatches = firstLetter == _selectedAlphabet;
-
-              return topSearchMatches && listSearchMatches && alphabetMatches;
+              return firstLetter == _selectedAlphabet;
             }).toList(growable: false)
               ..sort((a, b) {
                 int value;
@@ -234,6 +260,22 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                 return _sortAscending ? value : -value;
               });
 
+            final totalPages =
+                math.max(1, (filteredPatients.length / _pageSize).ceil());
+            final currentPage = _currentPage.clamp(1, totalPages);
+            if (currentPage != _currentPage) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                setState(() {
+                  _currentPage = currentPage;
+                });
+              });
+            }
+
+            final start = (currentPage - 1) * _pageSize;
+            final end = math.min(start + _pageSize, filteredPatients.length);
+            final pagedPatients = filteredPatients.sublist(start, end);
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -244,8 +286,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   runSpacing: 10,
                   children: [
                     _MetricCard(
-                      title: 'Total Patients',
-                      value: '${allPatients.length}',
+                      title: 'Total Patients (Unique IDs)',
+                      value: '$uniquePatientCount',
                       valueColor: const Color(0xFF1D3E67),
                     ),
                     _MetricCard(
@@ -270,6 +312,12 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                         children: [
                           _AgeDistributionCard(buckets: ageBuckets),
                           const SizedBox(height: 10),
+                          _GenderDistributionCard(buckets: genderBuckets),
+                          const SizedBox(height: 10),
+                          _PaymentModeDistributionCard(
+                            buckets: paymentModeBuckets,
+                          ),
+                          const SizedBox(height: 10),
                           _TopPatientsCard(
                             rows: topPatientsByVisits
                                 .take(10)
@@ -291,16 +339,24 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                           ),
                           const SizedBox(height: 10),
                           _AllPatientsListCard(
-                            patientsList: filteredPatients,
+                            patientsList: pagedPatients,
                             visitsByPatient: visitsByPatient,
                             selectedAlphabet: _selectedAlphabet,
-                            onSelectAlphabet: (v) =>
-                                setState(() => _selectedAlphabet = v),
+                            onSelectAlphabet: (v) => setState(() {
+                              _selectedAlphabet = v;
+                              _currentPage = 1;
+                            }),
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
                             onSort: _onSort,
                             listSearchController: _listSearchController,
                             onOpenHistory: _openPatientHistoryDialog,
+                            totalItems: filteredPatients.length,
+                            currentPage: currentPage,
+                            totalPages: totalPages,
+                            onPageChanged: (page) =>
+                                setState(() => _currentPage = page),
+                            serialOffset: start,
                           ),
                         ],
                       );
@@ -312,8 +368,20 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                                child:
-                                    _AgeDistributionCard(buckets: ageBuckets)),
+                              child: Column(
+                                children: [
+                                  _AgeDistributionCard(buckets: ageBuckets),
+                                  const SizedBox(height: 10),
+                                  _GenderDistributionCard(
+                                    buckets: genderBuckets,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _PaymentModeDistributionCard(
+                                    buckets: paymentModeBuckets,
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: _TopPatientsCard(
@@ -344,16 +412,24 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                         ),
                         const SizedBox(height: 10),
                         _AllPatientsListCard(
-                          patientsList: filteredPatients,
+                          patientsList: pagedPatients,
                           visitsByPatient: visitsByPatient,
                           selectedAlphabet: _selectedAlphabet,
-                          onSelectAlphabet: (v) =>
-                              setState(() => _selectedAlphabet = v),
+                          onSelectAlphabet: (v) => setState(() {
+                            _selectedAlphabet = v;
+                            _currentPage = 1;
+                          }),
                           sortBy: _sortBy,
                           sortAscending: _sortAscending,
                           onSort: _onSort,
                           listSearchController: _listSearchController,
                           onOpenHistory: _openPatientHistoryDialog,
+                          totalItems: filteredPatients.length,
+                          currentPage: currentPage,
+                          totalPages: totalPages,
+                          onPageChanged: (page) =>
+                              setState(() => _currentPage = page),
+                          serialOffset: start,
                         ),
                       ],
                     );
@@ -369,23 +445,75 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 
   Map<String, int> _ageBuckets(List<Patient> items) {
     final buckets = <String, int>{
-      '0-18': 0,
-      '19-35': 0,
-      '36-60': 0,
-      '60+': 0,
+      '0-10': 0,
+      '11-20': 0,
+      '21-30': 0,
+      '31-40': 0,
+      '41-50': 0,
+      '51-60': 0,
+      '61-70': 0,
+      '71+': 0,
     };
 
     for (final p in items) {
       final age = p.age;
       if (age < 0) continue;
-      if (age <= 18) {
-        buckets['0-18'] = buckets['0-18']! + 1;
-      } else if (age <= 35) {
-        buckets['19-35'] = buckets['19-35']! + 1;
+      if (age <= 10) {
+        buckets['0-10'] = buckets['0-10']! + 1;
+      } else if (age <= 20) {
+        buckets['11-20'] = buckets['11-20']! + 1;
+      } else if (age <= 30) {
+        buckets['21-30'] = buckets['21-30']! + 1;
+      } else if (age <= 40) {
+        buckets['31-40'] = buckets['31-40']! + 1;
+      } else if (age <= 50) {
+        buckets['41-50'] = buckets['41-50']! + 1;
       } else if (age <= 60) {
-        buckets['36-60'] = buckets['36-60']! + 1;
+        buckets['51-60'] = buckets['51-60']! + 1;
+      } else if (age <= 70) {
+        buckets['61-70'] = buckets['61-70']! + 1;
       } else {
-        buckets['60+'] = buckets['60+']! + 1;
+        buckets['71+'] = buckets['71+']! + 1;
+      }
+    }
+
+    return buckets;
+  }
+
+  Map<String, int> _genderBuckets(List<Patient> items) {
+    final buckets = <String, int>{
+      'Male': 0,
+      'Female': 0,
+    };
+
+    for (final p in items) {
+      if (p.gender == 1) {
+        buckets['Male'] = buckets['Male']! + 1;
+      } else {
+        buckets['Female'] = buckets['Female']! + 1;
+      }
+    }
+
+    return buckets;
+  }
+
+  Map<String, int> _paymentModeBuckets(List<Appointment> items) {
+    final buckets = <String, int>{
+      'Cash': 0,
+      'GPay': 0,
+    };
+
+    for (final a in items) {
+      final hasCash = (a.paid > 0 && !a.treatmentGpayPaid) ||
+          (a.prescriptionPaid > 0 && !a.prescriptionGpayPaid);
+      final hasGpay = (a.paid > 0 && a.treatmentGpayPaid) ||
+          (a.prescriptionPaid > 0 && a.prescriptionGpayPaid);
+
+      if (!hasCash && !hasGpay) continue;
+      if (hasGpay) {
+        buckets['GPay'] = buckets['GPay']! + 1;
+      } else {
+        buckets['Cash'] = buckets['Cash']! + 1;
       }
     }
 
@@ -563,6 +691,182 @@ class _AgeDistributionCard extends StatelessWidget {
   }
 }
 
+class _GenderDistributionCard extends StatelessWidget {
+  final Map<String, int> buckets;
+
+  const _GenderDistributionCard({required this.buckets});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = buckets.values.fold<int>(0, (m, v) => v > m ? v : m);
+
+    return _CardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Gender Distribution',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF183A67),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...buckets.entries.map((entry) {
+            final ratio = maxValue == 0 ? 0.0 : (entry.value / maxValue);
+            final barColor = entry.key == 'Male'
+                ? const Color(0xFF2D7BD8)
+                : const Color(0xFF2BA58D);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 56,
+                    child: Text(
+                      entry.key,
+                      style: const TextStyle(
+                        color: Color(0xFF36557C),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Stack(
+                          children: [
+                            Container(
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE9F1FC),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            Container(
+                              height: 10,
+                              width: constraints.maxWidth * ratio,
+                              decoration: BoxDecoration(
+                                color: barColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 26,
+                    child: Text(
+                      '${entry.value}',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Color(0xFF1F446E),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentModeDistributionCard extends StatelessWidget {
+  final Map<String, int> buckets;
+
+  const _PaymentModeDistributionCard({required this.buckets});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = buckets.values.fold<int>(0, (m, v) => v > m ? v : m);
+
+    return _CardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Payment Mode Distribution',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF183A67),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...buckets.entries.map((entry) {
+            final ratio = maxValue == 0 ? 0.0 : (entry.value / maxValue);
+            final barColor = entry.key == 'GPay'
+                ? const Color(0xFF2D7BD8)
+                : const Color(0xFF7D8FA7);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 56,
+                    child: Text(
+                      entry.key,
+                      style: const TextStyle(
+                        color: Color(0xFF36557C),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Stack(
+                          children: [
+                            Container(
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE9F1FC),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            Container(
+                              height: 10,
+                              width: constraints.maxWidth * ratio,
+                              decoration: BoxDecoration(
+                                color: barColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 26,
+                    child: Text(
+                      '${entry.value}',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Color(0xFF1F446E),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
 class _TopPatientsCard extends StatelessWidget {
   final List<MapEntry<Patient, int>> rows;
   final String selectedRange;
@@ -581,110 +885,104 @@ class _TopPatientsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Top Patients by Visits',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 320),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Top Patients by Visits',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: ranges
-                .map(
-                  (range) => GestureDetector(
-                    onTap: () => onSelectRange(range),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: ranges
+                  .map(
+                    (range) => GestureDetector(
+                      onTap: () => onSelectRange(range),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: selectedRange == range
+                                ? const Color(0xFF2D7BD8)
+                                : const Color(0xFFD4E2F3),
+                          ),
                           color: selectedRange == range
                               ? const Color(0xFF2D7BD8)
-                              : const Color(0xFFD4E2F3),
+                              : const Color(0xFFEFF4FB),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: selectedRange == range
+                              ? const [
+                                  BoxShadow(
+                                    color: Color(0x332D7BD8),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ]
+                              : const [],
                         ),
-                        color: selectedRange == range
-                            ? const Color(0xFF2D7BD8)
-                            : const Color(0xFFEFF4FB),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: selectedRange == range
-                            ? const [
-                                BoxShadow(
-                                  color: Color(0x332D7BD8),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ]
-                            : const [],
-                      ),
-                      child: Text(
-                        range,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: selectedRange == range
-                              ? Colors.white
-                              : const Color(0xFF345982),
+                        child: Text(
+                          range,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: selectedRange == range
+                                ? Colors.white
+                                : const Color(0xFF345982),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          const SizedBox(height: 10),
-          if (rows.isEmpty)
-            const Text(
-              'No visits in this range.',
-              style: TextStyle(color: Color(0xFF607B9F)),
-            )
-          else
-            ...rows.asMap().entries.map(
-                  (entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: GestureDetector(
+                  )
+                  .toList(growable: false),
+            ),
+            const SizedBox(height: 14),
+            if (rows.isEmpty)
+              const Text(
+                'No visits in this range.',
+                style: TextStyle(color: Color(0xFF607B9F)),
+              )
+            else
+              ...rows.asMap().entries.map(
+                    (entry) => _HoverableListRow(
+                      isLast: entry.key == rows.length - 1,
                       onTap: () => onOpenHistory(entry.value.key),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${entry.key + 1}.',
-                            style: const TextStyle(
-                              color: Color(0xFF36557C),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              entry.value.key.title,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF1F446E),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '${entry.value.value} visits',
-                            style: const TextStyle(
-                              color: Color(0xFF1F446E),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
+                      leading: Text(
+                        '${entry.key + 1}.',
+                        style: const TextStyle(
+                          color: Color(0xFF36557C),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      title: Text(
+                        entry.value.key.title,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF1F446E),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      trailing: Text(
+                        '${entry.value.value} visits',
+                        style: const TextStyle(
+                          color: Color(0xFF1F446E),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -708,110 +1006,103 @@ class _TopOutstandingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Top Outstanding Patients',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 320),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Top Outstanding Patients',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: ranges
-                .map(
-                  (range) => GestureDetector(
-                    onTap: () => onSelectRange(range),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: ranges
+                  .map(
+                    (range) => GestureDetector(
+                      onTap: () => onSelectRange(range),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: selectedRange == range
+                                ? const Color(0xFF2D7BD8)
+                                : const Color(0xFFD4E2F3),
+                          ),
                           color: selectedRange == range
                               ? const Color(0xFF2D7BD8)
-                              : const Color(0xFFD4E2F3),
+                              : const Color(0xFFEFF4FB),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: selectedRange == range
+                              ? const [
+                                  BoxShadow(
+                                    color: Color(0x332D7BD8),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ]
+                              : const [],
                         ),
-                        color: selectedRange == range
-                            ? const Color(0xFF2D7BD8)
-                            : const Color(0xFFEFF4FB),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: selectedRange == range
-                            ? const [
-                                BoxShadow(
-                                  color: Color(0x332D7BD8),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ]
-                            : const [],
-                      ),
-                      child: Text(
-                        range,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: selectedRange == range
-                              ? Colors.white
-                              : const Color(0xFF345982),
+                        child: Text(
+                          range,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: selectedRange == range
+                                ? Colors.white
+                                : const Color(0xFF345982),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          const SizedBox(height: 10),
-          if (rows.isEmpty)
-            const Text(
-              'No outstanding balances.',
-              style: TextStyle(color: Color(0xFF607B9F)),
-            )
-          else
-            ...rows.asMap().entries.map(
-                  (entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: GestureDetector(
+                  )
+                  .toList(growable: false),
+            ),
+            const SizedBox(height: 14),
+            if (rows.isEmpty)
+              const Text(
+                'No outstanding balances.',
+                style: TextStyle(color: Color(0xFF607B9F)),
+              )
+            else
+              ...rows.asMap().entries.map(
+                    (entry) => _HoverableListRow(
+                      isLast: entry.key == rows.length - 1,
                       onTap: () => onOpenHistory(entry.value.key),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${entry.key + 1}.',
-                            style: const TextStyle(
-                              color: Color(0xFF36557C),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              entry.value.key.title,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF1F446E),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '₹${entry.value.value.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              color: Color(0xFFBE7E88),
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
+                      leading: Text(
+                        '${entry.key + 1}.',
+                        style: const TextStyle(
+                          color: Color(0xFF36557C),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      title: Text(
+                        entry.value.key.title,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF1F446E),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      trailing: Text(
+                        '₹${entry.value.value.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          color: Color(0xFFD6455D),
+                        ),
                       ),
                     ),
                   ),
-                ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -827,6 +1118,11 @@ class _AllPatientsListCard extends StatelessWidget {
   final ValueChanged<String> onSort;
   final TextEditingController listSearchController;
   final ValueChanged<Patient> onOpenHistory;
+  final int totalItems;
+  final int currentPage;
+  final int totalPages;
+  final ValueChanged<int> onPageChanged;
+  final int serialOffset;
 
   const _AllPatientsListCard({
     required this.patientsList,
@@ -838,6 +1134,11 @@ class _AllPatientsListCard extends StatelessWidget {
     required this.onSort,
     required this.listSearchController,
     required this.onOpenHistory,
+    required this.totalItems,
+    required this.currentPage,
+    required this.totalPages,
+    required this.onPageChanged,
+    required this.serialOffset,
   });
 
   @override
@@ -846,6 +1147,7 @@ class _AllPatientsListCard extends StatelessWidget {
     final searchWidth = screenWidth < 900 ? 190.0 : 280.0;
 
     const letters = [
+      'All',
       'A',
       'B',
       'C',
@@ -1052,14 +1354,10 @@ class _AllPatientsListCard extends StatelessWidget {
                     ),
                   )
                 : Column(
-                    children: patientsList
-                        .take(200)
-                        .toList()
-                        .asMap()
-                        .entries
-                        .map((entry) {
+                    children:
+                        patientsList.toList().asMap().entries.map((entry) {
                       final patient = entry.value;
-                      final serial = entry.key + 1;
+                      final serial = serialOffset + entry.key + 1;
                       final visits =
                           (visitsByPatient[patient.id] ?? const <Appointment>[])
                               .length;
@@ -1082,7 +1380,6 @@ class _AllPatientsListCard extends StatelessWidget {
                                   '$serial',
                                   style: const TextStyle(
                                     color: Color(0xFF2D476D),
-                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
@@ -1132,9 +1429,8 @@ class _AllPatientsListCard extends StatelessWidget {
                                   '₹${outstanding.toStringAsFixed(0)}',
                                   style: TextStyle(
                                     color: outstanding > 0
-                                        ? const Color(0xFFBE7E88)
+                                        ? const Color(0xFFD6455D)
                                         : const Color(0xFF2D476D),
-                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
@@ -1168,7 +1464,173 @@ class _AllPatientsListCard extends StatelessWidget {
                     }).toList(growable: false),
                   ),
           ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Showing ${patientsList.length} of $totalItems patients',
+                style: const TextStyle(
+                  color: Color(0xFF5B789F),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _PageButton(
+                    label: '<',
+                    enabled: currentPage > 1,
+                    selected: false,
+                    onTap: () => onPageChanged(currentPage - 1),
+                  ),
+                  ..._pageNumbers(currentPage, totalPages).map(
+                    (page) {
+                      if (page == null) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: Text('...'),
+                        );
+                      }
+                      return _PageButton(
+                        label: '$page',
+                        enabled: true,
+                        selected: page == currentPage,
+                        onTap: () => onPageChanged(page),
+                      );
+                    },
+                  ),
+                  _PageButton(
+                    label: '>',
+                    enabled: currentPage < totalPages,
+                    selected: false,
+                    onTap: () => onPageChanged(currentPage + 1),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  List<int?> _pageNumbers(int current, int total) {
+    if (total <= 7) {
+      return List<int?>.generate(total, (i) => i + 1);
+    }
+
+    final pages = <int?>[1];
+    final start = math.max(2, current - 1);
+    final end = math.min(total - 1, current + 1);
+
+    if (start > 2) pages.add(null);
+    for (int p = start; p <= end; p++) {
+      pages.add(p);
+    }
+    if (end < total - 1) pages.add(null);
+    pages.add(total);
+
+    return pages;
+  }
+}
+
+class _PageButton extends StatelessWidget {
+  final String label;
+  final bool enabled;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PageButton({
+    required this.label,
+    required this.enabled,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 28),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF2D7BD8) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD0DEEF),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: !enabled
+                ? const Color(0xFF9EB2CB)
+                : selected
+                    ? Colors.white
+                    : const Color(0xFF2D4A70),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverableListRow extends StatefulWidget {
+  final Widget leading;
+  final Widget title;
+  final Widget trailing;
+  final VoidCallback onTap;
+  final bool isLast;
+
+  const _HoverableListRow({
+    required this.leading,
+    required this.title,
+    required this.trailing,
+    required this.onTap,
+    required this.isLast,
+  });
+
+  @override
+  State<_HoverableListRow> createState() => _HoverableListRowState();
+}
+
+class _HoverableListRowState extends State<_HoverableListRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+          decoration: BoxDecoration(
+            color: _hovered ? const Color(0xFFE8F2FF) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border(
+              bottom: widget.isLast
+                  ? BorderSide.none
+                  : const BorderSide(color: Color(0xFFE4EAF2), width: 1),
+            ),
+          ),
+          child: Row(
+            children: [
+              widget.leading,
+              const SizedBox(width: 8),
+              Expanded(child: widget.title),
+              const SizedBox(width: 8),
+              widget.trailing,
+            ],
+          ),
+        ),
       ),
     );
   }
