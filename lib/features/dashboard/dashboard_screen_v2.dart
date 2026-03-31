@@ -319,12 +319,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final prescriptionRevenue = todaysAppointments.fold<double>(
             0, (sum, a) => sum + a.prescriptionPaid);
         final outstandingBalance = dashboardCtrl.totalDueAmount();
-        final patientInsights = _PatientInsights.from(todaysAppointments);
         final treatmentStats = _TreatmentStats.from(todaysAppointments);
         final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
         final tableAppointments = _filteredAndSorted(doctorScopedAppointments);
         final duplicatePatientKeys =
             _duplicatePatientKeys(doctorScopedAppointments);
+        final isDoctorFilterApplied =
+            _selectedDoctorFilter != _DashboardScreenV2State._filterAll;
 
         return Container(
           color: const Color(0xFFF3F7FC),
@@ -432,17 +433,23 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           _DoctorScheduleCard(
                             todaysAppointments: todaysAppointments,
                             selectedFilter: _selectedDoctorFilter,
-                            onFilterChanged: (v) =>
-                                setState(() => _selectedDoctorFilter = v),
+                            onFilterChanged: (v) => setState(() {
+                              _selectedDoctorFilter = _selectedDoctorFilter == v
+                                  ? _DashboardScreenV2State._filterAll
+                                  : v;
+                            }),
                           ),
                           const SizedBox(height: 10),
                           _AppointmentTimingSummaryCard(
                             appointmentsForView: doctorScopedAppointments,
                           ),
                           const SizedBox(height: 10),
+                          _TreatmentStatsCard(stats: treatmentStats),
+                          const SizedBox(height: 10),
                           _RightDashboardColumn(
                             tableAppointments: tableAppointments,
                             duplicatePatientKeys: duplicatePatientKeys,
+                            isFilterApplied: isDoctorFilterApplied,
                             searchController: _searchController,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
@@ -463,13 +470,19 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                               _DoctorScheduleCard(
                                 todaysAppointments: todaysAppointments,
                                 selectedFilter: _selectedDoctorFilter,
-                                onFilterChanged: (v) =>
-                                    setState(() => _selectedDoctorFilter = v),
+                                onFilterChanged: (v) => setState(() {
+                                  _selectedDoctorFilter =
+                                      _selectedDoctorFilter == v
+                                          ? _DashboardScreenV2State._filterAll
+                                          : v;
+                                }),
                               ),
                               const SizedBox(height: 10),
                               _AppointmentTimingSummaryCard(
                                 appointmentsForView: doctorScopedAppointments,
                               ),
+                              const SizedBox(height: 10),
+                              _TreatmentStatsCard(stats: treatmentStats),
                             ],
                           ),
                         ),
@@ -478,6 +491,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           child: _RightDashboardColumn(
                             tableAppointments: tableAppointments,
                             duplicatePatientKeys: duplicatePatientKeys,
+                            isFilterApplied: isDoctorFilterApplied,
                             searchController: _searchController,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
@@ -488,13 +502,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                     );
                   },
                 ),
-                const SizedBox(height: 14),
-                _InsightsRow(
-                  patientInsights: patientInsights,
-                  treatmentStats: treatmentStats,
-                ),
-                const SizedBox(height: 10),
-                _PatientInsightsCardV2(insights: patientInsights),
               ],
             ),
           ),
@@ -512,6 +519,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 class _RightDashboardColumn extends StatelessWidget {
   final List<Appointment> tableAppointments;
   final Set<String> duplicatePatientKeys;
+  final bool isFilterApplied;
   final TextEditingController searchController;
   final String sortBy;
   final bool sortAscending;
@@ -520,6 +528,7 @@ class _RightDashboardColumn extends StatelessWidget {
   const _RightDashboardColumn({
     required this.tableAppointments,
     required this.duplicatePatientKeys,
+    required this.isFilterApplied,
     required this.searchController,
     required this.sortBy,
     required this.sortAscending,
@@ -533,6 +542,7 @@ class _RightDashboardColumn extends StatelessWidget {
         _AppointmentsTableCard(
           tableAppointments: tableAppointments,
           duplicatePatientKeys: duplicatePatientKeys,
+          isFilterApplied: isFilterApplied,
           searchController: searchController,
           sortBy: sortBy,
           sortAscending: sortAscending,
@@ -751,6 +761,7 @@ class _TimingLine extends StatelessWidget {
 class _AppointmentsTableCard extends StatelessWidget {
   final List<Appointment> tableAppointments;
   final Set<String> duplicatePatientKeys;
+  final bool isFilterApplied;
   final TextEditingController searchController;
   final String sortBy;
   final bool sortAscending;
@@ -759,6 +770,7 @@ class _AppointmentsTableCard extends StatelessWidget {
   const _AppointmentsTableCard({
     required this.tableAppointments,
     required this.duplicatePatientKeys,
+    required this.isFilterApplied,
     required this.searchController,
     required this.sortBy,
     required this.sortAscending,
@@ -807,6 +819,20 @@ class _AppointmentsTableCard extends StatelessWidget {
                     child: TextBox(
                       placeholder: 'Search patient name or phone',
                       controller: searchController,
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Icon(
+                          FluentIcons.search,
+                          size: 12,
+                          color: Color(0xFF6D84A8),
+                        ),
+                      ),
+                      suffix: searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(FluentIcons.clear),
+                              onPressed: () => searchController.clear(),
+                            )
+                          : null,
                       placeholderStyle:
                           const TextStyle(color: Color(0xFF6D84A8)),
                     ),
@@ -848,6 +874,7 @@ class _AppointmentsTableCard extends StatelessWidget {
                 _TableHeader(
                   sortBy: sortBy,
                   sortAscending: sortAscending,
+                  isFilterApplied: isFilterApplied,
                   onSort: onSort,
                 ),
                 if (rows.isEmpty)
@@ -878,11 +905,13 @@ class _AppointmentsTableCard extends StatelessWidget {
 class _TableHeader extends StatelessWidget {
   final String sortBy;
   final bool sortAscending;
+  final bool isFilterApplied;
   final ValueChanged<String> onSort;
 
   const _TableHeader({
     required this.sortBy,
     required this.sortAscending,
+    required this.isFilterApplied,
     required this.onSort,
   });
 
@@ -890,8 +919,9 @@ class _TableHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFEFF4FB),
+      decoration: BoxDecoration(
+        color:
+            isFilterApplied ? const Color(0xFFDDEBFF) : const Color(0xFFEFF4FB),
         borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
       ),
       child: Row(
@@ -1094,13 +1124,12 @@ class _AppointmentRow extends StatelessWidget {
           Expanded(
             flex: 15,
             child: GestureDetector(
-              onTap: () => _openPatientHistoryDialog(context),
+              onTap: () => openAppointment(appointment),
               child: Text(
                 appointment.title,
                 style: const TextStyle(
                   color: Color(0xFF1459AD),
                   fontWeight: FontWeight.w600,
-                  decoration: TextDecoration.underline,
                 ),
               ),
             ),
@@ -1129,7 +1158,7 @@ class _AppointmentRow extends StatelessWidget {
               children: [
                 isDigital
                     ? Image.asset(
-                        'assets/gpay.png',
+                        'assets/gpay.jpg',
                         width: 14,
                         height: 14,
                         fit: BoxFit.cover,
@@ -1186,7 +1215,28 @@ class _AppointmentRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: () => _openPatientHistoryDialog(context),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        FluentIcons.history,
+                        size: 13,
+                        color: Color(0xFF2D7BD8),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'History',
+                        style: TextStyle(
+                          color: Color(0xFF2D7BD8),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Tooltip(
                   message: 'Delete',
                   child: GestureDetector(
@@ -1217,7 +1267,7 @@ class _StatusBadge extends StatelessWidget {
     return Row(
       children: [
         Icon(
-          done ? FluentIcons.completed : FluentIcons.clock,
+          done ? material.Icons.check_circle : material.Icons.circle,
           size: 12,
           color: done ? const Color(0xFF3B9A42) : const Color(0xFFE4A11B),
         ),
@@ -1556,27 +1606,6 @@ class _QuickCheckInCard extends StatelessWidget {
   }
 }
 
-class _InsightsRow extends StatelessWidget {
-  final _PatientInsights patientInsights;
-  final _TreatmentStats treatmentStats;
-
-  const _InsightsRow({
-    required this.patientInsights,
-    required this.treatmentStats,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _PatientInsightsCard(insights: patientInsights)),
-        const SizedBox(width: 10),
-        Expanded(child: _TreatmentStatsCard(stats: treatmentStats)),
-      ],
-    );
-  }
-}
-
 String _duplicatePatientKey(Appointment appointment) {
   final patientId = appointment.patientID;
   if (patientId != null && patientId.isNotEmpty) {
@@ -1597,45 +1626,6 @@ Set<String> _duplicatePatientKeys(List<Appointment> appointmentsForView) {
       .where((entry) => entry.value > 1)
       .map((entry) => entry.key)
       .toSet();
-}
-
-class _PatientInsights {
-  final int uniquePatients;
-  final int newPatients;
-  final int returningPatients;
-  final int completedCount;
-  final int total;
-
-  _PatientInsights({
-    required this.uniquePatients,
-    required this.newPatients,
-    required this.returningPatients,
-    required this.completedCount,
-    required this.total,
-  });
-
-  double get completionRate {
-    if (total == 0) return 0;
-    return (completedCount / total) * 100;
-  }
-
-  factory _PatientInsights.from(List<Appointment> appointmentsOnDay) {
-    final uniqueIds =
-        appointmentsOnDay.map((a) => a.patientID ?? a.id).toSet().length;
-
-    final newCount =
-        appointmentsOnDay.where((a) => a.firstAppointmentForThisPatient).length;
-
-    final completed = appointmentsOnDay.where((a) => a.isDone).length;
-
-    return _PatientInsights(
-      uniquePatients: uniqueIds,
-      newPatients: newCount,
-      returningPatients: uniqueIds - newCount < 0 ? 0 : uniqueIds - newCount,
-      completedCount: completed,
-      total: appointmentsOnDay.length,
-    );
-  }
 }
 
 class _TreatmentStats {
@@ -1662,171 +1652,6 @@ class _TreatmentStats {
     return _TreatmentStats(
       topTreatments: sorted.take(4).toList(),
       totalTreatments: total,
-    );
-  }
-}
-
-class _PatientInsightsCard extends StatelessWidget {
-  final _PatientInsights insights;
-
-  const _PatientInsightsCard({required this.insights});
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Patient Insights',
-            style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67)),
-          ),
-          const SizedBox(height: 10),
-          _InsightLine(
-              label: 'Unique Patients', value: '${insights.uniquePatients}'),
-          _InsightLine(label: 'New Patients', value: '${insights.newPatients}'),
-          _InsightLine(
-              label: 'Returning Patients',
-              value: '${insights.returningPatients}'),
-          _InsightLine(
-              label: 'Completion Rate',
-              value: '${insights.completionRate.toStringAsFixed(0)}%'),
-        ],
-      ),
-    );
-  }
-}
-
-class _PatientInsightsCardV2 extends StatelessWidget {
-  final _PatientInsights insights;
-
-  const _PatientInsightsCardV2({required this.insights});
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Patient Insights V2',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Modern layout preview',
-            style: TextStyle(color: Color(0xFF6B84A7), fontSize: 12),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _PatientInsightMetricV2(
-                label: 'Unique',
-                value: '${insights.uniquePatients}',
-                icon: FluentIcons.contact,
-                background: const Color(0xFFE6F2FF),
-                iconColor: const Color(0xFF1768C9),
-              ),
-              _PatientInsightMetricV2(
-                label: 'New',
-                value: '${insights.newPatients}',
-                icon: FluentIcons.add,
-                background: const Color(0xFFE6F8EC),
-                iconColor: const Color(0xFF2F8C47),
-              ),
-              _PatientInsightMetricV2(
-                label: 'Returning',
-                value: '${insights.returningPatients}',
-                icon: FluentIcons.redo,
-                background: const Color(0xFFFFF3E1),
-                iconColor: const Color(0xFFB97600),
-              ),
-              _PatientInsightMetricV2(
-                label: 'Completed %',
-                value: '${insights.completionRate.toStringAsFixed(0)}%',
-                icon: FluentIcons.completed,
-                background: const Color(0xFFFFE9EC),
-                iconColor: const Color(0xFFC43A51),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PatientInsightMetricV2 extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color background;
-  final Color iconColor;
-
-  const _PatientInsightMetricV2({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.background,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 170,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 14, color: iconColor),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF567295),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    color: Color(0xFF183A67),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
