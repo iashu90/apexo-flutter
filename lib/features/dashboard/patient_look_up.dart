@@ -22,8 +22,7 @@ class PatientLookup extends StatefulWidget {
   State<PatientLookup> createState() => _PatientLookupState();
 }
 
-class _PatientLookupState extends State<PatientLookup>
-    with SingleTickerProviderStateMixin {
+class _PatientLookupState extends State<PatientLookup> {
   final TextEditingController _controller = TextEditingController();
   List<Patient> _matchedPatients = [];
   String _lastInput = '';
@@ -40,6 +39,10 @@ class _PatientLookupState extends State<PatientLookup>
   void _onChanged(String value) {
     setState(() {
       _lastInput = value.trim();
+      if (_lastInput.isEmpty) {
+        _matchedPatients = [];
+        return;
+      }
       _matchedPatients = patients.present.values
           .where((p) =>
               p.phone.trim().contains(_lastInput) ||
@@ -52,262 +55,273 @@ class _PatientLookupState extends State<PatientLookup>
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      padding: const EdgeInsets.all(8),
-      borderRadius: BorderRadius.circular(10),
-      child: SizedBox(
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedSlide(
-                  offset: _showBanner ? Offset(0, 0) : Offset(0, -1),
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOut,
-                  child: AnimatedOpacity(
-                    opacity: _showBanner ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 300),
-                    child: _showBanner
-                        ? Container(
-                            width: double.infinity,
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 8, horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.7),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedSlide(
+          offset: _showBanner ? const Offset(0, 0) : const Offset(0, -1),
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOut,
+          child: AnimatedOpacity(
+            opacity: _showBanner ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 240),
+            child: _showBanner
+                ? Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2E9B5D),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(FluentIcons.accept, color: Colors.white, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Patient checked in successfully',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
                             ),
-                            child: Row(
-                              children: [
-                                const Icon(FluentIcons.accept,
-                                    color: Colors.white, size: 20),
-                                const SizedBox(width: 10),
-                                const Expanded(
-                                  child: Text(
-                                    'Appointment added!',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                ),
-                Padding(
-                  padding:
-                      const EdgeInsets.only(bottom: 8.0), // Padding below title
-                  child: Text(
-                    'Patient Insights',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF183A67)),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Padding(
-                  padding: const EdgeInsets.only(
-                      bottom: 8.0), // Padding below TextBox
-                  child: TextBox(
-                    placeholder: "Enter phone number or name",
-                    controller: _controller,
-                    onChanged: _onChanged,
-                    keyboardType: TextInputType.phone,
-                    style: const TextStyle(fontSize: 13),
-                    suffix: _controller.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(FluentIcons.clear),
-                            onPressed: () {
-                              setState(() {
-                                _controller.clear();
-                                _lastInput = '';
-                                _matchedPatients = [];
-                              });
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                if (_lastInput.isNotEmpty)
-                  _matchedPatients.isNotEmpty
-                      ? SizedBox(
-                          height: 250,
-                          child: ListView.separated(
-                            itemCount: _matchedPatients.length > 6
-                                ? 6
-                                : _matchedPatients.length,
-                            separatorBuilder: (context, idx) => Divider(
-                              direction: Axis.horizontal,
-                              style: DividerThemeData(
-                                thickness: 1.0,
-                                decoration: BoxDecoration(
-                                    color: Colors.grey.withOpacity(0.1)),
-                              ),
-                            ),
-                            itemBuilder: (context, idx) {
-                              final patient = _matchedPatients[idx];
-                              return Container(
-                                margin: const EdgeInsets.symmetric(vertical: 2),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 4, horizontal: 8),
-                                child: Row(
-                                  children: [
-                                    const Icon(FluentIcons.contact,
-                                        color: material.Colors.green, size: 16),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          RichText(
-                                            text: highlightMatch(
-                                              toTitleCase(patient.title),
-                                              _lastInput,
-                                              const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 13,
-                                                color: Colors.grey,
-                                              ),
-                                              TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 13,
-                                                color: Colors.blue,
-                                                backgroundColor: Colors
-                                                    .yellow, // Optional: highlight background
-                                              ),
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          if (patient.phone.isNotEmpty)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                  top: 2.0),
-                                              child: RichText(
-                                                text: highlightMatch(
-                                                  toTitleCase(patient.phone),
-                                                  _lastInput,
-                                                  const TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 13,
-                                                    color: Colors.grey,
-                                                  ),
-                                                  TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 13,
-                                                    color: Colors.blue,
-                                                    backgroundColor: Colors
-                                                        .yellow, // Optional: highlight background
-                                                  ),
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        FluentIcons.profile_search,
-                                        color: material.Colors.blue,
-                                        size: 18,
-                                      ),
-                                      onPressed: () {
-                                        ActivityLogger.logAction(
-                                          "Add Appointment Clicked",
-                                          screen: "PatientLookup",
-                                          data: {
-                                            "patientId": patient.id,
-                                            "patientName": patient.title,
-                                            "patientPhone": patient.phone,
-                                          },
-                                        );
-                                        if (widget.addAppointment != null) {
-                                          widget.addAppointment!(patient);
-                                        }
-                                      },
-                                    ),
-                                    const SizedBox(width: 4),
-                                    IconButton(
-                                      icon: const Icon(
-                                        FluentIcons.accept,
-                                        color: material.Colors.green,
-                                        size: 18,
-                                      ),
-                                      onPressed: () {
-                                        ActivityLogger.logAction(
-                                          "Patient Check-In Clicked",
-                                          screen: "PatientLookup",
-                                          data: {
-                                            "patientId": patient.id,
-                                            "patientName": patient.title,
-                                            "patientPhone": patient.phone,
-                                          },
-                                        );
-                                        widget.patientCheckIn(patient);
-                                        _showSuccessBanner();
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        )
-                      : Card(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 6, horizontal: 8),
-                          backgroundColor: Colors.orange.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(7),
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 6),
-                              const Expanded(
-                                child: Text(
-                                  "No patient found.",
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 13),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(FluentIcons.add_friend,
-                                    color: material.Colors.orange, size: 18),
-                                onPressed: widget.onCreateNew != null
-                                    ? () {
-                                        ActivityLogger.logAction(
-                                          "Add New Patient Clicked",
-                                          screen: "PatientLookup",
-                                          data: {"input": _lastInput},
-                                        );
-                                        widget.onCreateNew!(_lastInput);
-                                      }
-                                    : null,
-                              ),
-                            ],
                           ),
                         ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ),
+        const Text(
+          'Quick Check-in',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF183A67),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Search by patient name or phone, then check-in or add appointment.',
+          style: TextStyle(color: Color(0xFF607B9F), fontSize: 12),
+        ),
+        const SizedBox(height: 10),
+        TextBox(
+          placeholder: 'Enter phone number or name',
+          controller: _controller,
+          onChanged: _onChanged,
+          keyboardType: TextInputType.phone,
+          style: const TextStyle(fontSize: 13),
+          prefix: const Padding(
+            padding: EdgeInsets.only(left: 8),
+            child: Icon(FluentIcons.search, size: 12, color: Color(0xFF6D84A8)),
+          ),
+          suffix: _controller.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(FluentIcons.clear),
+                  onPressed: () {
+                    setState(() {
+                      _controller.clear();
+                      _lastInput = '';
+                      _matchedPatients = [];
+                    });
+                  },
+                )
+              : null,
+        ),
+        const SizedBox(height: 8),
+        if (_lastInput.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6F9FE),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFD9E6F4)),
+            ),
+            child: const Text(
+              'Start typing to find existing patients quickly.',
+              style: TextStyle(color: Color(0xFF5F7C9F), fontSize: 12),
+            ),
+          )
+        else if (_matchedPatients.isNotEmpty)
+          Container(
+            constraints: const BoxConstraints(maxHeight: 280),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FBFF),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFD7E5F4)),
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount:
+                  _matchedPatients.length > 8 ? 8 : _matchedPatients.length,
+              separatorBuilder: (_, __) => const Divider(
+                direction: Axis.horizontal,
+                style: DividerThemeData(thickness: 1),
+              ),
+              itemBuilder: (_, idx) {
+                final patient = _matchedPatients[idx];
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2F0FF),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          FluentIcons.contact,
+                          color: Color(0xFF1A74DB),
+                          size: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RichText(
+                              text: highlightMatch(
+                                toTitleCase(patient.title),
+                                _lastInput,
+                                const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: Color(0xFF2E4E76),
+                                ),
+                                const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: Color(0xFF1A74DB),
+                                ),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (patient.phone.isNotEmpty)
+                              RichText(
+                                text: highlightMatch(
+                                  patient.phone,
+                                  _lastInput,
+                                  const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 12,
+                                    color: Color(0xFF5F7C9F),
+                                  ),
+                                  const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    color: Color(0xFF1A74DB),
+                                  ),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            Text(
+                              'Age: ${patient.age}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 11,
+                                color: Color(0xFF5F7C9F),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Button(
+                        onPressed: widget.addAppointment == null
+                            ? null
+                            : () {
+                                ActivityLogger.logAction(
+                                  'Add Appointment Clicked',
+                                  screen: 'PatientLookup',
+                                  data: {
+                                    'patientId': patient.id,
+                                    'patientName': patient.title,
+                                    'patientPhone': patient.phone,
+                                  },
+                                );
+                                widget.addAppointment!(patient);
+                              },
+                        child: const Text('Add'),
+                      ),
+                      const SizedBox(width: 6),
+                      FilledButton(
+                        onPressed: () {
+                          ActivityLogger.logAction(
+                            'Patient Check-In Clicked',
+                            screen: 'PatientLookup',
+                            data: {
+                              'patientId': patient.id,
+                              'patientName': patient.title,
+                              'patientPhone': patient.phone,
+                            },
+                          );
+                          widget.patientCheckIn(patient);
+                          _showSuccessBanner();
+                        },
+                        child: const Text('Check-in'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF6E9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFF2D5A9)),
+            ),
+            child: Row(
+              children: [
+                const Icon(FluentIcons.warning,
+                    size: 14, color: Color(0xFFB87400)),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'No patient found.',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: Color(0xFF845400),
+                    ),
+                  ),
+                ),
+                FilledButton(
+                  onPressed: widget.onCreateNew == null
+                      ? null
+                      : () {
+                          ActivityLogger.logAction(
+                            'Add New Patient Clicked',
+                            screen: 'PatientLookup',
+                            data: {'input': _lastInput},
+                          );
+                          widget.onCreateNew!(_lastInput);
+                        },
+                  child: const Text('Create'),
+                ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }
