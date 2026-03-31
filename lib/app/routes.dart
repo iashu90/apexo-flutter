@@ -4,6 +4,7 @@ import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/dashboard/dashboard_screen.dart';
+import 'package:apexo/features/dashboard/dashboard_screen_v2.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
@@ -133,7 +134,7 @@ class _Routes {
           title: txt("dashboard"),
           identifier: "dashboard",
           icon: FluentIcons.home,
-          screen: DashboardScreen.new,
+          screen: DashboardScreenV2.new,
           accessible: true,
           navbarTitle: txt("home"),
           onSelect: () {
@@ -141,6 +142,14 @@ class _Routes {
             patients.synchronize();
             appointments.synchronize();
           },
+        ),
+        Route(
+          title: "Dashboard (Old)",
+          identifier: "dashboard_old",
+          icon: FluentIcons.home,
+          screen: DashboardScreen.new,
+          accessible: true,
+          navbarTitle: "Old Dashboard",
         ),
         Route(
           title: txt("doctors"),

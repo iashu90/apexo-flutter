@@ -111,11 +111,11 @@ class _PatientLookupState extends State<PatientLookup>
                   padding:
                       const EdgeInsets.only(bottom: 8.0), // Padding below title
                   child: Text(
-                    "Check in",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
-                    ),
+                    'Patient Insights',
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF183A67)),
                   ),
                 ),
                 const SizedBox(height: 4),
