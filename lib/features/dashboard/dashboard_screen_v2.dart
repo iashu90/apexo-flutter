@@ -106,12 +106,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         case 'patient':
           return a.title.toLowerCase().compareTo(b.title.toLowerCase());
         case 'doctor':
-          final aDoctor = a.operators.isEmpty ? 'unassigned' : a.operators.map((d) => d.title).join(', ');
-          final bDoctor = b.operators.isEmpty ? 'unassigned' : b.operators.map((d) => d.title).join(', ');
+          final aDoctor = a.operators.isEmpty
+              ? 'unassigned'
+              : a.operators.map((d) => d.title).join(', ');
+          final bDoctor = b.operators.isEmpty
+              ? 'unassigned'
+              : b.operators.map((d) => d.title).join(', ');
           return aDoctor.toLowerCase().compareTo(bDoctor.toLowerCase());
         case 'treatment':
-          final aTreatment = a.selectedTreatments.isEmpty ? '' : a.selectedTreatments.join(', ');
-          final bTreatment = b.selectedTreatments.isEmpty ? '' : b.selectedTreatments.join(', ');
+          final aTreatment = a.selectedTreatments.isEmpty
+              ? ''
+              : a.selectedTreatments.join(', ');
+          final bTreatment = b.selectedTreatments.isEmpty
+              ? ''
+              : b.selectedTreatments.join(', ');
           return aTreatment.toLowerCase().compareTo(bTreatment.toLowerCase());
         case 'status':
           return a.isDone == b.isDone ? 0 : (a.isDone ? 1 : -1);
@@ -185,6 +193,111 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
     );
   }
 
+  void _openNewPatientsDialog(List<Appointment> todaysAppointments) {
+    final newPatientAppointments = todaysAppointments
+        .where((a) => a.firstAppointmentForThisPatient)
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    showDialog(
+      context: context,
+      builder: (_) => ContentDialog(
+        title: const Text('New Patients Today'),
+        content: SizedBox(
+          width: 520,
+          child: newPatientAppointments.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'No new patients for this date.',
+                    style: TextStyle(color: Color(0xFF5B7498)),
+                  ),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: newPatientAppointments.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 6),
+                  itemBuilder: (_, index) {
+                    final appointment = newPatientAppointments[index];
+                    final patient = appointment.patient;
+                    final patientName = appointment.title.trim().isEmpty
+                        ? 'Unnamed patient'
+                        : appointment.title;
+                    final phone = (patient?.phone ?? '').trim();
+                    final time = DateFormat('h:mm a').format(appointment.date);
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F9FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFD7E5F7)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDDEBFF),
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              FluentIcons.contact,
+                              size: 14,
+                              color: Color(0xFF1468CC),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  patientName,
+                                  style: const TextStyle(
+                                    color: Color(0xFF1D3C64),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if (phone.isNotEmpty)
+                                  Text(
+                                    phone,
+                                    style: const TextStyle(
+                                      color: Color(0xFF5B7498),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            time,
+                            style: const TextStyle(
+                              color: Color(0xFF315983),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          Button(
+            child: const Text('Close'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
@@ -195,20 +308,23 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
         final completed = todaysAppointments.where((a) => a.isDone).length;
         final pending = todaysAppointments.length - completed;
-        final newPatients =
-            todaysAppointments.where((a) => a.firstAppointmentForThisPatient).length;
-        final revenueToday =
-            todaysAppointments.fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
+        final newPatients = todaysAppointments
+            .where((a) => a.firstAppointmentForThisPatient)
+            .length;
+        final revenueToday = todaysAppointments.fold<double>(
+            0, (sum, a) => sum + a.paid + a.prescriptionPaid);
 
         final treatmentRevenue =
             todaysAppointments.fold<double>(0, (sum, a) => sum + a.paid);
-        final prescriptionRevenue =
-            todaysAppointments.fold<double>(0, (sum, a) => sum + a.prescriptionPaid);
+        final prescriptionRevenue = todaysAppointments.fold<double>(
+            0, (sum, a) => sum + a.prescriptionPaid);
         final outstandingBalance = dashboardCtrl.totalDueAmount();
         final patientInsights = _PatientInsights.from(todaysAppointments);
         final treatmentStats = _TreatmentStats.from(todaysAppointments);
         final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
         final tableAppointments = _filteredAndSorted(doctorScopedAppointments);
+        final duplicatePatientKeys =
+            _duplicatePatientKeys(doctorScopedAppointments);
 
         return Container(
           color: const Color(0xFFF3F7FC),
@@ -256,6 +372,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       icon: FluentIcons.contact,
                       iconColor: const Color(0xFF4CA046),
                       iconBackground: const Color(0xFFDFF2D8),
+                      onTap: () => _openNewPatientsDialog(todaysAppointments),
                     ),
                     _RevenueCard(
                       title: 'Revenue Today',
@@ -325,6 +442,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           const SizedBox(height: 10),
                           _RightDashboardColumn(
                             tableAppointments: tableAppointments,
+                            duplicatePatientKeys: duplicatePatientKeys,
                             searchController: _searchController,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
@@ -359,6 +477,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         Expanded(
                           child: _RightDashboardColumn(
                             tableAppointments: tableAppointments,
+                            duplicatePatientKeys: duplicatePatientKeys,
                             searchController: _searchController,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
@@ -374,6 +493,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                   patientInsights: patientInsights,
                   treatmentStats: treatmentStats,
                 ),
+                const SizedBox(height: 10),
+                _PatientInsightsCardV2(insights: patientInsights),
               ],
             ),
           ),
@@ -389,16 +510,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 }
 
 class _RightDashboardColumn extends StatelessWidget {
-  final List<Appointment> todaysAppointments;
   final List<Appointment> tableAppointments;
+  final Set<String> duplicatePatientKeys;
   final TextEditingController searchController;
   final String sortBy;
   final bool sortAscending;
   final ValueChanged<String> onSort;
 
   const _RightDashboardColumn({
-    required this.todaysAppointments,
     required this.tableAppointments,
+    required this.duplicatePatientKeys,
     required this.searchController,
     required this.sortBy,
     required this.sortAscending,
@@ -409,10 +530,9 @@ class _RightDashboardColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _HourChartCard(todaysAppointments: todaysAppointments),
-        const SizedBox(height: 10),
         _AppointmentsTableCard(
           tableAppointments: tableAppointments,
+          duplicatePatientKeys: duplicatePatientKeys,
           searchController: searchController,
           sortBy: sortBy,
           sortAscending: sortAscending,
@@ -425,8 +545,14 @@ class _RightDashboardColumn extends StatelessWidget {
 
 class _DoctorScheduleCard extends StatelessWidget {
   final List<Appointment> todaysAppointments;
+  final String selectedFilter;
+  final ValueChanged<String> onFilterChanged;
 
-  const _DoctorScheduleCard({required this.todaysAppointments});
+  const _DoctorScheduleCard({
+    required this.todaysAppointments,
+    required this.selectedFilter,
+    required this.onFilterChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -442,7 +568,13 @@ class _DoctorScheduleCard extends StatelessWidget {
     for (final entry in counts.entries) {
       final doctor = doctors.get(entry.key);
       if (doctor == null) continue;
-      doctorRows.add(_DoctorScheduleRow(title: doctor.title, count: entry.value));
+      doctorRows.add(
+        _DoctorScheduleRow(
+          id: doctor.id,
+          title: doctor.title,
+          count: entry.value,
+        ),
+      );
     }
 
     doctorRows.sort((a, b) => b.count.compareTo(a.count));
@@ -456,22 +588,41 @@ class _DoctorScheduleCard extends StatelessWidget {
         children: [
           const Text(
             'Doctor Schedule',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF183A67)),
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67)),
           ),
-          const SizedBox(height: 8),
-          _ScheduleLine(title: 'All', count: todaysAppointments.length),
-          _ScheduleLine(title: 'Unassigned', count: unassigned),
-          const SizedBox(height: 6),
-          if (doctorRows.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'No doctors assigned for this day',
-                style: TextStyle(color: Color(0xFF637EA3)),
-              ),
+          if (doctorRows.isEmpty) ...[
+            const SizedBox(height: 6),
+            const Text(
+              'No doctors assigned for this day',
+              style: TextStyle(color: Color(0xFF637EA3)),
             ),
+          ],
+          const SizedBox(height: 8),
+          _ScheduleLine(
+            title: 'All',
+            count: todaysAppointments.length,
+            selected: selectedFilter == _DashboardScreenV2State._filterAll,
+            onTap: () => onFilterChanged(_DashboardScreenV2State._filterAll),
+          ),
+          _ScheduleLine(
+            title: 'Unassigned',
+            count: unassigned,
+            selected:
+                selectedFilter == _DashboardScreenV2State._filterUnassigned,
+            onTap: () =>
+                onFilterChanged(_DashboardScreenV2State._filterUnassigned),
+          ),
+          const SizedBox(height: 6),
           ...doctorRows.take(6).map(
-                (row) => _ScheduleLine(title: row.title, count: row.count),
+                (row) => _ScheduleLine(
+                  title: row.title,
+                  count: row.count,
+                  selected: selectedFilter == row.id,
+                  onTap: () => onFilterChanged(row.id),
+                ),
               ),
           const SizedBox(height: 12),
           FilledButton(
@@ -489,7 +640,8 @@ class _DoctorScheduleCard extends StatelessWidget {
                 SizedBox(width: 8),
                 Text(
                   'Add Appointment',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -501,70 +653,48 @@ class _DoctorScheduleCard extends StatelessWidget {
 }
 
 class _DoctorScheduleRow {
+  final String id;
   final String title;
   final int count;
 
-  _DoctorScheduleRow({required this.title, required this.count});
+  _DoctorScheduleRow(
+      {required this.id, required this.title, required this.count});
 }
 
-class _HourChartCard extends StatelessWidget {
-  final List<Appointment> todaysAppointments;
+class _AppointmentTimingSummaryCard extends StatelessWidget {
+  final List<Appointment> appointmentsForView;
 
-  const _HourChartCard({required this.todaysAppointments});
+  const _AppointmentTimingSummaryCard({required this.appointmentsForView});
 
   @override
   Widget build(BuildContext context) {
-    final buckets = _hourBuckets(todaysAppointments);
+    final morning = _countRange(appointmentsForView, 6, 11);
+    final afternoon = _countRange(appointmentsForView, 12, 16);
+    final evening = _countRange(appointmentsForView, 17, 21);
+    final other = appointmentsForView.length - morning - afternoon - evening;
 
     return _CardShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Appointments by Hour',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF183A67)),
+            'Appointment Timing Summary',
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67)),
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 140,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final maxCount = buckets.values.fold<int>(0, (a, b) => a > b ? a : b);
-                final columnCount = buckets.length;
-                final itemWidth = (constraints.maxWidth / (columnCount == 0 ? 1 : columnCount)) - 6;
-
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: buckets.entries.map((entry) {
-                    final ratio = maxCount == 0 ? 0.0 : entry.value / maxCount;
-                    final barHeight = 24 + (88 * ratio);
-                    return SizedBox(
-                      width: itemWidth,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            height: barHeight,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                                colors: [Color(0xFF2D7BD8), Color(0xFFAED0F7)],
-                              ),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            _hourLabel(entry.key),
-                            style: const TextStyle(fontSize: 11, color: Color(0xFF4D678E)),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
+          const SizedBox(height: 10),
+          _TimingLine(label: 'Morning (6 AM - 11:59 AM)', count: morning),
+          _TimingLine(label: 'Afternoon (12 PM - 4:59 PM)', count: afternoon),
+          _TimingLine(label: 'Evening (5 PM - 9:59 PM)', count: evening),
+          if (other > 0) _TimingLine(label: 'Other Hours', count: other),
+          const SizedBox(height: 8),
+          Text(
+            'Total visible appointments: ${appointmentsForView.length}',
+            style: const TextStyle(
+              color: Color(0xFF2A4A73),
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -572,30 +702,55 @@ class _HourChartCard extends StatelessWidget {
     );
   }
 
-  Map<int, int> _hourBuckets(List<Appointment> list) {
-    final result = <int, int>{};
-    for (int hour = 9; hour <= 18; hour++) {
-      result[hour] = 0;
-    }
-
-    for (final a in list) {
-      if (result.containsKey(a.date.hour)) {
-        result[a.date.hour] = result[a.date.hour]! + 1;
-      }
-    }
-
-    return result;
+  int _countRange(List<Appointment> list, int startHour, int endHour) {
+    return list
+        .where((a) => a.date.hour >= startHour && a.date.hour <= endHour)
+        .length;
   }
+}
 
-  String _hourLabel(int hour) {
-    if (hour == 12) return '12 PM';
-    if (hour > 12) return '${hour - 12} PM';
-    return '$hour AM';
+class _TimingLine extends StatelessWidget {
+  final String label;
+  final int count;
+
+  const _TimingLine({required this.label, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        color: const Color(0xFFF6F9FE),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF27456D),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            '$count',
+            style: const TextStyle(
+              color: Color(0xFF1A3D69),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 class _AppointmentsTableCard extends StatelessWidget {
   final List<Appointment> tableAppointments;
+  final Set<String> duplicatePatientKeys;
   final TextEditingController searchController;
   final String sortBy;
   final bool sortAscending;
@@ -603,6 +758,7 @@ class _AppointmentsTableCard extends StatelessWidget {
 
   const _AppointmentsTableCard({
     required this.tableAppointments,
+    required this.duplicatePatientKeys,
     required this.searchController,
     required this.sortBy,
     required this.sortAscending,
@@ -612,6 +768,10 @@ class _AppointmentsTableCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = tableAppointments.take(100).toList();
+    final duplicateCount = duplicatePatientKeys.length;
+    final duplicateText = duplicateCount == 1
+        ? '1 patient has duplicate appointment in this list'
+        : '$duplicateCount patients have duplicate appointments in this list';
 
     return _CardShell(
       child: Column(
@@ -620,9 +780,25 @@ class _AppointmentsTableCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Today\'s Appointments',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF183A67)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Today\'s Appointments',
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF183A67)),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    duplicateText,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF637EA3),
+                    ),
+                  ),
+                ],
               ),
               Row(
                 children: [
@@ -631,16 +807,19 @@ class _AppointmentsTableCard extends StatelessWidget {
                     child: TextBox(
                       placeholder: 'Search patient name or phone',
                       controller: searchController,
-                      placeholderStyle: const TextStyle(color: Color(0xFF6D84A8)),
+                      placeholderStyle:
+                          const TextStyle(color: Color(0xFF6D84A8)),
                     ),
                   ),
                   const SizedBox(width: 10),
                   FilledButton(
                     onPressed: () => openAppointment(Appointment.fromJson({})),
                     style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.all(const Color(0xFF1A74DB)),
+                      backgroundColor:
+                          WidgetStateProperty.all(const Color(0xFF1A74DB)),
                       shape: WidgetStateProperty.all(
-                        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                     child: const Row(
@@ -680,7 +859,13 @@ class _AppointmentsTableCard extends StatelessWidget {
                     ),
                   )
                 else
-                  ...rows.map((a) => _AppointmentRow(appointment: a)),
+                  ...rows.map(
+                    (a) => _AppointmentRow(
+                      appointment: a,
+                      isDuplicatePatient: duplicatePatientKeys
+                          .contains(_duplicatePatientKey(a)),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -711,14 +896,70 @@ class _TableHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(flex: 11, child: _SortableHeader(label: 'Time', keyName: 'time', current: sortBy, ascending: sortAscending, onSort: onSort)),
-          Expanded(flex: 15, child: _SortableHeader(label: 'Patient', keyName: 'patient', current: sortBy, ascending: sortAscending, onSort: onSort)),
-          Expanded(flex: 13, child: _SortableHeader(label: 'Doctor', keyName: 'doctor', current: sortBy, ascending: sortAscending, onSort: onSort)),
-          Expanded(flex: 14, child: _SortableHeader(label: 'Treatment', keyName: 'treatment', current: sortBy, ascending: sortAscending, onSort: onSort)),
-          Expanded(flex: 12, child: _SortableHeader(label: 'Status', keyName: 'status', current: sortBy, ascending: sortAscending, onSort: onSort)),
-          Expanded(flex: 12, child: _SortableHeader(label: 'P.Mode', keyName: 'paymentMode', current: sortBy, ascending: sortAscending, onSort: onSort)),
-          Expanded(flex: 12, child: _SortableHeader(label: 'Payment', keyName: 'payment', current: sortBy, ascending: sortAscending, onSort: onSort)),
-          Expanded(flex: 10, child: _SortableHeader(label: 'Actions', keyName: 'actions', current: sortBy, ascending: sortAscending, onSort: onSort)),
+          Expanded(
+              flex: 11,
+              child: _SortableHeader(
+                  label: 'Time',
+                  keyName: 'time',
+                  current: sortBy,
+                  ascending: sortAscending,
+                  onSort: onSort)),
+          Expanded(
+              flex: 15,
+              child: _SortableHeader(
+                  label: 'Patient',
+                  keyName: 'patient',
+                  current: sortBy,
+                  ascending: sortAscending,
+                  onSort: onSort)),
+          Expanded(
+              flex: 13,
+              child: _SortableHeader(
+                  label: 'Doctor',
+                  keyName: 'doctor',
+                  current: sortBy,
+                  ascending: sortAscending,
+                  onSort: onSort)),
+          Expanded(
+              flex: 14,
+              child: _SortableHeader(
+                  label: 'Treatment',
+                  keyName: 'treatment',
+                  current: sortBy,
+                  ascending: sortAscending,
+                  onSort: onSort)),
+          Expanded(
+              flex: 12,
+              child: _SortableHeader(
+                  label: 'Status',
+                  keyName: 'status',
+                  current: sortBy,
+                  ascending: sortAscending,
+                  onSort: onSort)),
+          Expanded(
+              flex: 12,
+              child: _SortableHeader(
+                  label: 'P.Mode',
+                  keyName: 'paymentMode',
+                  current: sortBy,
+                  ascending: sortAscending,
+                  onSort: onSort)),
+          Expanded(
+              flex: 12,
+              child: _SortableHeader(
+                  label: 'Payment',
+                  keyName: 'payment',
+                  current: sortBy,
+                  ascending: sortAscending,
+                  onSort: onSort)),
+          Expanded(
+              flex: 10,
+              child: _SortableHeader(
+                  label: 'Actions',
+                  keyName: 'actions',
+                  current: sortBy,
+                  ascending: sortAscending,
+                  onSort: onSort)),
         ],
       ),
     );
@@ -747,11 +988,15 @@ class _SortableHeader extends StatelessWidget {
       onTap: () => onSort(keyName),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF2C4468))),
+          Text(label,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700, color: Color(0xFF2C4468))),
           const SizedBox(width: 4),
           Icon(
             active
-                ? (ascending ? FluentIcons.chevron_up : FluentIcons.chevron_down)
+                ? (ascending
+                    ? FluentIcons.chevron_up
+                    : FluentIcons.chevron_down)
                 : FluentIcons.switch_user,
             size: 10,
             color: const Color(0xFF6D84A8),
@@ -764,8 +1009,61 @@ class _SortableHeader extends StatelessWidget {
 
 class _AppointmentRow extends StatelessWidget {
   final Appointment appointment;
+  final bool isDuplicatePatient;
 
-  const _AppointmentRow({required this.appointment});
+  const _AppointmentRow({
+    required this.appointment,
+    required this.isDuplicatePatient,
+  });
+
+  void _openPatientHistoryDialog(BuildContext context) {
+    final patient = appointment.patient;
+    if (patient == null) return;
+    showDialog(
+      context: context,
+      builder: (_) => Align(
+        alignment: Alignment.center,
+        child: Container(
+          color: Colors.white,
+          child: PatientDetailsDialog(
+            rows: patient.patientDetails,
+            patient: patient,
+            hiddenColumns: const [
+              'Prescription',
+              'P.Mode',
+              'Doc Paid',
+              'TotalDocPay',
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _deleteAppointment(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => ContentDialog(
+        title: const Text('Delete Appointment'),
+        content: Text(
+          'Delete appointment for ${appointment.title.trim().isEmpty ? 'this patient' : appointment.title}?',
+        ),
+        actions: [
+          Button(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          FilledButton(
+            child: const Text('Delete'),
+            onPressed: () {
+              appointments.delete(appointment.id);
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -777,19 +1075,50 @@ class _AppointmentRow extends StatelessWidget {
         : appointment.selectedTreatments.join(', ');
     final time = DateFormat('h:mm a').format(appointment.date);
     final payment = appointment.paid + appointment.prescriptionPaid;
-    final isDigital = appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
+    final isDigital =
+        appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+      decoration: BoxDecoration(
+        color:
+            isDuplicatePatient ? const Color(0xFFFFF1F1) : Colors.transparent,
+        border: const Border(top: BorderSide(color: Color(0xFFE2ECF8))),
       ),
       child: Row(
         children: [
-          Expanded(flex: 11, child: Text(time, style: const TextStyle(color: Color(0xFF355279)))),
-          Expanded(flex: 15, child: Text(appointment.title, style: const TextStyle(color: Color(0xFF1459AD), fontWeight: FontWeight.w600))),
-          Expanded(flex: 13, child: Text(doctorName, style: const TextStyle(color: Color(0xFF2D476D)))),
-          Expanded(flex: 14, child: Text(treatment, style: const TextStyle(color: Color(0xFF2D476D)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+          Expanded(
+            flex: 11,
+            child: Text(time, style: const TextStyle(color: Color(0xFF355279))),
+          ),
+          Expanded(
+            flex: 15,
+            child: GestureDetector(
+              onTap: () => _openPatientHistoryDialog(context),
+              child: Text(
+                appointment.title,
+                style: const TextStyle(
+                  color: Color(0xFF1459AD),
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 13,
+            child: Text(doctorName,
+                style: const TextStyle(color: Color(0xFF2D476D))),
+          ),
+          Expanded(
+            flex: 14,
+            child: Text(
+              treatment,
+              style: const TextStyle(color: Color(0xFF2D476D)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           Expanded(
             flex: 12,
             child: _StatusBadge(done: appointment.isDone),
@@ -798,31 +1127,78 @@ class _AppointmentRow extends StatelessWidget {
             flex: 12,
             child: Row(
               children: [
-                Icon(
-                  isDigital ? FluentIcons.receipt_processing : FluentIcons.money,
-                  size: 14,
-                  color: isDigital ? const Color(0xFF2D7BD8) : const Color(0xFF3B9A42),
-                ),
+                isDigital
+                    ? Image.asset(
+                        'assets/gpay.png',
+                        width: 14,
+                        height: 14,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          FluentIcons.receipt_processing,
+                          size: 14,
+                          color: Color(0xFF2D7BD8),
+                        ),
+                      )
+                    : const Icon(
+                        FluentIcons.money,
+                        size: 14,
+                        color: Color(0xFF3B9A42),
+                      ),
                 const SizedBox(width: 4),
                 Text(
                   isDigital ? 'GPay' : 'Cash',
-                  style: const TextStyle(color: Color(0xFF2D476D), fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Color(0xFF2D476D),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
-          Expanded(flex: 12, child: Text('₹${payment.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF2D476D), fontWeight: FontWeight.w600))),
+          Expanded(
+            flex: 12,
+            child: Text(
+              '₹${payment.toStringAsFixed(0)}',
+              style: const TextStyle(
+                color: Color(0xFF2D476D),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           Expanded(
             flex: 10,
-            child: GestureDetector(
-              onTap: () => openAppointment(appointment),
-              child: const Row(
-                children: [
-                  Icon(FluentIcons.view, size: 12, color: Color(0xFF1A74DB)),
-                  SizedBox(width: 4),
-                  Text('View', style: TextStyle(color: Color(0xFF1A74DB), fontWeight: FontWeight.w600)),
-                ],
-              ),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => openAppointment(appointment),
+                  child: const Row(
+                    children: [
+                      Icon(FluentIcons.view,
+                          size: 12, color: Color(0xFF1A74DB)),
+                      SizedBox(width: 4),
+                      Text(
+                        'View',
+                        style: TextStyle(
+                          color: Color(0xFF1A74DB),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Delete',
+                  child: GestureDetector(
+                    onTap: () => _deleteAppointment(context),
+                    child: const Icon(
+                      FluentIcons.delete,
+                      size: 13,
+                      color: Color(0xFFD6455D),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -862,30 +1238,55 @@ class _StatusBadge extends StatelessWidget {
 class _ScheduleLine extends StatelessWidget {
   final String title;
   final int count;
+  final bool selected;
+  final VoidCallback onTap;
 
-  const _ScheduleLine({required this.title, required this.count});
+  const _ScheduleLine({
+    required this.title,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        color: const Color(0xFFF6F9FE),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Color(0xFF27456D), fontWeight: FontWeight.w600),
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(top: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          color: selected ? const Color(0xFFDDEBFF) : const Color(0xFFF6F9FE),
+          border: Border.all(
+            color: selected ? const Color(0xFF8CB6E8) : Colors.transparent,
           ),
-          Text('($count)', style: const TextStyle(color: Color(0xFF637EA3))),
-        ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected
+                      ? const Color(0xFF123D71)
+                      : const Color(0xFF27456D),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Text(
+              '($count)',
+              style: TextStyle(
+                color: selected
+                    ? const Color(0xFF1A4B88)
+                    : const Color(0xFF637EA3),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -998,6 +1399,9 @@ class _DateNavigator extends StatelessWidget {
 
   ButtonStyle get _dateButtonStyle {
     return ButtonStyle(
+      padding: WidgetStateProperty.all(
+        const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      ),
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.pressed)) {
           return const Color(0x331A74DB);
@@ -1016,6 +1420,11 @@ class _DateNavigator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final isToday = selectedDate.year == today.year &&
+        selectedDate.month == today.month &&
+        selectedDate.day == today.day;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1032,16 +1441,30 @@ class _DateNavigator extends StatelessWidget {
                 onPressed: onPrevious,
                 style: _dateButtonStyle,
                 child: const Icon(FluentIcons.chevron_left, size: 12),
-            ),
+              ),
               Button(
                 onPressed: onPick,
                 style: _dateButtonStyle,
-                child: Text(
-                  DateFormat('MMMM d, yyyy').format(selectedDate),
-                  style: const TextStyle(
-                    color: Color(0xFF25466E),
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      DateFormat('MMMM d, yyyy').format(selectedDate),
+                      style: const TextStyle(
+                        color: Color(0xFF25466E),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      DateFormat('EEEE').format(selectedDate),
+                      style: const TextStyle(
+                        color: Color(0xFF557195),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Button(
@@ -1053,21 +1476,30 @@ class _DateNavigator extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        FilledButton(
-          onPressed: onToday,
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.pressed)) {
-                return const Color(0xFF0B5BBC);
-              }
-              if (states.contains(WidgetState.hovered)) {
-                return const Color(0xFF1468CC);
-              }
-              return const Color(0xFF1A74DB);
-            }),
-            foregroundColor: WidgetStateProperty.all(Colors.white),
+        SizedBox(
+          width: 84,
+          child: Visibility(
+            visible: !isToday,
+            maintainAnimation: true,
+            maintainState: true,
+            maintainSize: true,
+            child: FilledButton(
+              onPressed: onToday,
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.pressed)) {
+                    return const Color(0xFF0B5BBC);
+                  }
+                  if (states.contains(WidgetState.hovered)) {
+                    return const Color(0xFF1468CC);
+                  }
+                  return const Color(0xFF1A74DB);
+                }),
+                foregroundColor: WidgetStateProperty.all(Colors.white),
+              ),
+              child: const Text('Today'),
+            ),
           ),
-          child: const Text('Today'),
         ),
       ],
     );
@@ -1086,34 +1518,39 @@ class _QuickCheckInCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: PatientLookup(
-        patientCheckIn: (patient) {
-          if (patient == null) return;
-          final dt = _withCurrentTime(selectedDate);
-          appointments.set(Appointment.fromJson({
-            'patientID': patient.id,
-            'date': dt.millisecondsSinceEpoch,
-          }));
-        },
-        addAppointment: (patient) {
-          final dt = _withCurrentTime(selectedDate);
-          openAppointment(Appointment.fromJson({
-            'patientID': patient.id,
-            'date': dt.millisecondsSinceEpoch,
-          }));
-        },
-        onCreateNew: (searchQuery) {
-          final isDigitsOnly =
-              searchQuery.isNotEmpty && searchQuery.runes.every((c) => c >= 48 && c <= 57);
-          openPatient(
-            Patient.fromJson({
-              if (isDigitsOnly) 'phone': searchQuery else 'title': searchQuery,
-            }),
-            0,
-          );
-        },
+    return _CardShell(
+      child: SizedBox(
+        width: double.infinity,
+        child: PatientLookup(
+          patientCheckIn: (patient) {
+            if (patient == null) return;
+            final dt = _withCurrentTime(selectedDate);
+            appointments.set(Appointment.fromJson({
+              'patientID': patient.id,
+              'date': dt.millisecondsSinceEpoch,
+            }));
+          },
+          addAppointment: (patient) {
+            final dt = _withCurrentTime(selectedDate);
+            openAppointment(Appointment.fromJson({
+              'patientID': patient.id,
+              'date': dt.millisecondsSinceEpoch,
+            }));
+          },
+          onCreateNew: (searchQuery) {
+            final isDigitsOnly = searchQuery.isNotEmpty &&
+                searchQuery.runes.every((c) => c >= 48 && c <= 57);
+            openPatient(
+              Patient.fromJson({
+                if (isDigitsOnly)
+                  'phone': searchQuery
+                else
+                  'title': searchQuery,
+              }),
+              0,
+            );
+          },
+        ),
       ),
     );
   }
@@ -1140,6 +1577,28 @@ class _InsightsRow extends StatelessWidget {
   }
 }
 
+String _duplicatePatientKey(Appointment appointment) {
+  final patientId = appointment.patientID;
+  if (patientId != null && patientId.isNotEmpty) {
+    return 'id:$patientId';
+  }
+  final title = appointment.title.trim().toLowerCase();
+  final phone = (appointment.patient?.phone ?? '').trim().toLowerCase();
+  return 'name:$title|phone:$phone';
+}
+
+Set<String> _duplicatePatientKeys(List<Appointment> appointmentsForView) {
+  final counts = <String, int>{};
+  for (final appointment in appointmentsForView) {
+    final key = _duplicatePatientKey(appointment);
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts.entries
+      .where((entry) => entry.value > 1)
+      .map((entry) => entry.key)
+      .toSet();
+}
+
 class _PatientInsights {
   final int uniquePatients;
   final int newPatients;
@@ -1161,14 +1620,11 @@ class _PatientInsights {
   }
 
   factory _PatientInsights.from(List<Appointment> appointmentsOnDay) {
-    final uniqueIds = appointmentsOnDay
-        .map((a) => a.patientID ?? a.id)
-        .toSet()
-        .length;
+    final uniqueIds =
+        appointmentsOnDay.map((a) => a.patientID ?? a.id).toSet().length;
 
-    final newCount = appointmentsOnDay
-        .where((a) => a.firstAppointmentForThisPatient)
-        .length;
+    final newCount =
+        appointmentsOnDay.where((a) => a.firstAppointmentForThisPatient).length;
 
     final completed = appointmentsOnDay.where((a) => a.isDone).length;
 
@@ -1223,13 +1679,152 @@ class _PatientInsightsCard extends StatelessWidget {
         children: [
           const Text(
             'Patient Insights',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF183A67)),
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67)),
           ),
           const SizedBox(height: 10),
-          _InsightLine(label: 'Unique Patients', value: '${insights.uniquePatients}'),
+          _InsightLine(
+              label: 'Unique Patients', value: '${insights.uniquePatients}'),
           _InsightLine(label: 'New Patients', value: '${insights.newPatients}'),
-          _InsightLine(label: 'Returning Patients', value: '${insights.returningPatients}'),
-          _InsightLine(label: 'Completion Rate', value: '${insights.completionRate.toStringAsFixed(0)}%'),
+          _InsightLine(
+              label: 'Returning Patients',
+              value: '${insights.returningPatients}'),
+          _InsightLine(
+              label: 'Completion Rate',
+              value: '${insights.completionRate.toStringAsFixed(0)}%'),
+        ],
+      ),
+    );
+  }
+}
+
+class _PatientInsightsCardV2 extends StatelessWidget {
+  final _PatientInsights insights;
+
+  const _PatientInsightsCardV2({required this.insights});
+
+  @override
+  Widget build(BuildContext context) {
+    return _CardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Patient Insights V2',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF183A67),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Modern layout preview',
+            style: TextStyle(color: Color(0xFF6B84A7), fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _PatientInsightMetricV2(
+                label: 'Unique',
+                value: '${insights.uniquePatients}',
+                icon: FluentIcons.contact,
+                background: const Color(0xFFE6F2FF),
+                iconColor: const Color(0xFF1768C9),
+              ),
+              _PatientInsightMetricV2(
+                label: 'New',
+                value: '${insights.newPatients}',
+                icon: FluentIcons.add,
+                background: const Color(0xFFE6F8EC),
+                iconColor: const Color(0xFF2F8C47),
+              ),
+              _PatientInsightMetricV2(
+                label: 'Returning',
+                value: '${insights.returningPatients}',
+                icon: FluentIcons.redo,
+                background: const Color(0xFFFFF3E1),
+                iconColor: const Color(0xFFB97600),
+              ),
+              _PatientInsightMetricV2(
+                label: 'Completed %',
+                value: '${insights.completionRate.toStringAsFixed(0)}%',
+                icon: FluentIcons.completed,
+                background: const Color(0xFFFFE9EC),
+                iconColor: const Color(0xFFC43A51),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PatientInsightMetricV2 extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color background;
+  final Color iconColor;
+
+  const _PatientInsightMetricV2({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.background,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 170,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 14, color: iconColor),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF567295),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    color: Color(0xFF183A67),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1249,10 +1844,14 @@ class _TreatmentStatsCard extends StatelessWidget {
         children: [
           const Text(
             'Treatment Stats',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF183A67)),
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67)),
           ),
           const SizedBox(height: 10),
-          _InsightLine(label: 'Total Treatments', value: '${stats.totalTreatments}'),
+          _InsightLine(
+              label: 'Total Treatments', value: '${stats.totalTreatments}'),
           if (stats.topTreatments.isEmpty)
             const Text(
               'No treatments recorded for this day',
@@ -1260,7 +1859,8 @@ class _TreatmentStatsCard extends StatelessWidget {
             )
           else
             ...stats.topTreatments.map(
-              (entry) => _InsightLine(label: entry.key, value: '${entry.value}'),
+              (entry) =>
+                  _InsightLine(label: entry.key, value: '${entry.value}'),
             ),
         ],
       ),
@@ -1283,12 +1883,14 @@ class _InsightLine extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: Color(0xFF36557C), fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                  color: Color(0xFF36557C), fontWeight: FontWeight.w600),
             ),
           ),
           Text(
             value,
-            style: const TextStyle(color: Color(0xFF1A3D69), fontWeight: FontWeight.w700),
+            style: const TextStyle(
+                color: Color(0xFF1A3D69), fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -1302,6 +1904,7 @@ class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final Color iconBackground;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.title,
@@ -1309,39 +1912,52 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.iconBackground,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 242,
-      child: _CardShell(
-        child: SizedBox(
-          height: 82,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontSize: 13, color: Color(0xFF496489), fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Text(value, style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w700, color: Color(0xFF1B3557))),
-                  ],
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 242,
+        child: _CardShell(
+          child: SizedBox(
+            height: 82,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF496489),
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      Text(value,
+                          style: const TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1B3557))),
+                    ],
+                  ),
                 ),
-              ),
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: iconBackground,
-                  borderRadius: BorderRadius.circular(8),
+                Container(
+                  width: 38,
+                  height: 38,
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: iconBackground,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 18),
                 ),
-                child: Icon(icon, color: iconColor, size: 18),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1363,7 +1979,8 @@ class _RevenueCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 13, color: Color(0xFF496489))),
+            Text(title,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF496489))),
             const SizedBox(height: 7),
             Text(
               value,
@@ -1387,6 +2004,7 @@ class _FinanceCard extends StatelessWidget {
   final Color iconColor;
   final Color iconBackground;
   final Color valueColor;
+  final VoidCallback? onTap;
 
   const _FinanceCard({
     required this.title,
@@ -1395,43 +2013,47 @@ class _FinanceCard extends StatelessWidget {
     required this.iconColor,
     required this.iconBackground,
     required this.valueColor,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return _CardShell(
-      child: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: iconBackground,
-              borderRadius: BorderRadius.circular(7),
+    return GestureDetector(
+      onTap: onTap,
+      child: _CardShell(
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: iconBackground,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Icon(icon, size: 15, color: iconColor),
             ),
-            child: Icon(icon, size: 15, color: iconColor),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF2E4E76),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2E4E76),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              color: valueColor,
+            const SizedBox(width: 10),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: valueColor,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
