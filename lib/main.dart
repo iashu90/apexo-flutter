@@ -1,4 +1,4 @@
-import 'package:apexo/app/app.dart';
+import 'package:apexo/app/app_v2.dart';
 import 'package:apexo/sentry_dsn.dart';
 import 'package:apexo/utils/init_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -20,9 +20,9 @@ void main() async {
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
 
- runApp(const ApexoApp());
+ runApp(const ApexoAppV2());
   if (kDebugMode) {
-    runApp(const ApexoApp());
+    runApp(const ApexoAppV2());
   } else {
     await SentryFlutter.init(
       (options) {
@@ -30,7 +30,7 @@ void main() async {
         // options.tracesSampleRate = 1.0;
         // options.profilesSampleRate = 1.0;
       },
-      appRunner: () => runApp(const ApexoApp()),
+      appRunner: () => runApp(const ApexoAppV2()),
     );
   }
 }

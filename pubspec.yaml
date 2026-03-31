@@ -52,6 +52,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/app_icon.png
+    - assets/drnowdentallogo.png
     - assets/images/logo.png
     - assets/images/missing.png
     - assets/fonts/readex.ttf
