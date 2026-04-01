@@ -18,10 +18,8 @@ class PatientsScreenV2 extends StatefulWidget {
 }
 
 class _PatientsScreenV2State extends State<PatientsScreenV2> {
-  final TextEditingController _searchController = TextEditingController();
   final TextEditingController _listSearchController = TextEditingController();
 
-  String _query = '';
   String _listQuery = '';
   String _topRange = '1Week';
   String _outstandingRange = '1Week';
@@ -43,12 +41,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(() {
-      setState(() {
-        _query = _searchController.text.trim().toLowerCase();
-        _currentPage = 1;
-      });
-    });
     _listSearchController.addListener(() {
       setState(() {
         _listQuery = _listSearchController.text.trim().toLowerCase();
@@ -59,7 +51,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     _listSearchController.dispose();
     super.dispose();
   }
@@ -173,7 +164,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               }
             }
 
-            final ageBuckets = _ageBuckets(allPatients);
+            final ageBuckets = _ageGenderBuckets(allPatients);
             final genderBuckets = _genderBuckets(allPatients);
             final paymentModeBuckets = _paymentModeBuckets(allAppointments);
 
@@ -206,18 +197,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               ..sort((a, b) => b.value.compareTo(a.value));
 
             final preAlphabetPatients = allPatients.where((patient) {
+              if (_listQuery.isEmpty) return true;
               final name = patient.title.toLowerCase();
               final phone = patient.phone.toLowerCase();
-
-              final topSearchMatches = _query.isEmpty ||
-                  name.contains(_query) ||
-                  phone.contains(_query);
-
-              final listSearchMatches = _listQuery.isEmpty ||
-                  name.contains(_listQuery) ||
-                  phone.contains(_listQuery);
-
-              return topSearchMatches && listSearchMatches;
+              return name.contains(_listQuery) || phone.contains(_listQuery);
             }).toList(growable: false);
 
             final filteredPatients = preAlphabetPatients.where((patient) {
@@ -279,7 +262,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _TopBar(searchController: _searchController),
+                const _TopBar(),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 10,
@@ -443,38 +426,41 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     );
   }
 
-  Map<String, int> _ageBuckets(List<Patient> items) {
-    final buckets = <String, int>{
-      '0-10': 0,
-      '11-20': 0,
-      '21-30': 0,
-      '31-40': 0,
-      '41-50': 0,
-      '51-60': 0,
-      '61-70': 0,
-      '71+': 0,
+  Map<String, Map<String, int>> _ageGenderBuckets(List<Patient> items) {
+    final buckets = <String, Map<String, int>>{
+      '0-10': {'Male': 0, 'Female': 0},
+      '11-20': {'Male': 0, 'Female': 0},
+      '21-30': {'Male': 0, 'Female': 0},
+      '31-40': {'Male': 0, 'Female': 0},
+      '41-50': {'Male': 0, 'Female': 0},
+      '51-60': {'Male': 0, 'Female': 0},
+      '61-70': {'Male': 0, 'Female': 0},
+      '71+': {'Male': 0, 'Female': 0},
     };
 
     for (final p in items) {
       final age = p.age;
       if (age < 0) continue;
+      final gender = p.gender == 1 ? 'Male' : 'Female';
+      final String bucket;
       if (age <= 10) {
-        buckets['0-10'] = buckets['0-10']! + 1;
+        bucket = '0-10';
       } else if (age <= 20) {
-        buckets['11-20'] = buckets['11-20']! + 1;
+        bucket = '11-20';
       } else if (age <= 30) {
-        buckets['21-30'] = buckets['21-30']! + 1;
+        bucket = '21-30';
       } else if (age <= 40) {
-        buckets['31-40'] = buckets['31-40']! + 1;
+        bucket = '31-40';
       } else if (age <= 50) {
-        buckets['41-50'] = buckets['41-50']! + 1;
+        bucket = '41-50';
       } else if (age <= 60) {
-        buckets['51-60'] = buckets['51-60']! + 1;
+        bucket = '51-60';
       } else if (age <= 70) {
-        buckets['61-70'] = buckets['61-70']! + 1;
+        bucket = '61-70';
       } else {
-        buckets['71+'] = buckets['71+']! + 1;
+        bucket = '71+';
       }
+      buckets[bucket]![gender] = buckets[bucket]![gender]! + 1;
     }
 
     return buckets;
@@ -522,43 +508,18 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 }
 
 class _TopBar extends StatelessWidget {
-  final TextEditingController searchController;
-
-  const _TopBar({required this.searchController});
+  const _TopBar();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(
-          child: Text(
-            'Patients',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
-            ),
-          ),
-        ),
-        SizedBox(
-          width: 280,
-          child: TextBox(
-            controller: searchController,
-            placeholder: 'Search patients',
-            prefix: const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child:
-                  Icon(FluentIcons.search, size: 12, color: Color(0xFF6D84A8)),
-            ),
-            suffix: searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(FluentIcons.clear),
-                    onPressed: () => searchController.clear(),
-                  )
-                : null,
-          ),
-        ),
-      ],
+    return const Text(
+      'Patients',
+      style: TextStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF112E54),
+        letterSpacing: 0.1,
+      ),
     );
   }
 }
@@ -606,14 +567,23 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _AgeDistributionCard extends StatelessWidget {
-  final Map<String, int> buckets;
+class _AgeDistributionCard extends StatefulWidget {
+  final Map<String, Map<String, int>> buckets;
 
   const _AgeDistributionCard({required this.buckets});
 
   @override
+  State<_AgeDistributionCard> createState() => _AgeDistributionCardState();
+}
+
+class _AgeDistributionCardState extends State<_AgeDistributionCard> {
+  String? _hoveredKey;
+
+  @override
   Widget build(BuildContext context) {
-    final maxValue = buckets.values.fold<int>(0, (m, v) => v > m ? v : m);
+    final maxValue = widget.buckets.values
+        .map((m) => (m['Male'] ?? 0) + (m['Female'] ?? 0))
+        .fold<int>(0, (m, v) => v > m ? v : m);
 
     return _CardShell(
       child: Column(
@@ -627,64 +597,142 @@ class _AgeDistributionCard extends StatelessWidget {
               color: Color(0xFF183A67),
             ),
           ),
-          const SizedBox(height: 10),
-          ...buckets.entries.map((entry) {
-            final ratio = maxValue == 0 ? 0.0 : (entry.value / maxValue);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 46,
-                    child: Text(
-                      entry.key,
-                      style: const TextStyle(
-                        color: Color(0xFF36557C),
-                        fontWeight: FontWeight.w600,
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2D7BD8),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Text('Male',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF36557C))),
+              const SizedBox(width: 10),
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2BA58D),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Text('Female',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF36557C))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...widget.buckets.entries.map((entry) {
+            final male = entry.value['Male'] ?? 0;
+            final female = entry.value['Female'] ?? 0;
+            final total = male + female;
+            final totalRatio = maxValue == 0 ? 0.0 : total / maxValue;
+            final maleRatio = total == 0 ? 0.0 : male / total.toDouble();
+            final isHovered = _hoveredKey == entry.key;
+
+            return MouseRegion(
+              onEnter: (_) => setState(() => _hoveredKey = entry.key),
+              onExit: (_) => setState(() => _hoveredKey = null),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 46,
+                      child: Text(
+                        entry.key,
+                        style: const TextStyle(
+                          color: Color(0xFF36557C),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Stack(
-                          children: [
-                            Container(
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE9F1FC),
-                                borderRadius: BorderRadius.circular(8),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final barWidth = constraints.maxWidth * totalRatio;
+                          final maleWidth = barWidth * maleRatio;
+                          final femaleWidth = barWidth * (1.0 - maleRatio);
+                          return Stack(
+                            children: [
+                              Container(
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE9F1FC),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
-                            ),
-                            Container(
-                              height: 10,
-                              width: constraints.maxWidth * ratio,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2D7BD8),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 26,
-                    child: Text(
-                      '${entry.value}',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        color: Color(0xFF1F446E),
-                        fontWeight: FontWeight.w700,
+                              if (maleWidth > 0)
+                                Positioned(
+                                  left: 0,
+                                  child: Container(
+                                    height: 10,
+                                    width: maleWidth,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2D7BD8),
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: const Radius.circular(8),
+                                        bottomLeft: const Radius.circular(8),
+                                        topRight: femaleWidth > 0
+                                            ? Radius.zero
+                                            : const Radius.circular(8),
+                                        bottomRight: femaleWidth > 0
+                                            ? Radius.zero
+                                            : const Radius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (femaleWidth > 0)
+                                Positioned(
+                                  left: maleWidth,
+                                  child: Container(
+                                    height: 10,
+                                    width: femaleWidth,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2BA58D),
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: maleWidth > 0
+                                            ? Radius.zero
+                                            : const Radius.circular(8),
+                                        bottomLeft: maleWidth > 0
+                                            ? Radius.zero
+                                            : const Radius.circular(8),
+                                        topRight: const Radius.circular(8),
+                                        bottomRight: const Radius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 64,
+                      child: Text(
+                        isHovered ? 'M:$male F:$female' : '$total',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: isHovered
+                              ? const Color(0xFF1A5CA3)
+                              : const Color(0xFF1F446E),
+                          fontWeight: FontWeight.w700,
+                          fontSize: isHovered ? 11 : 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
-          }),
+          }).toList(),
         ],
       ),
     );
@@ -759,7 +807,7 @@ class _GenderDistributionCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    width: 26,
+                    width: 40,
                     child: Text(
                       '${entry.value}',
                       textAlign: TextAlign.right,
@@ -847,7 +895,7 @@ class _PaymentModeDistributionCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    width: 26,
+                    width: 40,
                     child: Text(
                       '${entry.value}',
                       textAlign: TextAlign.right,
@@ -1272,9 +1320,12 @@ class _AllPatientsListCard extends StatelessWidget {
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: const BoxDecoration(
-              color: Color(0xFFEFF4FB),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+            decoration: BoxDecoration(
+              color: selectedAlphabet != 'All'
+                  ? const Color(0xFF1A74DB)
+                  : const Color(0xFFEFF4FB),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(10)),
             ),
             child: Row(
               children: [
@@ -1285,6 +1336,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
+                  onDark: selectedAlphabet != 'All',
                 ),
                 _SortableHead(
                   flex: 24,
@@ -1293,6 +1345,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
+                  onDark: selectedAlphabet != 'All',
                 ),
                 _SortableHead(
                   flex: 18,
@@ -1301,6 +1354,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
+                  onDark: selectedAlphabet != 'All',
                 ),
                 _SortableHead(
                   flex: 10,
@@ -1309,6 +1363,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
+                  onDark: selectedAlphabet != 'All',
                 ),
                 _SortableHead(
                   flex: 12,
@@ -1317,6 +1372,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
+                  onDark: selectedAlphabet != 'All',
                 ),
                 _SortableHead(
                   flex: 16,
@@ -1325,14 +1381,17 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
+                  onDark: selectedAlphabet != 'All',
                 ),
-                const Expanded(
+                Expanded(
                   flex: 12,
                   child: Text(
                     'Actions',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF2C4468),
+                      color: selectedAlphabet != 'All'
+                          ? Colors.white
+                          : const Color(0xFF2C4468),
                     ),
                   ),
                 ),
@@ -1363,9 +1422,7 @@ class _AllPatientsListCard extends StatelessWidget {
                               .length;
                       final outstanding = patient.outstandingPayments;
 
-                      return GestureDetector(
-                        onTap: () => openPatient(patient, 1),
-                        child: Container(
+                      return Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 10),
                           decoration: const BoxDecoration(
@@ -1385,14 +1442,17 @@ class _AllPatientsListCard extends StatelessWidget {
                               ),
                               Expanded(
                                 flex: 24,
-                                child: Text(
-                                  patient.title.trim().isEmpty
-                                      ? 'Unnamed patient'
-                                      : patient.title,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1459AD),
-                                    fontWeight: FontWeight.w600,
+                                child: GestureDetector(
+                                  onTap: () => openPatient(patient, 1),
+                                  child: Text(
+                                    patient.title.trim().isEmpty
+                                        ? 'Unnamed patient'
+                                        : patient.title,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF1459AD),
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1459,8 +1519,7 @@ class _AllPatientsListCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                        ),
-                      );
+                        );
                     }).toList(growable: false),
                   ),
           ),
@@ -1643,6 +1702,7 @@ class _SortableHead extends StatelessWidget {
   final String current;
   final bool ascending;
   final ValueChanged<String> onSort;
+  final bool onDark;
 
   const _SortableHead({
     required this.flex,
@@ -1651,6 +1711,7 @@ class _SortableHead extends StatelessWidget {
     required this.current,
     required this.ascending,
     required this.onSort,
+    this.onDark = false,
   });
 
   @override
@@ -1664,9 +1725,9 @@ class _SortableHead extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF2C4468),
+                color: onDark ? Colors.white : const Color(0xFF2C4468),
               ),
             ),
             const SizedBox(width: 4),
@@ -1677,7 +1738,7 @@ class _SortableHead extends StatelessWidget {
                       : FluentIcons.chevron_down)
                   : FluentIcons.switch_user,
               size: 10,
-              color: const Color(0xFF6D84A8),
+              color: onDark ? Colors.white : const Color(0xFF6D84A8),
             ),
           ],
         ),

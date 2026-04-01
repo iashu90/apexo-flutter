@@ -921,7 +921,7 @@ class _TableHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color:
-            isFilterApplied ? const Color(0xFFDDEBFF) : const Color(0xFFEFF4FB),
+            isFilterApplied ? const Color(0xFF1A74DB) : const Color(0xFFEFF4FB),
         borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
       ),
       child: Row(
@@ -933,7 +933,8 @@ class _TableHeader extends StatelessWidget {
                   keyName: 'time',
                   current: sortBy,
                   ascending: sortAscending,
-                  onSort: onSort)),
+                  onSort: onSort,
+                  onDark: isFilterApplied)),
           Expanded(
               flex: 15,
               child: _SortableHeader(
@@ -941,7 +942,8 @@ class _TableHeader extends StatelessWidget {
                   keyName: 'patient',
                   current: sortBy,
                   ascending: sortAscending,
-                  onSort: onSort)),
+                  onSort: onSort,
+                  onDark: isFilterApplied)),
           Expanded(
               flex: 13,
               child: _SortableHeader(
@@ -949,7 +951,8 @@ class _TableHeader extends StatelessWidget {
                   keyName: 'doctor',
                   current: sortBy,
                   ascending: sortAscending,
-                  onSort: onSort)),
+                  onSort: onSort,
+                  onDark: isFilterApplied)),
           Expanded(
               flex: 14,
               child: _SortableHeader(
@@ -957,7 +960,8 @@ class _TableHeader extends StatelessWidget {
                   keyName: 'treatment',
                   current: sortBy,
                   ascending: sortAscending,
-                  onSort: onSort)),
+                  onSort: onSort,
+                  onDark: isFilterApplied)),
           Expanded(
               flex: 12,
               child: _SortableHeader(
@@ -965,7 +969,8 @@ class _TableHeader extends StatelessWidget {
                   keyName: 'status',
                   current: sortBy,
                   ascending: sortAscending,
-                  onSort: onSort)),
+                  onSort: onSort,
+                  onDark: isFilterApplied)),
           Expanded(
               flex: 12,
               child: _SortableHeader(
@@ -973,7 +978,8 @@ class _TableHeader extends StatelessWidget {
                   keyName: 'paymentMode',
                   current: sortBy,
                   ascending: sortAscending,
-                  onSort: onSort)),
+                  onSort: onSort,
+                  onDark: isFilterApplied)),
           Expanded(
               flex: 12,
               child: _SortableHeader(
@@ -981,7 +987,8 @@ class _TableHeader extends StatelessWidget {
                   keyName: 'payment',
                   current: sortBy,
                   ascending: sortAscending,
-                  onSort: onSort)),
+                  onSort: onSort,
+                  onDark: isFilterApplied)),
           Expanded(
               flex: 10,
               child: _SortableHeader(
@@ -989,7 +996,8 @@ class _TableHeader extends StatelessWidget {
                   keyName: 'actions',
                   current: sortBy,
                   ascending: sortAscending,
-                  onSort: onSort)),
+                  onSort: onSort,
+                  onDark: isFilterApplied)),
         ],
       ),
     );
@@ -1002,6 +1010,7 @@ class _SortableHeader extends StatelessWidget {
   final String current;
   final bool ascending;
   final ValueChanged<String> onSort;
+  final bool onDark;
 
   const _SortableHeader({
     required this.label,
@@ -1009,6 +1018,7 @@ class _SortableHeader extends StatelessWidget {
     required this.current,
     required this.ascending,
     required this.onSort,
+    this.onDark = false,
   });
 
   @override
@@ -1019,8 +1029,9 @@ class _SortableHeader extends StatelessWidget {
       child: Row(
         children: [
           Text(label,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, color: Color(0xFF2C4468))),
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: onDark ? Colors.white : const Color(0xFF2C4468))),
           const SizedBox(width: 4),
           Icon(
             active
@@ -1029,7 +1040,7 @@ class _SortableHeader extends StatelessWidget {
                     : FluentIcons.chevron_down)
                 : FluentIcons.switch_user,
             size: 10,
-            color: const Color(0xFF6D84A8),
+            color: onDark ? Colors.white : const Color(0xFF6D84A8),
           ),
         ],
       ),
@@ -1198,42 +1209,15 @@ class _AppointmentRow extends StatelessWidget {
             flex: 10,
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () => openAppointment(appointment),
-                  child: const Row(
-                    children: [
-                      Icon(FluentIcons.view,
-                          size: 12, color: Color(0xFF1A74DB)),
-                      SizedBox(width: 4),
-                      Text(
-                        'View',
-                        style: TextStyle(
-                          color: Color(0xFF1A74DB),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: () => _openPatientHistoryDialog(context),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        FluentIcons.history,
-                        size: 13,
-                        color: Color(0xFF2D7BD8),
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'History',
-                        style: TextStyle(
-                          color: Color(0xFF2D7BD8),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                Tooltip(
+                  message: 'History',
+                  child: GestureDetector(
+                    onTap: () => _openPatientHistoryDialog(context),
+                    child: const Icon(
+                      FluentIcons.history,
+                      size: 13,
+                      color: Color(0xFF2D7BD8),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1650,7 +1634,7 @@ class _TreatmentStats {
     final total = sorted.fold<int>(0, (sum, e) => sum + e.value);
 
     return _TreatmentStats(
-      topTreatments: sorted.take(4).toList(),
+      topTreatments: sorted.toList(),
       totalTreatments: total,
     );
   }
@@ -1674,18 +1658,29 @@ class _TreatmentStatsCard extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF183A67)),
           ),
-          const SizedBox(height: 10),
-          _InsightLine(
-              label: 'Total Treatments', value: '${stats.totalTreatments}'),
+          const SizedBox(height: 8),
+          _ScheduleLine(
+            title: 'Total',
+            count: stats.totalTreatments,
+            selected: false,
+            onTap: () {},
+          ),
           if (stats.topTreatments.isEmpty)
-            const Text(
-              'No treatments recorded for this day',
-              style: TextStyle(color: Color(0xFF637EA3)),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                'No treatments recorded for this day',
+                style: TextStyle(color: Color(0xFF637EA3)),
+              ),
             )
           else
             ...stats.topTreatments.map(
-              (entry) =>
-                  _InsightLine(label: entry.key, value: '${entry.value}'),
+              (entry) => _ScheduleLine(
+                title: entry.key,
+                count: entry.value,
+                selected: false,
+                onTap: () {},
+              ),
             ),
         ],
       ),
