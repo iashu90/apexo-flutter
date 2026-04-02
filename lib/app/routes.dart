@@ -8,6 +8,7 @@ import 'package:apexo/features/dashboard/dashboard_screen_v2.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
+import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/patients/patients_screen.dart';
 import 'package:apexo/features/patients/patients_screen_v2.dart';
 import 'package:apexo/features/stats/screen_stats.dart';
@@ -196,6 +197,19 @@ class _Routes {
           navbarTitle: txt("calendar"),
           icon: FluentIcons.calendar,
           screen: CalendarScreen.new,
+          accessible: permissions.list[2] || login.isAdmin,
+          onSelect: () async {
+            await doctors.synchronize();
+            await patients.synchronize();
+            appointments.synchronize();
+          },
+        ),
+        Route(
+          title: 'Checkin',
+          identifier: 'checkin',
+          navbarTitle: 'Checkin',
+          icon: FluentIcons.preview_link,
+          screen: CheckinScreen.new,
           accessible: permissions.list[2] || login.isAdmin,
           onSelect: () async {
             await doctors.synchronize();

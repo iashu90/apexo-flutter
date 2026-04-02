@@ -219,7 +219,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
     showDialog(
       context: context,
       builder: (_) => ContentDialog(
-        title: const Text('New Patients Today'),
+        title: const Text(
+          'New Patients Today',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF183A67),
+          ),
+        ),
         content: SizedBox(
           width: 520,
           child: newPatientAppointments.isEmpty
@@ -241,16 +247,13 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         ? 'Unnamed patient'
                         : appointment.title;
                     final phone = (patient?.phone ?? '').trim();
-                    final time = DateFormat('h:mm a').format(appointment.date);
+                    final age = patient?.age ?? 0;
 
                     return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF5F9FF),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: const Color(0xFFD7E5F7)),
                       ),
                       child: Row(
@@ -281,7 +284,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                if (phone.isNotEmpty)
+                                const SizedBox(height: 2),
+                                Text(
+                                  age > 0 ? 'Age: $age' : 'Age: -',
+                                  style: const TextStyle(
+                                    color: Color(0xFF5B7498),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (phone.isNotEmpty) ...[
+                                  const SizedBox(height: 1),
                                   Text(
                                     phone,
                                     style: const TextStyle(
@@ -289,14 +302,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                       fontSize: 12,
                                     ),
                                   ),
+                                ],
                               ],
-                            ),
-                          ),
-                          Text(
-                            time,
-                            style: const TextStyle(
-                              color: Color(0xFF315983),
-                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -306,7 +313,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                 ),
         ),
         actions: [
-          Button(
+          FilledButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+            ),
             child: const Text('Close'),
             onPressed: () => Navigator.pop(context),
           ),
@@ -348,6 +358,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           _selectedDoctorFilter != _DashboardScreenV2State._filterAll ||
             _selectedTreatmentFilter !=
               _DashboardScreenV2State._treatmentFilterAll;
+        final activeFilters = <String>[];
+        if (_selectedDoctorFilter != _DashboardScreenV2State._filterAll) {
+          if (_selectedDoctorFilter == _DashboardScreenV2State._filterUnassigned) {
+            activeFilters.add('Doctor: Unassigned');
+          } else {
+            final doctorName = doctors.get(_selectedDoctorFilter)?.title ?? 'Unknown';
+            activeFilters.add('Doctor: $doctorName');
+          }
+        }
+        if (_selectedTreatmentFilter != _DashboardScreenV2State._treatmentFilterAll) {
+          activeFilters.add('Treatment: $_selectedTreatmentFilter');
+        }
+        final activeFilterSummary =
+            activeFilters.isEmpty ? null : activeFilters.join(' • ');
 
         final doctorRevenueSplit = <String, double>{};
         final doctorAppointmentCounts = <String, int>{};
@@ -433,19 +457,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       iconColor: const Color(0xFF2D7BD8),
                       iconBackground: const Color(0xFFDDEBFF),
                     ),
-                    _StatCard(
-                      title: 'Completed',
-                      value: '$completed',
-                      icon: FluentIcons.favorite_star_fill,
-                      iconColor: const Color(0xFFDA9A05),
-                      iconBackground: const Color(0xFFFDF1CF),
-                    ),
-                    _StatCard(
-                      title: 'Pending',
-                      value: '$pending',
-                      icon: FluentIcons.checkbox_indeterminate,
-                      iconColor: const Color(0xFF5A9D39),
-                      iconBackground: const Color(0xFFD8F0CD),
+                    _StatusSummaryCard(
+                      completed: completed,
+                      pending: pending,
                     ),
                     _StatCard(
                       title: 'New Patients',
@@ -481,6 +495,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           color: const Color(0xFF2D7BD8),
                         ),
                       ],
+                    ),
+                    _TopTimingSummaryCard(
+                      appointmentsForView: todaysAppointments,
                     ),
                   ],
                 ),
@@ -544,8 +561,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                     if (compact) {
                       return Column(
                         children: [
-                          ...cards.expand((card) => [card, const SizedBox(height: 10)]),
-                        ]..removeLast(),
+                          for (int i = 0; i < cards.length; i++) ...[
+                            cards[i],
+                            if (i != cards.length - 1) const SizedBox(height: 10),
+                          ],
+                        ],
                       );
                     }
 
@@ -583,10 +603,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             }),
                           ),
                           const SizedBox(height: 10),
-                          _AppointmentTimingSummaryCard(
-                            appointmentsForView: doctorScopedAppointments,
-                          ),
-                          const SizedBox(height: 10),
                           _TreatmentStatsCard(
                             stats: treatmentStats,
                             selectedTreatment: _selectedTreatmentFilter,
@@ -607,10 +623,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             tableAppointments: tableAppointments,
                             duplicatePatientKeys: duplicatePatientKeys,
                             isFilterApplied: isDoctorFilterApplied,
+                            activeFilterSummary: activeFilterSummary,
                             searchController: _searchController,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
                             onSort: _onSort,
+                            onClearFilters: () => setState(() {
+                              _selectedDoctorFilter =
+                                  _DashboardScreenV2State._filterAll;
+                              _selectedTreatmentFilter =
+                                  _DashboardScreenV2State._treatmentFilterAll;
+                            }),
                           ),
                         ],
                       );
@@ -634,10 +657,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                           ? _DashboardScreenV2State._filterAll
                                           : v;
                                 }),
-                              ),
-                              const SizedBox(height: 10),
-                              _AppointmentTimingSummaryCard(
-                                appointmentsForView: doctorScopedAppointments,
                               ),
                               const SizedBox(height: 10),
                               _TreatmentStatsCard(
@@ -665,10 +684,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             tableAppointments: tableAppointments,
                             duplicatePatientKeys: duplicatePatientKeys,
                             isFilterApplied: isDoctorFilterApplied,
+                            activeFilterSummary: activeFilterSummary,
                             searchController: _searchController,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
                             onSort: _onSort,
+                            onClearFilters: () => setState(() {
+                              _selectedDoctorFilter =
+                                  _DashboardScreenV2State._filterAll;
+                              _selectedTreatmentFilter =
+                                  _DashboardScreenV2State._treatmentFilterAll;
+                            }),
                           ),
                         ),
                       ],
@@ -842,19 +868,23 @@ class _RightDashboardColumn extends StatelessWidget {
   final List<Appointment> tableAppointments;
   final Set<String> duplicatePatientKeys;
   final bool isFilterApplied;
+  final String? activeFilterSummary;
   final TextEditingController searchController;
   final String sortBy;
   final bool sortAscending;
   final ValueChanged<String> onSort;
+  final VoidCallback onClearFilters;
 
   const _RightDashboardColumn({
     required this.tableAppointments,
     required this.duplicatePatientKeys,
     required this.isFilterApplied,
+    required this.activeFilterSummary,
     required this.searchController,
     required this.sortBy,
     required this.sortAscending,
     required this.onSort,
+    required this.onClearFilters,
   });
 
   @override
@@ -865,10 +895,12 @@ class _RightDashboardColumn extends StatelessWidget {
           tableAppointments: tableAppointments,
           duplicatePatientKeys: duplicatePatientKeys,
           isFilterApplied: isFilterApplied,
+          activeFilterSummary: activeFilterSummary,
           searchController: searchController,
           sortBy: sortBy,
           sortAscending: sortAscending,
           onSort: onSort,
+          onClearFilters: onClearFilters,
         ),
       ],
     );
@@ -912,6 +944,12 @@ class _DoctorScheduleCard extends StatelessWidget {
       );
     }
 
+    final totalDoctorRevenue = doctorRows.fold<double>(
+      0,
+      (sum, row) => sum + row.revenue,
+    );
+    final unassignedRevenue = doctorRevenueSplit['Unassigned'] ?? 0;
+
     doctorRows.sort((a, b) => b.count.compareTo(a.count));
 
     final unassigned =
@@ -939,12 +977,17 @@ class _DoctorScheduleCard extends StatelessWidget {
           _ScheduleLine(
             title: 'All',
             count: todaysAppointments.length,
+            secondaryValue:
+                '₹${totalDoctorRevenue.toStringAsFixed(0)} (100%)',
             selected: selectedFilter == _DashboardScreenV2State._filterAll,
             onTap: () => onFilterChanged(_DashboardScreenV2State._filterAll),
           ),
           _ScheduleLine(
             title: 'Unassigned',
             count: unassigned,
+            secondaryValue: totalDoctorRevenue <= 0
+                ? '₹${unassignedRevenue.toStringAsFixed(0)} (0%)'
+                : '₹${unassignedRevenue.toStringAsFixed(0)} (${(unassignedRevenue / totalDoctorRevenue * 100).toStringAsFixed(0)}%)',
             selected:
                 selectedFilter == _DashboardScreenV2State._filterUnassigned,
             onTap: () =>
@@ -955,7 +998,9 @@ class _DoctorScheduleCard extends StatelessWidget {
                 (row) => _ScheduleLine(
                   title: row.title,
                   count: row.count,
-                  secondaryValue: '₹${row.revenue.toStringAsFixed(0)}',
+                  secondaryValue: totalDoctorRevenue <= 0
+                      ? '₹${row.revenue.toStringAsFixed(0)} (0%)'
+                      : '₹${row.revenue.toStringAsFixed(0)} (${(row.revenue / totalDoctorRevenue * 100).toStringAsFixed(0)}%)',
                   selected: selectedFilter == row.id,
                   onTap: () => onFilterChanged(row.id),
                 ),
@@ -1092,24 +1137,28 @@ class _AppointmentsTableCard extends StatelessWidget {
   final List<Appointment> tableAppointments;
   final Set<String> duplicatePatientKeys;
   final bool isFilterApplied;
+  final String? activeFilterSummary;
   final TextEditingController searchController;
   final String sortBy;
   final bool sortAscending;
   final ValueChanged<String> onSort;
+  final VoidCallback onClearFilters;
 
   const _AppointmentsTableCard({
     required this.tableAppointments,
     required this.duplicatePatientKeys,
     required this.isFilterApplied,
+    required this.activeFilterSummary,
     required this.searchController,
     required this.sortBy,
     required this.sortAscending,
     required this.onSort,
+    required this.onClearFilters,
   });
 
   @override
   Widget build(BuildContext context) {
-    final rows = tableAppointments.take(100).toList();
+    final rows = tableAppointments.take(100).toList(growable: false);
     final duplicateCount = duplicatePatientKeys.length;
     final duplicateText = duplicateCount == 1
         ? '1 patient has duplicate appointment in this list'
@@ -1140,6 +1189,51 @@ class _AppointmentsTableCard extends StatelessWidget {
                       color: Color(0xFF637EA3),
                     ),
                   ),
+                  if (activeFilterSummary != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF2FC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFD0E2F7)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            FluentIcons.filter,
+                            size: 12,
+                            color: Color(0xFF1F4E85),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$activeFilterSummary (${rows.length} results)',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1F4E85),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: onClearFilters,
+                            child: const Text(
+                              'Clear',
+                              style: TextStyle(
+                                color: Color(0xFF2D7BD8),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
               Row(
@@ -1208,21 +1302,23 @@ class _AppointmentsTableCard extends StatelessWidget {
                   onSort: onSort,
                 ),
                 if (rows.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'No appointments today',
-                      style: TextStyle(color: Color(0xFF557195)),
-                    ),
-                  )
-                else
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'No appointments today',
+                    style: TextStyle(color: Color(0xFF557195)),
+                  ),
+                )
+                else ...[
                   ...rows.map(
                     (a) => _AppointmentRow(
                       appointment: a,
-                      isDuplicatePatient: duplicatePatientKeys
-                          .contains(_duplicatePatientKey(a)),
+                      isDuplicatePatient: duplicatePatientKeys.contains(
+                        _duplicatePatientKey(a),
+                      ),
                     ),
                   ),
+                ],
               ],
             ),
           ),
@@ -1448,6 +1544,8 @@ class _AppointmentRow extends StatelessWidget {
     final payment = appointment.paid + appointment.prescriptionPaid;
     final isDigital =
         appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
+    final patientPhone = appointment.patient?.phone ?? '-';
+    final patientAge = appointment.patient?.age ?? 0;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -1466,12 +1564,28 @@ class _AppointmentRow extends StatelessWidget {
             flex: 15,
             child: GestureDetector(
               onTap: () => openAppointment(appointment),
-              child: Text(
-                appointment.title,
-                style: const TextStyle(
-                  color: Color(0xFF1459AD),
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appointment.title,
+                    style: const TextStyle(
+                      color: Color(0xFF1459AD),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '$patientPhone • ${patientAge}y',
+                    style: const TextStyle(
+                      color: Color(0xFF7C93B1),
+                      fontSize: 11,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
           ),
@@ -1546,7 +1660,7 @@ class _AppointmentRow extends StatelessWidget {
                   hoverColor: const Color(0xFFE7F1FF),
                   onTap: () => _openPatientHistoryDialog(context),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 10),
                 _ActionIconButton(
                   tooltip: 'Delete',
                   icon: FluentIcons.delete,
@@ -1949,10 +2063,26 @@ class _QuickCheckInCard extends StatelessWidget {
         child: PatientLookup(
           patientCheckIn: (patient) {
             if (patient == null) return;
+            final todays = appointments
+                .forDate(selectedDate)
+                .where((a) => a.patientID == patient.id)
+                .toList(growable: false)
+              ..sort((a, b) => a.date.compareTo(b.date));
+
+            if (todays.isNotEmpty) {
+              final appt = todays.first;
+              appt.isCheckedIn = true;
+              appt.checkedInAt = DateTime.now();
+              appointments.set(appt);
+              return;
+            }
+
             final dt = _withCurrentTime(selectedDate);
             appointments.set(Appointment.fromJson({
               'patientID': patient.id,
               'date': dt.millisecondsSinceEpoch,
+              'isCheckedIn': true,
+              'checkedInAt': DateTime.now().millisecondsSinceEpoch,
             }));
           },
           addAppointment: (patient) {
@@ -2093,8 +2223,11 @@ class _TreatmentStatsCard extends StatelessWidget {
             ),
           if (stats.topTreatments.length > 5) ...[
             const SizedBox(height: 8),
-            Button(
+            FilledButton(
               onPressed: onToggleShowAll,
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+              ),
               child: Text(showAll ? 'Show Top 5' : 'Show More'),
             ),
           ],
@@ -2155,17 +2288,16 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: SizedBox(
-        width: 242,
-        child: _CardShell(
-          child: SizedBox(
-            height: 82,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
+        child: SizedBox(
+          height: 140,
+          child: _CardShell(
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(title,
@@ -2185,7 +2317,7 @@ class _StatCard extends StatelessWidget {
                 Container(
                   width: 38,
                   height: 38,
-                  margin: const EdgeInsets.only(bottom: 4),
+                  margin: const EdgeInsets.only(top: 2),
                   decoration: BoxDecoration(
                     color: iconBackground,
                     borderRadius: BorderRadius.circular(8),
@@ -2209,24 +2341,33 @@ class _RevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 290,
-      child: _CardShell(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF496489))),
-            const SizedBox(height: 7),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1468CC),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 240, maxWidth: 340),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF496489),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 7),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1468CC),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2297,11 +2438,12 @@ class _TopPatientGrowthCard extends StatelessWidget {
       );
     }
 
-    return SizedBox(
-      width: 290,
-      height: 140,
-      child: _CardShell(
-        child: Column(
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 240, maxWidth: 360),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -2349,8 +2491,183 @@ class _TopPatientGrowthCard extends StatelessWidget {
               prevWeekRatio,
               const Color(0xFF9BB9DD),
             ),
+            const SizedBox(height: 2),
           ],
         ),
+      ),
+      ),
+    );
+  }
+}
+
+class _StatusSummaryCard extends StatelessWidget {
+  final int completed;
+  final int pending;
+
+  const _StatusSummaryCard({required this.completed, required this.pending});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = completed + pending;
+    final donePct = total == 0 ? 0 : ((completed / total) * 100).round();
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Status Today',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF496489),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  FluentIcons.check_mark,
+                  size: 14,
+                  color: Color(0xFF3B9A42),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Completed: $completed',
+                  style: const TextStyle(
+                    color: Color(0xFF3B9A42),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(
+                  FluentIcons.checkbox_indeterminate,
+                  size: 14,
+                  color: Color(0xFFE4A11B),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Pending: $pending',
+                  style: const TextStyle(
+                    color: Color(0xFFE4A11B),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              'Completion rate: $donePct%',
+              style: const TextStyle(
+                color: Color(0xFF36557C),
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+}
+
+class _TopTimingSummaryCard extends StatelessWidget {
+  final List<Appointment> appointmentsForView;
+
+  const _TopTimingSummaryCard({required this.appointmentsForView});
+
+  @override
+  Widget build(BuildContext context) {
+    final morning = appointmentsForView
+        .where((a) => a.date.hour >= 6 && a.date.hour <= 11)
+        .length;
+    final afternoon = appointmentsForView
+        .where((a) => a.date.hour >= 12 && a.date.hour <= 16)
+        .length;
+    final evening = appointmentsForView
+        .where((a) => a.date.hour >= 17 && a.date.hour <= 21)
+        .length;
+    final maxCount = math.max(1, math.max(morning, math.max(afternoon, evening)));
+
+    Widget miniBar(String label, int value, Color color) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 48,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF496489),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  height: 8,
+                  color: const Color(0xFFEAF2FC),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: value / maxCount,
+                      child: Container(color: color),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '$value',
+              style: const TextStyle(
+                color: Color(0xFF1F446E),
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 240, maxWidth: 340),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Appointment Timing',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF496489),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            miniBar('Morning 6-12', morning, const Color(0xFF2D7BD8)),
+            miniBar('Afternoon 12-5', afternoon, const Color(0xFF2BA58D)),
+            miniBar('Evening 5-10', evening, const Color(0xFFE09C31)),
+          ],
+        ),
+      ),
       ),
     );
   }

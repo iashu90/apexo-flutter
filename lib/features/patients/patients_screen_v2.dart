@@ -298,8 +298,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       ],
                     ),
                     SizedBox(
-                      width: 280,
-                      height: 160,
+                      width: 320,
+                      height: 196,
                       child: _TreatmentJourneyTimelineCard(
                         metrics: journeyMetrics,
                       ),
@@ -307,71 +307,98 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                _AgeDistributionCard(buckets: ageBuckets),
-                const SizedBox(height: 10),
-                _TopPatientsCard(
-                  rows: topPatientsByVisits,
-                  selectedRange: _topRange,
-                  ranges: _topRanges,
-                  onSelectRange: (v) => setState(() {
-                    _topRange = v;
-                    _topPatientsVisibleCount = 10;
-                  }),
-                  onOpenHistory: _openPatientHistoryDialog,
-                  visibleCount: _topPatientsVisibleCount,
-                  onViewMore: () => setState(() {
-                    if (_topPatientsVisibleCount >= topPatientsByVisits.length) {
-                      _topPatientsVisibleCount = 10;
-                    } else {
-                      _topPatientsVisibleCount = math.min(
-                        _topPatientsVisibleCount + 10,
-                        topPatientsByVisits.length,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cards = [
+                      _AgeDistributionCard(buckets: ageBuckets),
+                      _TopPatientsCard(
+                        rows: topPatientsByVisits,
+                        selectedRange: _topRange,
+                        ranges: _topRanges,
+                        onSelectRange: (v) => setState(() {
+                          _topRange = v;
+                          _topPatientsVisibleCount = 10;
+                        }),
+                        onOpenHistory: _openPatientHistoryDialog,
+                        visibleCount: _topPatientsVisibleCount,
+                        onViewMore: () => setState(() {
+                          if (_topPatientsVisibleCount >=
+                              topPatientsByVisits.length) {
+                            _topPatientsVisibleCount = 10;
+                          } else {
+                            _topPatientsVisibleCount = math.min(
+                              _topPatientsVisibleCount + 10,
+                              topPatientsByVisits.length,
+                            );
+                          }
+                        }),
+                      ),
+                      _TopOutstandingCard(
+                        rows: topOutstanding,
+                        selectedRange: _outstandingRange,
+                        ranges: _topRanges,
+                        onSelectRange: (v) => setState(() {
+                          _outstandingRange = v;
+                          _topOutstandingVisibleCount = 10;
+                        }),
+                        onOpenHistory: _openPatientHistoryDialog,
+                        visibleCount: _topOutstandingVisibleCount,
+                        onViewMore: () => setState(() {
+                          if (_topOutstandingVisibleCount >=
+                              topOutstanding.length) {
+                            _topOutstandingVisibleCount = 10;
+                          } else {
+                            _topOutstandingVisibleCount = math.min(
+                              _topOutstandingVisibleCount + 10,
+                              topOutstanding.length,
+                            );
+                          }
+                        }),
+                      ),
+                      _TopProcedurePatientsCard(
+                        selectedTab: _procedureTab,
+                        rows: topProcedurePatients.toList(growable: false),
+                        onSelectTab: (tab) => setState(() {
+                          _procedureTab = tab;
+                          _topProcedureVisibleCount = 10;
+                        }),
+                        onOpenHistory: _openPatientHistoryDialog,
+                        visibleCount: _topProcedureVisibleCount,
+                        onViewMore: () => setState(() {
+                          if (_topProcedureVisibleCount >=
+                              topProcedurePatients.length) {
+                            _topProcedureVisibleCount = 10;
+                          } else {
+                            _topProcedureVisibleCount = math.min(
+                              _topProcedureVisibleCount + 10,
+                              topProcedurePatients.length,
+                            );
+                          }
+                        }),
+                      ),
+                    ];
+
+                    if (constraints.maxWidth < 1550) {
+                      return Column(
+                        children: [
+                          for (int i = 0; i < cards.length; i++) ...[
+                            cards[i],
+                            if (i != cards.length - 1) const SizedBox(height: 10),
+                          ],
+                        ],
                       );
                     }
-                  }),
-                ),
-                const SizedBox(height: 10),
-                _TopOutstandingCard(
-                  rows: topOutstanding,
-                  selectedRange: _outstandingRange,
-                  ranges: _topRanges,
-                  onSelectRange: (v) => setState(() {
-                    _outstandingRange = v;
-                    _topOutstandingVisibleCount = 10;
-                  }),
-                  onOpenHistory: _openPatientHistoryDialog,
-                  visibleCount: _topOutstandingVisibleCount,
-                  onViewMore: () => setState(() {
-                    if (_topOutstandingVisibleCount >= topOutstanding.length) {
-                      _topOutstandingVisibleCount = 10;
-                    } else {
-                      _topOutstandingVisibleCount = math.min(
-                        _topOutstandingVisibleCount + 10,
-                        topOutstanding.length,
-                      );
-                    }
-                  }),
-                ),
-                const SizedBox(height: 10),
-                _TopProcedurePatientsCard(
-                  selectedTab: _procedureTab,
-                  rows: topProcedurePatients.toList(growable: false),
-                  onSelectTab: (tab) => setState(() {
-                    _procedureTab = tab;
-                    _topProcedureVisibleCount = 10;
-                  }),
-                  onOpenHistory: _openPatientHistoryDialog,
-                  visibleCount: _topProcedureVisibleCount,
-                  onViewMore: () => setState(() {
-                    if (_topProcedureVisibleCount >= topProcedurePatients.length) {
-                      _topProcedureVisibleCount = 10;
-                    } else {
-                      _topProcedureVisibleCount = math.min(
-                        _topProcedureVisibleCount + 10,
-                        topProcedurePatients.length,
-                      );
-                    }
-                  }),
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (int i = 0; i < cards.length; i++) ...[
+                          Expanded(child: cards[i]),
+                          if (i != cards.length - 1) const SizedBox(width: 10),
+                        ],
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
                 _AllPatientsListCard(
@@ -657,8 +684,64 @@ class _TreatmentJourneyTimelineCard extends StatelessWidget {
               bar('Inactive', metrics.inactive, const Color(0xFF7D8FA7)),
             ],
           ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: const [
+              _JourneyLegendItem(
+                color: Color(0xFF2D7BD8),
+                text: 'New: first visit only',
+              ),
+              _JourneyLegendItem(
+                color: Color(0xFF2BA58D),
+                text: 'Active: last visit <= 60 days',
+              ),
+              _JourneyLegendItem(
+                color: Color(0xFFE09C31),
+                text: 'Follow-up: 61-180 days',
+              ),
+              _JourneyLegendItem(
+                color: Color(0xFF7D8FA7),
+                text: 'Inactive: > 180 days',
+              ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _JourneyLegendItem extends StatelessWidget {
+  final Color color;
+  final String text;
+
+  const _JourneyLegendItem({required this.color, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 10,
+            color: Color(0xFF607B9F),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1415,8 +1498,13 @@ class _TopPatientsCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     if (rows.length > 10)
-                      Button(
+                      FilledButton(
                         onPressed: onViewMore,
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.all(
+                            const Color(0xFF2D7BD8),
+                          ),
+                        ),
                         child: Text(hasMore ? 'View More (+10)' : 'Show Less'),
                       ),
                   ],
@@ -1573,8 +1661,13 @@ class _TopOutstandingCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     if (rows.length > 10)
-                      Button(
+                      FilledButton(
                         onPressed: onViewMore,
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.all(
+                            const Color(0xFF2D7BD8),
+                          ),
+                        ),
                         child: Text(hasMore ? 'View More (+10)' : 'Show Less'),
                       ),
                   ],
@@ -1727,8 +1820,13 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     if (rows.length > 10)
-                      Button(
+                      FilledButton(
                         onPressed: onViewMore,
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.all(
+                            const Color(0xFF2D7BD8),
+                          ),
+                        ),
                         child: Text(hasMore ? 'View More (+10)' : 'Show Less'),
                       ),
                   ],

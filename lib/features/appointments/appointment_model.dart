@@ -123,6 +123,8 @@ class Appointment extends Model {
   /* 13 */ List<String> selectedTeeth = [];
   bool treatmentGpayPaid = false;
   bool prescriptionGpayPaid = false;
+  bool isCheckedIn = false;
+  DateTime? checkedInAt;
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     /* 1 */ operatorsIDs =
@@ -167,6 +169,11 @@ class Appointment extends Model {
     discountType = json['discountType'] ?? 'flat';
     treatmentGpayPaid = json['treatmentGpayPaid'] ?? false;
     prescriptionGpayPaid = json['prescriptionGpayPaid'] ?? false;
+    isCheckedIn = json['isCheckedIn'] ?? false;
+    final rawCheckedInAt = json['checkedInAt'];
+    if (rawCheckedInAt is int) {
+      checkedInAt = DateTime.fromMillisecondsSinceEpoch(rawCheckedInAt);
+    }
     diagnosis = List<String>.from(json['diagnosis'] ?? []);
   }
 
@@ -202,6 +209,10 @@ class Appointment extends Model {
     if (discountType != d.discountType) json['discountType'] = discountType;
     json['treatmentGpayPaid'] = treatmentGpayPaid;
     json['prescriptionGpayPaid'] = prescriptionGpayPaid;
+    if (isCheckedIn != d.isCheckedIn) json['isCheckedIn'] = isCheckedIn;
+    if (checkedInAt != null) {
+      json['checkedInAt'] = checkedInAt!.millisecondsSinceEpoch;
+    }
     json['diagnosis'] = diagnosis;
     json.remove("title"); // remove since it is a computed value in this case
 
