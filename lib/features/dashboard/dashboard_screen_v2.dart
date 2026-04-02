@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
@@ -25,12 +27,14 @@ class DashboardScreenV2 extends StatefulWidget {
 class _DashboardScreenV2State extends State<DashboardScreenV2> {
   static const String _filterAll = '__all__';
   static const String _filterUnassigned = '__unassigned__';
+  static const String _treatmentFilterAll = '__all_treatments__';
 
   late DateTime selectedDate;
   String _sortBy = 'time';
   bool _sortAscending = true;
   String _searchQuery = '';
   String _selectedDoctorFilter = _filterAll;
+  String _selectedTreatmentFilter = _treatmentFilterAll;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -160,6 +164,18 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
     }
     return source
         .where((a) => a.operatorsIDs.contains(_selectedDoctorFilter))
+        .toList();
+  }
+
+  List<Appointment> _treatmentFiltered(List<Appointment> source) {
+    if (_selectedTreatmentFilter == _treatmentFilterAll) return source;
+    final treatment = _selectedTreatmentFilter.toLowerCase();
+    return source
+        .where(
+          (a) => a.selectedTreatments.any(
+            (t) => t.trim().toLowerCase() == treatment,
+          ),
+        )
         .toList();
   }
 
@@ -305,6 +321,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
       builder: (context, _) {
         final todaysAppointments = appointments.forDate(selectedDate)
           ..sort((a, b) => a.date.compareTo(b.date));
+        final allAppointments = appointments.present.values.toList(growable: false);
 
         final completed = todaysAppointments.where((a) => a.isDone).length;
         final pending = todaysAppointments.length - completed;
@@ -319,13 +336,75 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final prescriptionRevenue = todaysAppointments.fold<double>(
             0, (sum, a) => sum + a.prescriptionPaid);
         final outstandingBalance = dashboardCtrl.totalDueAmount();
-        final treatmentStats = _TreatmentStats.from(todaysAppointments);
         final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
-        final tableAppointments = _filteredAndSorted(doctorScopedAppointments);
+        final treatmentStats = _TreatmentStats.from(doctorScopedAppointments);
+        final treatmentScopedAppointments =
+          _treatmentFiltered(doctorScopedAppointments);
+        final tableAppointments = _filteredAndSorted(treatmentScopedAppointments);
         final duplicatePatientKeys =
-            _duplicatePatientKeys(doctorScopedAppointments);
+          _duplicatePatientKeys(treatmentScopedAppointments);
         final isDoctorFilterApplied =
-            _selectedDoctorFilter != _DashboardScreenV2State._filterAll;
+          _selectedDoctorFilter != _DashboardScreenV2State._filterAll ||
+            _selectedTreatmentFilter !=
+              _DashboardScreenV2State._treatmentFilterAll;
+
+        final doctorRevenueSplit = <String, double>{};
+        final doctorAppointmentCounts = <String, int>{};
+        final paymentModeCounts = <String, int>{'Cash': 0, 'GPay': 0};
+
+        for (final a in todaysAppointments) {
+            final totalPayment = a.paid + a.prescriptionPaid;
+            final doctorIds =
+              a.operatorsIDs.isEmpty ? const ['__unassigned__'] : a.operatorsIDs;
+          final perDoctor = totalPayment / doctorIds.length;
+          for (final doctorId in doctorIds) {
+            final label = doctorId == '__unassigned__'
+                ? 'Unassigned'
+                : (doctors.get(doctorId)?.title ?? 'Unknown');
+            doctorRevenueSplit[label] =
+                (doctorRevenueSplit[label] ?? 0) + perDoctor;
+            doctorAppointmentCounts[label] =
+                (doctorAppointmentCounts[label] ?? 0) + 1;
+          }
+
+          final isDigital = a.treatmentGpayPaid || a.prescriptionGpayPaid;
+          if (isDigital) {
+            paymentModeCounts['GPay'] = (paymentModeCounts['GPay'] ?? 0) + 1;
+          } else {
+            paymentModeCounts['Cash'] = (paymentModeCounts['Cash'] ?? 0) + 1;
+          }
+        }
+
+        final firstVisitByPatient = <String, DateTime>{};
+        for (final a in allAppointments) {
+          final pid = a.patientID;
+          if (pid == null || pid.isEmpty) continue;
+          final visitDate = _dateOnly(a.date);
+          final existing = firstVisitByPatient[pid];
+          if (existing == null || visitDate.isBefore(existing)) {
+            firstVisitByPatient[pid] = visitDate;
+          }
+        }
+
+        final selectedDateOnly = _dateOnly(selectedDate);
+        final weekStart =
+          _dateOnly(selectedDate.subtract(const Duration(days: 6)));
+        final selectedEnd = _dateOnly(selectedDate).add(const Duration(days: 1));
+        final prevWeekStart = _dateOnly(weekStart.subtract(const Duration(days: 7)));
+        final prevWeekEnd = weekStart;
+
+        final newPatientsToday = firstVisitByPatient.values
+            .where((d) => d == selectedDateOnly)
+            .length;
+        final newPatientsWeek = firstVisitByPatient.values
+            .where((d) => !d.isBefore(weekStart) && d.isBefore(selectedEnd))
+            .length;
+        final newPatientsPrevWeek = firstVisitByPatient.values
+            .where((d) => !d.isBefore(prevWeekStart) && d.isBefore(prevWeekEnd))
+            .length;
+        final growthPct = newPatientsPrevWeek == 0
+            ? (newPatientsWeek > 0 ? 100.0 : 0.0)
+            : ((newPatientsWeek - newPatientsPrevWeek) / newPatientsPrevWeek) * 100.0;
 
         return Container(
           color: const Color(0xFFF3F7FC),
@@ -379,6 +458,29 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       title: 'Revenue Today',
                       value: _money(revenueToday),
                     ),
+                    _TopPatientGrowthCard(
+                      newPatientsToday: newPatientsToday,
+                      newPatientsWeek: newPatientsWeek,
+                      newPatientsPrevWeek: newPatientsPrevWeek,
+                      growthPct: growthPct,
+                    ),
+                    _TopDonutMetricCard(
+                      title: 'Payment Mode',
+                      centerValue:
+                          '${paymentModeCounts.values.fold<int>(0, (s, v) => s + v)}',
+                      segments: [
+                        _TopDonutSegment(
+                          label: 'Cash',
+                          value: paymentModeCounts['Cash'] ?? 0,
+                          color: const Color(0xFF7D8FA7),
+                        ),
+                        _TopDonutSegment(
+                          label: 'GPay',
+                          value: paymentModeCounts['GPay'] ?? 0,
+                          color: const Color(0xFF2D7BD8),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -421,6 +523,51 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                const _SectionTitle('Revenue Intelligence'),
+                const SizedBox(height: 10),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compact = constraints.maxWidth < 1360;
+                    final cards = [
+                      _RevenueSplitCard(
+                        title: 'Revenue Split by Doctor',
+                        split: doctorRevenueSplit,
+                        accent: const Color(0xFF2BA58D),
+                        secondaryCounts: doctorAppointmentCounts,
+                        secondaryBadgeLabel: 'appts',
+                        compact: true,
+                      ),
+                      _PatientGrowthMetricsCard(
+                        newPatientsToday: newPatientsToday,
+                        newPatientsWeek: newPatientsWeek,
+                        newPatientsPrevWeek: newPatientsPrevWeek,
+                        growthPct: growthPct,
+                      ),
+                    ];
+
+                    if (compact) {
+                      return Column(
+                        children: [
+                          ...cards.expand((card) => [card, const SizedBox(height: 10)]),
+                        ]..removeLast(),
+                      );
+                    }
+
+                    return Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: cards
+                          .map(
+                            (card) => SizedBox(
+                              width: (constraints.maxWidth - 20) / 3,
+                              child: card,
+                            ),
+                          )
+                          .toList(growable: false),
+                    );
+                  },
+                ),
                 const SizedBox(height: 14),
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -444,7 +591,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             appointmentsForView: doctorScopedAppointments,
                           ),
                           const SizedBox(height: 10),
-                          _TreatmentStatsCard(stats: treatmentStats),
+                          _TreatmentStatsCard(
+                            stats: treatmentStats,
+                            selectedTreatment: _selectedTreatmentFilter,
+                            onFilterChanged: (v) => setState(() {
+                              _selectedTreatmentFilter =
+                                  _selectedTreatmentFilter == v
+                                      ? _DashboardScreenV2State
+                                          ._treatmentFilterAll
+                                      : v;
+                            }),
+                          ),
                           const SizedBox(height: 10),
                           _RightDashboardColumn(
                             tableAppointments: tableAppointments,
@@ -482,7 +639,17 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                 appointmentsForView: doctorScopedAppointments,
                               ),
                               const SizedBox(height: 10),
-                              _TreatmentStatsCard(stats: treatmentStats),
+                              _TreatmentStatsCard(
+                                stats: treatmentStats,
+                                selectedTreatment: _selectedTreatmentFilter,
+                                onFilterChanged: (v) => setState(() {
+                                  _selectedTreatmentFilter =
+                                      _selectedTreatmentFilter == v
+                                          ? _DashboardScreenV2State
+                                              ._treatmentFilterAll
+                                          : v;
+                                }),
+                              ),
                             ],
                           ),
                         ),
@@ -513,6 +680,155 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   static String _money(double value) {
     final formatter = NumberFormat('#,##0.##');
     return '₹${formatter.format(value)}';
+  }
+}
+
+class _RevenueSplitCard extends StatelessWidget {
+  final String title;
+  final Map<String, double> split;
+  final Color accent;
+  final Map<String, int>? secondaryCounts;
+  final String? secondaryBadgeLabel;
+  final bool compact;
+
+  const _RevenueSplitCard({
+    required this.title,
+    required this.split,
+    required this.accent,
+    this.secondaryCounts,
+    this.secondaryBadgeLabel,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = split.entries.toList(growable: false)
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final rows = sorted.take(compact ? 4 : 5).toList(growable: false);
+    final total = sorted.fold<double>(0, (sum, e) => sum + e.value);
+
+    return _CardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: compact ? 16 : 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF183A67),
+            ),
+          ),
+          SizedBox(height: compact ? 8 : 10),
+          if (rows.isEmpty)
+            const Text(
+              'No revenue data for this date.',
+              style: TextStyle(color: Color(0xFF607B9F)),
+            )
+          else
+            ...rows.map((entry) {
+              final pct = total == 0 ? 0 : (entry.value / total) * 100;
+              return Padding(
+                padding: EdgeInsets.only(bottom: compact ? 6 : 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        entry.key,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF36557C),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (secondaryCounts != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5F1FF),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0xFFBFDAFA)),
+                        ),
+                        child: Text(
+                          '${secondaryCounts![entry.key] ?? 0} ${secondaryBadgeLabel ?? ''}'
+                              .trim(),
+                          style: TextStyle(
+                            color: Color(0xFF1459AD),
+                            fontSize: compact ? 10 : 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '₹${entry.value.toStringAsFixed(0)} (${pct.toStringAsFixed(0)}%)',
+                      style: TextStyle(
+                        color: Color(0xFF1F446E),
+                        fontWeight: FontWeight.w700,
+                        fontSize: compact ? 12 : 13,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _PatientGrowthMetricsCard extends StatelessWidget {
+  final int newPatientsToday;
+  final int newPatientsWeek;
+  final int newPatientsPrevWeek;
+  final double growthPct;
+
+  const _PatientGrowthMetricsCard({
+    required this.newPatientsToday,
+    required this.newPatientsWeek,
+    required this.newPatientsPrevWeek,
+    required this.growthPct,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _CardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Patient Growth Metrics',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF183A67),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _InsightLine(label: 'New patients today', value: '$newPatientsToday'),
+          _InsightLine(label: 'New patients this week', value: '$newPatientsWeek'),
+          _InsightLine(label: 'New patients prev week', value: '$newPatientsPrevWeek'),
+          _InsightLine(
+            label: 'Week-over-week growth',
+            value: '${growthPct.toStringAsFixed(1)}%',
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1209,33 +1525,75 @@ class _AppointmentRow extends StatelessWidget {
             flex: 10,
             child: Row(
               children: [
-                Tooltip(
-                  message: 'History',
-                  child: GestureDetector(
-                    onTap: () => _openPatientHistoryDialog(context),
-                    child: const Icon(
-                      FluentIcons.history,
-                      size: 13,
-                      color: Color(0xFF2D7BD8),
-                    ),
-                  ),
+                _ActionIconButton(
+                  tooltip: 'History',
+                  icon: FluentIcons.history,
+                  color: const Color(0xFF2D7BD8),
+                  hoverColor: const Color(0xFFE7F1FF),
+                  onTap: () => _openPatientHistoryDialog(context),
                 ),
-                const SizedBox(width: 12),
-                Tooltip(
-                  message: 'Delete',
-                  child: GestureDetector(
-                    onTap: () => _deleteAppointment(context),
-                    child: const Icon(
-                      FluentIcons.delete,
-                      size: 13,
-                      color: Color(0xFFD6455D),
-                    ),
-                  ),
+                const SizedBox(width: 16),
+                _ActionIconButton(
+                  tooltip: 'Delete',
+                  icon: FluentIcons.delete,
+                  color: const Color(0xFFD6455D),
+                  hoverColor: const Color(0xFFFFECEF),
+                  onTap: () => _deleteAppointment(context),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ActionIconButton extends StatefulWidget {
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final Color hoverColor;
+  final VoidCallback onTap;
+
+  const _ActionIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    required this.hoverColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_ActionIconButton> createState() => _ActionIconButtonState();
+}
+
+class _ActionIconButtonState extends State<_ActionIconButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: _hovered ? widget.hoverColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              widget.icon,
+              size: 13,
+              color: widget.color,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1642,8 +2000,14 @@ class _TreatmentStats {
 
 class _TreatmentStatsCard extends StatelessWidget {
   final _TreatmentStats stats;
+  final String selectedTreatment;
+  final ValueChanged<String> onFilterChanged;
 
-  const _TreatmentStatsCard({required this.stats});
+  const _TreatmentStatsCard({
+    required this.stats,
+    required this.selectedTreatment,
+    required this.onFilterChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1662,8 +2026,11 @@ class _TreatmentStatsCard extends StatelessWidget {
           _ScheduleLine(
             title: 'Total',
             count: stats.totalTreatments,
-            selected: false,
-            onTap: () {},
+            selected:
+                selectedTreatment == _DashboardScreenV2State._treatmentFilterAll,
+            onTap: () => onFilterChanged(
+              _DashboardScreenV2State._treatmentFilterAll,
+            ),
           ),
           if (stats.topTreatments.isEmpty)
             const Padding(
@@ -1678,8 +2045,9 @@ class _TreatmentStatsCard extends StatelessWidget {
               (entry) => _ScheduleLine(
                 title: entry.key,
                 count: entry.value,
-                selected: false,
-                onTap: () {},
+                selected:
+                    selectedTreatment.toLowerCase() == entry.key.toLowerCase(),
+                onTap: () => onFilterChanged(entry.key),
               ),
             ),
         ],
@@ -1814,6 +2182,301 @@ class _RevenueCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _TopPatientGrowthCard extends StatelessWidget {
+  final int newPatientsToday;
+  final int newPatientsWeek;
+  final int newPatientsPrevWeek;
+  final double growthPct;
+
+  const _TopPatientGrowthCard({
+    required this.newPatientsToday,
+    required this.newPatientsWeek,
+    required this.newPatientsPrevWeek,
+    required this.growthPct,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final maxBar = math.max(1, math.max(newPatientsWeek, newPatientsPrevWeek));
+    final thisWeekRatio = newPatientsWeek / maxBar;
+    final prevWeekRatio = newPatientsPrevWeek / maxBar;
+
+    Widget barLine(String label, int value, double ratio, Color color) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 62,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF456284),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  height: 8,
+                  color: const Color(0xFFEAF2FC),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: ratio.clamp(0.0, 1.0),
+                      child: Container(color: color),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '$value',
+              style: const TextStyle(
+                color: Color(0xFF1F446E),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 290,
+      child: _CardShell(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Patient Growth',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF496489),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            barLine(
+              'This week',
+              newPatientsWeek,
+              thisWeekRatio,
+              const Color(0xFF2D7BD8),
+            ),
+            barLine(
+              'Prev week',
+              newPatientsPrevWeek,
+              prevWeekRatio,
+              const Color(0xFF9BB9DD),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                const Text(
+                  'Today',
+                  style: TextStyle(
+                    color: Color(0xFF456284),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$newPatientsToday',
+                  style: const TextStyle(
+                    color: Color(0xFF1F446E),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${growthPct.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    color: growthPct >= 0
+                        ? const Color(0xFF1F8F4E)
+                        : const Color(0xFFD6455D),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopDonutSegment {
+  final String label;
+  final int value;
+  final Color color;
+
+  const _TopDonutSegment({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+}
+
+class _TopDonutMetricCard extends StatelessWidget {
+  final String title;
+  final String centerValue;
+  final List<_TopDonutSegment> segments;
+
+  const _TopDonutMetricCard({
+    required this.title,
+    required this.centerValue,
+    required this.segments,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final total = segments.fold<int>(0, (sum, s) => sum + s.value);
+
+    return SizedBox(
+      width: 290,
+      child: _CardShell(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF496489),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(
+                  width: 74,
+                  height: 74,
+                  child: CustomPaint(
+                    painter: _TopDonutPainter(segments: segments),
+                    child: Center(
+                      child: Text(
+                        centerValue,
+                        style: const TextStyle(
+                          color: Color(0xFF1D3E67),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: segments
+                        .map(
+                          (s) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: s.color,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '${s.label} (${s.value})',
+                                    style: const TextStyle(
+                                      color: Color(0xFF36557C),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  total == 0
+                                      ? '0%'
+                                      : '${((s.value / total) * 100).round()}%',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1F446E),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopDonutPainter extends CustomPainter {
+  final List<_TopDonutSegment> segments;
+
+  const _TopDonutPainter({required this.segments});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = segments.fold<int>(0, (sum, s) => sum + s.value);
+    final stroke = size.width * 0.2;
+    final rect = Offset.zero & size;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round;
+
+    if (total == 0) {
+      paint.color = const Color(0xFFD8E6F5);
+      canvas.drawArc(
+        rect.deflate(stroke / 2),
+        -math.pi / 2,
+        math.pi * 2,
+        false,
+        paint,
+      );
+      return;
+    }
+
+    double start = -math.pi / 2;
+    const gap = 0.04;
+    for (final segment in segments) {
+      if (segment.value <= 0) continue;
+      final sweep = (segment.value / total) * math.pi * 2;
+      paint.color = segment.color;
+      final adjustedSweep = math.max(0.0, sweep - gap);
+      canvas.drawArc(
+        rect.deflate(stroke / 2),
+        start,
+        adjustedSweep,
+        false,
+        paint,
+      );
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TopDonutPainter oldDelegate) {
+    return oldDelegate.segments != segments;
   }
 }
 

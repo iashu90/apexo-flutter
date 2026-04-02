@@ -21,11 +21,15 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   final TextEditingController _listSearchController = TextEditingController();
 
   String _listQuery = '';
-  String _topRange = '1Week';
-  String _outstandingRange = '1Week';
+  String _topRange = '1Month';
+  String _outstandingRange = '1Month';
+  String _procedureTab = 'RCT';
   String _selectedAlphabet = 'A';
   String _sortBy = 'name';
   bool _sortAscending = true;
+  bool _showAllTopPatients = false;
+  bool _showAllOutstanding = false;
+  bool _showAllProcedureFocus = false;
   int _currentPage = 1;
 
   static const int _pageSize = 200;
@@ -53,10 +57,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   void dispose() {
     _listSearchController.dispose();
     super.dispose();
-  }
-
-  DateTime _dateOnly(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
   }
 
   DateTime? _rangeStart(String range, DateTime now) {
@@ -141,28 +141,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             }
 
             final now = DateTime.now();
-            final today = _dateOnly(now);
-            final todaysAppointments = allAppointments
-                .where((a) => _dateOnly(a.date) == today)
-                .toList(growable: false);
-
-            final todayUniquePatientIds = todaysAppointments
-                .map((a) => a.patientID)
-                .whereType<String>()
-                .toSet();
-
-            int newPatientsToday = 0;
-            int returningPatientsToday = 0;
-            for (final id in todayUniquePatientIds) {
-              final visits = visitsByPatient[id] ?? const <Appointment>[];
-              if (visits.isEmpty) continue;
-              final isNewToday = _dateOnly(visits.first.date) == today;
-              if (isNewToday) {
-                newPatientsToday++;
-              } else {
-                returningPatientsToday++;
-              }
-            }
 
             final ageBuckets = _ageGenderBuckets(allPatients);
             final genderBuckets = _genderBuckets(allPatients);
@@ -195,6 +173,18 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                 .where((entry) => entry.value > 0)
                 .toList(growable: false)
               ..sort((a, b) => b.value.compareTo(a.value));
+
+            final topProcedurePatients = _topPatientsByProcedure(
+              allPatients: allPatients,
+              allAppointments: allAppointments,
+              procedureTab: _procedureTab,
+            );
+
+            final journeyMetrics = _treatmentJourneyMetrics(
+              allPatients: allPatients,
+              visitsByPatient: visitsByPatient,
+              now: now,
+            );
 
             final preAlphabetPatients = allPatients.where((patient) {
               if (_listQuery.isEmpty) return true;
@@ -273,150 +263,198 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       value: '$uniquePatientCount',
                       valueColor: const Color(0xFF1D3E67),
                     ),
-                    _MetricCard(
-                      title: 'New Patients Today',
-                      value: '$newPatientsToday',
-                      valueColor: const Color(0xFF1A8CC2),
+                    _DonutMetricCard(
+                      title: 'Gender Distribution',
+                      centerValue:
+                          '${genderBuckets.values.fold<int>(0, (s, v) => s + v)}',
+                      segments: [
+                        _DonutSegment(
+                          label: 'Male',
+                          value: genderBuckets['Male'] ?? 0,
+                          color: const Color(0xFF2D7BD8),
+                        ),
+                        _DonutSegment(
+                          label: 'Female',
+                          value: genderBuckets['Female'] ?? 0,
+                          color: const Color(0xFF2BA58D),
+                        ),
+                      ],
                     ),
-                    _MetricCard(
-                      title: 'Returning Patients',
-                      value: '$returningPatientsToday',
-                      valueColor: const Color(0xFF2B5DB8),
+                    _DonutMetricCard(
+                      title: 'Payment Mode',
+                      centerValue:
+                          '${paymentModeBuckets.values.fold<int>(0, (s, v) => s + v)}',
+                      segments: [
+                        _DonutSegment(
+                          label: 'Cash',
+                          value: paymentModeBuckets['Cash'] ?? 0,
+                          color: const Color(0xFF7D8FA7),
+                        ),
+                        _DonutSegment(
+                          label: 'GPay',
+                          value: paymentModeBuckets['GPay'] ?? 0,
+                          color: const Color(0xFF2D7BD8),
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      width: 280,
+                      child: _TreatmentJourneyTimelineCard(
+                        metrics: journeyMetrics,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final useColumn = constraints.maxWidth < 1260;
-
-                    if (useColumn) {
+                    if (constraints.maxWidth < 1260) {
                       return Column(
                         children: [
                           _AgeDistributionCard(buckets: ageBuckets),
-                          const SizedBox(height: 10),
-                          _GenderDistributionCard(buckets: genderBuckets),
-                          const SizedBox(height: 10),
-                          _PaymentModeDistributionCard(
-                            buckets: paymentModeBuckets,
-                          ),
-                          const SizedBox(height: 10),
+                        ],
+                      );
+                    }
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _AgeDistributionCard(buckets: ageBuckets)),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 1260) {
+                      return Column(
+                        children: [
                           _TopPatientsCard(
-                            rows: topPatientsByVisits
-                                .take(10)
-                                .toList(growable: false),
+                            rows: topPatientsByVisits,
                             selectedRange: _topRange,
                             ranges: _topRanges,
-                            onSelectRange: (v) => setState(() => _topRange = v),
+                            onSelectRange: (v) => setState(() {
+                              _topRange = v;
+                              _showAllTopPatients = false;
+                            }),
                             onOpenHistory: _openPatientHistoryDialog,
+                            showAll: _showAllTopPatients,
+                            onToggleShowAll: () => setState(
+                              () => _showAllTopPatients = !_showAllTopPatients,
+                            ),
                           ),
                           const SizedBox(height: 10),
                           _TopOutstandingCard(
-                            rows:
-                                topOutstanding.take(10).toList(growable: false),
+                            rows: topOutstanding,
                             selectedRange: _outstandingRange,
                             ranges: _topRanges,
-                            onSelectRange: (v) =>
-                                setState(() => _outstandingRange = v),
+                            onSelectRange: (v) => setState(() {
+                              _outstandingRange = v;
+                              _showAllOutstanding = false;
+                            }),
                             onOpenHistory: _openPatientHistoryDialog,
+                            showAll: _showAllOutstanding,
+                            onToggleShowAll: () => setState(
+                              () => _showAllOutstanding = !_showAllOutstanding,
+                            ),
                           ),
                           const SizedBox(height: 10),
-                          _AllPatientsListCard(
-                            patientsList: pagedPatients,
-                            visitsByPatient: visitsByPatient,
-                            selectedAlphabet: _selectedAlphabet,
-                            onSelectAlphabet: (v) => setState(() {
-                              _selectedAlphabet = v;
-                              _currentPage = 1;
-                            }),
-                            sortBy: _sortBy,
-                            sortAscending: _sortAscending,
-                            onSort: _onSort,
-                            listSearchController: _listSearchController,
+                          _TopProcedurePatientsCard(
+                            selectedTab: _procedureTab,
+                            rows: topProcedurePatients
+                                .toList(growable: false),
+                            onSelectTab: (tab) =>
+                                setState(() {
+                                  _procedureTab = tab;
+                                  _showAllProcedureFocus = false;
+                                }),
                             onOpenHistory: _openPatientHistoryDialog,
-                            totalItems: filteredPatients.length,
-                            currentPage: currentPage,
-                            totalPages: totalPages,
-                            onPageChanged: (page) =>
-                                setState(() => _currentPage = page),
-                            serialOffset: start,
+                            showAll: _showAllProcedureFocus,
+                            onToggleShowAll: () => setState(
+                              () => _showAllProcedureFocus = !_showAllProcedureFocus,
+                            ),
                           ),
                         ],
                       );
                     }
 
-                    return Column(
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _AgeDistributionCard(buckets: ageBuckets),
-                                  const SizedBox(height: 10),
-                                  _GenderDistributionCard(
-                                    buckets: genderBuckets,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  _PaymentModeDistributionCard(
-                                    buckets: paymentModeBuckets,
-                                  ),
-                                ],
-                              ),
+                        Expanded(
+                          child: _TopPatientsCard(
+                            rows: topPatientsByVisits,
+                            selectedRange: _topRange,
+                            ranges: _topRanges,
+                            onSelectRange: (v) => setState(() {
+                              _topRange = v;
+                              _showAllTopPatients = false;
+                            }),
+                            onOpenHistory: _openPatientHistoryDialog,
+                            showAll: _showAllTopPatients,
+                            onToggleShowAll: () => setState(
+                              () => _showAllTopPatients = !_showAllTopPatients,
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _TopPatientsCard(
-                                rows: topPatientsByVisits
-                                    .take(10)
-                                    .toList(growable: false),
-                                selectedRange: _topRange,
-                                ranges: _topRanges,
-                                onSelectRange: (v) =>
-                                    setState(() => _topRange = v),
-                                onOpenHistory: _openPatientHistoryDialog,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _TopOutstandingCard(
-                                rows: topOutstanding
-                                    .take(10)
-                                    .toList(growable: false),
-                                selectedRange: _outstandingRange,
-                                ranges: _topRanges,
-                                onSelectRange: (v) =>
-                                    setState(() => _outstandingRange = v),
-                                onOpenHistory: _openPatientHistoryDialog,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: 10),
-                        _AllPatientsListCard(
-                          patientsList: pagedPatients,
-                          visitsByPatient: visitsByPatient,
-                          selectedAlphabet: _selectedAlphabet,
-                          onSelectAlphabet: (v) => setState(() {
-                            _selectedAlphabet = v;
-                            _currentPage = 1;
-                          }),
-                          sortBy: _sortBy,
-                          sortAscending: _sortAscending,
-                          onSort: _onSort,
-                          listSearchController: _listSearchController,
-                          onOpenHistory: _openPatientHistoryDialog,
-                          totalItems: filteredPatients.length,
-                          currentPage: currentPage,
-                          totalPages: totalPages,
-                          onPageChanged: (page) =>
-                              setState(() => _currentPage = page),
-                          serialOffset: start,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _TopOutstandingCard(
+                            rows: topOutstanding,
+                            selectedRange: _outstandingRange,
+                            ranges: _topRanges,
+                            onSelectRange: (v) => setState(() {
+                              _outstandingRange = v;
+                              _showAllOutstanding = false;
+                            }),
+                            onOpenHistory: _openPatientHistoryDialog,
+                            showAll: _showAllOutstanding,
+                            onToggleShowAll: () => setState(
+                              () => _showAllOutstanding = !_showAllOutstanding,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _TopProcedurePatientsCard(
+                            selectedTab: _procedureTab,
+                            rows: topProcedurePatients
+                                .toList(growable: false),
+                            onSelectTab: (tab) =>
+                                setState(() {
+                                  _procedureTab = tab;
+                                  _showAllProcedureFocus = false;
+                                }),
+                            onOpenHistory: _openPatientHistoryDialog,
+                            showAll: _showAllProcedureFocus,
+                            onToggleShowAll: () => setState(
+                              () => _showAllProcedureFocus = !_showAllProcedureFocus,
+                            ),
+                          ),
                         ),
                       ],
                     );
                   },
+                ),
+                const SizedBox(height: 10),
+                _AllPatientsListCard(
+                  patientsList: pagedPatients,
+                  visitsByPatient: visitsByPatient,
+                  selectedAlphabet: _selectedAlphabet,
+                  onSelectAlphabet: (v) => setState(() {
+                    _selectedAlphabet = v;
+                    _currentPage = 1;
+                  }),
+                  sortBy: _sortBy,
+                  sortAscending: _sortAscending,
+                  onSort: _onSort,
+                  listSearchController: _listSearchController,
+                  onOpenHistory: _openPatientHistoryDialog,
+                  totalItems: filteredPatients.length,
+                  currentPage: currentPage,
+                  totalPages: totalPages,
+                  onPageChanged: (page) => setState(() => _currentPage = page),
+                  serialOffset: start,
                 ),
               ],
             );
@@ -505,6 +543,161 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 
     return buckets;
   }
+
+  List<MapEntry<Patient, int>> _topPatientsByProcedure({
+    required List<Patient> allPatients,
+    required List<Appointment> allAppointments,
+    required String procedureTab,
+  }) {
+    final patientById = <String, Patient>{
+      for (final p in allPatients)
+        if (p.id.trim().isNotEmpty) p.id: p,
+    };
+
+    final counts = <String, int>{};
+    final key = procedureTab.toLowerCase();
+
+    for (final appointment in allAppointments) {
+      final patientId = appointment.patientID;
+      if (patientId == null || patientId.isEmpty) continue;
+
+      final hasProcedure = appointment.selectedTreatments.any((treatment) {
+        final normalized = treatment.toLowerCase();
+        if (key == 'rct') return normalized.contains('rct');
+        return normalized.contains('ortho');
+      });
+
+      if (!hasProcedure) continue;
+      counts[patientId] = (counts[patientId] ?? 0) + 1;
+    }
+
+    final rows = counts.entries
+        .map((entry) {
+          final patient = patientById[entry.key];
+          if (patient == null) return null;
+          return MapEntry(patient, entry.value);
+        })
+        .whereType<MapEntry<Patient, int>>()
+        .toList(growable: false)
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return rows;
+  }
+
+  _TreatmentJourneyMetrics _treatmentJourneyMetrics({
+    required List<Patient> allPatients,
+    required Map<String, List<Appointment>> visitsByPatient,
+    required DateTime now,
+  }) {
+    int newlyAdded = 0;
+    int active = 0;
+    int followUpDue = 0;
+    int inactive = 0;
+
+    for (final patient in allPatients) {
+      final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
+      if (visits.isEmpty) continue;
+
+      final daysSinceLast = now.difference(visits.last.date).inDays;
+      if (visits.length == 1) {
+        newlyAdded++;
+      } else if (daysSinceLast <= 60) {
+        active++;
+      } else if (daysSinceLast <= 180) {
+        followUpDue++;
+      } else {
+        inactive++;
+      }
+    }
+
+    return _TreatmentJourneyMetrics(
+      newlyAdded: newlyAdded,
+      active: active,
+      followUpDue: followUpDue,
+      inactive: inactive,
+    );
+  }
+
+}
+
+class _TreatmentJourneyMetrics {
+  final int newlyAdded;
+  final int active;
+  final int followUpDue;
+  final int inactive;
+
+  const _TreatmentJourneyMetrics({
+    required this.newlyAdded,
+    required this.active,
+    required this.followUpDue,
+    required this.inactive,
+  });
+}
+
+class _TreatmentJourneyTimelineCard extends StatelessWidget {
+  final _TreatmentJourneyMetrics metrics;
+
+  const _TreatmentJourneyTimelineCard({required this.metrics});
+
+  @override
+  Widget build(BuildContext context) {
+    return _CardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Treatment Journey Timeline',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF183A67),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _InsightRow(label: 'Newly Added (1 visit)', value: '${metrics.newlyAdded}'),
+          _InsightRow(label: 'Active (last 60 days)', value: '${metrics.active}'),
+          _InsightRow(
+              label: 'Follow-up Due (61-180 days)',
+              value: '${metrics.followUpDue}'),
+          _InsightRow(label: 'Inactive (>180 days)', value: '${metrics.inactive}'),
+        ],
+      ),
+    );
+  }
+}
+
+class _InsightRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InsightRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF36557C),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF1F446E),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TopBar extends StatelessWidget {
@@ -539,9 +732,11 @@ class _MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 280,
+      height: 140,
       child: _CardShell(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               title,
@@ -564,6 +759,168 @@ class _MetricCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _DonutSegment {
+  final String label;
+  final int value;
+  final Color color;
+
+  const _DonutSegment({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+}
+
+class _DonutMetricCard extends StatelessWidget {
+  final String title;
+  final String centerValue;
+  final List<_DonutSegment> segments;
+
+  const _DonutMetricCard({
+    required this.title,
+    required this.centerValue,
+    required this.segments,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final total = segments.fold<int>(0, (sum, s) => sum + s.value);
+
+    return SizedBox(
+      width: 280,
+      child: _CardShell(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF3C5E87),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(
+                  width: 86,
+                  height: 86,
+                  child: CustomPaint(
+                    painter: _DonutPainter(segments: segments),
+                    child: Center(
+                      child: Text(
+                        centerValue,
+                        style: const TextStyle(
+                          color: Color(0xFF1D3E67),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: segments
+                        .map(
+                          (s) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: s.color,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '${s.label} (${s.value})',
+                                    style: const TextStyle(
+                                      color: Color(0xFF36557C),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  total == 0
+                                      ? '0%'
+                                      : '${((s.value / total) * 100).round()}%',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1F446E),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DonutPainter extends CustomPainter {
+  final List<_DonutSegment> segments;
+
+  const _DonutPainter({required this.segments});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = segments.fold<int>(0, (sum, s) => sum + s.value);
+    final stroke = size.width * 0.18;
+    final rect = Offset.zero & size;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round;
+
+    if (total == 0) {
+      paint.color = const Color(0xFFD8E6F5);
+      canvas.drawArc(rect.deflate(stroke / 2), -math.pi / 2, math.pi * 2, false,
+          paint);
+      return;
+    }
+
+    double start = -math.pi / 2;
+    final gap = 0.04;
+    for (final segment in segments) {
+      if (segment.value <= 0) continue;
+      final sweep = (segment.value / total) * math.pi * 2;
+      paint.color = segment.color;
+      final adjustedSweep = math.max(0, sweep - gap);
+      canvas.drawArc(
+        rect.deflate(stroke / 2),
+        start,
+        adjustedSweep.toDouble(),
+        false,
+        paint,
+      );
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutPainter oldDelegate) {
+    return oldDelegate.segments != segments;
   }
 }
 
@@ -921,6 +1278,8 @@ class _TopPatientsCard extends StatelessWidget {
   final List<String> ranges;
   final ValueChanged<String> onSelectRange;
   final ValueChanged<Patient> onOpenHistory;
+  final bool showAll;
+  final VoidCallback onToggleShowAll;
 
   const _TopPatientsCard({
     required this.rows,
@@ -928,13 +1287,16 @@ class _TopPatientsCard extends StatelessWidget {
     required this.ranges,
     required this.onSelectRange,
     required this.onOpenHistory,
+    required this.showAll,
+    required this.onToggleShowAll,
   });
 
   @override
   Widget build(BuildContext context) {
+    final visibleRows = showAll ? rows : rows.take(10).toList(growable: false);
     return _CardShell(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 320),
+        constraints: const BoxConstraints(minHeight: 320, maxHeight: 420),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1001,34 +1363,56 @@ class _TopPatientsCard extends StatelessWidget {
                 style: TextStyle(color: Color(0xFF607B9F)),
               )
             else
-              ...rows.asMap().entries.map(
-                    (entry) => _HoverableListRow(
-                      isLast: entry.key == rows.length - 1,
-                      onTap: () => onOpenHistory(entry.value.key),
-                      leading: Text(
-                        '${entry.key + 1}.',
-                        style: const TextStyle(
-                          color: Color(0xFF36557C),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      title: Text(
-                        entry.value.key.title,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF1F446E),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      trailing: Text(
-                        '${entry.value.value} visits',
-                        style: const TextStyle(
-                          color: Color(0xFF1F446E),
-                          fontWeight: FontWeight.w700,
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Scrollbar(
+                        child: ListView(
+                          primary: false,
+                          padding: EdgeInsets.zero,
+                          physics: const ClampingScrollPhysics(),
+                          children: visibleRows.asMap().entries
+                              .map(
+                                (entry) => _HoverableListRow(
+                                  isLast: entry.key == visibleRows.length - 1,
+                                  onTap: () => onOpenHistory(entry.value.key),
+                                  leading: Text(
+                                    '${entry.key + 1}.',
+                                    style: const TextStyle(
+                                      color: Color(0xFF36557C),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    entry.value.key.title,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF1F446E),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  trailing: Text(
+                                    '${entry.value.value} visits',
+                                    style: const TextStyle(
+                                      color: Color(0xFF1F446E),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
                         ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Button(
+                      onPressed: onToggleShowAll,
+                      child: Text(showAll ? 'Show Less' : 'View More'),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -1042,6 +1426,8 @@ class _TopOutstandingCard extends StatelessWidget {
   final List<String> ranges;
   final ValueChanged<String> onSelectRange;
   final ValueChanged<Patient> onOpenHistory;
+  final bool showAll;
+  final VoidCallback onToggleShowAll;
 
   const _TopOutstandingCard({
     required this.rows,
@@ -1049,13 +1435,16 @@ class _TopOutstandingCard extends StatelessWidget {
     required this.ranges,
     required this.onSelectRange,
     required this.onOpenHistory,
+    required this.showAll,
+    required this.onToggleShowAll,
   });
 
   @override
   Widget build(BuildContext context) {
+    final visibleRows = showAll ? rows : rows.take(10).toList(growable: false);
     return _CardShell(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 320),
+        constraints: const BoxConstraints(minHeight: 320, maxHeight: 420),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1122,33 +1511,198 @@ class _TopOutstandingCard extends StatelessWidget {
                 style: TextStyle(color: Color(0xFF607B9F)),
               )
             else
-              ...rows.asMap().entries.map(
-                    (entry) => _HoverableListRow(
-                      isLast: entry.key == rows.length - 1,
-                      onTap: () => onOpenHistory(entry.value.key),
-                      leading: Text(
-                        '${entry.key + 1}.',
-                        style: const TextStyle(
-                          color: Color(0xFF36557C),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      title: Text(
-                        entry.value.key.title,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF1F446E),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      trailing: Text(
-                        '₹${entry.value.value.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          color: Color(0xFFD6455D),
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Scrollbar(
+                        child: ListView(
+                          primary: false,
+                          padding: EdgeInsets.zero,
+                          physics: const ClampingScrollPhysics(),
+                          children: visibleRows.asMap().entries
+                              .map(
+                                (entry) => _HoverableListRow(
+                                  isLast: entry.key == visibleRows.length - 1,
+                                  onTap: () => onOpenHistory(entry.value.key),
+                                  leading: Text(
+                                    '${entry.key + 1}.',
+                                    style: const TextStyle(
+                                      color: Color(0xFF36557C),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    entry.value.key.title,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF1F446E),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  trailing: Text(
+                                    '₹${entry.value.value.toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                      color: Color(0xFFD6455D),
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
                         ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Button(
+                      onPressed: onToggleShowAll,
+                      child: Text(showAll ? 'Show Less' : 'View More'),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopProcedurePatientsCard extends StatelessWidget {
+  final String selectedTab;
+  final List<MapEntry<Patient, int>> rows;
+  final ValueChanged<String> onSelectTab;
+  final ValueChanged<Patient> onOpenHistory;
+  final bool showAll;
+  final VoidCallback onToggleShowAll;
+
+  const _TopProcedurePatientsCard({
+    required this.selectedTab,
+    required this.rows,
+    required this.onSelectTab,
+    required this.onOpenHistory,
+    required this.showAll,
+    required this.onToggleShowAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleRows = showAll ? rows : rows.take(10).toList(growable: false);
+
+    Widget tabChip(String label) {
+      final selected = selectedTab == label;
+      return GestureDetector(
+        onTap: () => onSelectTab(label),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color:
+                  selected ? const Color(0xFF2D7BD8) : const Color(0xFFD4E2F3),
+            ),
+            color:
+                selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: selected
+                ? const [
+                    BoxShadow(
+                      color: Color(0x332D7BD8),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: selected ? Colors.white : const Color(0xFF345982),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return _CardShell(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 320, maxHeight: 420),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Procedure Focus Patients',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                tabChip('RCT'),
+                const SizedBox(width: 6),
+                tabChip('ORTHO'),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (rows.isEmpty)
+              Text(
+                'No patients found for $selectedTab treatments.',
+                style: const TextStyle(color: Color(0xFF607B9F)),
+              )
+            else
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Scrollbar(
+                        child: ListView(
+                          primary: false,
+                          padding: EdgeInsets.zero,
+                          physics: const ClampingScrollPhysics(),
+                          children: visibleRows.asMap().entries
+                              .map(
+                                (entry) => _HoverableListRow(
+                                  isLast: entry.key == visibleRows.length - 1,
+                                  onTap: () => onOpenHistory(entry.value.key),
+                                  leading: Text(
+                                    '${entry.key + 1}.',
+                                    style: const TextStyle(
+                                      color: Color(0xFF36557C),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    entry.value.key.title,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF1F446E),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  trailing: Text(
+                                    '${entry.value.value} sessions',
+                                    style: const TextStyle(
+                                      color: Color(0xFF1F446E),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Button(
+                      onPressed: onToggleShowAll,
+                      child: Text(showAll ? 'Show Less' : 'View More'),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -1496,25 +2050,10 @@ class _AllPatientsListCard extends StatelessWidget {
                               ),
                               Expanded(
                                 flex: 12,
-                                child: GestureDetector(
+                                child: _HoverActionItem(
+                                  icon: FluentIcons.money,
+                                  label: 'History',
                                   onTap: () => onOpenHistory(patient),
-                                  child: const Row(
-                                    children: [
-                                      Icon(
-                                        FluentIcons.money,
-                                        size: 14,
-                                        color: Color(0xFF2D7BD8),
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'History',
-                                        style: TextStyle(
-                                          color: Color(0xFF2D7BD8),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
                                 ),
                               ),
                             ],
@@ -1632,6 +2171,65 @@ class _PageButton extends StatelessWidget {
                     ? Colors.white
                     : const Color(0xFF2D4A70),
             fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverActionItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _HoverActionItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  State<_HoverActionItem> createState() => _HoverActionItemState();
+}
+
+class _HoverActionItemState extends State<_HoverActionItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: _hovered ? const Color(0xFFE8F2FF) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: _hovered ? const Color(0xFFBFDAFA) : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: 14,
+                color: const Color(0xFF2D7BD8),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                widget.label,
+                style: const TextStyle(
+                  color: Color(0xFF2D7BD8),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ),
       ),
