@@ -262,9 +262,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         : appointment.title;
                     final phone = (patient?.phone ?? '').trim();
                     final age = patient?.age ?? 0;
+                    final address = (patient?.address ?? '').trim();
 
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF5F9FF),
                         borderRadius: BorderRadius.circular(10),
@@ -298,23 +299,52 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  age > 0 ? 'Age: $age' : 'Age: -',
-                                  style: const TextStyle(
-                                    color: Color(0xFF5B7498),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                if (phone.isNotEmpty) ...[
-                                  const SizedBox(height: 1),
-                                  Text(
-                                    phone,
-                                    style: const TextStyle(
-                                      color: Color(0xFF5B7498),
-                                      fontSize: 12,
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text(
+                                      age > 0 ? 'Age: $age' : 'Age: -',
+                                      style: const TextStyle(
+                                        color: Color(0xFF5B7498),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
+                                    if (phone.isNotEmpty)
+                                      Text(
+                                        phone,
+                                        style: const TextStyle(
+                                          color: Color(0xFF5B7498),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                if (address.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(
+                                        FluentIcons.location,
+                                        size: 12,
+                                        color: Color(0xFF6B83A6),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          address,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Color(0xFF5B7498),
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ],
@@ -448,60 +478,95 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                   onToday: _goToday,
                 ),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _StatCard(
-                      title: 'Appointments Today',
-                      value: '${todaysAppointments.length}',
-                      icon: FluentIcons.calendar,
-                      iconColor: const Color(0xFF2D7BD8),
-                      iconBackground: const Color(0xFFDDEBFF),
-                    ),
-                    _StatusSummaryCard(
-                      completed: completed,
-                      pending: pending,
-                    ),
-                    _StatCard(
-                      title: 'New Patients',
-                      value: '$newPatients',
-                      icon: FluentIcons.contact,
-                      iconColor: const Color(0xFF4CA046),
-                      iconBackground: const Color(0xFFDFF2D8),
-                      onTap: () => _openNewPatientsDialog(todaysAppointments),
-                    ),
-                    _RevenueCard(
-                      title: 'Revenue Today',
-                      value: _money(revenueToday),
-                    ),
-                    _TopPatientGrowthCard(
-                      newPatientsToday: newPatientsToday,
-                      newPatientsWeek: newPatientsWeek,
-                      newPatientsPrevWeek: newPatientsPrevWeek,
-                      growthPct: growthPct,
-                    ),
-                    _TopDonutMetricCard(
-                      title: 'Payment Mode',
-                      centerValue:
-                          '${paymentModeCounts.values.fold<int>(0, (s, v) => s + v)}',
-                      segments: [
-                        _TopDonutSegment(
-                          label: 'Cash',
-                          value: paymentModeCounts['Cash'] ?? 0,
-                          color: const Color(0xFF7D8FA7),
-                        ),
-                        _TopDonutSegment(
-                          label: 'GPay',
-                          value: paymentModeCounts['GPay'] ?? 0,
-                          color: const Color(0xFF2D7BD8),
-                        ),
-                      ],
-                    ),
-                    _TopTimingSummaryCard(
-                      appointmentsForView: todaysAppointments,
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth;
+                    final cards = [
+                      _StatCard(
+                        title: 'Appointments Today',
+                        value: '${todaysAppointments.length}',
+                        icon: FluentIcons.calendar,
+                        iconColor: const Color(0xFF2D7BD8),
+                        iconBackground: const Color(0xFFDDEBFF),
+                      ),
+                      _StatusSummaryCard(
+                        completed: completed,
+                        pending: pending,
+                      ),
+                      _StatCard(
+                        title: 'New Patients',
+                        value: '$newPatients',
+                        icon: FluentIcons.contact,
+                        iconColor: const Color(0xFF4CA046),
+                        iconBackground: const Color(0xFFDFF2D8),
+                        onTap: () => _openNewPatientsDialog(todaysAppointments),
+                      ),
+                      _RevenueCard(
+                        title: 'Revenue Today',
+                        value: _money(revenueToday),
+                      ),
+                      _TopPatientGrowthCard(
+                        newPatientsToday: newPatientsToday,
+                        newPatientsWeek: newPatientsWeek,
+                        newPatientsPrevWeek: newPatientsPrevWeek,
+                        growthPct: growthPct,
+                      ),
+                      _TopDonutMetricCard(
+                        title: 'Payment Mode',
+                        centerValue:
+                            '${paymentModeCounts.values.fold<int>(0, (s, v) => s + v)}',
+                        segments: [
+                          _TopDonutSegment(
+                            label: 'Cash',
+                            value: paymentModeCounts['Cash'] ?? 0,
+                            color: const Color(0xFF7D8FA7),
+                          ),
+                          _TopDonutSegment(
+                            label: 'GPay',
+                            value: paymentModeCounts['GPay'] ?? 0,
+                            color: const Color(0xFF2D7BD8),
+                          ),
+                        ],
+                      ),
+                      _TopTimingSummaryCard(
+                        appointmentsForView: todaysAppointments,
+                      ),
+                    ];
+
+                    int columns;
+                    if (width >= 2100) {
+                      columns = 7;
+                    } else if (width >= 1720) {
+                      columns = 6;
+                    } else if (width >= 1420) {
+                      columns = 5;
+                    } else if (width >= 1140) {
+                      columns = 4;
+                    } else if (width >= 860) {
+                      columns = 3;
+                    } else if (width >= 580) {
+                      columns = 2;
+                    } else {
+                      columns = 1;
+                    }
+
+                    final gap = 10.0;
+                    final cardWidth =
+                        (width - (columns - 1) * gap) / columns;
+
+                    return Wrap(
+                      spacing: gap,
+                      runSpacing: gap,
+                      children: cards
+                          .map(
+                            (card) => SizedBox(
+                              width: cardWidth,
+                              child: card,
+                            ),
+                          )
+                          .toList(growable: false),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 const _SectionTitle('Financial Summary'),
@@ -989,7 +1054,7 @@ class _DoctorScheduleCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Doctor Load and Revenue Filter',
+            'Doctors Insights',
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -2443,9 +2508,7 @@ class _TopPatientGrowthCard extends StatelessWidget {
     final prevWeekRatio = newPatientsPrevWeek / maxBar;
 
     Widget barLine(String label, int value, double ratio, Color color) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(
+      return Row(
           children: [
             SizedBox(
               width: 50,
@@ -2483,8 +2546,7 @@ class _TopPatientGrowthCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      );
+        );
     }
 
     return ConstrainedBox(
@@ -2528,17 +2590,27 @@ class _TopPatientGrowthCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 7),
-            barLine(
-              'This week',
-              newPatientsWeek,
-              thisWeekRatio,
-              const Color(0xFF2D7BD8),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: barLine(
+                  'This week',
+                  newPatientsWeek,
+                  thisWeekRatio,
+                  const Color(0xFF2D7BD8),
+                ),
+              ),
             ),
-            barLine(
-              'Prev week',
-              newPatientsPrevWeek,
-              prevWeekRatio,
-              const Color(0xFF9BB9DD),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: barLine(
+                  'Prev week',
+                  newPatientsPrevWeek,
+                  prevWeekRatio,
+                  const Color(0xFF9BB9DD),
+                ),
+              ),
             ),
             const SizedBox(height: 2),
           ],
@@ -2684,9 +2756,7 @@ class _TopTimingSummaryCard extends StatelessWidget {
     final maxCount = math.max(1, math.max(morning, math.max(afternoon, evening)));
 
     Widget miniBar(String label, int value, Color color) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Row(
+      return Row(
           children: [
             SizedBox(
               width: 78,
@@ -2725,14 +2795,13 @@ class _TopTimingSummaryCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      );
+        );
     }
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
       child: SizedBox(
-        height: 154,
+        height: 140,
         child: _CardShell(
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2745,10 +2814,25 @@ class _TopTimingSummaryCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 6),
-            miniBar('Morning', morning, const Color(0xFF2D7BD8)),
-            miniBar('Afternoon', afternoon, const Color(0xFF2BA58D)),
-            miniBar('Evening', evening, const Color(0xFFE09C31)),
+            const SizedBox(height: 4),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: miniBar('Morning', morning, const Color(0xFF2D7BD8)),
+              ),
+            ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: miniBar('Afternoon', afternoon, const Color(0xFF2BA58D)),
+              ),
+            ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: miniBar('Evening', evening, const Color(0xFFE09C31)),
+              ),
+            ),
           ],
         ),
       ),
