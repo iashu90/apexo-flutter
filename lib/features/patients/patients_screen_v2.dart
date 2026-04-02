@@ -27,9 +27,9 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   String _selectedAlphabet = 'A';
   String _sortBy = 'name';
   bool _sortAscending = true;
-  bool _showAllTopPatients = false;
-  bool _showAllOutstanding = false;
-  bool _showAllProcedureFocus = false;
+  int _topPatientsVisibleCount = 10;
+  int _topOutstandingVisibleCount = 10;
+  int _topProcedureVisibleCount = 10;
   int _currentPage = 1;
 
   static const int _pageSize = 200;
@@ -299,6 +299,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                     ),
                     SizedBox(
                       width: 280,
+                      height: 160,
                       child: _TreatmentJourneyTimelineCard(
                         metrics: journeyMetrics,
                       ),
@@ -306,135 +307,71 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth < 1260) {
-                      return Column(
-                        children: [
-                          _AgeDistributionCard(buckets: ageBuckets),
-                        ],
+                _AgeDistributionCard(buckets: ageBuckets),
+                const SizedBox(height: 10),
+                _TopPatientsCard(
+                  rows: topPatientsByVisits,
+                  selectedRange: _topRange,
+                  ranges: _topRanges,
+                  onSelectRange: (v) => setState(() {
+                    _topRange = v;
+                    _topPatientsVisibleCount = 10;
+                  }),
+                  onOpenHistory: _openPatientHistoryDialog,
+                  visibleCount: _topPatientsVisibleCount,
+                  onViewMore: () => setState(() {
+                    if (_topPatientsVisibleCount >= topPatientsByVisits.length) {
+                      _topPatientsVisibleCount = 10;
+                    } else {
+                      _topPatientsVisibleCount = math.min(
+                        _topPatientsVisibleCount + 10,
+                        topPatientsByVisits.length,
                       );
                     }
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _AgeDistributionCard(buckets: ageBuckets)),
-                      ],
-                    );
-                  },
+                  }),
                 ),
                 const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth < 1260) {
-                      return Column(
-                        children: [
-                          _TopPatientsCard(
-                            rows: topPatientsByVisits,
-                            selectedRange: _topRange,
-                            ranges: _topRanges,
-                            onSelectRange: (v) => setState(() {
-                              _topRange = v;
-                              _showAllTopPatients = false;
-                            }),
-                            onOpenHistory: _openPatientHistoryDialog,
-                            showAll: _showAllTopPatients,
-                            onToggleShowAll: () => setState(
-                              () => _showAllTopPatients = !_showAllTopPatients,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          _TopOutstandingCard(
-                            rows: topOutstanding,
-                            selectedRange: _outstandingRange,
-                            ranges: _topRanges,
-                            onSelectRange: (v) => setState(() {
-                              _outstandingRange = v;
-                              _showAllOutstanding = false;
-                            }),
-                            onOpenHistory: _openPatientHistoryDialog,
-                            showAll: _showAllOutstanding,
-                            onToggleShowAll: () => setState(
-                              () => _showAllOutstanding = !_showAllOutstanding,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          _TopProcedurePatientsCard(
-                            selectedTab: _procedureTab,
-                            rows: topProcedurePatients
-                                .toList(growable: false),
-                            onSelectTab: (tab) =>
-                                setState(() {
-                                  _procedureTab = tab;
-                                  _showAllProcedureFocus = false;
-                                }),
-                            onOpenHistory: _openPatientHistoryDialog,
-                            showAll: _showAllProcedureFocus,
-                            onToggleShowAll: () => setState(
-                              () => _showAllProcedureFocus = !_showAllProcedureFocus,
-                            ),
-                          ),
-                        ],
+                _TopOutstandingCard(
+                  rows: topOutstanding,
+                  selectedRange: _outstandingRange,
+                  ranges: _topRanges,
+                  onSelectRange: (v) => setState(() {
+                    _outstandingRange = v;
+                    _topOutstandingVisibleCount = 10;
+                  }),
+                  onOpenHistory: _openPatientHistoryDialog,
+                  visibleCount: _topOutstandingVisibleCount,
+                  onViewMore: () => setState(() {
+                    if (_topOutstandingVisibleCount >= topOutstanding.length) {
+                      _topOutstandingVisibleCount = 10;
+                    } else {
+                      _topOutstandingVisibleCount = math.min(
+                        _topOutstandingVisibleCount + 10,
+                        topOutstanding.length,
                       );
                     }
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _TopPatientsCard(
-                            rows: topPatientsByVisits,
-                            selectedRange: _topRange,
-                            ranges: _topRanges,
-                            onSelectRange: (v) => setState(() {
-                              _topRange = v;
-                              _showAllTopPatients = false;
-                            }),
-                            onOpenHistory: _openPatientHistoryDialog,
-                            showAll: _showAllTopPatients,
-                            onToggleShowAll: () => setState(
-                              () => _showAllTopPatients = !_showAllTopPatients,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _TopOutstandingCard(
-                            rows: topOutstanding,
-                            selectedRange: _outstandingRange,
-                            ranges: _topRanges,
-                            onSelectRange: (v) => setState(() {
-                              _outstandingRange = v;
-                              _showAllOutstanding = false;
-                            }),
-                            onOpenHistory: _openPatientHistoryDialog,
-                            showAll: _showAllOutstanding,
-                            onToggleShowAll: () => setState(
-                              () => _showAllOutstanding = !_showAllOutstanding,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _TopProcedurePatientsCard(
-                            selectedTab: _procedureTab,
-                            rows: topProcedurePatients
-                                .toList(growable: false),
-                            onSelectTab: (tab) =>
-                                setState(() {
-                                  _procedureTab = tab;
-                                  _showAllProcedureFocus = false;
-                                }),
-                            onOpenHistory: _openPatientHistoryDialog,
-                            showAll: _showAllProcedureFocus,
-                            onToggleShowAll: () => setState(
-                              () => _showAllProcedureFocus = !_showAllProcedureFocus,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                  }),
+                ),
+                const SizedBox(height: 10),
+                _TopProcedurePatientsCard(
+                  selectedTab: _procedureTab,
+                  rows: topProcedurePatients.toList(growable: false),
+                  onSelectTab: (tab) => setState(() {
+                    _procedureTab = tab;
+                    _topProcedureVisibleCount = 10;
+                  }),
+                  onOpenHistory: _openPatientHistoryDialog,
+                  visibleCount: _topProcedureVisibleCount,
+                  onViewMore: () => setState(() {
+                    if (_topProcedureVisibleCount >= topProcedurePatients.length) {
+                      _topProcedureVisibleCount = 10;
+                    } else {
+                      _topProcedureVisibleCount = math.min(
+                        _topProcedureVisibleCount + 10,
+                        topProcedurePatients.length,
+                      );
+                    }
+                  }),
                 ),
                 const SizedBox(height: 10),
                 _AllPatientsListCard(
@@ -534,10 +471,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
           (a.prescriptionPaid > 0 && a.prescriptionGpayPaid);
 
       if (!hasCash && !hasGpay) continue;
+      if (hasCash) {
+        buckets['Cash'] = buckets['Cash']! + 1;
+      }
       if (hasGpay) {
         buckets['GPay'] = buckets['GPay']! + 1;
-      } else {
-        buckets['Cash'] = buckets['Cash']! + 1;
       }
     }
 
@@ -641,25 +579,84 @@ class _TreatmentJourneyTimelineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final values = [
+      metrics.newlyAdded,
+      metrics.active,
+      metrics.followUpDue,
+      metrics.inactive,
+    ];
+    final maxValue = values.fold<int>(1, (m, v) => v > m ? v : m);
+
+    Widget bar(String label, int value, Color color) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF36557C),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 3),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                height: 8,
+                color: const Color(0xFFEAF2FC),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: maxValue == 0 ? 0 : value / maxValue,
+                    child: Container(color: color),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '$value',
+              style: const TextStyle(
+                color: Color(0xFF1F446E),
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return _CardShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Treatment Journey Timeline',
+            'Treatment Journey',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
+              fontSize: 13,
+              color: Color(0xFF3C5E87),
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 10),
-          _InsightRow(label: 'Newly Added (1 visit)', value: '${metrics.newlyAdded}'),
-          _InsightRow(label: 'Active (last 60 days)', value: '${metrics.active}'),
-          _InsightRow(
-              label: 'Follow-up Due (61-180 days)',
-              value: '${metrics.followUpDue}'),
-          _InsightRow(label: 'Inactive (>180 days)', value: '${metrics.inactive}'),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              bar('New', metrics.newlyAdded, const Color(0xFF2D7BD8)),
+              const SizedBox(width: 6),
+              bar('Active', metrics.active, const Color(0xFF2BA58D)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              bar('Follow-up', metrics.followUpDue, const Color(0xFFE09C31)),
+              const SizedBox(width: 6),
+              bar('Inactive', metrics.inactive, const Color(0xFF7D8FA7)),
+            ],
+          ),
         ],
       ),
     );
@@ -732,11 +729,11 @@ class _MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 280,
-      height: 140,
+      height: 160,
       child: _CardShell(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Text(
               title,
@@ -791,6 +788,7 @@ class _DonutMetricCard extends StatelessWidget {
 
     return SizedBox(
       width: 280,
+      height: 160,
       child: _CardShell(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1278,8 +1276,8 @@ class _TopPatientsCard extends StatelessWidget {
   final List<String> ranges;
   final ValueChanged<String> onSelectRange;
   final ValueChanged<Patient> onOpenHistory;
-  final bool showAll;
-  final VoidCallback onToggleShowAll;
+  final int visibleCount;
+  final VoidCallback onViewMore;
 
   const _TopPatientsCard({
     required this.rows,
@@ -1287,13 +1285,14 @@ class _TopPatientsCard extends StatelessWidget {
     required this.ranges,
     required this.onSelectRange,
     required this.onOpenHistory,
-    required this.showAll,
-    required this.onToggleShowAll,
+    required this.visibleCount,
+    required this.onViewMore,
   });
 
   @override
   Widget build(BuildContext context) {
-    final visibleRows = showAll ? rows : rows.take(10).toList(growable: false);
+    final visibleRows = rows.take(visibleCount).toList(growable: false);
+    final hasMore = visibleCount < rows.length;
     return _CardShell(
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 320, maxHeight: 420),
@@ -1385,11 +1384,20 @@ class _TopPatientsCard extends StatelessWidget {
                                     ),
                                   ),
                                   title: Text(
-                                    entry.value.key.title,
+                                    entry.value.key.title.trim().isEmpty
+                                        ? 'Unnamed patient'
+                                        : entry.value.key.title,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: Color(0xFF1F446E),
                                       fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${entry.value.key.phone} • ${entry.value.key.age}y',
+                                    style: const TextStyle(
+                                      color: Color(0xFF7C93B1),
+                                      fontSize: 11,
                                     ),
                                   ),
                                   trailing: Text(
@@ -1406,10 +1414,11 @@ class _TopPatientsCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Button(
-                      onPressed: onToggleShowAll,
-                      child: Text(showAll ? 'Show Less' : 'View More'),
-                    ),
+                    if (rows.length > 10)
+                      Button(
+                        onPressed: onViewMore,
+                        child: Text(hasMore ? 'View More (+10)' : 'Show Less'),
+                      ),
                   ],
                 ),
               ),
@@ -1426,8 +1435,8 @@ class _TopOutstandingCard extends StatelessWidget {
   final List<String> ranges;
   final ValueChanged<String> onSelectRange;
   final ValueChanged<Patient> onOpenHistory;
-  final bool showAll;
-  final VoidCallback onToggleShowAll;
+  final int visibleCount;
+  final VoidCallback onViewMore;
 
   const _TopOutstandingCard({
     required this.rows,
@@ -1435,13 +1444,14 @@ class _TopOutstandingCard extends StatelessWidget {
     required this.ranges,
     required this.onSelectRange,
     required this.onOpenHistory,
-    required this.showAll,
-    required this.onToggleShowAll,
+    required this.visibleCount,
+    required this.onViewMore,
   });
 
   @override
   Widget build(BuildContext context) {
-    final visibleRows = showAll ? rows : rows.take(10).toList(growable: false);
+    final visibleRows = rows.take(visibleCount).toList(growable: false);
+    final hasMore = visibleCount < rows.length;
     return _CardShell(
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 320, maxHeight: 420),
@@ -1533,11 +1543,20 @@ class _TopOutstandingCard extends StatelessWidget {
                                     ),
                                   ),
                                   title: Text(
-                                    entry.value.key.title,
+                                    entry.value.key.title.trim().isEmpty
+                                        ? 'Unnamed patient'
+                                        : entry.value.key.title,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: Color(0xFF1F446E),
                                       fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${entry.value.key.phone} • ${entry.value.key.age}y',
+                                    style: const TextStyle(
+                                      color: Color(0xFF7C93B1),
+                                      fontSize: 11,
                                     ),
                                   ),
                                   trailing: Text(
@@ -1553,10 +1572,11 @@ class _TopOutstandingCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Button(
-                      onPressed: onToggleShowAll,
-                      child: Text(showAll ? 'Show Less' : 'View More'),
-                    ),
+                    if (rows.length > 10)
+                      Button(
+                        onPressed: onViewMore,
+                        child: Text(hasMore ? 'View More (+10)' : 'Show Less'),
+                      ),
                   ],
                 ),
               ),
@@ -1572,21 +1592,22 @@ class _TopProcedurePatientsCard extends StatelessWidget {
   final List<MapEntry<Patient, int>> rows;
   final ValueChanged<String> onSelectTab;
   final ValueChanged<Patient> onOpenHistory;
-  final bool showAll;
-  final VoidCallback onToggleShowAll;
+  final int visibleCount;
+  final VoidCallback onViewMore;
 
   const _TopProcedurePatientsCard({
     required this.selectedTab,
     required this.rows,
     required this.onSelectTab,
     required this.onOpenHistory,
-    required this.showAll,
-    required this.onToggleShowAll,
+    required this.visibleCount,
+    required this.onViewMore,
   });
 
   @override
   Widget build(BuildContext context) {
-    final visibleRows = showAll ? rows : rows.take(10).toList(growable: false);
+    final visibleRows = rows.take(visibleCount).toList(growable: false);
+    final hasMore = visibleCount < rows.length;
 
     Widget tabChip(String label) {
       final selected = selectedTab == label;
@@ -1675,11 +1696,20 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                                     ),
                                   ),
                                   title: Text(
-                                    entry.value.key.title,
+                                    entry.value.key.title.trim().isEmpty
+                                        ? 'Unnamed patient'
+                                        : entry.value.key.title,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: Color(0xFF1F446E),
                                       fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${entry.value.key.phone} • ${entry.value.key.age}y',
+                                    style: const TextStyle(
+                                      color: Color(0xFF7C93B1),
+                                      fontSize: 11,
                                     ),
                                   ),
                                   trailing: Text(
@@ -1696,10 +1726,11 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Button(
-                      onPressed: onToggleShowAll,
-                      child: Text(showAll ? 'Show Less' : 'View More'),
-                    ),
+                    if (rows.length > 10)
+                      Button(
+                        onPressed: onViewMore,
+                        child: Text(hasMore ? 'View More (+10)' : 'Show Less'),
+                      ),
                   ],
                 ),
               ),
@@ -2240,6 +2271,7 @@ class _HoverActionItemState extends State<_HoverActionItem> {
 class _HoverableListRow extends StatefulWidget {
   final Widget leading;
   final Widget title;
+  final Widget? subtitle;
   final Widget trailing;
   final VoidCallback onTap;
   final bool isLast;
@@ -2247,6 +2279,7 @@ class _HoverableListRow extends StatefulWidget {
   const _HoverableListRow({
     required this.leading,
     required this.title,
+    this.subtitle,
     required this.trailing,
     required this.onTap,
     required this.isLast,
@@ -2282,7 +2315,18 @@ class _HoverableListRowState extends State<_HoverableListRow> {
             children: [
               widget.leading,
               const SizedBox(width: 8),
-              Expanded(child: widget.title),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    widget.title,
+                    if (widget.subtitle != null) ...[
+                      const SizedBox(height: 1),
+                      widget.subtitle!,
+                    ],
+                  ],
+                ),
+              ),
               const SizedBox(width: 8),
               widget.trailing,
             ],
