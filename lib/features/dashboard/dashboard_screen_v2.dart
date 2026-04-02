@@ -35,6 +35,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   String _searchQuery = '';
   String _selectedDoctorFilter = _filterAll;
   String _selectedTreatmentFilter = _treatmentFilterAll;
+  bool _showAllTreatmentStats = false;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -538,12 +539,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         secondaryBadgeLabel: 'appts',
                         compact: true,
                       ),
-                      _PatientGrowthMetricsCard(
-                        newPatientsToday: newPatientsToday,
-                        newPatientsWeek: newPatientsWeek,
-                        newPatientsPrevWeek: newPatientsPrevWeek,
-                        growthPct: growthPct,
-                      ),
                     ];
 
                     if (compact) {
@@ -579,6 +574,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           const SizedBox(height: 10),
                           _DoctorScheduleCard(
                             todaysAppointments: todaysAppointments,
+                            doctorRevenueSplit: doctorRevenueSplit,
                             selectedFilter: _selectedDoctorFilter,
                             onFilterChanged: (v) => setState(() {
                               _selectedDoctorFilter = _selectedDoctorFilter == v
@@ -594,6 +590,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           _TreatmentStatsCard(
                             stats: treatmentStats,
                             selectedTreatment: _selectedTreatmentFilter,
+                            showAll: _showAllTreatmentStats,
                             onFilterChanged: (v) => setState(() {
                               _selectedTreatmentFilter =
                                   _selectedTreatmentFilter == v
@@ -601,6 +598,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                           ._treatmentFilterAll
                                       : v;
                             }),
+                            onToggleShowAll: () => setState(
+                              () => _showAllTreatmentStats = !_showAllTreatmentStats,
+                            ),
                           ),
                           const SizedBox(height: 10),
                           _RightDashboardColumn(
@@ -626,6 +626,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                               const SizedBox(height: 10),
                               _DoctorScheduleCard(
                                 todaysAppointments: todaysAppointments,
+                                doctorRevenueSplit: doctorRevenueSplit,
                                 selectedFilter: _selectedDoctorFilter,
                                 onFilterChanged: (v) => setState(() {
                                   _selectedDoctorFilter =
@@ -642,6 +643,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                               _TreatmentStatsCard(
                                 stats: treatmentStats,
                                 selectedTreatment: _selectedTreatmentFilter,
+                                showAll: _showAllTreatmentStats,
                                 onFilterChanged: (v) => setState(() {
                                   _selectedTreatmentFilter =
                                       _selectedTreatmentFilter == v
@@ -649,6 +651,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                               ._treatmentFilterAll
                                           : v;
                                 }),
+                                onToggleShowAll: () => setState(
+                                  () =>
+                                      _showAllTreatmentStats = !_showAllTreatmentStats,
+                                ),
                               ),
                             ],
                           ),
@@ -871,11 +877,13 @@ class _RightDashboardColumn extends StatelessWidget {
 
 class _DoctorScheduleCard extends StatelessWidget {
   final List<Appointment> todaysAppointments;
+  final Map<String, double> doctorRevenueSplit;
   final String selectedFilter;
   final ValueChanged<String> onFilterChanged;
 
   const _DoctorScheduleCard({
     required this.todaysAppointments,
+    required this.doctorRevenueSplit,
     required this.selectedFilter,
     required this.onFilterChanged,
   });
@@ -899,6 +907,7 @@ class _DoctorScheduleCard extends StatelessWidget {
           id: doctor.id,
           title: doctor.title,
           count: entry.value,
+          revenue: doctorRevenueSplit[doctor.title] ?? 0,
         ),
       );
     }
@@ -946,6 +955,7 @@ class _DoctorScheduleCard extends StatelessWidget {
                 (row) => _ScheduleLine(
                   title: row.title,
                   count: row.count,
+                  secondaryValue: '₹${row.revenue.toStringAsFixed(0)}',
                   selected: selectedFilter == row.id,
                   onTap: () => onFilterChanged(row.id),
                 ),
@@ -982,9 +992,13 @@ class _DoctorScheduleRow {
   final String id;
   final String title;
   final int count;
+  final double revenue;
 
   _DoctorScheduleRow(
-      {required this.id, required this.title, required this.count});
+      {required this.id,
+      required this.title,
+      required this.count,
+      required this.revenue});
 }
 
 class _AppointmentTimingSummaryCard extends StatelessWidget {
@@ -1630,12 +1644,14 @@ class _StatusBadge extends StatelessWidget {
 class _ScheduleLine extends StatelessWidget {
   final String title;
   final int count;
+  final String? secondaryValue;
   final bool selected;
   final VoidCallback onTap;
 
   const _ScheduleLine({
     required this.title,
     required this.count,
+    this.secondaryValue,
     required this.selected,
     required this.onTap,
   });
@@ -1669,13 +1685,30 @@ class _ScheduleLine extends StatelessWidget {
                 ),
               ),
             ),
-            Text(
-              '($count)',
-              style: TextStyle(
-                color: selected
-                    ? const Color(0xFF1A4B88)
-                    : const Color(0xFF637EA3),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (secondaryValue != null) ...[
+                  Text(
+                    secondaryValue!,
+                    style: TextStyle(
+                      color: selected
+                          ? const Color(0xFF1A4B88)
+                          : const Color(0xFF36557C),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  '($count)',
+                  style: TextStyle(
+                    color: selected
+                        ? const Color(0xFF1A4B88)
+                        : const Color(0xFF637EA3),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -2001,16 +2034,24 @@ class _TreatmentStats {
 class _TreatmentStatsCard extends StatelessWidget {
   final _TreatmentStats stats;
   final String selectedTreatment;
+  final bool showAll;
   final ValueChanged<String> onFilterChanged;
+  final VoidCallback onToggleShowAll;
 
   const _TreatmentStatsCard({
     required this.stats,
     required this.selectedTreatment,
+    required this.showAll,
     required this.onFilterChanged,
+    required this.onToggleShowAll,
   });
 
   @override
   Widget build(BuildContext context) {
+    final visibleTreatments = showAll
+        ? stats.topTreatments
+        : stats.topTreatments.take(5).toList(growable: false);
+
     return _CardShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2041,7 +2082,7 @@ class _TreatmentStatsCard extends StatelessWidget {
               ),
             )
           else
-            ...stats.topTreatments.map(
+            ...visibleTreatments.map(
               (entry) => _ScheduleLine(
                 title: entry.key,
                 count: entry.value,
@@ -2050,6 +2091,13 @@ class _TreatmentStatsCard extends StatelessWidget {
                 onTap: () => onFilterChanged(entry.key),
               ),
             ),
+          if (stats.topTreatments.length > 5) ...[
+            const SizedBox(height: 8),
+            Button(
+              onPressed: onToggleShowAll,
+              child: Text(showAll ? 'Show Top 5' : 'Show More'),
+            ),
+          ],
         ],
       ),
     );
@@ -2251,19 +2299,44 @@ class _TopPatientGrowthCard extends StatelessWidget {
 
     return SizedBox(
       width: 290,
+      height: 140,
       child: _CardShell(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Patient Growth',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF496489),
-                fontWeight: FontWeight.w700,
-              ),
+            Row(
+              children: [
+                const Text(
+                  'Patient Growth',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF496489),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'Today $newPatientsToday',
+                  style: const TextStyle(
+                    color: Color(0xFF36557C),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${growthPct.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    color: growthPct >= 0
+                        ? const Color(0xFF1F8F4E)
+                        : const Color(0xFFD6455D),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 7),
             barLine(
               'This week',
               newPatientsWeek,
@@ -2275,36 +2348,6 @@ class _TopPatientGrowthCard extends StatelessWidget {
               newPatientsPrevWeek,
               prevWeekRatio,
               const Color(0xFF9BB9DD),
-            ),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                const Text(
-                  'Today',
-                  style: TextStyle(
-                    color: Color(0xFF456284),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '$newPatientsToday',
-                  style: const TextStyle(
-                    color: Color(0xFF1F446E),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${growthPct.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    color: growthPct >= 0
-                        ? const Color(0xFF1F8F4E)
-                        : const Color(0xFFD6455D),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -2342,6 +2385,7 @@ class _TopDonutMetricCard extends StatelessWidget {
 
     return SizedBox(
       width: 290,
+      height: 140,
       child: _CardShell(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2351,7 +2395,7 @@ class _TopDonutMetricCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF496489),
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
