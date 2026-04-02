@@ -1,8 +1,10 @@
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
 class CheckinScreen extends StatefulWidget {
@@ -23,6 +25,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
   void _changeDate(int days) {
     setState(() {
       _selectedDate = _dateOnly(_selectedDate.add(Duration(days: days)));
+    });
+  }
+
+  Future<void> _pickDate(BuildContext context) async {
+    final picked = await material.showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000, 1, 1),
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'Select date',
+    );
+
+    if (picked == null) return;
+    setState(() {
+      _selectedDate = _dateOnly(picked);
     });
   }
 
@@ -49,12 +66,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
           return a.operatorsIDs.contains(_selectedDoctor);
         }).toList(growable: false);
 
-        final pending = filtered
-            .where((a) => !a.isCheckedIn && !a.isDone)
-            .toList(growable: false);
-        final checkedIn = filtered
-            .where((a) => a.isCheckedIn && !a.isDone)
-            .toList(growable: false);
+        final pending = filtered.where((a) => !a.isDone).toList(growable: false);
         final completed = filtered.where((a) => a.isDone).toList(growable: false);
 
         return Container(
@@ -75,30 +87,52 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ),
                     ),
                     const Spacer(),
-                    Button(
-                      onPressed: () => _changeDate(-1),
-                      child: const Icon(FluentIcons.chevron_left),
-                    ),
-                    const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: const Color(0xFFD6E2F0)),
                       ),
-                      child: Text(
-                        DateFormat('dd MMM yyyy').format(_selectedDate),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1F446E),
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Button(
+                            onPressed: () => _changeDate(-1),
+                            style: _dateButtonStyle,
+                            child: const Icon(FluentIcons.chevron_left, size: 12),
+                          ),
+                          Button(
+                            onPressed: () => _pickDate(context),
+                            style: _dateButtonStyle,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  DateFormat('MMMM d, yyyy').format(_selectedDate),
+                                  style: const TextStyle(
+                                    color: Color(0xFF25466E),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  DateFormat('EEEE').format(_selectedDate),
+                                  style: const TextStyle(
+                                    color: Color(0xFF557195),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Button(
+                            onPressed: () => _changeDate(1),
+                            style: _dateButtonStyle,
+                            child: const Icon(FluentIcons.chevron_right, size: 12),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Button(
-                      onPressed: () => _changeDate(1),
-                      child: const Icon(FluentIcons.chevron_right),
                     ),
                     const SizedBox(width: 8),
                     FilledButton(
@@ -141,12 +175,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   title: 'Pending',
                   color: const Color(0xFFE4A11B),
                   rows: pending,
-                ),
-                const SizedBox(height: 10),
-                _WorkflowColumn(
-                  title: 'Checked In',
-                  color: const Color(0xFF2D7BD8),
-                  rows: checkedIn,
+                  showHistoryAction: true,
                 ),
                 const SizedBox(height: 10),
                 _WorkflowColumn(
@@ -159,6 +188,27 @@ class _CheckinScreenState extends State<CheckinScreen> {
           ),
         );
       },
+    );
+  }
+
+  ButtonStyle get _dateButtonStyle {
+    return ButtonStyle(
+      padding: WidgetStateProperty.all(
+        const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      ),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.pressed)) {
+          return const Color(0x331A74DB);
+        }
+        if (states.contains(WidgetState.hovered)) {
+          return const Color(0x1F1A74DB);
+        }
+        return Colors.transparent;
+      }),
+      foregroundColor: WidgetStateProperty.all(const Color(0xFF1468CC)),
+      shape: WidgetStateProperty.all(
+        const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      ),
     );
   }
 }
@@ -204,11 +254,13 @@ class _WorkflowColumn extends StatelessWidget {
   final String title;
   final Color color;
   final List<Appointment> rows;
+  final bool showHistoryAction;
 
   const _WorkflowColumn({
     required this.title,
     required this.color,
     required this.rows,
+    this.showHistoryAction = false,
   });
 
   @override
@@ -258,7 +310,12 @@ class _WorkflowColumn extends StatelessWidget {
               ),
             )
           else
-            ...rows.map((a) => _WorkflowRow(appointment: a)),
+            ...rows.map(
+              (a) => _WorkflowRow(
+                appointment: a,
+                showHistoryAction: showHistoryAction,
+              ),
+            ),
         ],
       ),
     );
@@ -267,8 +324,37 @@ class _WorkflowColumn extends StatelessWidget {
 
 class _WorkflowRow extends StatelessWidget {
   final Appointment appointment;
+  final bool showHistoryAction;
 
-  const _WorkflowRow({required this.appointment});
+  const _WorkflowRow({
+    required this.appointment,
+    this.showHistoryAction = false,
+  });
+
+  void _openPatientHistoryDialog(BuildContext context) {
+    final patient = appointment.patient;
+    if (patient == null) return;
+
+    showDialog(
+      context: context,
+      builder: (_) => Align(
+        alignment: Alignment.center,
+        child: Container(
+          color: Colors.white,
+          child: PatientDetailsDialog(
+            rows: patient.patientDetails,
+            patient: patient,
+            hiddenColumns: const [
+              'Prescription',
+              'P.Mode',
+              'Doc Paid',
+              'TotalDocPay',
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -329,6 +415,13 @@ class _WorkflowRow extends StatelessWidget {
             },
             child: Text(appointment.isDone ? 'Undo Complete' : 'Complete'),
           ),
+          if (showHistoryAction) ...[
+            const SizedBox(width: 8),
+            Button(
+              onPressed: () => _openPatientHistoryDialog(context),
+              child: const Text('History'),
+            ),
+          ],
           const SizedBox(width: 8),
           Button(
             onPressed: () => openAppointment(appointment),
