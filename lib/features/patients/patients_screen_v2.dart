@@ -9,6 +9,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:intl/intl.dart';
 
 class PatientsScreenV2 extends StatefulWidget {
   const PatientsScreenV2({super.key});
@@ -21,8 +22,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   final TextEditingController _listSearchController = TextEditingController();
 
   String _listQuery = '';
-  String _topRange = '1Month';
-  String _outstandingRange = '1Month';
+  String _topRange = '6Months';
+  String _outstandingRange = '6Months';
   String _procedureTab = 'RCT';
   String _selectedAlphabet = 'A';
   String _sortBy = 'name';
@@ -35,7 +36,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   static const int _pageSize = 200;
 
   static const List<String> _topRanges = [
-    '1Week',
     '1Month',
     '6Months',
     '1Year',
@@ -298,8 +298,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       ],
                     ),
                     SizedBox(
-                      width: 320,
-                      height: 196,
+                      width: 280,
+                      height: 160,
                       child: _TreatmentJourneyTimelineCard(
                         metrics: journeyMetrics,
                       ),
@@ -313,6 +313,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       _AgeDistributionCard(buckets: ageBuckets),
                       _TopPatientsCard(
                         rows: topPatientsByVisits,
+                        visitsByPatient: visitsByPatient,
                         selectedRange: _topRange,
                         ranges: _topRanges,
                         onSelectRange: (v) => setState(() {
@@ -335,6 +336,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       ),
                       _TopOutstandingCard(
                         rows: topOutstanding,
+                        visitsByPatient: visitsByPatient,
                         selectedRange: _outstandingRange,
                         ranges: _topRanges,
                         onSelectRange: (v) => setState(() {
@@ -358,6 +360,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       _TopProcedurePatientsCard(
                         selectedTab: _procedureTab,
                         rows: topProcedurePatients.toList(growable: false),
+                        visitsByPatient: visitsByPatient,
                         onSelectTab: (tab) => setState(() {
                           _procedureTab = tab;
                           _topProcedureVisibleCount = 10;
@@ -437,7 +440,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       '41-50': {'Male': 0, 'Female': 0},
       '51-60': {'Male': 0, 'Female': 0},
       '61-70': {'Male': 0, 'Female': 0},
-      '71+': {'Male': 0, 'Female': 0},
+      '71-80': {'Male': 0, 'Female': 0},
+      '81+': {'Male': 0, 'Female': 0},
     };
 
     for (final p in items) {
@@ -459,8 +463,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         bucket = '51-60';
       } else if (age <= 70) {
         bucket = '61-70';
+      } else if (age <= 80) {
+        bucket = '71-80';
       } else {
-        bucket = '71+';
+        bucket = '81+';
       }
       buckets[bucket]![gender] = buckets[bucket]![gender]! + 1;
     }
@@ -660,13 +666,26 @@ class _TreatmentJourneyTimelineCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Treatment Journey',
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF3C5E87),
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              const Text(
+                'Treatment Journey',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF3C5E87),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Tooltip(
+                message: 'New: first visit only\nActive: last visit <= 60 days\nFollow-up: 61-180 days\nInactive: > 180 days',
+                child: const Icon(
+                  FluentIcons.info,
+                  size: 13,
+                  color: Color(0xFF5C7598),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Row(
@@ -684,64 +703,8 @@ class _TreatmentJourneyTimelineCard extends StatelessWidget {
               bar('Inactive', metrics.inactive, const Color(0xFF7D8FA7)),
             ],
           ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: const [
-              _JourneyLegendItem(
-                color: Color(0xFF2D7BD8),
-                text: 'New: first visit only',
-              ),
-              _JourneyLegendItem(
-                color: Color(0xFF2BA58D),
-                text: 'Active: last visit <= 60 days',
-              ),
-              _JourneyLegendItem(
-                color: Color(0xFFE09C31),
-                text: 'Follow-up: 61-180 days',
-              ),
-              _JourneyLegendItem(
-                color: Color(0xFF7D8FA7),
-                text: 'Inactive: > 180 days',
-              ),
-            ],
-          ),
         ],
       ),
-    );
-  }
-}
-
-class _JourneyLegendItem extends StatelessWidget {
-  final Color color;
-  final String text;
-
-  const _JourneyLegendItem({required this.color, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 10,
-            color: Color(0xFF607B9F),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1022,49 +985,60 @@ class _AgeDistributionCardState extends State<_AgeDistributionCard> {
     final maxValue = widget.buckets.values
         .map((m) => (m['Male'] ?? 0) + (m['Female'] ?? 0))
         .fold<int>(0, (m, v) => v > m ? v : m);
+    final sorted = widget.buckets.entries.toList(growable: false)
+      ..sort((a, b) {
+        final aTotal = (a.value['Male'] ?? 0) + (a.value['Female'] ?? 0);
+        final bTotal = (b.value['Male'] ?? 0) + (b.value['Female'] ?? 0);
+        return bTotal.compareTo(aTotal);
+      });
 
     return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Patient Age Distribution',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 320, maxHeight: 420),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Patient Age Distribution',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2D7BD8),
-                  borderRadius: BorderRadius.circular(2),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2D7BD8),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              const Text('Male',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF36557C))),
-              const SizedBox(width: 10),
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2BA58D),
-                  borderRadius: BorderRadius.circular(2),
+                const SizedBox(width: 4),
+                const Text('Male',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF36557C))),
+                const SizedBox(width: 10),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2BA58D),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              const Text('Female',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF36557C))),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ...widget.buckets.entries.map((entry) {
+                const SizedBox(width: 4),
+                const Text('Female',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF36557C))),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: sorted.map((entry) {
             final male = entry.value['Male'] ?? 0;
             final female = entry.value['Female'] ?? 0;
             final total = male + female;
@@ -1170,8 +1144,12 @@ class _AgeDistributionCardState extends State<_AgeDistributionCard> {
                 ),
               ),
             );
-          }).toList(),
-        ],
+                  }).toList(growable: false),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1355,6 +1333,7 @@ class _PaymentModeDistributionCard extends StatelessWidget {
 
 class _TopPatientsCard extends StatelessWidget {
   final List<MapEntry<Patient, int>> rows;
+  final Map<String, List<Appointment>> visitsByPatient;
   final String selectedRange;
   final List<String> ranges;
   final ValueChanged<String> onSelectRange;
@@ -1364,6 +1343,7 @@ class _TopPatientsCard extends StatelessWidget {
 
   const _TopPatientsCard({
     required this.rows,
+    required this.visitsByPatient,
     required this.selectedRange,
     required this.ranges,
     required this.onSelectRange,
@@ -1376,6 +1356,7 @@ class _TopPatientsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final visibleRows = rows.take(visibleCount).toList(growable: false);
     final hasMore = visibleCount < rows.length;
+
     return _CardShell(
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 320, maxHeight: 420),
@@ -1474,12 +1455,26 @@ class _TopPatientsCard extends StatelessWidget {
                                       fontSize: 11,
                                     ),
                                   ),
-                                  trailing: Text(
-                                    '${entry.value.value} visits',
-                                    style: const TextStyle(
-                                      color: Color(0xFF1F446E),
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                  trailing: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${entry.value.value} visits',
+                                        style: const TextStyle(
+                                          color: Color(0xFF1F446E),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Last: ${_lastVisited(visitsByPatient, entry.value.key)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF7C93B1),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               )
@@ -1506,10 +1501,20 @@ class _TopPatientsCard extends StatelessWidget {
       ),
     );
   }
+
+  String _lastVisited(
+    Map<String, List<Appointment>> visitsByPatient,
+    Patient patient,
+  ) {
+    final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
+    if (visits.isEmpty) return '-';
+    return DateFormat('dd MMM').format(visits.last.date);
+  }
 }
 
 class _TopOutstandingCard extends StatelessWidget {
   final List<MapEntry<Patient, double>> rows;
+  final Map<String, List<Appointment>> visitsByPatient;
   final String selectedRange;
   final List<String> ranges;
   final ValueChanged<String> onSelectRange;
@@ -1519,6 +1524,7 @@ class _TopOutstandingCard extends StatelessWidget {
 
   const _TopOutstandingCard({
     required this.rows,
+    required this.visitsByPatient,
     required this.selectedRange,
     required this.ranges,
     required this.onSelectRange,
@@ -1531,6 +1537,7 @@ class _TopOutstandingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final visibleRows = rows.take(visibleCount).toList(growable: false);
     final hasMore = visibleCount < rows.length;
+
     return _CardShell(
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 320, maxHeight: 420),
@@ -1629,11 +1636,25 @@ class _TopOutstandingCard extends StatelessWidget {
                                       fontSize: 11,
                                     ),
                                   ),
-                                  trailing: Text(
-                                    '₹${entry.value.value.toStringAsFixed(0)}',
-                                    style: const TextStyle(
-                                      color: Color(0xFFD6455D),
-                                    ),
+                                  trailing: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '₹${entry.value.value.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFFD6455D),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Last: ${_lastVisited(visitsByPatient, entry.value.key)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF7C93B1),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               )
@@ -1660,11 +1681,21 @@ class _TopOutstandingCard extends StatelessWidget {
       ),
     );
   }
+
+  String _lastVisited(
+    Map<String, List<Appointment>> visitsByPatient,
+    Patient patient,
+  ) {
+    final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
+    if (visits.isEmpty) return '-';
+    return DateFormat('dd MMM').format(visits.last.date);
+  }
 }
 
 class _TopProcedurePatientsCard extends StatelessWidget {
   final String selectedTab;
   final List<MapEntry<Patient, int>> rows;
+  final Map<String, List<Appointment>> visitsByPatient;
   final ValueChanged<String> onSelectTab;
   final ValueChanged<Patient> onOpenHistory;
   final int visibleCount;
@@ -1673,6 +1704,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
   const _TopProcedurePatientsCard({
     required this.selectedTab,
     required this.rows,
+    required this.visitsByPatient,
     required this.onSelectTab,
     required this.onOpenHistory,
     required this.visibleCount,
@@ -1778,12 +1810,26 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                                       fontSize: 11,
                                     ),
                                   ),
-                                  trailing: Text(
-                                    '${entry.value.value} sessions',
-                                    style: const TextStyle(
-                                      color: Color(0xFF1F446E),
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                  trailing: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${entry.value.value} sessions',
+                                        style: const TextStyle(
+                                          color: Color(0xFF1F446E),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Last: ${_lastVisited(visitsByPatient, entry.value.key)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF7C93B1),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               )
@@ -1809,6 +1855,15 @@ class _TopProcedurePatientsCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _lastVisited(
+    Map<String, List<Appointment>> visitsByPatient,
+    Patient patient,
+  ) {
+    final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
+    if (visits.isEmpty) return '-';
+    return DateFormat('dd MMM').format(visits.last.date);
   }
 }
 

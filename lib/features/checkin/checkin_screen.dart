@@ -17,6 +17,7 @@ class CheckinScreen extends StatefulWidget {
 class _CheckinScreenState extends State<CheckinScreen> {
   DateTime _selectedDate = _dateOnly(DateTime.now());
   String _selectedDoctor = '__all__';
+  Appointment? _selectedAppointment;
 
   static DateTime _dateOnly(DateTime input) {
     return DateTime(input.year, input.month, input.day);
@@ -68,6 +69,20 @@ class _CheckinScreenState extends State<CheckinScreen> {
 
         final pending = filtered.where((a) => !a.isDone).toList(growable: false);
         final completed = filtered.where((a) => a.isDone).toList(growable: false);
+        final today = DateTime.now();
+        final isToday = _selectedDate.year == today.year &&
+            _selectedDate.month == today.month &&
+            _selectedDate.day == today.day;
+
+        if (_selectedAppointment != null) {
+          final stillVisible = filtered.any((a) => a.id == _selectedAppointment!.id);
+          if (!stillVisible) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              setState(() => _selectedAppointment = null);
+            });
+          }
+        }
 
         return Container(
           color: const Color(0xFFF3F7FC),
@@ -135,11 +150,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () => setState(() {
-                        _selectedDate = _dateOnly(DateTime.now());
-                      }),
-                      child: const Text('Today'),
+                    Visibility(
+                      visible: !isToday,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      maintainSize: true,
+                      child: FilledButton(
+                        onPressed: () => setState(() {
+                          _selectedDate = _dateOnly(DateTime.now());
+                        }),
+                        child: const Text('Today'),
+                      ),
                     ),
                   ],
                 ),
@@ -171,17 +192,64 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _WorkflowColumn(
-                  title: 'Pending',
-                  color: const Color(0xFFE4A11B),
-                  rows: pending,
-                  showHistoryAction: true,
-                ),
-                const SizedBox(height: 10),
-                _WorkflowColumn(
-                  title: 'Completed',
-                  color: const Color(0xFF3B9A42),
-                  rows: completed,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 1360;
+
+                    final lists = SizedBox(
+                      width: isWide ? 560 : double.infinity,
+                      child: Column(
+                        children: [
+                          _WorkflowColumn(
+                            title: 'Pending',
+                            color: const Color(0xFFE4A11B),
+                            rows: pending,
+                            showHistoryAction: true,
+                            onSelect: (a) => setState(() => _selectedAppointment = a),
+                            selectedAppointmentId: _selectedAppointment?.id,
+                          ),
+                          const SizedBox(height: 10),
+                          _WorkflowColumn(
+                            title: 'Completed',
+                            color: const Color(0xFF3B9A42),
+                            rows: completed,
+                            onSelect: (a) => setState(() => _selectedAppointment = a),
+                            selectedAppointmentId: _selectedAppointment?.id,
+                          ),
+                        ],
+                      ),
+                    );
+
+                    final history = Expanded(
+                      child: _CheckinHistoryPanel(
+                        selectedAppointment: _selectedAppointment,
+                      ),
+                    );
+
+                    if (!isWide) {
+                      return Column(
+                        children: [
+                          lists,
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: _CheckinHistoryPanel(
+                              selectedAppointment: _selectedAppointment,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        lists,
+                        const SizedBox(width: 10),
+                        history,
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -255,12 +323,16 @@ class _WorkflowColumn extends StatelessWidget {
   final Color color;
   final List<Appointment> rows;
   final bool showHistoryAction;
+  final ValueChanged<Appointment>? onSelect;
+  final String? selectedAppointmentId;
 
   const _WorkflowColumn({
     required this.title,
     required this.color,
     required this.rows,
     this.showHistoryAction = false,
+    this.onSelect,
+    this.selectedAppointmentId,
   });
 
   @override
@@ -314,6 +386,8 @@ class _WorkflowColumn extends StatelessWidget {
               (a) => _WorkflowRow(
                 appointment: a,
                 showHistoryAction: showHistoryAction,
+                selected: selectedAppointmentId == a.id,
+                onSelect: onSelect,
               ),
             ),
         ],
@@ -325,10 +399,14 @@ class _WorkflowColumn extends StatelessWidget {
 class _WorkflowRow extends StatelessWidget {
   final Appointment appointment;
   final bool showHistoryAction;
+  final bool selected;
+  final ValueChanged<Appointment>? onSelect;
 
   const _WorkflowRow({
     required this.appointment,
     this.showHistoryAction = false,
+    this.selected = false,
+    this.onSelect,
   });
 
   void _openPatientHistoryDialog(BuildContext context) {
@@ -367,10 +445,13 @@ class _WorkflowRow extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFFEAF2FC) : Colors.transparent,
+        border: const Border(top: BorderSide(color: Color(0xFFE2ECF8))),
       ),
-      child: Row(
+      child: GestureDetector(
+        onTap: onSelect == null ? null : () => onSelect!(appointment),
+        child: Row(
         children: [
           Expanded(
             child: Column(
@@ -394,20 +475,6 @@ class _WorkflowRow extends StatelessWidget {
               ],
             ),
           ),
-          FilledButton(
-            onPressed: () {
-              appointment.isCheckedIn = !appointment.isCheckedIn;
-              appointment.checkedInAt = appointment.isCheckedIn ? DateTime.now() : null;
-              appointments.set(appointment);
-            },
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(
-                appointment.isCheckedIn ? const Color(0xFF1F8F4E) : const Color(0xFF2D7BD8),
-              ),
-            ),
-            child: Text(appointment.isCheckedIn ? 'Undo Checkin' : 'Checkin'),
-          ),
-          const SizedBox(width: 8),
           Button(
             onPressed: () {
               appointment.isDone = !appointment.isDone;
@@ -429,6 +496,185 @@ class _WorkflowRow extends StatelessWidget {
           ),
         ],
       ),
+      ),
+    );
+  }
+}
+
+class _CheckinHistoryPanel extends StatelessWidget {
+  final Appointment? selectedAppointment;
+
+  const _CheckinHistoryPanel({required this.selectedAppointment});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD6E2F0)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: selectedAppointment == null
+            ? const SizedBox(
+                height: 220,
+                child: Center(
+                  child: Text(
+                    'Select a patient from Pending or Completed to view history.',
+                    style: TextStyle(color: Color(0xFF6D84A8)),
+                  ),
+                ),
+              )
+            : _CheckinHistoryDetails(appointment: selectedAppointment!),
+      ),
+    );
+  }
+}
+
+class _CheckinHistoryDetails extends StatelessWidget {
+  final Appointment appointment;
+
+  const _CheckinHistoryDetails({required this.appointment});
+
+  @override
+  Widget build(BuildContext context) {
+    final patient = appointment.patient;
+    final pid = appointment.patientID;
+    final all = appointments.present.values
+        .where((a) => pid != null && pid.isNotEmpty && a.patientID == pid)
+        .toList(growable: false)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    final historyRows = all.take(20).toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          patient?.title.trim().isNotEmpty == true
+              ? patient!.title
+              : appointment.title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF183A67),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${patient?.phone ?? '-'} • ${patient?.age ?? 0}y',
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF6D84A8),
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Patient and Treatment History',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF2C4E76),
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (historyRows.isEmpty)
+          const Text(
+            'No history found for this patient.',
+            style: TextStyle(color: Color(0xFF6D84A8)),
+          )
+        else
+          ...historyRows.map(
+            (a) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6FAFF),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2ECF8)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        DateFormat('dd MMM yyyy • h:mm a').format(a.date),
+                        style: const TextStyle(
+                          color: Color(0xFF2F4F76),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        a.isDone ? 'Completed' : 'Pending',
+                        style: TextStyle(
+                          color: a.isDone
+                              ? const Color(0xFF3B9A42)
+                              : const Color(0xFFE4A11B),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    a.operators.isEmpty
+                        ? 'Doctor: Unassigned'
+                        : 'Doctor: ${a.operators.map((d) => d.title).join(', ')}',
+                    style: const TextStyle(
+                      color: Color(0xFF5F789B),
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: a.selectedTreatments.isEmpty
+                        ? const [
+                            Text(
+                              'No treatments recorded',
+                              style: TextStyle(
+                                color: Color(0xFF8AA0BC),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ]
+                        : a.selectedTreatments
+                            .map(
+                              (t) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEAF2FC),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(0xFFD5E5F7),
+                                  ),
+                                ),
+                                child: Text(
+                                  t,
+                                  style: const TextStyle(
+                                    color: Color(0xFF2F5B88),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(growable: false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
