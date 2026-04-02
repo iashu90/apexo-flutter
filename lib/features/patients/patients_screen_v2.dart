@@ -1413,21 +1413,12 @@ class _TopPatientsCard extends StatelessWidget {
                               ? const Color(0xFF2D7BD8)
                               : const Color(0xFFEFF4FB),
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: selectedRange == range
-                              ? const [
-                                  BoxShadow(
-                                    color: Color(0x332D7BD8),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ]
-                              : const [],
                         ),
                         child: Text(
                           range,
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                             color: selectedRange == range
                                 ? Colors.white
                                 : const Color(0xFF345982),
@@ -1577,21 +1568,12 @@ class _TopOutstandingCard extends StatelessWidget {
                               ? const Color(0xFF2D7BD8)
                               : const Color(0xFFEFF4FB),
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: selectedRange == range
-                              ? const [
-                                  BoxShadow(
-                                    color: Color(0x332D7BD8),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ]
-                              : const [],
                         ),
                         child: Text(
                           range,
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                             color: selectedRange == range
                                 ? Colors.white
                                 : const Color(0xFF345982),
@@ -1716,21 +1698,12 @@ class _TopProcedurePatientsCard extends StatelessWidget {
             color:
                 selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: selected
-                ? const [
-                    BoxShadow(
-                      color: Color(0x332D7BD8),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ]
-                : const [],
           ),
           child: Text(
             label,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: selected ? Colors.white : const Color(0xFF345982),
             ),
           ),
@@ -1948,21 +1921,12 @@ class _AllPatientsListCard extends StatelessWidget {
                                         ? const Color(0xFF2D7BD8)
                                         : const Color(0xFFD2E1F2),
                                   ),
-                                  boxShadow: selectedAlphabet == l
-                                      ? const [
-                                          BoxShadow(
-                                            color: Color(0x332D7BD8),
-                                            blurRadius: 8,
-                                            offset: Offset(0, 2),
-                                          ),
-                                        ]
-                                      : const [],
                                 ),
                                 child: Text(
                                   l,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w800,
+                                      fontWeight: FontWeight.w600,
                                     color: selectedAlphabet == l
                                         ? Colors.white
                                         : const Color(0xFF355A84),
@@ -2179,10 +2143,13 @@ class _AllPatientsListCard extends StatelessWidget {
                               ),
                               Expanded(
                                 flex: 12,
-                                child: _HoverActionItem(
-                                  icon: FluentIcons.money,
-                                  label: 'History',
-                                  onTap: () => onOpenHistory(patient),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: _HoverActionItem(
+                                    icon: FluentIcons.history,
+                                    label: 'History',
+                                    onTap: () => onOpenHistory(patient),
+                                  ),
                                 ),
                               ),
                             ],
@@ -2330,35 +2297,26 @@ class _HoverActionItemState extends State<_HoverActionItem> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFE8F2FF) : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: _hovered ? const Color(0xFFBFDAFA) : Colors.transparent,
+      child: Tooltip(
+        message: widget.label,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: _hovered ? const Color(0xFFE7F1FF) : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _hovered ? const Color(0xFFBFD8F8) : Colors.transparent,
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.icon,
-                size: 14,
-                color: const Color(0xFF2D7BD8),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                widget.label,
-                style: const TextStyle(
-                  color: Color(0xFF2D7BD8),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+            child: Icon(
+              widget.icon,
+              size: 14,
+              color: const Color(0xFF2D7BD8),
+            ),
           ),
         ),
       ),

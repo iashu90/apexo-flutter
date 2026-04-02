@@ -38,6 +38,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   bool _showAllTreatmentStats = false;
   final TextEditingController _searchController = TextEditingController();
 
+  String? _doctorFilterChipLabel() {
+    if (_selectedDoctorFilter == _filterAll) return null;
+    if (_selectedDoctorFilter == _filterUnassigned) {
+      return 'Doctor: Unassigned';
+    }
+    final doctorName = doctors.get(_selectedDoctorFilter)?.title ?? 'Unknown';
+    return 'Doctor: $doctorName';
+  }
+
+  String? _treatmentFilterChipLabel() {
+    if (_selectedTreatmentFilter == _treatmentFilterAll) return null;
+    return 'Treatment: $_selectedTreatmentFilter';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -358,20 +372,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           _selectedDoctorFilter != _DashboardScreenV2State._filterAll ||
             _selectedTreatmentFilter !=
               _DashboardScreenV2State._treatmentFilterAll;
-        final activeFilters = <String>[];
-        if (_selectedDoctorFilter != _DashboardScreenV2State._filterAll) {
-          if (_selectedDoctorFilter == _DashboardScreenV2State._filterUnassigned) {
-            activeFilters.add('Doctor: Unassigned');
-          } else {
-            final doctorName = doctors.get(_selectedDoctorFilter)?.title ?? 'Unknown';
-            activeFilters.add('Doctor: $doctorName');
-          }
-        }
-        if (_selectedTreatmentFilter != _DashboardScreenV2State._treatmentFilterAll) {
-          activeFilters.add('Treatment: $_selectedTreatmentFilter');
-        }
-        final activeFilterSummary =
-            activeFilters.isEmpty ? null : activeFilters.join(' • ');
+        final doctorFilterChip = _doctorFilterChipLabel();
+        final treatmentFilterChip = _treatmentFilterChipLabel();
 
         final doctorRevenueSplit = <String, double>{};
         final doctorAppointmentCounts = <String, int>{};
@@ -623,11 +625,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             tableAppointments: tableAppointments,
                             duplicatePatientKeys: duplicatePatientKeys,
                             isFilterApplied: isDoctorFilterApplied,
-                            activeFilterSummary: activeFilterSummary,
+                            doctorFilterChip: doctorFilterChip,
+                            treatmentFilterChip: treatmentFilterChip,
                             searchController: _searchController,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
                             onSort: _onSort,
+                            onClearDoctorFilter: () => setState(() {
+                              _selectedDoctorFilter =
+                                  _DashboardScreenV2State._filterAll;
+                            }),
+                            onClearTreatmentFilter: () => setState(() {
+                              _selectedTreatmentFilter =
+                                  _DashboardScreenV2State._treatmentFilterAll;
+                            }),
                             onClearFilters: () => setState(() {
                               _selectedDoctorFilter =
                                   _DashboardScreenV2State._filterAll;
@@ -684,11 +695,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             tableAppointments: tableAppointments,
                             duplicatePatientKeys: duplicatePatientKeys,
                             isFilterApplied: isDoctorFilterApplied,
-                            activeFilterSummary: activeFilterSummary,
+                            doctorFilterChip: doctorFilterChip,
+                            treatmentFilterChip: treatmentFilterChip,
                             searchController: _searchController,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
                             onSort: _onSort,
+                            onClearDoctorFilter: () => setState(() {
+                              _selectedDoctorFilter =
+                                  _DashboardScreenV2State._filterAll;
+                            }),
+                            onClearTreatmentFilter: () => setState(() {
+                              _selectedTreatmentFilter =
+                                  _DashboardScreenV2State._treatmentFilterAll;
+                            }),
                             onClearFilters: () => setState(() {
                               _selectedDoctorFilter =
                                   _DashboardScreenV2State._filterAll;
@@ -868,22 +888,28 @@ class _RightDashboardColumn extends StatelessWidget {
   final List<Appointment> tableAppointments;
   final Set<String> duplicatePatientKeys;
   final bool isFilterApplied;
-  final String? activeFilterSummary;
+  final String? doctorFilterChip;
+  final String? treatmentFilterChip;
   final TextEditingController searchController;
   final String sortBy;
   final bool sortAscending;
   final ValueChanged<String> onSort;
+  final VoidCallback onClearDoctorFilter;
+  final VoidCallback onClearTreatmentFilter;
   final VoidCallback onClearFilters;
 
   const _RightDashboardColumn({
     required this.tableAppointments,
     required this.duplicatePatientKeys,
     required this.isFilterApplied,
-    required this.activeFilterSummary,
+    required this.doctorFilterChip,
+    required this.treatmentFilterChip,
     required this.searchController,
     required this.sortBy,
     required this.sortAscending,
     required this.onSort,
+    required this.onClearDoctorFilter,
+    required this.onClearTreatmentFilter,
     required this.onClearFilters,
   });
 
@@ -895,11 +921,14 @@ class _RightDashboardColumn extends StatelessWidget {
           tableAppointments: tableAppointments,
           duplicatePatientKeys: duplicatePatientKeys,
           isFilterApplied: isFilterApplied,
-          activeFilterSummary: activeFilterSummary,
+          doctorFilterChip: doctorFilterChip,
+          treatmentFilterChip: treatmentFilterChip,
           searchController: searchController,
           sortBy: sortBy,
           sortAscending: sortAscending,
           onSort: onSort,
+          onClearDoctorFilter: onClearDoctorFilter,
+          onClearTreatmentFilter: onClearTreatmentFilter,
           onClearFilters: onClearFilters,
         ),
       ],
@@ -960,7 +989,7 @@ class _DoctorScheduleCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Doctor Schedule',
+            'Doctor Load and Revenue Filter',
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -977,17 +1006,18 @@ class _DoctorScheduleCard extends StatelessWidget {
           _ScheduleLine(
             title: 'All',
             count: todaysAppointments.length,
-            secondaryValue:
-                '₹${totalDoctorRevenue.toStringAsFixed(0)} (100%)',
+            secondaryMoney: '₹${totalDoctorRevenue.toStringAsFixed(0)}',
+            secondaryPct: '100%',
             selected: selectedFilter == _DashboardScreenV2State._filterAll,
             onTap: () => onFilterChanged(_DashboardScreenV2State._filterAll),
           ),
           _ScheduleLine(
             title: 'Unassigned',
             count: unassigned,
-            secondaryValue: totalDoctorRevenue <= 0
-                ? '₹${unassignedRevenue.toStringAsFixed(0)} (0%)'
-                : '₹${unassignedRevenue.toStringAsFixed(0)} (${(unassignedRevenue / totalDoctorRevenue * 100).toStringAsFixed(0)}%)',
+            secondaryMoney: '₹${unassignedRevenue.toStringAsFixed(0)}',
+            secondaryPct: totalDoctorRevenue <= 0
+              ? '0%'
+              : '${(unassignedRevenue / totalDoctorRevenue * 100).toStringAsFixed(0)}%',
             selected:
                 selectedFilter == _DashboardScreenV2State._filterUnassigned,
             onTap: () =>
@@ -998,9 +1028,10 @@ class _DoctorScheduleCard extends StatelessWidget {
                 (row) => _ScheduleLine(
                   title: row.title,
                   count: row.count,
-                  secondaryValue: totalDoctorRevenue <= 0
-                      ? '₹${row.revenue.toStringAsFixed(0)} (0%)'
-                      : '₹${row.revenue.toStringAsFixed(0)} (${(row.revenue / totalDoctorRevenue * 100).toStringAsFixed(0)}%)',
+                  secondaryMoney: '₹${row.revenue.toStringAsFixed(0)}',
+                  secondaryPct: totalDoctorRevenue <= 0
+                      ? '0%'
+                      : '${(row.revenue / totalDoctorRevenue * 100).toStringAsFixed(0)}%',
                   selected: selectedFilter == row.id,
                   onTap: () => onFilterChanged(row.id),
                 ),
@@ -1009,7 +1040,7 @@ class _DoctorScheduleCard extends StatelessWidget {
           FilledButton(
             onPressed: () => openAppointment(Appointment.fromJson({})),
             style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(const Color(0xFF1A74DB)),
+              backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
               shape: WidgetStateProperty.all(
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
@@ -1137,22 +1168,28 @@ class _AppointmentsTableCard extends StatelessWidget {
   final List<Appointment> tableAppointments;
   final Set<String> duplicatePatientKeys;
   final bool isFilterApplied;
-  final String? activeFilterSummary;
+  final String? doctorFilterChip;
+  final String? treatmentFilterChip;
   final TextEditingController searchController;
   final String sortBy;
   final bool sortAscending;
   final ValueChanged<String> onSort;
+  final VoidCallback onClearDoctorFilter;
+  final VoidCallback onClearTreatmentFilter;
   final VoidCallback onClearFilters;
 
   const _AppointmentsTableCard({
     required this.tableAppointments,
     required this.duplicatePatientKeys,
     required this.isFilterApplied,
-    required this.activeFilterSummary,
+    required this.doctorFilterChip,
+    required this.treatmentFilterChip,
     required this.searchController,
     required this.sortBy,
     required this.sortAscending,
     required this.onSort,
+    required this.onClearDoctorFilter,
+    required this.onClearTreatmentFilter,
     required this.onClearFilters,
   });
 
@@ -1189,49 +1226,43 @@ class _AppointmentsTableCard extends StatelessWidget {
                       color: Color(0xFF637EA3),
                     ),
                   ),
-                  if (activeFilterSummary != null) ...[
+                  if (doctorFilterChip != null || treatmentFilterChip != null) ...[
                     const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF2FC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFD0E2F7)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            FluentIcons.filter,
-                            size: 12,
-                            color: Color(0xFF1F4E85),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (doctorFilterChip != null)
+                          _FilterChipTag(
+                            label: doctorFilterChip!,
+                            onRemove: onClearDoctorFilter,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$activeFilterSummary (${rows.length} results)',
-                            style: const TextStyle(
-                              fontSize: 12,
+                        if (treatmentFilterChip != null)
+                          _FilterChipTag(
+                            label: treatmentFilterChip!,
+                            onRemove: onClearTreatmentFilter,
+                          ),
+                        Text(
+                          '${rows.length} results',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF5A7397),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: onClearFilters,
+                          child: const Text(
+                            'Clear all',
+                            style: TextStyle(
+                              color: Color(0xFF2D7BD8),
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF1F4E85),
+                              fontSize: 12,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: onClearFilters,
-                            child: const Text(
-                              'Clear',
-                              style: TextStyle(
-                                color: Color(0xFF2D7BD8),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
@@ -1758,14 +1789,16 @@ class _StatusBadge extends StatelessWidget {
 class _ScheduleLine extends StatelessWidget {
   final String title;
   final int count;
-  final String? secondaryValue;
+  final String? secondaryMoney;
+  final String? secondaryPct;
   final bool selected;
   final VoidCallback onTap;
 
   const _ScheduleLine({
     required this.title,
     required this.count,
-    this.secondaryValue,
+    this.secondaryMoney,
+    this.secondaryPct,
     required this.selected,
     required this.onTap,
   });
@@ -1802,18 +1835,31 @@ class _ScheduleLine extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (secondaryValue != null) ...[
+                if (secondaryMoney != null) ...[
                   Text(
-                    secondaryValue!,
+                    secondaryMoney!,
                     style: TextStyle(
                       color: selected
-                          ? const Color(0xFF1A4B88)
-                          : const Color(0xFF36557C),
+                          ? const Color(0xFF1459AD)
+                          : const Color(0xFF2D7BD8),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 6),
                 ],
+                if (secondaryPct != null) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    secondaryPct!,
+                    style: TextStyle(
+                      color: selected
+                          ? const Color(0xFF2BA58D)
+                          : const Color(0xFF4A8B73),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 6),
                 Text(
                   '($count)',
                   style: TextStyle(
@@ -2227,6 +2273,9 @@ class _TreatmentStatsCard extends StatelessWidget {
               onPressed: onToggleShowAll,
               style: ButtonStyle(
                 backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                shape: WidgetStateProperty.all(
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
               ),
               child: Text(showAll ? 'Show Top 5' : 'Show More'),
             ),
@@ -2289,7 +2338,7 @@ class _StatCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
+        constraints: const BoxConstraints(minWidth: 180, maxWidth: 260),
         child: SizedBox(
           height: 140,
           child: _CardShell(
@@ -2342,7 +2391,7 @@ class _RevenueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 240, maxWidth: 340),
+      constraints: const BoxConstraints(minWidth: 200, maxWidth: 280),
       child: SizedBox(
         height: 140,
         child: _CardShell(
@@ -2399,7 +2448,7 @@ class _TopPatientGrowthCard extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 62,
+              width: 50,
               child: Text(
                 label,
                 style: const TextStyle(
@@ -2439,7 +2488,7 @@ class _TopPatientGrowthCard extends StatelessWidget {
     }
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 240, maxWidth: 360),
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
       child: SizedBox(
         height: 140,
         child: _CardShell(
@@ -2527,44 +2576,79 @@ class _StatusSummaryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Row(
+            Expanded(
+              child: Row(
               children: [
                 const Icon(
                   FluentIcons.check_mark,
-                  size: 14,
+                  size: 16,
                   color: Color(0xFF3B9A42),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Completed: $completed',
-                  style: const TextStyle(
-                    color: Color(0xFF3B9A42),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        '$completed',
+                        style: const TextStyle(
+                          color: Color(0xFF3B9A42),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 32,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Completed',
+                        style: TextStyle(
+                          color: Color(0xFF3B9A42),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Row(
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: Row(
               children: [
                 const Icon(
                   FluentIcons.checkbox_indeterminate,
-                  size: 14,
+                  size: 16,
                   color: Color(0xFFE4A11B),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Pending: $pending',
-                  style: const TextStyle(
-                    color: Color(0xFFE4A11B),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Text(
+                        '$pending',
+                        style: const TextStyle(
+                          color: Color(0xFFE4A11B),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 32,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Pending',
+                        style: TextStyle(
+                          color: Color(0xFFE4A11B),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const Spacer(),
+            ),
             Text(
               'Completion rate: $donePct%',
               style: const TextStyle(
@@ -2601,11 +2685,11 @@ class _TopTimingSummaryCard extends StatelessWidget {
 
     Widget miniBar(String label, int value, Color color) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 5),
+        padding: const EdgeInsets.only(bottom: 4),
         child: Row(
           children: [
             SizedBox(
-              width: 48,
+              width: 78,
               child: Text(
                 label,
                 style: const TextStyle(
@@ -2646,9 +2730,9 @@ class _TopTimingSummaryCard extends StatelessWidget {
     }
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 240, maxWidth: 340),
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
       child: SizedBox(
-        height: 140,
+        height: 154,
         child: _CardShell(
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2661,10 +2745,10 @@ class _TopTimingSummaryCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
-            miniBar('Morning 6-12', morning, const Color(0xFF2D7BD8)),
-            miniBar('Afternoon 12-5', afternoon, const Color(0xFF2BA58D)),
-            miniBar('Evening 5-10', evening, const Color(0xFFE09C31)),
+            const SizedBox(height: 6),
+            miniBar('Morning', morning, const Color(0xFF2D7BD8)),
+            miniBar('Afternoon', afternoon, const Color(0xFF2BA58D)),
+            miniBar('Evening', evening, const Color(0xFFE09C31)),
           ],
         ),
       ),
@@ -2700,11 +2784,12 @@ class _TopDonutMetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = segments.fold<int>(0, (sum, s) => sum + s.value);
 
-    return SizedBox(
-      width: 290,
-      height: 140,
-      child: _CardShell(
-        child: Column(
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -2785,6 +2870,54 @@ class _TopDonutMetricCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+      ),
+    );
+  }
+}
+
+class _FilterChipTag extends StatelessWidget {
+  final String label;
+  final VoidCallback onRemove;
+
+  const _FilterChipTag({required this.label, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF2FC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD0E2F7)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            FluentIcons.filter,
+            size: 11,
+            color: Color(0xFF1F4E85),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1F4E85),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: onRemove,
+            child: const Icon(
+              FluentIcons.chrome_close,
+              size: 10,
+              color: Color(0xFF2D7BD8),
+            ),
+          ),
+        ],
       ),
     );
   }
