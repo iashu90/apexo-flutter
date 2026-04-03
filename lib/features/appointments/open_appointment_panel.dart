@@ -31,7 +31,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart' as material;
 
-void openAppointment([Appointment? appointment]) {
+void openAppointment([Appointment? appointment, int initialTab = 0]) {
   final editingCopy = Appointment.fromJson(appointment?.toJson() ?? {});
   final panel = Panel(
     item: editingCopy,
@@ -97,6 +97,7 @@ void openAppointment([Appointment? appointment]) {
     ),
   ];
   panel.tabs.addAll(tabs);
+  panel.selectedTab(initialTab.clamp(0, tabs.length - 1));
   routes.openPanel(panel);
 }
 

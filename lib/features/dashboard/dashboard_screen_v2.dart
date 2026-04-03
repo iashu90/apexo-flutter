@@ -406,7 +406,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final treatmentFilterChip = _treatmentFilterChipLabel();
 
         final doctorRevenueSplit = <String, double>{};
-        final doctorAppointmentCounts = <String, int>{};
         final paymentModeCounts = <String, int>{'Cash': 0, 'GPay': 0};
 
         for (final a in todaysAppointments) {
@@ -420,8 +419,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                 : (doctors.get(doctorId)?.title ?? 'Unknown');
             doctorRevenueSplit[label] =
                 (doctorRevenueSplit[label] ?? 0) + perDoctor;
-            doctorAppointmentCounts[label] =
-                (doctorAppointmentCounts[label] ?? 0) + 1;
           }
 
           final isDigital = a.treatmentGpayPaid || a.prescriptionGpayPaid;
@@ -443,16 +440,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           }
         }
 
-        final selectedDateOnly = _dateOnly(selectedDate);
         final weekStart =
           _dateOnly(selectedDate.subtract(const Duration(days: 6)));
         final selectedEnd = _dateOnly(selectedDate).add(const Duration(days: 1));
         final prevWeekStart = _dateOnly(weekStart.subtract(const Duration(days: 7)));
         final prevWeekEnd = weekStart;
 
-        final newPatientsToday = firstVisitByPatient.values
-            .where((d) => d == selectedDateOnly)
-            .length;
         final newPatientsWeek = firstVisitByPatient.values
             .where((d) => !d.isBefore(weekStart) && d.isBefore(selectedEnd))
             .length;
@@ -506,7 +499,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         value: _money(revenueToday),
                       ),
                       _TopPatientGrowthCard(
-                        newPatientsToday: newPatientsToday,
                         newPatientsWeek: newPatientsWeek,
                         newPatientsPrevWeek: newPatientsPrevWeek,
                         growthPct: growthPct,
@@ -607,48 +599,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                const _SectionTitle('Revenue Intelligence'),
-                const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final compact = constraints.maxWidth < 1360;
-                    final cards = [
-                      _RevenueSplitCard(
-                        title: 'Revenue Split by Doctor',
-                        split: doctorRevenueSplit,
-                        accent: const Color(0xFF2BA58D),
-                        secondaryCounts: doctorAppointmentCounts,
-                        secondaryBadgeLabel: 'appts',
-                        compact: true,
-                      ),
-                    ];
-
-                    if (compact) {
-                      return Column(
-                        children: [
-                          for (int i = 0; i < cards.length; i++) ...[
-                            cards[i],
-                            if (i != cards.length - 1) const SizedBox(height: 10),
-                          ],
-                        ],
-                      );
-                    }
-
-                    return Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: cards
-                          .map(
-                            (card) => SizedBox(
-                              width: (constraints.maxWidth - 20) / 3,
-                              child: card,
-                            ),
-                          )
-                          .toList(growable: false),
-                    );
-                  },
                 ),
                 const SizedBox(height: 14),
                 LayoutBuilder(
@@ -2489,13 +2439,11 @@ class _RevenueCard extends StatelessWidget {
 }
 
 class _TopPatientGrowthCard extends StatelessWidget {
-  final int newPatientsToday;
   final int newPatientsWeek;
   final int newPatientsPrevWeek;
   final double growthPct;
 
   const _TopPatientGrowthCard({
-    required this.newPatientsToday,
     required this.newPatientsWeek,
     required this.newPatientsPrevWeek,
     required this.growthPct,
@@ -2506,6 +2454,9 @@ class _TopPatientGrowthCard extends StatelessWidget {
     final maxBar = math.max(1, math.max(newPatientsWeek, newPatientsPrevWeek));
     final thisWeekRatio = newPatientsWeek / maxBar;
     final prevWeekRatio = newPatientsPrevWeek / maxBar;
+    final trendUp = growthPct >= 0;
+    final trendColor = trendUp ? const Color(0xFF1F8F4E) : const Color(0xFFD6455D);
+    final trendLabel = trendUp ? 'Increase' : 'Decrease';
 
     Widget barLine(String label, int value, double ratio, Color color) {
       return Row(
@@ -2568,21 +2519,17 @@ class _TopPatientGrowthCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  'Today $newPatientsToday',
-                  style: const TextStyle(
-                    color: Color(0xFF36557C),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
-                  ),
+                Icon(
+                  trendUp  ? material.Icons.trending_up
+                            : material.Icons.trending_down,
+                  size: 11,
+                  color: trendColor,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
                 Text(
-                  '${growthPct.toStringAsFixed(1)}%',
+                  '${growthPct.toStringAsFixed(1)}% $trendLabel',
                   style: TextStyle(
-                    color: growthPct >= 0
-                        ? const Color(0xFF1F8F4E)
-                        : const Color(0xFFD6455D),
+                    color: trendColor,
                     fontWeight: FontWeight.w700,
                     fontSize: 11,
                   ),
