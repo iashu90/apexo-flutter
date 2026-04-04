@@ -1170,6 +1170,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   late final TextEditingController _discountController;
 
   String _discountType = 'flat';
+  bool _discountEnabled = false;
   Set<String> _selectedTreatments = {};
   Set<String> _selectedTeeth = {};
 
@@ -1185,6 +1186,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     _discountController = TextEditingController(
         text: a.discount == 0 ? '' : a.discount.toStringAsFixed(0));
     _discountType = a.discountType;
+    _discountEnabled = a.discount > 0;
     _selectedTreatments = a.selectedTreatments.toSet();
     _selectedTeeth = a.selectedTeeth.toSet();
   }
@@ -1201,7 +1203,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   void _applyDiscount() {
     final a = widget.appointment;
     final rawPrice = double.tryParse(_priceController.text.trim()) ?? 0;
-    final discount = double.tryParse(_discountController.text.trim()) ?? 0;
+    final discount = _discountEnabled
+      ? (double.tryParse(_discountController.text.trim()) ?? 0.0)
+      : 0.0;
 
     double finalPrice = rawPrice;
     if (discount > 0) {
@@ -1216,7 +1220,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     a.discount = discount;
     a.discountType = _discountType;
     a.price = finalPrice;
-    a.isDone = true;
 
     _priceController.text =
         finalPrice == 0 ? '' : finalPrice.toStringAsFixed(0);
@@ -1233,8 +1236,25 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   }
 
   void _applyDiscountSuggestion(int value) {
+    if (!_discountEnabled) {
+      setState(() => _discountEnabled = true);
+    }
     _discountController.text = '$value';
     _applyDiscount();
+  }
+
+  List<String> _topTreatments() {
+    final counts = <String, int>{};
+    for (final appointment in widget.allAppointmentsForPatient) {
+      for (final treatment in appointment.selectedTreatments) {
+        final key = treatment.trim();
+        if (key.isEmpty) continue;
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    final rows = counts.entries.toList(growable: false)
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return rows.take(10).map((e) => e.key).toList(growable: false);
   }
 
   Future<void> _confirmDoneToggle() async {
@@ -1274,6 +1294,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   @override
   Widget build(BuildContext context) {
     final a = widget.appointment;
+    final topTreatments = _topTreatments();
 
     return Container(
       width: double.infinity,
@@ -1306,175 +1327,251 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
             ),
           ),
           const SizedBox(height: 8),
-          InfoLabel(
-            label: 'Diagnosis:',
-            child: TagInputWidget(
-              suggestions: allDiagnosis
-                  .map((d) => TagInputItem(value: d, label: d))
-                  .toList(),
-              onChanged: (values) {
-                a.diagnosis = values
-                    .where((e) => e.value != null)
-                    .map((e) => e.value!)
-                    .toList(growable: false);
-                a.isDone = true;
-                appointments.set(a);
-              },
-              initialValue: a.diagnosis
-                  .map((v) => TagInputItem(value: v, label: v))
-                  .toList(),
-              strict: false,
-              limit: 999,
-              placeholder: 'Diagnosis...',
-            ),
-          ),
-          const SizedBox(height: 8),
-          InfoLabel(
-            label: 'Treatment:',
-            child: TagInputWidget(
-              suggestions: allTreatments
-                  .map((t) => TagInputItem(
-                      value: t.name, label: '${t.name} - ₹${t.price}'))
-                  .toList(),
-              onChanged: (values) {
-                _selectedTreatments = values
-                    .where((e) => e.value != null)
-                    .map((e) => e.value!)
-                    .toSet();
-                a.selectedTreatments =
-                    _selectedTreatments.toList(growable: false);
-                a.isDone = true;
-                appointments.set(a);
-                setState(() {});
-              },
-              initialValue: _selectedTreatments
-                  .map((v) => TagInputItem(value: v, label: v))
-                  .toList(growable: false),
-              strict: false,
-              limit: 999,
-              placeholder: 'Treatments...',
-            ),
-          ),
-          const SizedBox(height: 8),
-          _EnhancedTeethPickerCard(
-            selectedTeeth: _selectedTeeth,
-            onChanged: (teeth) {
-              _selectedTeeth = teeth;
-              a.selectedTeeth = teeth.toList(growable: false);
-              a.isDone = true;
-              appointments.set(a);
-              setState(() {});
-            },
-          ),
-          const SizedBox(height: 8),
-          InfoLabel(
-            label: 'Post-operative notes:',
-            child: CupertinoTextField(
-              controller: _postOpController,
-              onChanged: (value) {
-                a.postOpNotes = value;
-                a.isDone = true;
-                appointments.set(a);
-              },
-              placeholder: 'Post-operative notes',
-            ),
-          ),
-          const SizedBox(height: 8),
-          InfoLabel(
-            label: 'Discount',
-            child: CupertinoTextField(
-              controller: _discountController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-              ],
-              onChanged: (_) => _applyDiscount(),
-              placeholder: 'Discount',
-              suffix: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _discountType =
-                        _discountType == 'percent' ? 'flat' : 'percent';
-                    _applyDiscount();
-                  });
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(_discountType == 'percent' ? '%' : '₹'),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [5, 10, 15, 20, 25]
-                .map(
-                  (v) => GestureDetector(
-                    onTap: () => _applyDiscountSuggestion(v),
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF2FC),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFD5E5F7)),
-                      ),
-                      child: Text(
-                        _discountType == 'percent' ? '$v%' : '₹$v',
-                        style: const TextStyle(
-                          color: Color(0xFF2F5B88),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final twoColumns = constraints.maxWidth >= 860;
+              final firstColumn = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  InfoLabel(
+                    label: 'Diagnosis:',
+                    child: TagInputWidget(
+                      suggestions: allDiagnosis
+                          .map((d) => TagInputItem(value: d, label: d))
+                          .toList(),
+                      onChanged: (values) {
+                        a.diagnosis = values
+                            .where((e) => e.value != null)
+                            .map((e) => e.value!)
+                            .toList(growable: false);
+                        appointments.set(a);
+                      },
+                      initialValue: a.diagnosis
+                          .map((v) => TagInputItem(value: v, label: v))
+                          .toList(),
+                      strict: false,
+                      limit: 999,
+                      placeholder: 'Diagnosis...',
                     ),
                   ),
-                )
-                .toList(growable: false),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: InfoLabel(
-                  label:
-                      'Price in ${globalSettings.get("currency_______").value}',
-                  child: CupertinoTextField(
-                    controller: _priceController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-                    ],
-                    onChanged: (value) {
-                      a.price = double.tryParse(value) ?? 0;
-                      a.isDone = true;
+                  const SizedBox(height: 8),
+                  InfoLabel(
+                    label: 'Treatment:',
+                    child: TagInputWidget(
+                      suggestions: allTreatments
+                          .map((t) => TagInputItem(
+                              value: t.name, label: '${t.name} - ₹${t.price}'))
+                          .toList(),
+                      onChanged: (values) {
+                        _selectedTreatments = values
+                            .where((e) => e.value != null)
+                            .map((e) => e.value!)
+                            .toSet();
+                        a.selectedTreatments =
+                            _selectedTreatments.toList(growable: false);
+                        appointments.set(a);
+                        setState(() {});
+                      },
+                      initialValue: _selectedTreatments
+                          .map((v) => TagInputItem(value: v, label: v))
+                          .toList(growable: false),
+                      strict: false,
+                      limit: 999,
+                      placeholder: 'Treatments...',
+                    ),
+                  ),
+                  if (topTreatments.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: topTreatments
+                          .map(
+                            (t) => _quickChip(
+                              label: t,
+                              selected: _selectedTreatments.contains(t),
+                              onTap: () {
+                                setState(() {
+                                  if (_selectedTreatments.contains(t)) {
+                                    _selectedTreatments.remove(t);
+                                  } else {
+                                    _selectedTreatments.add(t);
+                                  }
+                                  a.selectedTreatments =
+                                      _selectedTreatments.toList(growable: false);
+                                  appointments.set(a);
+                                });
+                              },
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  _EnhancedTeethPickerCard(
+                    selectedTeeth: _selectedTeeth,
+                    onChanged: (teeth) {
+                      _selectedTeeth = teeth;
+                      a.selectedTeeth = teeth.toList(growable: false);
                       appointments.set(a);
+                      setState(() {});
                     },
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: InfoLabel(
-                  label:
-                      'Paid in ${globalSettings.get("currency_______").value}',
-                  child: CupertinoTextField(
-                    controller: _paidController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-                    ],
-                    onChanged: (value) {
-                      a.paid = double.tryParse(value) ?? 0;
-                      a.isDone = true;
-                      appointments.set(a);
-                    },
+                ],
+              );
+
+              final secondColumn = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  InfoLabel(
+                    label: 'Post-operative notes:',
+                    child: CupertinoTextField(
+                      controller: _postOpController,
+                      onChanged: (value) {
+                        a.postOpNotes = value;
+                        appointments.set(a);
+                      },
+                      placeholder: 'Post-operative notes',
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text(
+                        'Enable Discount',
+                        style: TextStyle(
+                          color: Color(0xFF355279),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ToggleSwitch(
+                        checked: _discountEnabled,
+                        onChanged: (value) {
+                          setState(() => _discountEnabled = value);
+                          if (!value) {
+                            _discountController.clear();
+                          }
+                          _applyDiscount();
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  if (_discountEnabled) ...[
+                    InfoLabel(
+                      label: 'Discount',
+                      child: CupertinoTextField(
+                        controller: _discountController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                        ],
+                        onChanged: (_) => _applyDiscount(),
+                        placeholder: 'Discount',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _quickChip(
+                          label: '₹ Flat',
+                          selected: _discountType == 'flat',
+                          onTap: () {
+                            setState(() => _discountType = 'flat');
+                            _applyDiscount();
+                          },
+                        ),
+                        _quickChip(
+                          label: '% Percent',
+                          selected: _discountType == 'percent',
+                          onTap: () {
+                            setState(() => _discountType = 'percent');
+                            _applyDiscount();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [5, 10, 15, 20, 25]
+                          .map(
+                            (v) => _quickChip(
+                              label: _discountType == 'percent' ? '$v%' : '₹$v',
+                              onTap: () => _applyDiscountSuggestion(v),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InfoLabel(
+                          label:
+                              'Price in ${globalSettings.get("currency_______").value}',
+                          child: CupertinoTextField(
+                            controller: _priceController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                            ],
+                            onChanged: (value) {
+                              a.price = double.tryParse(value) ?? 0;
+                              appointments.set(a);
+                              _applyDiscount();
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: InfoLabel(
+                          label:
+                              'Paid in ${globalSettings.get("currency_______").value}',
+                          child: CupertinoTextField(
+                            controller: _paidController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                            ],
+                            onChanged: (value) {
+                              a.paid = double.tryParse(value) ?? 0;
+                              appointments.set(a);
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+
+              if (!twoColumns) {
+                return Column(
+                  children: [
+                    firstColumn,
+                    const SizedBox(height: 8),
+                    secondColumn,
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: firstColumn),
+                  const SizedBox(width: 10),
+                  Expanded(child: secondColumn),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 6),
           Wrap(
@@ -1548,6 +1645,34 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
             child: Text(a.isDone ? 'Undo Done' : 'Mark Appointment Done'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _quickChip({
+    required String label,
+    bool selected = false,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFDDEBFF) : const Color(0xFFEAF2FC),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD5E5F7),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? const Color(0xFF1459AD) : const Color(0xFF2F5B88),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
