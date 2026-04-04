@@ -4,7 +4,9 @@ import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
-import 'package:apexo/features/appointments/treatment_model.dart';
+import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
+import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
+import 'package:apexo/features/checkin/odontogram/treatment_colors.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -1171,8 +1173,47 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
 
   String _discountType = 'flat';
   bool _discountEnabled = false;
+  TreatmentType _selectedOdontogramTreatment = TreatmentType.filling;
+  String _selectedOdontogramToothId = '16';
+  final Map<String, String> _odontogramNotes = <String, String>{};
   Set<String> _selectedTreatments = {};
   Set<String> _selectedTeeth = {};
+  Map<String, ToothState> _teethStates = {};
+
+  static const List<String> _allToothIds = [
+    '18',
+    '17',
+    '16',
+    '15',
+    '14',
+    '13',
+    '12',
+    '11',
+    '21',
+    '22',
+    '23',
+    '24',
+    '25',
+    '26',
+    '27',
+    '28',
+    '48',
+    '47',
+    '46',
+    '45',
+    '44',
+    '43',
+    '42',
+    '41',
+    '31',
+    '32',
+    '33',
+    '34',
+    '35',
+    '36',
+    '37',
+    '38',
+  ];
 
   @override
   void initState() {
@@ -1189,6 +1230,16 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     _discountEnabled = a.discount > 0;
     _selectedTreatments = a.selectedTreatments.toSet();
     _selectedTeeth = a.selectedTeeth.toSet();
+    _teethStates = {
+      for (final id in _allToothIds) id: ToothState(toothId: id),
+    };
+    for (final id in _selectedTeeth) {
+      if (!_teethStates.containsKey(id)) {
+        _teethStates[id] = ToothState(toothId: id);
+      }
+      _teethStates[id]!.surfaces[ToothSurface.occlusal] =
+          _selectedOdontogramTreatment;
+    }
   }
 
   @override
@@ -1255,6 +1306,27 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     final rows = counts.entries.toList(growable: false)
       ..sort((a, b) => b.value.compareTo(a.value));
     return rows.take(10).map((e) => e.key).toList(growable: false);
+  }
+
+  void _onOdontogramSurfaceTap(String toothId, ToothSurface surface) {
+    final a = widget.appointment;
+    _selectedOdontogramToothId = toothId;
+    final tooth = _teethStates[toothId] ?? ToothState(toothId: toothId);
+    final current = tooth.surfaces[surface];
+    tooth.surfaces[surface] =
+        current == _selectedOdontogramTreatment ? null : _selectedOdontogramTreatment;
+    _teethStates[toothId] = tooth;
+
+    final hasAnySurface = tooth.surfaces.values.any((v) => v != null);
+    if (hasAnySurface) {
+      _selectedTeeth.add(toothId);
+    } else {
+      _selectedTeeth.remove(toothId);
+    }
+
+    a.selectedTeeth = _selectedTeeth.toList(growable: false);
+    appointments.set(a);
+    setState(() {});
   }
 
   Future<void> _confirmDoneToggle() async {
@@ -1417,6 +1489,21 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       setState(() {});
                     },
                   ),
+                  const SizedBox(height: 8),
+                  _SvgOdontogramCard(
+                    teeth: _teethStates,
+                    selectedTreatment: _selectedOdontogramTreatment,
+                    selectedToothId: _selectedOdontogramToothId,
+                    selectedToothNote: _odontogramNotes[_selectedOdontogramToothId] ?? '',
+                    onToothNoteChanged: (value) {
+                      _odontogramNotes[_selectedOdontogramToothId] = value;
+                    },
+                    onSelectTooth: (toothId) =>
+                        setState(() => _selectedOdontogramToothId = toothId),
+                    onTreatmentChanged: (value) =>
+                        setState(() => _selectedOdontogramTreatment = value),
+                    onSurfaceTap: _onOdontogramSurfaceTap,
+                  ),
                 ],
               );
 
@@ -1550,6 +1637,35 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [100, 200, 500, 1000, 2000]
+                        .map(
+                          (v) => GestureDetector(
+                            onTap: () => _applyPriceSuggestion(v),
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEAF2FC),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(color: const Color(0xFFD5E5F7)),
+                              ),
+                              child: Text(
+                                '₹$v',
+                                style: const TextStyle(
+                                  color: Color(0xFF2F5B88),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
                 ],
               );
 
@@ -1572,35 +1688,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 ],
               );
             },
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [100, 200, 500, 1000, 2000]
-                .map(
-                  (v) => GestureDetector(
-                    onTap: () => _applyPriceSuggestion(v),
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF2FC),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFD5E5F7)),
-                      ),
-                      child: Text(
-                        '₹$v',
-                        style: const TextStyle(
-                          color: Color(0xFF2F5B88),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                .toList(growable: false),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -1758,6 +1845,339 @@ class _EnhancedTeethPickerCard extends StatelessWidget {
             onChanged: onChanged,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SvgOdontogramCard extends StatelessWidget {
+  final Map<String, ToothState> teeth;
+  final TreatmentType selectedTreatment;
+  final String selectedToothId;
+  final String selectedToothNote;
+  final ValueChanged<String> onSelectTooth;
+  final ValueChanged<String> onToothNoteChanged;
+  final ValueChanged<TreatmentType> onTreatmentChanged;
+  final void Function(String toothId, ToothSurface surface) onSurfaceTap;
+
+  const _SvgOdontogramCard({
+    required this.teeth,
+    required this.selectedTreatment,
+    required this.selectedToothId,
+    required this.selectedToothNote,
+    required this.onSelectTooth,
+    required this.onToothNoteChanged,
+    required this.onTreatmentChanged,
+    required this.onSurfaceTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget treatmentChip(TreatmentType treatment, String label) {
+      final selected = selectedTreatment == treatment;
+      return GestureDetector(
+        onTap: () => onTreatmentChanged(treatment),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? getTreatmentColor(treatment).withValues(alpha: 0.18)
+                : const Color(0xFFF4F8FD),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? getTreatmentColor(treatment)
+                  : const Color(0xFFD6E2F0),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? getTreatmentColor(treatment)
+                  : const Color(0xFF355279),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF5FAFF), Color(0xFFEDF6FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD4E6FA)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth >= 980;
+          final selectedTooth =
+              teeth[selectedToothId] ?? ToothState(toothId: selectedToothId);
+          final activeTreatments = selectedTooth.surfaces.entries
+              .where((entry) => entry.value != null)
+              .toList(growable: false);
+
+          Widget surfaceButton(String label, ToothSurface surface) {
+            final value = selectedTooth.surfaces[surface];
+            final active = value != null;
+            final color = getTreatmentColor(value);
+            return GestureDetector(
+              onTap: () => onSurfaceTap(selectedToothId, surface),
+              child: Container(
+                width: 36,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: active ? color.withValues(alpha: 0.18) : const Color(0xFFF4F8FD),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: active ? color : const Color(0xFFD6E2F0),
+                  ),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: active ? color : const Color(0xFF355279),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            );
+          }
+
+          final leftPanel = Container(
+            width: 210,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF4FC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFD3E1F3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Treatment Selection',
+                  style: TextStyle(
+                    color: Color(0xFF2C4E76),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    treatmentChip(TreatmentType.filling, 'Filling'),
+                    const SizedBox(height: 6),
+                    treatmentChip(TreatmentType.rootCanal, 'Root Canal'),
+                    const SizedBox(height: 6),
+                    treatmentChip(TreatmentType.crown, 'Crown'),
+                    const SizedBox(height: 6),
+                    treatmentChip(TreatmentType.extraction, 'Extraction'),
+                    const SizedBox(height: 6),
+                    treatmentChip(TreatmentType.implant, 'Implant'),
+                  ],
+                ),
+              ],
+            ),
+          );
+
+          final centerPanel = Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F8FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD3E1F3)),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Odontogram',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2C4E76),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: OdontogramPicker(
+                        teeth: teeth,
+                        onToothTap: onSelectTooth,
+                        onSurfaceTap: onSurfaceTap,
+                        toothSize: 48,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          final rightPanel = Container(
+            width: 260,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF4FC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFD3E1F3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tooth Details',
+                  style: TextStyle(
+                    color: Color(0xFF2C4E76),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tooth #$selectedToothId',
+                  style: const TextStyle(
+                    color: Color(0xFF2C4E76),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    surfaceButton('M', ToothSurface.mesial),
+                    surfaceButton('D', ToothSurface.distal),
+                    surfaceButton('O', ToothSurface.occlusal),
+                    surfaceButton('B', ToothSurface.buccal),
+                    surfaceButton('L', ToothSurface.lingual),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Current Treatments:',
+                  style: TextStyle(
+                    color: Color(0xFF2C4E76),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                if (activeTreatments.isEmpty)
+                  const Text(
+                    'No treatment assigned.',
+                    style: TextStyle(
+                      color: Color(0xFF6D84A8),
+                      fontSize: 12,
+                    ),
+                  )
+                else
+                  ...activeTreatments.map((entry) {
+                    final label = switch (entry.key) {
+                      ToothSurface.mesial => 'M',
+                      ToothSurface.distal => 'D',
+                      ToothSurface.occlusal => 'O',
+                      ToothSurface.buccal => 'B',
+                      ToothSurface.lingual => 'L',
+                    };
+                    final treatmentLabel = switch (entry.value!) {
+                      TreatmentType.filling => 'Filling',
+                      TreatmentType.rootCanal => 'Root Canal',
+                      TreatmentType.crown => 'Crown',
+                      TreatmentType.extraction => 'Extraction',
+                      TreatmentType.implant => 'Implant',
+                    };
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5FAFF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFD5E5F7)),
+                      ),
+                      child: Text(
+                        '$label - $treatmentLabel',
+                        style: const TextStyle(
+                          color: Color(0xFF355279),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    );
+                  }),
+                const SizedBox(height: 8),
+                const Text(
+                  'Notes:',
+                  style: TextStyle(
+                    color: Color(0xFF2C4E76),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextBox(
+                  key: ValueKey(selectedToothId),
+                  controller: TextEditingController(text: selectedToothNote),
+                  placeholder: 'Add notes here...',
+                  maxLines: 3,
+                  onChanged: onToothNoteChanged,
+                ),
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: () {},
+                  child: const SizedBox(
+                    width: double.infinity,
+                    child: Center(
+                      child: Text('Save'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+
+          if (!isDesktop) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                leftPanel,
+                const SizedBox(height: 8),
+                SizedBox(height: 280, child: centerPanel),
+                const SizedBox(height: 8),
+                rightPanel,
+              ],
+            );
+          }
+
+          return SizedBox(
+            height: 360,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                leftPanel,
+                const SizedBox(width: 8),
+                centerPanel,
+                const SizedBox(width: 8),
+                rightPanel,
+              ],
+            ),
+          );
+        },
       ),
     );
   }

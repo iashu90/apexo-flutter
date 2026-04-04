@@ -535,12 +535,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final dailyRevenueRows = _dailyRevenueRows(allAppointments, selectedDate, 30);
         final appointmentTrendRows = _appointmentTrendRows(allAppointments, selectedDate, 30);
         final dailyTreatmentDistribution = _treatmentDistributionRows(todaysAppointments);
-        final thisMonthDailyAverageRevenue = thisMonthAppointments.isEmpty
-          ? 0.0
-          : thisMonthRevenue / DateTime.now().day;
-        final thisMonthAvgDailyAppointments = thisMonthAppointments.isEmpty
-          ? 0.0
-          : thisMonthAppointments.length / DateTime.now().day;
         final newVsReturning = (
           newCount: thisMonthAppointments.where((a) => a.firstAppointmentForThisPatient).length,
           returningCount: thisMonthAppointments.where((a) => !a.firstAppointmentForThisPatient).length,
@@ -612,15 +606,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         changePct: revenueVsLastMonthPct,
                         thisMonthLabel: DateFormat('MMMM').format(thisMonthStart),
                         lastMonthLabel: DateFormat('MMMM').format(lastMonthStart),
-                      ),
-                      _TopCurrentMonthRevenueCard(
-                        monthLabel: DateFormat('MMMM').format(thisMonthStart),
-                        value: thisMonthDailyAverageRevenue,
-                      ),
-                      _TopCurrentMonthAppointmentsCard(
-                        monthLabel: DateFormat('MMMM').format(thisMonthStart),
-                        avgPerDay: thisMonthAvgDailyAppointments,
-                        total: thisMonthAppointments.length,
                       ),
                       _TopPatientGrowthCard(
                         newPatientsWeek: newPatientsWeek,
@@ -2539,69 +2524,7 @@ class _TopDailyTreatmentCard extends StatelessWidget {
       const Color(0xFFD6455D),
       const Color(0xFF8D5CF6),
     ];
-    final topRows = rows.take(6).toList(growable: false);
-    final left = <MapEntry<String, int>>[];
-    final right = <MapEntry<String, int>>[];
-    for (var i = 0; i < topRows.length; i++) {
-      if (i.isEven) {
-        left.add(topRows[i]);
-      } else {
-        right.add(topRows[i]);
-      }
-    }
-
-    Widget listColumn(List<MapEntry<String, int>> col, int seed) {
-      return Expanded(
-        child: Column(
-          children: col.asMap().entries.map((entry) {
-            final color = palette[(entry.key + seed) % palette.length];
-            final row = entry.value;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: color.withValues(alpha: 0.35)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      row.key,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF1F446E),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${row.value}',
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(growable: false),
-        ),
-      );
-    }
+    final topRows = rows.take(10).toList(growable: false);
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
@@ -2627,12 +2550,21 @@ class _TopDailyTreatmentCard extends StatelessWidget {
                 )
               else
                 Expanded(
-                  child: Row(
-                    children: [
-                      listColumn(left, 0),
-                      const SizedBox(width: 6),
-                      listColumn(right, 3),
-                    ],
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: topRows.asMap().entries.map((entry) {
+                      final color = palette[entry.key % palette.length];
+                      final row = entry.value;
+                      return Text(
+                        '${row.key} (${row.value})',
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                        ),
+                      );
+                    }).toList(growable: false),
                   ),
                 ),
             ],
@@ -2812,11 +2744,19 @@ class _TopMonthRevenueCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(
-                    '$thisMonthLabel Revenue',
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF496489), fontWeight: FontWeight.w600),
+                  Expanded(
+                    child: Text(
+                      '$thisMonthLabel Revenue',
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF496489), fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 4),
+                  Text(
+                    '₹${thisMonthRevenue.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF1468CC)),
+                  ),
+                  const SizedBox(width: 6),
                   Icon(up ? material.Icons.trending_up : material.Icons.trending_down, size: 11, color: color),
                   const SizedBox(width: 4),
                   Text(
@@ -2826,20 +2766,15 @@ class _TopMonthRevenueCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
-                '₹${thisMonthRevenue.toStringAsFixed(0)}',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF1468CC)),
-              ),
-              const SizedBox(height: 8),
               barLine(thisMonthLabel, thisMonthRevenue, const Color(0xFF2D7BD8)),
-              const SizedBox(height: 6),
-              barLine(lastMonthLabel, lastMonthRevenue, const Color(0xFF9BB9DD)),
               const SizedBox(height: 4),
+              barLine(lastMonthLabel, lastMonthRevenue, const Color(0xFF9BB9DD)),
+              const SizedBox(height: 3),
               Text(
                 'Compared with $lastMonthLabel revenue',
                 style: const TextStyle(
                   color: Color(0xFF6D84A8),
-                  fontSize: 11,
+                  fontSize: 9,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2995,6 +2930,15 @@ class _DailyRevenueChartCard extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 2),
+          const Text(
+            'Last 30 days overview. Hover bars for exact values.',
+            style: TextStyle(
+              fontSize: 9,
+              color: Color(0xFF8AA0BC),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -3145,6 +3089,15 @@ class _AppointmentTrendChartCard extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 2),
+          const Text(
+            'Trend reflects appointment count by day (30-day window).',
+            style: TextStyle(
+              fontSize: 9,
+              color: Color(0xFF8AA0BC),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -3264,6 +3217,15 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'Distribution is based on current month treatment entries.',
+              style: TextStyle(
+                fontSize: 9,
+                color: Color(0xFF8AA0BC),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -3541,8 +3503,6 @@ class _StatusSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = completed + pending;
-    final donePct = total == 0 ? 0 : ((completed / total) * 100).round();
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
       child: SizedBox(
@@ -3602,15 +3562,6 @@ class _StatusSummaryCard extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
-              const Spacer(),
-              Text(
-                '$donePct% completed today',
-                style: const TextStyle(
-                  color: Color(0xFF5A7397),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                ),
               ),
             ],
           ),

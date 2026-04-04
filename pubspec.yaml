@@ -37,6 +37,7 @@ dependencies:
   sqflite_common_ffi: ^2.3.2
   googleapis: ^13.1.0
   googleapis_auth: ^1.4.1
+  flutter_svg: ^2.0.10
 
 dev_dependencies:
   integration_test:
@@ -56,5 +57,11 @@ flutter:
     - assets/gpay.png
     - assets/images/logo.png
     - assets/images/missing.png
+    - assets/svg/tooth_base.svg
+    - assets/svg/surface_M.svg
+    - assets/svg/surface_D.svg
+    - assets/svg/surface_O.svg
+    - assets/svg/surface_B.svg
+    - assets/svg/surface_L.svg
     - assets/fonts/readex.ttf
     - assets/fonts/readex-bold.ttf
