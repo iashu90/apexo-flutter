@@ -27,8 +27,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   String _outstandingRange = '6Months';
   String _procedureTab = 'RCT';
   String _selectedAlphabet = 'All';
+  String _listBehaviorFilter = 'all';
   String _sortBy = 'name';
   bool _sortAscending = true;
+  double _highValueThreshold = 10000;
   int _topPatientsVisibleCount = 10;
   int _topOutstandingVisibleCount = 10;
   int _topProcedureVisibleCount = 10;
@@ -143,6 +145,15 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 
             final now = DateTime.now();
 
+            final spentByPatient = <String, double>{};
+            for (final appointment in allAppointments) {
+              final pid = appointment.patientID;
+              if (pid == null || pid.isEmpty) continue;
+              spentByPatient[pid] = (spentByPatient[pid] ?? 0) +
+                  appointment.paid +
+                  appointment.prescriptionPaid;
+            }
+
             final ageBuckets = _ageGenderBuckets(allPatients);
             final genderBuckets = _genderBuckets(allPatients);
             final paymentModeBuckets = _paymentModeBuckets(allAppointments);
@@ -187,11 +198,21 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               now: now,
             );
 
+            final monthlyGrowth = _monthlyPatientGrowth(
+              allAppointments: allAppointments,
+              anchor: now,
+            );
+
             final preAlphabetPatients = allPatients.where((patient) {
               if (_listQuery.isEmpty) return true;
               final name = patient.title.toLowerCase();
               final phone = patient.phone.toLowerCase();
-              return name.contains(_listQuery) || phone.contains(_listQuery);
+              final id = patient.id.toLowerCase();
+              final address = patient.address.toLowerCase();
+              return name.contains(_listQuery) ||
+                  phone.contains(_listQuery) ||
+                  id.contains(_listQuery) ||
+                  address.contains(_listQuery);
             }).toList(growable: false);
 
             final filteredPatients = preAlphabetPatients.where((patient) {
@@ -200,206 +221,90 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               final firstLetter =
                   titleTrimmed.isEmpty ? '' : titleTrimmed[0].toUpperCase();
               return firstLetter == _selectedAlphabet;
-            }).toList(growable: false)
-              ..sort((a, b) {
-                int value;
-                switch (_sortBy) {
-                  case 'id':
-                    value = a.id.compareTo(b.id);
-                    break;
-                  case 'phone':
-                    value =
-                        a.phone.toLowerCase().compareTo(b.phone.toLowerCase());
-                    break;
-                  case 'age':
-                    value = a.age.compareTo(b.age);
-                    break;
-                  case 'visits':
-                    final aVisits =
-                        (visitsByPatient[a.id] ?? const <Appointment>[]).length;
-                    final bVisits =
-                        (visitsByPatient[b.id] ?? const <Appointment>[]).length;
-                    value = aVisits.compareTo(bVisits);
-                    break;
-                  case 'outstanding':
-                    value =
-                        a.outstandingPayments.compareTo(b.outstandingPayments);
-                    break;
-                  case 'name':
-                  default:
-                    value =
-                        a.title.toLowerCase().compareTo(b.title.toLowerCase());
-                    break;
-                }
-                return _sortAscending ? value : -value;
-              });
+            }).where((patient) {
+              if (_listBehaviorFilter == 'all') return true;
+              final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
+              final totalSpent = spentByPatient[patient.id] ?? 0;
+              final daysSinceLast =
+                  visits.isEmpty ? 99999 : now.difference(visits.last.date).inDays;
+              final daysSinceFirst =
+                  visits.isEmpty ? 99999 : now.difference(visits.first.date).inDays;
 
-            final totalPages =
-                math.max(1, (filteredPatients.length / _pageSize).ceil());
-            final currentPage = _currentPage.clamp(1, totalPages);
-            if (currentPage != _currentPage) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                setState(() {
-                  _currentPage = currentPage;
-                });
-              });
+              switch (_listBehaviorFilter) {
+                case 'highValue':
+                  return totalSpent >= _highValueThreshold;
+                case 'frequent':
+                  return visits.length >= 5;
+                case 'inactive':
+                  return visits.isNotEmpty && daysSinceLast > 180;
+                case 'new':
+                  return visits.isNotEmpty && daysSinceFirst <= 30;
+                case 'oneTimer':
+                  return visits.length == 1;
+                default:
+                  return true;
+              }
+            }).toList(growable: false);
+
+            filteredPatients.sort((a, b) {
+              switch (_sortBy) {
+                case 'id':
+                  return a.id.toLowerCase().compareTo(b.id.toLowerCase());
+                case 'phone':
+                  return a.phone.toLowerCase().compareTo(b.phone.toLowerCase());
+                case 'age':
+                  return a.age.compareTo(b.age);
+                case 'visits':
+                  final aVisits =
+                      (visitsByPatient[a.id] ?? const <Appointment>[]).length;
+                  final bVisits =
+                      (visitsByPatient[b.id] ?? const <Appointment>[]).length;
+                  return aVisits.compareTo(bVisits);
+                case 'outstanding':
+                  return a.outstandingPayments.compareTo(b.outstandingPayments);
+                case 'name':
+                default:
+                  return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+              }
+            });
+
+            if (!_sortAscending) {
+              filteredPatients.replaceRange(
+                0,
+                filteredPatients.length,
+                filteredPatients.reversed,
+              );
             }
 
+            final totalPages = math.max(1, (filteredPatients.length / _pageSize).ceil());
+            final currentPage = _currentPage.clamp(1, totalPages);
             final start = (currentPage - 1) * _pageSize;
             final end = math.min(start + _pageSize, filteredPatients.length);
             final pagedPatients = filteredPatients.sublist(start, end);
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _TopBar(),
-                    const Spacer(),
+                    const Expanded(child: _TopBar()),
                     SizedBox(
-                      width: 520,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: material.Autocomplete<Patient>(
-                              optionsBuilder: (value) {
-                                final q = value.text.trim().toLowerCase();
-                                if (q.isEmpty) return const Iterable<Patient>.empty();
-                                return allPatients.where((p) {
-                                  final name = p.title.toLowerCase();
-                                  final phone = p.phone.toLowerCase();
-                                  return name.contains(q) || phone.contains(q);
-                                }).take(8);
-                              },
-                              displayStringForOption: (p) => p.title,
-                              onSelected: (patient) => openPatient(patient, 1),
-                              fieldViewBuilder:
-                                  (context, controller, focusNode, onSubmit) {
-                                return TextBox(
-                                  controller: controller,
-                                  focusNode: focusNode,
-                                  placeholder: 'Quick search by name or phone',
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                  decoration: WidgetStateProperty.all(
-                                    BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(999),
-                                      border: Border.all(
-                                        color: const Color(0xFFCFE0F3),
-                                      ),
-                                    ),
-                                  ),
-                                  prefix: const Padding(
-                                    padding: EdgeInsets.only(left: 10),
-                                    child: Icon(
-                                      FluentIcons.search,
-                                      size: 12,
-                                      color: Color(0xFF6D84A8),
-                                    ),
-                                  ),
-                                  suffix: controller.text.isNotEmpty
-                                      ? IconButton(
-                                          icon: const Icon(FluentIcons.clear),
-                                          onPressed: controller.clear,
-                                        )
-                                      : null,
-                                );
-                              },
-                              optionsViewBuilder: (context, onSelected, options) {
-                                return Align(
-                                  alignment: Alignment.topRight,
-                                  child: material.Material(
-                                    color: material.Colors.transparent,
-                                    child: Container(
-                                      width: 420,
-                                      margin: const EdgeInsets.only(top: 8),
-                                      padding: const EdgeInsets.symmetric(vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border:
-                                            Border.all(color: const Color(0xFFD6E2F0)),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Color(0x160D2F5B),
-                                            blurRadius: 10,
-                                            offset: Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: ListView.builder(
-                                        padding: EdgeInsets.zero,
-                                        shrinkWrap: true,
-                                        itemCount: options.length,
-                                        itemBuilder: (context, index) {
-                                          final patient = options.elementAt(index);
-                                          final visits = visitsByPatient[patient.id] ??
-                                              const <Appointment>[];
-                                          final lastVisit = visits.isEmpty
-                                              ? '-'
-                                              : DateFormat('dd MMM yyyy')
-                                                  .format(visits.last.date);
-                                          return GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () => onSelected(patient),
-                                            child: Container(
-                                              width: double.infinity,
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 10, vertical: 8),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    patient.title.trim().isEmpty
-                                                        ? 'Unnamed patient'
-                                                        : patient.title,
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF1F446E),
-                                                      fontWeight: FontWeight.w700,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    '${patient.phone} • ${patient.age}y • Last: $lastVisit',
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF6D84A8),
-                                                      fontSize: 11,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton(
-                            onPressed: () => openPatient(),
-                            style: ButtonStyle(
-                              backgroundColor: WidgetStateProperty.all(
-                                  const Color(0xFF2D7BD8)),
-                              foregroundColor:
-                                  WidgetStateProperty.all(Colors.white),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(FluentIcons.add, size: 12),
-                                SizedBox(width: 6),
-                                Text('Add Patient'),
-                              ],
-                            ),
-                          ),
-                        ],
+                      width: 180,
+                      child: FilledButton(
+                        onPressed: () => openPatient(),
+                        style: ButtonStyle(
+                          backgroundColor:
+                              WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                          foregroundColor: WidgetStateProperty.all(Colors.white),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(FluentIcons.add, size: 12),
+                            SizedBox(width: 6),
+                            Text('Add Patient'),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -413,6 +318,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       title: 'Total Patients (Unique IDs)',
                       value: '$uniquePatientCount',
                       valueColor: const Color(0xFF1D3E67),
+                    ),
+                    SizedBox(
+                      width: 280,
+                      height: 160,
+                      child: _PatientGrowthMonthlyCard(rows: monthlyGrowth),
                     ),
                     SizedBox(
                       width: 280,
@@ -562,6 +472,16 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                     _selectedAlphabet = _selectedAlphabet == v ? 'All' : v;
                     _currentPage = 1;
                   }),
+                  behaviorFilter: _listBehaviorFilter,
+                  onBehaviorFilterChanged: (v) => setState(() {
+                    _listBehaviorFilter = v;
+                    _currentPage = 1;
+                  }),
+                  highValueThreshold: _highValueThreshold,
+                  onHighValueThresholdChanged: (v) => setState(() {
+                    _highValueThreshold = v;
+                    _currentPage = 1;
+                  }),
                   sortBy: _sortBy,
                   sortAscending: _sortAscending,
                   onSort: _onSort,
@@ -579,6 +499,34 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         ),
       ],
     );
+  }
+
+  List<({String label, int count})> _monthlyPatientGrowth({
+    required List<Appointment> allAppointments,
+    required DateTime anchor,
+  }) {
+    final buckets = <DateTime, Set<String>>{};
+    for (int i = 5; i >= 0; i--) {
+      final month = DateTime(anchor.year, anchor.month - i, 1);
+      buckets[month] = <String>{};
+    }
+
+    for (final appointment in allAppointments) {
+      final pid = appointment.patientID;
+      if (pid == null || pid.isEmpty) continue;
+      final month = DateTime(appointment.date.year, appointment.date.month, 1);
+      final set = buckets[month];
+      if (set != null) set.add(pid);
+    }
+
+    return buckets.entries
+        .map((entry) {
+          return (
+            label: DateFormat('MMM').format(entry.key),
+            count: entry.value.length,
+          );
+        })
+        .toList(growable: false);
   }
 
   Map<String, Map<String, int>> _ageGenderBuckets(List<Patient> items) {
@@ -983,6 +931,89 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
+class _PatientGrowthMonthlyCard extends StatelessWidget {
+  final List<({String label, int count})> rows;
+
+  const _PatientGrowthMonthlyCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    final peak = rows.fold<int>(1, (m, e) => e.count > m ? e.count : m);
+    final hasGrowth = rows.length >= 2 && rows.last.count >= rows[rows.length - 2].count;
+    final trendColor = hasGrowth ? const Color(0xFF2BA58D) : const Color(0xFFD6455D);
+
+    return _CardShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Patient Growth (Monthly)',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF3C5E87),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Icon(
+                hasGrowth ? FluentIcons.up : FluentIcons.down,
+                size: 10,
+                color: trendColor,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: rows.map((row) {
+                final ratio = peak == 0 ? 0.0 : row.count / peak;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${row.count}',
+                          style: const TextStyle(
+                            color: Color(0xFF1F446E),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          height: 64 * ratio.clamp(0.0, 1.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2D7BD8),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          row.label,
+                          style: const TextStyle(
+                            color: Color(0xFF5B789F),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(growable: false),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DonutSegment {
   final String label;
   final int value;
@@ -1288,15 +1319,46 @@ class _CompactAgeDistributionCardState
                             ),
                             const SizedBox(width: 8),
                             SizedBox(
-                              width: 84,
-                              child: Text(
-                                '${row.male + row.female} M:${row.male} F:${row.female}',
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F446E),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              width: 92,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2D7BD8),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${row.male}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF1F446E),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2BA58D),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${row.female}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF1F446E),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -2319,6 +2381,10 @@ class _AllPatientsListCard extends StatelessWidget {
   final Map<String, List<Appointment>> visitsByPatient;
   final String selectedAlphabet;
   final ValueChanged<String> onSelectAlphabet;
+  final String behaviorFilter;
+  final ValueChanged<String> onBehaviorFilterChanged;
+  final double highValueThreshold;
+  final ValueChanged<double> onHighValueThresholdChanged;
   final String sortBy;
   final bool sortAscending;
   final ValueChanged<String> onSort;
@@ -2335,6 +2401,10 @@ class _AllPatientsListCard extends StatelessWidget {
     required this.visitsByPatient,
     required this.selectedAlphabet,
     required this.onSelectAlphabet,
+    required this.behaviorFilter,
+    required this.onBehaviorFilterChanged,
+    required this.highValueThreshold,
+    required this.onHighValueThresholdChanged,
     required this.sortBy,
     required this.sortAscending,
     required this.onSort,
@@ -2381,6 +2451,31 @@ class _AllPatientsListCard extends StatelessWidget {
       'Y',
       'Z',
     ];
+
+    Widget behaviorChip(String key, String label) {
+      final selected = behaviorFilter == key;
+      return GestureDetector(
+        onTap: () => onBehaviorFilterChanged(key),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD2E1F2),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : const Color(0xFF355A84),
+            ),
+          ),
+        ),
+      );
+    }
 
     return _CardShell(
       child: Column(
@@ -2464,6 +2559,32 @@ class _AllPatientsListCard extends StatelessWidget {
                       : null,
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              behaviorChip('all', 'All'),
+              behaviorChip('highValue', 'High value patients'),
+              behaviorChip('frequent', 'Frequent visitors'),
+              behaviorChip('inactive', 'Inactive patients'),
+              behaviorChip('new', 'New patients'),
+              behaviorChip('oneTimer', 'One timer'),
+              if (behaviorFilter == 'highValue')
+                SizedBox(
+                  width: 180,
+                  child: NumberBox(
+                    value: highValueThreshold,
+                    mode: SpinButtonPlacementMode.none,
+                    clearButton: false,
+                    min: 0,
+                    smallChange: 500,
+                    placeholder: 'Threshold',
+                    onChanged: (v) => onHighValueThresholdChanged(v ?? highValueThreshold),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 8),
