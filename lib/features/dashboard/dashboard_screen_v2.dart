@@ -535,6 +535,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final dailyRevenueRows = _dailyRevenueRows(allAppointments, selectedDate, 30);
         final appointmentTrendRows = _appointmentTrendRows(allAppointments, selectedDate, 30);
         final dailyTreatmentDistribution = _treatmentDistributionRows(todaysAppointments);
+        final thisMonthDailyAverageRevenue = thisMonthAppointments.isEmpty
+          ? 0.0
+          : thisMonthRevenue / DateTime.now().day;
+        final thisMonthAvgDailyAppointments = thisMonthAppointments.isEmpty
+          ? 0.0
+          : thisMonthAppointments.length / DateTime.now().day;
         final newVsReturning = (
           newCount: thisMonthAppointments.where((a) => a.firstAppointmentForThisPatient).length,
           returningCount: thisMonthAppointments.where((a) => !a.firstAppointmentForThisPatient).length,
@@ -567,10 +573,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         iconColor: const Color(0xFF2D7BD8),
                         iconBackground: const Color(0xFFDDEBFF),
                       ),
-                      _StatusSummaryCard(
-                        completed: completed,
-                        pending: pending,
-                      ),
+                      _StatusSummaryCard(completed: completed, pending: pending),
                       _NewReturningPatientsCard(
                         newPatients: newPatients,
                         returningPatients: returningPatients,
@@ -597,11 +600,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           ),
                         ],
                       ),
-                      _TopDonutMetricCard(
-                        title: 'Daily Treatment Mix',
-                        centerValue:
-                            '${dailyTreatmentDistribution.fold<int>(0, (s, e) => s + e.value)}',
-                        segments: _topTreatmentSegments(dailyTreatmentDistribution),
+                      _TopDailyTreatmentCard(
+                        rows: dailyTreatmentDistribution,
                       ),
                       _TopTimingSummaryCard(
                         appointmentsForView: todaysAppointments,
@@ -610,13 +610,26 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         thisMonthRevenue: thisMonthRevenue,
                         lastMonthRevenue: lastMonthRevenue,
                         changePct: revenueVsLastMonthPct,
-                        thisMonthLabel: DateFormat('MMM').format(thisMonthStart),
-                        lastMonthLabel: DateFormat('MMM').format(lastMonthStart),
+                        thisMonthLabel: DateFormat('MMMM').format(thisMonthStart),
+                        lastMonthLabel: DateFormat('MMMM').format(lastMonthStart),
+                      ),
+                      _TopCurrentMonthRevenueCard(
+                        monthLabel: DateFormat('MMMM').format(thisMonthStart),
+                        value: thisMonthDailyAverageRevenue,
+                      ),
+                      _TopCurrentMonthAppointmentsCard(
+                        monthLabel: DateFormat('MMMM').format(thisMonthStart),
+                        avgPerDay: thisMonthAvgDailyAppointments,
+                        total: thisMonthAppointments.length,
                       ),
                       _TopPatientGrowthCard(
                         newPatientsWeek: newPatientsWeek,
                         newPatientsPrevWeek: newPatientsPrevWeek,
                         growthPct: growthPct,
+                      ),
+                      _NewVsReturningPieCard(
+                        newCount: newVsReturning.newCount,
+                        returningCount: newVsReturning.returningCount,
                       ),
                     ];
 
@@ -669,13 +682,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                     SizedBox(
                       width: 420,
                       child: _AppointmentTrendChartCard(rows: appointmentTrendRows),
-                    ),
-                    SizedBox(
-                      width: 420,
-                      child: _NewVsReturningPieCard(
-                        newCount: newVsReturning.newCount,
-                        returningCount: newVsReturning.returningCount,
-                      ),
                     ),
                     SizedBox(
                       width: 420,
@@ -2518,6 +2524,233 @@ class _NewReturningPatientsCard extends StatelessWidget {
   }
 }
 
+class _TopDailyTreatmentCard extends StatelessWidget {
+  final List<MapEntry<String, int>> rows;
+
+  const _TopDailyTreatmentCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = [
+      const Color(0xFF2D7BD8),
+      const Color(0xFF2BA58D),
+      const Color(0xFFE09C31),
+      const Color(0xFF7D8FA7),
+      const Color(0xFFD6455D),
+      const Color(0xFF8D5CF6),
+    ];
+    final topRows = rows.take(6).toList(growable: false);
+    final left = <MapEntry<String, int>>[];
+    final right = <MapEntry<String, int>>[];
+    for (var i = 0; i < topRows.length; i++) {
+      if (i.isEven) {
+        left.add(topRows[i]);
+      } else {
+        right.add(topRows[i]);
+      }
+    }
+
+    Widget listColumn(List<MapEntry<String, int>> col, int seed) {
+      return Expanded(
+        child: Column(
+          children: col.asMap().entries.map((entry) {
+            final color = palette[(entry.key + seed) % palette.length];
+            final row = entry.value;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: color.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      row.key,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF1F446E),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${row.value}',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(growable: false),
+        ),
+      );
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Daily Treatment',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF496489),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (topRows.isEmpty)
+                const Text(
+                  'No treatments today',
+                  style: TextStyle(color: Color(0xFF6D84A8), fontSize: 12),
+                )
+              else
+                Expanded(
+                  child: Row(
+                    children: [
+                      listColumn(left, 0),
+                      const SizedBox(width: 6),
+                      listColumn(right, 3),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopCurrentMonthRevenueCard extends StatelessWidget {
+  final String monthLabel;
+  final double value;
+
+  const _TopCurrentMonthRevenueCard({
+    required this.monthLabel,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$monthLabel Daily Avg Revenue',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF496489),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '₹${value.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1468CC),
+                ),
+              ),
+              const Spacer(),
+              const Text(
+                'Fixed to current month progression',
+                style: TextStyle(
+                  color: Color(0xFF6D84A8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopCurrentMonthAppointmentsCard extends StatelessWidget {
+  final String monthLabel;
+  final double avgPerDay;
+  final int total;
+
+  const _TopCurrentMonthAppointmentsCard({
+    required this.monthLabel,
+    required this.avgPerDay,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$monthLabel Appointment Trend',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF496489),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${avgPerDay.toStringAsFixed(1)}/day',
+                style: const TextStyle(
+                  fontSize: 33,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2BA58D),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$total total appointments this month',
+                style: const TextStyle(
+                  color: Color(0xFF6D84A8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TopMonthRevenueCard extends StatelessWidget {
   final double thisMonthRevenue;
   final double lastMonthRevenue;
@@ -2579,9 +2812,9 @@ class _TopMonthRevenueCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Text(
-                    'This Month Revenue',
-                    style: TextStyle(fontSize: 13, color: Color(0xFF496489), fontWeight: FontWeight.w600),
+                  Text(
+                    '$thisMonthLabel Revenue',
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF496489), fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
                   Icon(up ? material.Icons.trending_up : material.Icons.trending_down, size: 11, color: color),
@@ -2601,6 +2834,15 @@ class _TopMonthRevenueCard extends StatelessWidget {
               barLine(thisMonthLabel, thisMonthRevenue, const Color(0xFF2D7BD8)),
               const SizedBox(height: 6),
               barLine(lastMonthLabel, lastMonthRevenue, const Color(0xFF9BB9DD)),
+              const SizedBox(height: 4),
+              Text(
+                'Compared with $lastMonthLabel revenue',
+                style: const TextStyle(
+                  color: Color(0xFF6D84A8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -2668,35 +2910,56 @@ class _DailyRevenueChartCard extends StatelessWidget {
                   child: Column(
                     children: [
                       Expanded(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: rows.map((row) {
-                            return Expanded(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 1),
-                                child: Tooltip(
-                                  message:
-                                      'Revenue\n${DateFormat('dd MMM').format(row.day)}\n₹${row.value.toStringAsFixed(0)}',
+                        child: Stack(
+                          children: [
+                            Column(
+                              children: List.generate(
+                                5,
+                                (index) => Expanded(
                                   child: Container(
-                                    height:
-                                        140 * (row.value / peak).clamp(0.0, 1.0),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFF66A8F0),
-                                          Color(0xFF2D7BD8),
-                                        ],
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
+                                    decoration: const BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Color(0xFFE5EFFA),
+                                          width: 1,
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.circular(2),
                                     ),
                                   ),
                                 ),
                               ),
-                            );
-                          }).toList(growable: false),
+                            ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: rows.map((row) {
+                                return Expanded(
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(horizontal: 1),
+                                    child: Tooltip(
+                                      message:
+                                          'Revenue\n${DateFormat('dd MMM').format(row.day)}\n₹${row.value.toStringAsFixed(0)}',
+                                      child: Container(
+                                        height:
+                                            140 * (row.value / peak).clamp(0.0, 1.0),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFF66A8F0),
+                                              Color(0xFF2D7BD8),
+                                            ],
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                          ),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(growable: false),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -2797,35 +3060,56 @@ class _AppointmentTrendChartCard extends StatelessWidget {
                   child: Column(
                     children: [
                       Expanded(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: rows.map((row) {
-                            return Expanded(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 1),
-                                child: Tooltip(
-                                  message:
-                                      'Appointments\n${DateFormat('dd MMM').format(row.day)}\n${row.count}',
+                        child: Stack(
+                          children: [
+                            Column(
+                              children: List.generate(
+                                5,
+                                (index) => Expanded(
                                   child: Container(
-                                    height:
-                                        140 * (row.count / peak).clamp(0.0, 1.0),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFF6ED1B3),
-                                          Color(0xFF2BA58D),
-                                        ],
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
+                                    decoration: const BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Color(0xFFE5EFFA),
+                                          width: 1,
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.circular(2),
                                     ),
                                   ),
                                 ),
                               ),
-                            );
-                          }).toList(growable: false),
+                            ),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: rows.map((row) {
+                                return Expanded(
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(horizontal: 1),
+                                    child: Tooltip(
+                                      message:
+                                          'Appointments\n${DateFormat('dd MMM').format(row.day)}\n${row.count}',
+                                      child: Container(
+                                        height:
+                                            140 * (row.count / peak).clamp(0.0, 1.0),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFF6ED1B3),
+                                              Color(0xFF2BA58D),
+                                            ],
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                          ),
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(growable: false),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -3265,101 +3549,72 @@ class _StatusSummaryCard extends StatelessWidget {
         height: 140,
         child: _CardShell(
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Status Today',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF496489),
-                fontWeight: FontWeight.w600,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Status Today',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF496489),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Row(
-              children: [
-                const Icon(
-                  FluentIcons.check_mark,
-                  size: 16,
-                  color: Color(0xFF3B9A42),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Text(
-                        '$completed',
-                        style: const TextStyle(
-                          color: Color(0xFF3B9A42),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 32,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Completed',
-                        style: TextStyle(
-                          color: Color(0xFF3B9A42),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    '$completed',
+                    style: const TextStyle(
+                      color: Color(0xFF3B9A42),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 30,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            ),
-            const SizedBox(height: 4),
-            Expanded(
-              child: Row(
-              children: [
-                const Icon(
-                  FluentIcons.checkbox_indeterminate,
-                  size: 16,
-                  color: Color(0xFFE4A11B),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Text(
-                        '$pending',
-                        style: const TextStyle(
-                          color: Color(0xFFE4A11B),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 32,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'Pending',
-                        style: TextStyle(
-                          color: Color(0xFFE4A11B),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Completed',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF3B9A42),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            ),
-            Text(
-              'Completion rate: $donePct%',
-              style: const TextStyle(
-                color: Color(0xFF36557C),
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Text(
+                    '$pending',
+                    style: const TextStyle(
+                      color: Color(0xFFE4A11B),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 30,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Pending',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFE4A11B),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                '$donePct% completed today',
+                style: const TextStyle(
+                  color: Color(0xFF5A7397),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -3385,45 +3640,45 @@ class _TopTimingSummaryCard extends StatelessWidget {
 
     Widget miniBar(String label, int value, Color color) {
       return Row(
-          children: [
-            SizedBox(
-              width: 78,
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Color(0xFF496489),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
+        children: [
+          SizedBox(
+            width: 78,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF496489),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  height: 8,
-                  color: const Color(0xFFEAF2FC),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: value / maxCount,
-                      child: Container(color: color),
-                    ),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                height: 8,
+                color: const Color(0xFFEAF2FC),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: value / maxCount,
+                    child: Container(color: color),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 6),
-            Text(
-              '$value',
-              style: const TextStyle(
-                color: Color(0xFF1F446E),
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-              ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$value',
+            style: const TextStyle(
+              color: Color(0xFF1F446E),
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
             ),
-          ],
-        );
+          ),
+        ],
+      );
     }
 
     return ConstrainedBox(
@@ -3432,38 +3687,38 @@ class _TopTimingSummaryCard extends StatelessWidget {
         height: 140,
         child: _CardShell(
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Appointment Timing',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF496489),
-                fontWeight: FontWeight.w600,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Appointment Timing',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF496489),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: miniBar('Morning', morning, const Color(0xFF2D7BD8)),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: miniBar('Morning', morning, const Color(0xFF2D7BD8)),
+                ),
               ),
-            ),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: miniBar('Afternoon', afternoon, const Color(0xFF2BA58D)),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: miniBar('Afternoon', afternoon, const Color(0xFF2BA58D)),
+                ),
               ),
-            ),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: miniBar('Evening', evening, const Color(0xFFE09C31)),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: miniBar('Evening', evening, const Color(0xFFE09C31)),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -3726,6 +3981,7 @@ class _FinanceCard extends StatelessWidget {
               child: Text(
                 title,
                 style: const TextStyle(
+
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF2E4E76),

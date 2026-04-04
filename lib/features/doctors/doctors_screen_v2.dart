@@ -19,7 +19,10 @@ class DoctorsScreenV2 extends StatefulWidget {
 
 class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
   DateTime _selectedDate = DateTime.now();
-  String _range = 'today';
+  String _handledRange = 'today';
+  String _performanceRange = 'month';
+  String _doneRange = 'month';
+  String _workloadRange = 'week';
   bool _compareMode = false;
   DateTime? _customRangeStart;
   DateTime? _customRangeEnd;
@@ -67,7 +70,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
     setState(() {
       _customRangeStart = _dateOnly(picked.start);
       _customRangeEnd = _dateOnly(picked.end);
-      _range = 'custom';
+      _handledRange = 'custom';
+      _performanceRange = 'custom';
+      _doneRange = 'custom';
+      _workloadRange = 'custom';
     });
   }
 
@@ -140,10 +146,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
             final allAppointments =
                 appointments.present.values.toList(growable: false);
 
-            final currentStart = _range == 'custom' && _customRangeStart != null
+            final currentStart = _handledRange == 'custom' && _customRangeStart != null
               ? _customRangeStart!
-              : _rangeStart(_selectedDate, _range);
-            final currentEnd = _range == 'custom' && _customRangeEnd != null
+              : _rangeStart(_selectedDate, _handledRange);
+            final currentEnd = _handledRange == 'custom' && _customRangeEnd != null
               ? _dateOnly(_customRangeEnd!).add(const Duration(days: 1))
               : _rangeEndExclusive(_selectedDate);
             final currentSpanDays = math.max(1, currentEnd.difference(currentStart).inDays);
@@ -187,7 +193,35 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
 
             final performanceRows = _doctorPerformance(
               doctorsList: allDoctors,
-              scoped: scopedCurrent,
+              scoped: _scopedForRange(
+                allAppointments: allAppointments,
+                selectedDate: _selectedDate,
+                range: _performanceRange,
+                customRangeStart: _customRangeStart,
+                customRangeEnd: _customRangeEnd,
+              ),
+            );
+
+            final doneRows = _doctorDoneMetrics(
+              doctorsList: allDoctors,
+              scoped: _scopedForRange(
+                allAppointments: allAppointments,
+                selectedDate: _selectedDate,
+                range: _doneRange,
+                customRangeStart: _customRangeStart,
+                customRangeEnd: _customRangeEnd,
+              ),
+            );
+
+            final workloadRows = _doctorWorkloadMetrics(
+              doctorsList: allDoctors,
+              scoped: _scopedForRange(
+                allAppointments: allAppointments,
+                selectedDate: _selectedDate,
+                range: _workloadRange,
+                customRangeStart: _customRangeStart,
+                customRangeEnd: _customRangeEnd,
+              ),
             );
 
             return Column(
@@ -447,12 +481,12 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1040),
                     child: _DoctorHandledRangeCard(
-                      selectedRange: _range,
+                      selectedRange: _handledRange,
                       compareMode: _compareMode,
                       customRangeLabel: _customRangeLabel(),
                       onPickCustomRange: () => _pickCustomRange(context),
                       onToggleCompare: (value) => setState(() => _compareMode = value),
-                      onSelectRange: (value) => setState(() => _range = value),
+                      onSelectRange: (value) => setState(() => _handledRange = value),
                       rows: handledRows,
                       compareById: compareById,
                     ),
@@ -461,8 +495,20 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                 const SizedBox(height: 12),
                 _DoctorPerformanceCard(
                   rows: performanceRows,
-                  selectedRange: _range,
-                  onSelectRange: (value) => setState(() => _range = value),
+                  selectedRange: _performanceRange,
+                  onSelectRange: (value) => setState(() => _performanceRange = value),
+                ),
+                const SizedBox(height: 12),
+                _DoctorAppointmentDoneChartCard(
+                  rows: doneRows,
+                  selectedRange: _doneRange,
+                  onSelectRange: (value) => setState(() => _doneRange = value),
+                ),
+                const SizedBox(height: 12),
+                _DoctorWorkloadMetricsCard(
+                  rows: workloadRows,
+                  selectedRange: _workloadRange,
+                  onSelectRange: (value) => setState(() => _workloadRange = value),
                 ),
               ],
             );
@@ -915,6 +961,90 @@ List<({
   return rows;
 }
 
+List<Appointment> _scopedForRange({
+  required List<Appointment> allAppointments,
+  required DateTime selectedDate,
+  required String range,
+  required DateTime? customRangeStart,
+  required DateTime? customRangeEnd,
+}) {
+  DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  DateTime rangeStart(DateTime anchor, String key) {
+    switch (key) {
+      case 'today':
+        return dateOnly(anchor);
+      case 'week':
+        return dateOnly(anchor.subtract(const Duration(days: 6)));
+      case 'month':
+        return DateTime(anchor.year, anchor.month, 1);
+      case '6months':
+        return DateTime(anchor.year, anchor.month - 5, 1);
+      case 'ytd':
+        return DateTime(anchor.year, 1, 1);
+      case 'year':
+        return dateOnly(anchor.subtract(const Duration(days: 364)));
+      default:
+        return dateOnly(anchor);
+    }
+  }
+
+  final start = range == 'custom' && customRangeStart != null
+      ? dateOnly(customRangeStart)
+      : rangeStart(selectedDate, range);
+  final endExclusive = range == 'custom' && customRangeEnd != null
+      ? dateOnly(customRangeEnd).add(const Duration(days: 1))
+      : dateOnly(selectedDate).add(const Duration(days: 1));
+
+  return allAppointments
+      .where((a) => !a.date.isBefore(start) && a.date.isBefore(endExclusive))
+      .toList(growable: false);
+}
+
+List<({Doctor doctor, int doneCount, int totalCount})> _doctorDoneMetrics({
+  required List<Doctor> doctorsList,
+  required List<Appointment> scoped,
+}) {
+  return doctorsList
+      .map((doctor) {
+        final rows = scoped
+            .where((a) => a.operatorsIDs.contains(doctor.id))
+            .toList(growable: false);
+        final doneCount = rows.where((a) => a.isDone).length;
+        return (doctor: doctor, doneCount: doneCount, totalCount: rows.length);
+      })
+      .where((row) => row.totalCount > 0)
+      .toList(growable: false)
+    ..sort((a, b) => b.doneCount.compareTo(a.doneCount));
+}
+
+List<({Doctor doctor, int appointments, int uniquePatients, double completionRate})>
+    _doctorWorkloadMetrics({
+  required List<Doctor> doctorsList,
+  required List<Appointment> scoped,
+}) {
+  return doctorsList
+      .map((doctor) {
+        final rows = scoped
+            .where((a) => a.operatorsIDs.contains(doctor.id))
+            .toList(growable: false);
+        final patients = <String>{
+          for (final row in rows)
+            if (row.patientID != null && row.patientID!.isNotEmpty) row.patientID!,
+        };
+        final done = rows.where((a) => a.isDone).length;
+        return (
+          doctor: doctor,
+          appointments: rows.length,
+          uniquePatients: patients.length,
+          completionRate: rows.isEmpty ? 0.0 : done / rows.length,
+        );
+      })
+      .where((row) => row.appointments > 0)
+      .toList(growable: false)
+    ..sort((a, b) => b.appointments.compareTo(a.appointments));
+}
+
 class _DoctorsActivityCard extends StatelessWidget {
   final List<({Doctor doctor, int count, double paid})> rows;
 
@@ -1233,6 +1363,281 @@ class _DoctorPerformanceCard extends StatelessWidget {
               }),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DoctorAppointmentDoneChartCard extends StatelessWidget {
+  final List<({Doctor doctor, int doneCount, int totalCount})> rows;
+  final String selectedRange;
+  final ValueChanged<String> onSelectRange;
+
+  const _DoctorAppointmentDoneChartCard({
+    required this.rows,
+    required this.selectedRange,
+    required this.onSelectRange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget tab(String key, String label) {
+      final selected = selectedRange == key;
+      return GestureDetector(
+        onTap: () => onSelectRange(key),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD6E2F0),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF355279),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final maxDone = rows.fold<int>(1, (m, e) => e.doneCount > m ? e.doneCount : m);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Appointment Done By Doctor',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                tab('today', 'Today'),
+                tab('week', 'Week'),
+                tab('month', 'Month'),
+                tab('6months', '6 Months'),
+                tab('year', '1 Year'),
+                tab('ytd', 'YTD'),
+                tab('custom', 'Custom'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (rows.isEmpty)
+              const Text(
+                'No completion data in selected range.',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              )
+            else
+              ...rows.take(12).map((row) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 170,
+                        child: Text(
+                          row.doctor.title,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF1F446E),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            height: 10,
+                            color: const Color(0xFFEAF2FC),
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: row.doneCount / maxDone,
+                              child: Container(color: const Color(0xFF2BA58D)),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 170,
+                        child: Text(
+                          '${row.doneCount} done / ${row.totalCount} total',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            color: Color(0xFF5B789F),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DoctorWorkloadMetricsCard extends StatelessWidget {
+  final List<({Doctor doctor, int appointments, int uniquePatients, double completionRate})>
+      rows;
+  final String selectedRange;
+  final ValueChanged<String> onSelectRange;
+
+  const _DoctorWorkloadMetricsCard({
+    required this.rows,
+    required this.selectedRange,
+    required this.onSelectRange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget tab(String key, String label) {
+      final selected = selectedRange == key;
+      return GestureDetector(
+        onTap: () => onSelectRange(key),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD6E2F0),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF355279),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final totalAppointments = rows.fold<int>(0, (sum, row) => sum + row.appointments);
+    final totalPatients = rows.fold<int>(0, (sum, row) => sum + row.uniquePatients);
+    final avgCompletion = rows.isEmpty
+        ? 0.0
+        : rows.fold<double>(0, (sum, row) => sum + row.completionRate) / rows.length;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Doctor Workload Metrics',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                tab('today', 'Today'),
+                tab('week', 'Week'),
+                tab('month', 'Month'),
+                tab('6months', '6 Months'),
+                tab('year', '1 Year'),
+                tab('ytd', 'YTD'),
+                tab('custom', 'Custom'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                _metricPill('Appointments', '$totalAppointments'),
+                _metricPill('Unique Patients', '$totalPatients'),
+                _metricPill('Avg Completion', '${(avgCompletion * 100).toStringAsFixed(0)}%'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _metricPill(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6FAFF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDCE8F6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              color: Color(0xFF36557C),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF1459AD),
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }

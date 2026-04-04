@@ -12,6 +12,7 @@ import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/patients/patients_screen.dart';
 import 'package:apexo/features/patients/patients_screen_v2.dart';
 import 'package:apexo/features/stats/screen_stats.dart';
+import 'package:apexo/features/stats/report_v2_screen.dart';
 import 'package:apexo/services/admins.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/features/stats/charts_controller.dart';
@@ -265,6 +266,18 @@ class _Routes {
           accessible: permissions.list[5] || login.isAdmin,
           onSelect: () async {
             chartsCtrl.resetSelected();
+            await doctors.synchronize();
+            await patients.synchronize();
+            appointments.synchronize();
+          },
+        ),
+        Route(
+          title: 'Report V2',
+          identifier: 'report_v2',
+          icon: FluentIcons.report_document,
+          screen: ReportV2Screen.new,
+          accessible: permissions.list[5] || login.isAdmin,
+          onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();
             appointments.synchronize();

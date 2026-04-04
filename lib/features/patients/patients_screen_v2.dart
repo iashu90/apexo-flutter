@@ -1196,6 +1196,8 @@ class _CompactAgeDistributionCardState
       final female = entry.value['Female'] ?? 0;
       return (label: entry.key, male: male, female: female);
     }).toList(growable: false);
+    final totalPatients =
+        rows.fold<int>(0, (sum, row) => sum + row.male + row.female);
 
     final maxValue = rows.fold<int>(1, (m, e) {
       final total = e.male + e.female;
@@ -1214,6 +1216,15 @@ class _CompactAgeDistributionCardState
                   fontSize: 13,
                   color: Color(0xFF3C5E87),
                   fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Total: $totalPatients',
+                style: const TextStyle(
+                  color: Color(0xFF5A7397),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const Spacer(),

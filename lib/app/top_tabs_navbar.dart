@@ -69,6 +69,7 @@ class TopTabsNavBar extends StatelessWidget {
       'doctors',
       'doctors_v2',
       'statistics',
+      'report_v2',
     ];
 
     final byId = {
@@ -158,6 +159,7 @@ class _TabButton extends StatelessWidget {
 
   String _displayTitle(app_routes.Route route) {
     if (route.identifier == 'statistics') return txt('reports');
+    if (route.identifier == 'report_v2') return 'Report V2';
     return route.title;
   }
 }
