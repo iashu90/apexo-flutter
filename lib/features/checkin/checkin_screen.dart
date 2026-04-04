@@ -706,26 +706,26 @@ class _WorkflowRow extends StatelessWidget {
 
   static Color _doctorChipColor(String doctor) {
     const palette = [
-      Color(0xFFEAF2FC),
-      Color(0xFFE8F8F3),
-      Color(0xFFFFF2E5),
-      Color(0xFFF2EDFF),
-      Color(0xFFFFEEF2),
-      Color(0xFFE9F7FF),
-      Color(0xFFF3F7EA),
+      Color(0xFFFFE3E3),
+      Color(0xFFE2F8E8),
+      Color(0xFFFFF0D8),
+      Color(0xFFE3ECFF),
+      Color(0xFFFFE6F1),
+      Color(0xFFE0F7FF),
+      Color(0xFFF0F7DD),
     ];
     return palette[doctor.hashCode.abs() % palette.length];
   }
 
   static Color _doctorChipBorderColor(String doctor) {
     const palette = [
-      Color(0xFF9FC4F1),
-      Color(0xFF8FD4BD),
-      Color(0xFFE7C08D),
-      Color(0xFFC2B3EF),
-      Color(0xFFE5B2C0),
-      Color(0xFFA9D4EB),
-      Color(0xFFBDD2A0),
+      Color(0xFFE05050),
+      Color(0xFF3FAF64),
+      Color(0xFFE2952B),
+      Color(0xFF4C78D8),
+      Color(0xFFD34F8D),
+      Color(0xFF2E9BC1),
+      Color(0xFF95B334),
     ];
     return palette[doctor.hashCode.abs() % palette.length];
   }
@@ -881,17 +881,6 @@ class _CheckinHistoryPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = selectedAppointment;
-    final todaysPatientTreatments = <String>{};
-
-    if (selected != null) {
-      for (final appointment in todaysAppointments) {
-        if (appointment.patientID != selected.patientID) continue;
-        for (final treatment in appointment.selectedTreatments) {
-          final v = treatment.trim();
-          if (v.isNotEmpty) todaysPatientTreatments.add(v);
-        }
-      }
-    }
 
     return Container(
       decoration: BoxDecoration(
@@ -914,54 +903,6 @@ class _CheckinHistoryPanel extends StatelessWidget {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Today Treatment Snapshot',
-                    style: TextStyle(
-                      color: Color(0xFF2C4E76),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  if (todaysPatientTreatments.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        'No treatments added for today.',
-                        style:
-                            TextStyle(color: Color(0xFF6D84A8), fontSize: 12),
-                      ),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: todaysPatientTreatments
-                            .map(
-                              (treatment) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEAF2FC),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                      color: const Color(0xFFD5E5F7)),
-                                ),
-                                child: Text(
-                                  treatment,
-                                  style: const TextStyle(
-                                    color: Color(0xFF2F5B88),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ),
                   _CheckinHistoryDetails(appointment: selected),
                 ],
               ),
@@ -1096,14 +1037,21 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
           ],
         ),
         const SizedBox(height: 10),
-        _AssignDoctorDrop(appointment: appointment),
-        const SizedBox(height: 10),
-        _LastAppointmentInsightCard(lastAppointment: lastAppointment),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _LastAppointmentInsightCard(lastAppointment: lastAppointment),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PatientJourneyTimeline(appointments: all),
+            ),
+          ],
+        ),
         const SizedBox(height: 10),
         _CheckinOperativeForm(
             appointment: appointment, allAppointmentsForPatient: all),
-        const SizedBox(height: 10),
-        _PatientJourneyTimeline(appointments: all),
         const SizedBox(height: 10),
         if (patientNotes.isNotEmpty)
           Container(
@@ -1136,95 +1084,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
           )
         else
           ...otherRows.map(historyCard),
-      ],
-    );
-  }
-}
-
-class _AssignDoctorDrop extends StatefulWidget {
-  final Appointment appointment;
-
-  const _AssignDoctorDrop({required this.appointment});
-
-  @override
-  State<_AssignDoctorDrop> createState() => _AssignDoctorDropState();
-}
-
-class _AssignDoctorDropState extends State<_AssignDoctorDrop> {
-  @override
-  Widget build(BuildContext context) {
-    final appointment = widget.appointment;
-    final assignableDoctorIds = <String>[
-      '__unassigned__',
-      ...doctors.present.values.map((d) => d.id),
-    ];
-
-    final selectedId = appointment.operatorsIDs.isEmpty
-        ? '__unassigned__'
-        : appointment.operatorsIDs.first;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Assign Doctor',
-          style: TextStyle(
-            color: Color(0xFF2C4E76),
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          width: 340,
-          child: material.DropdownButtonFormField<String>(
-            value: assignableDoctorIds.contains(selectedId)
-                ? selectedId
-                : '__unassigned__',
-            isExpanded: true,
-            icon: const Icon(FluentIcons.chevron_down, size: 11),
-            decoration: material.InputDecoration(
-              isDense: true,
-              filled: true,
-              fillColor: const Color(0xFFF8FBFF),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: material.OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const material.BorderSide(color: Color(0xFFCFE0F3)),
-              ),
-              enabledBorder: material.OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const material.BorderSide(color: Color(0xFFCFE0F3)),
-              ),
-              focusedBorder: material.OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const material.BorderSide(color: Color(0xFF2D7BD8)),
-              ),
-            ),
-            items: assignableDoctorIds
-                .map(
-                  (id) => material.DropdownMenuItem<String>(
-                    value: id,
-                    child: Text(
-                      id == '__unassigned__'
-                          ? 'Unassigned'
-                          : (doctors.get(id)?.title ?? 'Unknown'),
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                appointment.operatorsIDs =
-                    value == '__unassigned__' ? <String>[] : <String>[value];
-              });
-              appointments.set(appointment);
-            },
-          ),
-        ),
       ],
     );
   }
@@ -1365,6 +1224,53 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     setState(() {});
   }
 
+  void _applyPriceSuggestion(int value) {
+    final a = widget.appointment;
+    _priceController.text = '$value';
+    a.price = value.toDouble();
+    appointments.set(a);
+    setState(() {});
+  }
+
+  void _applyDiscountSuggestion(int value) {
+    _discountController.text = '$value';
+    _applyDiscount();
+  }
+
+  Future<void> _confirmDoneToggle() async {
+    final a = widget.appointment;
+    if (a.isDone) {
+      setState(() => a.isDone = false);
+      appointments.set(a);
+      return;
+    }
+
+    final shouldComplete = await showDialog<bool>(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Mark appointment as done?'),
+        content: const Text('This will move the appointment to completed list.'),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(const Color(0xFF2BA58D)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldComplete != true) return;
+    setState(() => a.isDone = true);
+    appointments.set(a);
+  }
+
   @override
   Widget build(BuildContext context) {
     final a = widget.appointment;
@@ -1450,13 +1356,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
             ),
           ),
           const SizedBox(height: 8),
-          TeethPicker(
+          _EnhancedTeethPickerCard(
             selectedTeeth: _selectedTeeth,
-            isAdult: _selectedTeeth.every((t) =>
-                t.startsWith('1') ||
-                t.startsWith('2') ||
-                t.startsWith('3') ||
-                t.startsWith('4')),
             onChanged: (teeth) {
               _selectedTeeth = teeth;
               a.selectedTeeth = teeth.toList(growable: false);
@@ -1504,6 +1405,35 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               ),
             ),
           ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [5, 10, 15, 20, 25]
+                .map(
+                  (v) => GestureDetector(
+                    onTap: () => _applyDiscountSuggestion(v),
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF2FC),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFD5E5F7)),
+                      ),
+                      child: Text(
+                        _discountType == 'percent' ? '$v%' : '₹$v',
+                        style: const TextStyle(
+                          color: Color(0xFF2F5B88),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(growable: false),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -1546,27 +1476,161 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Checkbox(
-            checked: a.treatmentGpayPaid,
-            onChanged: (checked) {
-              setState(() {
-                a.treatmentGpayPaid = checked ?? false;
-                a.isDone = true;
-              });
-              appointments.set(a);
-            },
-            content: const Text('Paid via GPay'),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [100, 200, 500, 1000, 2000]
+                .map(
+                  (v) => GestureDetector(
+                    onTap: () => _applyPriceSuggestion(v),
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF2FC),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFD5E5F7)),
+                      ),
+                      child: Text(
+                        '₹$v',
+                        style: const TextStyle(
+                          color: Color(0xFF2F5B88),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(growable: false),
           ),
-          Checkbox(
-            checked: a.isDone,
-            onChanged: (checked) {
-              setState(() {
-                a.isDone = checked == true;
-              });
-              appointments.set(a);
-            },
-            content: const Text('Appointment is done'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _paymentModeChip(
+                label: 'Cash',
+                selected: !a.treatmentGpayPaid,
+                color: const Color(0xFFE09C31),
+                onTap: () {
+                  setState(() {
+                    a.treatmentGpayPaid = false;
+                    a.prescriptionGpayPaid = false;
+                  });
+                  appointments.set(a);
+                },
+              ),
+              _paymentModeChip(
+                label: 'Digital (GPay)',
+                selected: a.treatmentGpayPaid,
+                color: const Color(0xFF2D7BD8),
+                onTap: () {
+                  setState(() {
+                    a.treatmentGpayPaid = true;
+                    a.prescriptionGpayPaid = true;
+                  });
+                  appointments.set(a);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          FilledButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(
+                a.isDone ? const Color(0xFFD6455D) : const Color(0xFF2BA58D),
+              ),
+              foregroundColor: WidgetStateProperty.all(Colors.white),
+            ),
+            onPressed: _confirmDoneToggle,
+            child: Text(a.isDone ? 'Undo Done' : 'Mark Appointment Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentModeChip({
+    required String label,
+    required bool selected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.14) : const Color(0xFFF4F8FD),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? color : const Color(0xFFD6E2F0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? color : const Color(0xFF355279),
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EnhancedTeethPickerCard extends StatelessWidget {
+  final Set<String> selectedTeeth;
+  final ValueChanged<Set<String>> onChanged;
+
+  const _EnhancedTeethPickerCard({
+    required this.selectedTeeth,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF5FAFF), Color(0xFFEDF6FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD4E6FA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(FluentIcons.accounts, size: 13, color: Color(0xFF2D7BD8)),
+              SizedBox(width: 6),
+              Text(
+                'Teeth Map (Enhanced)',
+                style: TextStyle(
+                  color: Color(0xFF2C4E76),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          TeethPicker(
+            selectedTeeth: selectedTeeth,
+            isAdult: selectedTeeth.every((t) =>
+                t.startsWith('1') ||
+                t.startsWith('2') ||
+                t.startsWith('3') ||
+                t.startsWith('4')),
+            onChanged: onChanged,
           ),
         ],
       ),
@@ -1583,97 +1647,89 @@ class _PatientJourneyTimeline extends StatelessWidget {
   Widget build(BuildContext context) {
     final points = appointments.take(8).toList(growable: false);
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF7FBFF),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFE2ECF8)),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FBFF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2ECF8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Journey Timeline',
+            style: TextStyle(
+              color: Color(0xFF2C4E76),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Journey Timeline',
-                style: TextStyle(
-                  color: Color(0xFF2C4E76),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (points.isEmpty)
-                const Text(
-                  'No timeline data available.',
-                  style: TextStyle(color: Color(0xFF6D84A8), fontSize: 12),
-                )
-              else
-                ...points.asMap().entries.map((entry) {
-                  final item = entry.value;
-                  final treatments = item.selectedTreatments
-                      .where((t) => t.trim().isNotEmpty)
-                      .join(', ');
-                  final isLast = entry.key == points.length - 1;
+          const SizedBox(height: 8),
+          if (points.isEmpty)
+            const Text(
+              'No timeline data available.',
+              style: TextStyle(color: Color(0xFF6D84A8), fontSize: 12),
+            )
+          else
+            ...points.asMap().entries.map((entry) {
+              final item = entry.value;
+              final treatments = item.selectedTreatments
+                  .where((t) => t.trim().isNotEmpty)
+                  .join(', ');
+              final isLast = entry.key == points.length - 1;
 
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
                     children: [
-                      Column(
-                        children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF2D7BD8),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          if (!isLast)
-                            Container(
-                              width: 2,
-                              height: 28,
-                              color: const Color(0xFFCFE0F3),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                DateFormat('dd MMM yyyy • h:mm a')
-                                    .format(item.date),
-                                style: const TextStyle(
-                                  color: Color(0xFF1F446E),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                treatments.isEmpty ? '-' : treatments,
-                                style: const TextStyle(
-                                  color: Color(0xFF5F789B),
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2D7BD8),
+                          shape: BoxShape.circle,
                         ),
                       ),
+                      if (!isLast)
+                        Container(
+                          width: 2,
+                          height: 28,
+                          color: const Color(0xFFCFE0F3),
+                        ),
                     ],
-                  );
-                }),
-            ],
-          ),
-        ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            DateFormat('dd MMM yyyy • h:mm a').format(item.date),
+                            style: const TextStyle(
+                              color: Color(0xFF1F446E),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            treatments.isEmpty ? '-' : treatments,
+                            style: const TextStyle(
+                              color: Color(0xFF5F789B),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }),
+        ],
       ),
     );
   }

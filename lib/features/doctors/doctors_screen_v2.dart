@@ -21,7 +21,8 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
   DateTime _selectedDate = DateTime.now();
   String _range = 'today';
   bool _compareMode = false;
-  String? _drilldownDoctorId;
+  DateTime? _customRangeStart;
+  DateTime? _customRangeEnd;
 
   static DateTime _dateOnly(DateTime input) =>
       DateTime(input.year, input.month, input.day);
@@ -51,6 +52,25 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
     setState(() => _selectedDate = _dateOnly(picked));
   }
 
+  Future<void> _pickCustomRange(BuildContext context) async {
+    final picked = await material.showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000, 1, 1),
+      lastDate: DateTime(2100, 12, 31),
+      initialDateRange: _customRangeStart != null && _customRangeEnd != null
+          ? material.DateTimeRange(start: _customRangeStart!, end: _customRangeEnd!)
+          : null,
+      helpText: 'Select custom range',
+    );
+
+    if (picked == null) return;
+    setState(() {
+      _customRangeStart = _dateOnly(picked.start);
+      _customRangeEnd = _dateOnly(picked.end);
+      _range = 'custom';
+    });
+  }
+
   DateTime _rangeStart(DateTime anchor, String range) {
     switch (range) {
       case 'today':
@@ -61,14 +81,24 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
         return DateTime(anchor.year, anchor.month, 1);
       case '6months':
         return DateTime(anchor.year, anchor.month - 5, 1);
-      case 'year':
-      default:
+      case 'ytd':
         return DateTime(anchor.year, 1, 1);
+      case 'year':
+        return _dateOnly(anchor.subtract(const Duration(days: 364)));
+      default:
+        return _dateOnly(anchor);
     }
   }
 
   DateTime _rangeEndExclusive(DateTime anchor) {
     return _dateOnly(anchor).add(const Duration(days: 1));
+  }
+
+  String _customRangeLabel() {
+    if (_customRangeStart == null || _customRangeEnd == null) {
+      return 'Set Custom Range';
+    }
+    return '${DateFormat('dd MMM').format(_customRangeStart!)} - ${DateFormat('dd MMM').format(_customRangeEnd!)}';
   }
 
   ButtonStyle get _dateButtonStyle {
@@ -110,8 +140,12 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
             final allAppointments =
                 appointments.present.values.toList(growable: false);
 
-            final currentStart = _rangeStart(_selectedDate, _range);
-            final currentEnd = _rangeEndExclusive(_selectedDate);
+            final currentStart = _range == 'custom' && _customRangeStart != null
+              ? _customRangeStart!
+              : _rangeStart(_selectedDate, _range);
+            final currentEnd = _range == 'custom' && _customRangeEnd != null
+              ? _dateOnly(_customRangeEnd!).add(const Duration(days: 1))
+              : _rangeEndExclusive(_selectedDate);
             final currentSpanDays = math.max(1, currentEnd.difference(currentStart).inDays);
             final compareEnd = currentStart;
             final compareStart = compareEnd.subtract(Duration(days: currentSpanDays));
@@ -151,45 +185,9 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
               for (final row in compareRows) row.doctor.id: row,
             };
 
-            final doctorActivity = allDoctors
-                .map((doctor) {
-                  final rows = todaysAppointments
-                      .where((a) => a.operatorsIDs.contains(doctor.id))
-                      .toList(growable: false);
-                  final count = rows.length;
-                  final paid = rows.fold<double>(0, (s, a) => s + a.paidToDoctor);
-                  return (doctor: doctor, count: count, paid: paid);
-                })
-                .where((row) => row.count > 0)
-                .toList(growable: false)
-              ..sort((a, b) => b.count.compareTo(a.count));
-
-            _drilldownDoctorId ??= allDoctors.isNotEmpty ? allDoctors.first.id : null;
-            final drillDoctor = _drilldownDoctorId == null
-                ? null
-                : doctors.get(_drilldownDoctorId!);
-
-            final drillCurrent = drillDoctor == null
-                ? const <Appointment>[]
-                : scopedCurrent
-                    .where((a) => a.operatorsIDs.contains(drillDoctor.id))
-                    .toList(growable: false);
-
-            final drillCompare = drillDoctor == null
-                ? const <Appointment>[]
-                : scopedCompare
-                    .where((a) => a.operatorsIDs.contains(drillDoctor.id))
-                    .toList(growable: false);
-
-            final procedureTrends = _procedureMonthOverMonth(
-              allAppointments: allAppointments,
-              doctorId: _drilldownDoctorId,
-              anchor: _selectedDate,
-            );
-
-            final heatmap = _slotPressureHeatmap(
-              appointmentsList: scopedCurrent,
-              doctorId: _drilldownDoctorId,
+            final performanceRows = _doctorPerformance(
+              doctorsList: allDoctors,
+              scoped: scopedCurrent,
             );
 
             return Column(
@@ -203,7 +201,7 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Doctors V2',
+                          'Doctors',
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
@@ -444,32 +442,28 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _DoctorHandledRangeCard(
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1040),
+                    child: _DoctorHandledRangeCard(
+                      selectedRange: _range,
+                      compareMode: _compareMode,
+                      customRangeLabel: _customRangeLabel(),
+                      onPickCustomRange: () => _pickCustomRange(context),
+                      onToggleCompare: (value) => setState(() => _compareMode = value),
+                      onSelectRange: (value) => setState(() => _range = value),
+                      rows: handledRows,
+                      compareById: compareById,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _DoctorPerformanceCard(
+                  rows: performanceRows,
                   selectedRange: _range,
-                  compareMode: _compareMode,
-                  onToggleCompare: (value) => setState(() => _compareMode = value),
                   onSelectRange: (value) => setState(() => _range = value),
-                  rows: handledRows,
-                  compareById: compareById,
                 ),
-                const SizedBox(height: 12),
-                _DoctorsActivityCard(rows: doctorActivity),
-                const SizedBox(height: 12),
-                _DoctorDrilldownCard(
-                  doctorsList: allDoctors,
-                  selectedDoctorId: _drilldownDoctorId,
-                  onSelectDoctor: (id) => setState(() => _drilldownDoctorId = id),
-                  currentRows: drillCurrent,
-                  compareRows: drillCompare,
-                  currentStart: currentStart,
-                  currentEndExclusive: currentEnd,
-                  compareStart: compareStart,
-                  compareEndExclusive: compareEnd,
-                ),
-                const SizedBox(height: 12),
-                _ProcedureMixTrendCard(rows: procedureTrends),
-                const SizedBox(height: 12),
-                _SlotPressureHeatmapCard(heatmap: heatmap),
               ],
             );
           },
@@ -640,6 +634,8 @@ class _MetricCard extends StatelessWidget {
 class _DoctorHandledRangeCard extends StatelessWidget {
   final String selectedRange;
   final bool compareMode;
+  final String customRangeLabel;
+  final VoidCallback onPickCustomRange;
   final ValueChanged<bool> onToggleCompare;
   final ValueChanged<String> onSelectRange;
   final List<({
@@ -659,6 +655,8 @@ class _DoctorHandledRangeCard extends StatelessWidget {
   const _DoctorHandledRangeCard({
     required this.selectedRange,
     required this.compareMode,
+    required this.customRangeLabel,
+    required this.onPickCustomRange,
     required this.onToggleCompare,
     required this.onSelectRange,
     required this.rows,
@@ -737,7 +735,35 @@ class _DoctorHandledRangeCard extends StatelessWidget {
                 tab('week', 'Week'),
                 tab('month', 'Month'),
                 tab('6months', '6 Months'),
-                tab('year', 'Year'),
+                tab('year', '1 Year'),
+                tab('ytd', 'YTD'),
+                GestureDetector(
+                  onTap: onPickCustomRange,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selectedRange == 'custom'
+                          ? const Color(0xFF2D7BD8)
+                          : const Color(0xFFEFF4FB),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: selectedRange == 'custom'
+                            ? const Color(0xFF2D7BD8)
+                            : const Color(0xFFD6E2F0),
+                      ),
+                    ),
+                    child: Text(
+                      customRangeLabel,
+                      style: TextStyle(
+                        color: selectedRange == 'custom'
+                            ? Colors.white
+                            : const Color(0xFF355279),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -772,9 +798,15 @@ class _DoctorHandledRangeCard extends StatelessWidget {
                 'No doctor activity in selected range.',
                 style: TextStyle(color: Color(0xFF6D84A8)),
               )
-            else
-              ...rows.take(12).map(
-                (row) {
+            else ...[
+              Builder(
+                builder: (context) {
+                  final peak = rows.fold<int>(1, (m, e) {
+                    return e.appointmentCount > m ? e.appointmentCount : m;
+                  });
+                  return Column(
+                    children: rows.take(12).map(
+                      (row) {
                   final compare = compareById[row.doctor.id];
                   final appointmentDelta = row.appointmentCount - (compare?.appointmentCount ?? 0);
                   final earnedDelta = row.earned - (compare?.earned ?? 0);
@@ -796,6 +828,23 @@ class _DoctorHandledRangeCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 120,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                height: 8,
+                                color: const Color(0xFFEAF2FC),
+                                child: FractionallySizedBox(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: row.appointmentCount / peak,
+                                  child: Container(color: const Color(0xFF2D7BD8)),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           SizedBox(
                             width: compareMode ? 300 : 220,
                             child: Text(
@@ -814,13 +863,56 @@ class _DoctorHandledRangeCard extends StatelessWidget {
                       ),
                     ),
                   );
+                      },
+                    ).toList(growable: false),
+                  );
                 },
               ),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+List<({
+  Doctor doctor,
+  int totalAppointments,
+  double completionRate,
+  double revenue,
+  double avgRevenue,
+  int treatmentsCount,
+})> _doctorPerformance({
+  required List<Doctor> doctorsList,
+  required List<Appointment> scoped,
+}) {
+  final rows = doctorsList.map((doctor) {
+    final doctorRows = scoped
+        .where((a) => a.operatorsIDs.contains(doctor.id))
+        .toList(growable: false);
+    final total = doctorRows.length;
+    final completed = doctorRows.where((a) => a.isDone).length;
+    final revenue = doctorRows.fold<double>(
+      0,
+      (s, a) => s + a.paid + a.prescriptionPaid,
+    );
+    final treatmentCount = doctorRows.fold<int>(
+      0,
+      (s, a) => s + a.selectedTreatments.where((t) => t.trim().isNotEmpty).length,
+    );
+    return (
+      doctor: doctor,
+      totalAppointments: total,
+      completionRate: total == 0 ? 0.0 : completed / total,
+      revenue: revenue,
+      avgRevenue: total == 0 ? 0.0 : revenue / total,
+      treatmentsCount: treatmentCount,
+    );
+  }).where((row) => row.totalAppointments > 0).toList(growable: false)
+    ..sort((a, b) => b.totalAppointments.compareTo(a.totalAppointments));
+
+  return rows;
 }
 
 class _DoctorsActivityCard extends StatelessWidget {
@@ -925,6 +1017,220 @@ class _DoctorsActivityCard extends StatelessWidget {
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DoctorPerformanceCard extends StatelessWidget {
+  final List<({
+    Doctor doctor,
+    int totalAppointments,
+    double completionRate,
+    double revenue,
+    double avgRevenue,
+    int treatmentsCount,
+  })> rows;
+  final String selectedRange;
+  final ValueChanged<String> onSelectRange;
+
+  const _DoctorPerformanceCard({
+    required this.rows,
+    required this.selectedRange,
+    required this.onSelectRange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget tab(String key, String label) {
+      final selected = selectedRange == key;
+      return GestureDetector(
+        onTap: () => onSelectRange(key),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD6E2F0),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF355279),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final maxAppts = rows.fold<int>(1, (m, e) => e.totalAppointments > m ? e.totalAppointments : m);
+    final maxRevenue = rows.fold<double>(1, (m, e) => e.revenue > m ? e.revenue : m);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Per Doctor Performance',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                tab('today', 'Today'),
+                tab('week', 'Week'),
+                tab('month', 'Month'),
+                tab('6months', '6 Months'),
+                tab('year', '1 Year'),
+                tab('ytd', 'YTD'),
+                tab('custom', 'Custom'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Appts • Completion • Revenue • Avg/Appt • Treatments',
+              style: TextStyle(
+                color: Color(0xFF5B789F),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (rows.isEmpty)
+              const Text(
+                'No doctor performance data in selected range.',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              )
+            else
+              ...rows.take(12).map((row) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 170,
+                        child: Text(
+                          row.doctor.title,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF1F446E),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      height: 8,
+                                      color: const Color(0xFFEAF2FC),
+                                      child: FractionallySizedBox(
+                                        alignment: Alignment.centerLeft,
+                                        widthFactor: row.totalAppointments / maxAppts,
+                                        child: Container(color: const Color(0xFF2D7BD8)),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 70,
+                                  child: Text(
+                                    '${row.totalAppointments} appts',
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(
+                                      color: Color(0xFF5B789F),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      height: 8,
+                                      color: const Color(0xFFEAF2FC),
+                                      child: FractionallySizedBox(
+                                        alignment: Alignment.centerLeft,
+                                        widthFactor: row.revenue / maxRevenue,
+                                        child: Container(color: const Color(0xFF2BA58D)),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 70,
+                                  child: Text(
+                                    'Rs ${row.revenue.toStringAsFixed(0)}',
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(
+                                      color: Color(0xFF5B789F),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 210,
+                        child: Text(
+                          '${(row.completionRate * 100).toStringAsFixed(0)}% • Avg Rs ${row.avgRevenue.toStringAsFixed(0)} • ${row.treatmentsCount} tx',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            color: Color(0xFF5B789F),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
           ],
         ),
       ),
