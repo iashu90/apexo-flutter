@@ -1,44 +1,135 @@
+import 'dart:math' as math;
+
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/doctors/open_doctor_panel.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as material;
+import 'package:intl/intl.dart';
 
-class DoctorsScreenV2 extends StatelessWidget {
+class DoctorsScreenV2 extends StatefulWidget {
   const DoctorsScreenV2({super.key});
 
   @override
+  State<DoctorsScreenV2> createState() => _DoctorsScreenV2State();
+}
+
+class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
+  DateTime _selectedDate = DateTime.now();
+  String _range = 'today';
+  bool _compareMode = false;
+  String? _drilldownDoctorId;
+
+  static DateTime _dateOnly(DateTime input) =>
+      DateTime(input.year, input.month, input.day);
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = _dateOnly(DateTime.now());
+  }
+
+  void _changeDate(int days) {
+    setState(() {
+      _selectedDate = _dateOnly(_selectedDate.add(Duration(days: days)));
+    });
+  }
+
+  Future<void> _pickDate(BuildContext context) async {
+    final picked = await material.showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000, 1, 1),
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'Select date',
+    );
+
+    if (picked == null) return;
+    setState(() => _selectedDate = _dateOnly(picked));
+  }
+
+  DateTime _rangeStart(DateTime anchor, String range) {
+    switch (range) {
+      case 'today':
+        return _dateOnly(anchor);
+      case 'week':
+        return _dateOnly(anchor.subtract(const Duration(days: 6)));
+      case 'month':
+        return DateTime(anchor.year, anchor.month, 1);
+      case '6months':
+        return DateTime(anchor.year, anchor.month - 5, 1);
+      case 'year':
+      default:
+        return DateTime(anchor.year, 1, 1);
+    }
+  }
+
+  DateTime _rangeEndExclusive(DateTime anchor) {
+    return _dateOnly(anchor).add(const Duration(days: 1));
+  }
+
+  ButtonStyle get _dateButtonStyle {
+    return ButtonStyle(
+      padding: WidgetStateProperty.all(
+        const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      ),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.pressed)) return const Color(0x331A74DB);
+        if (states.contains(WidgetState.hovered)) return const Color(0x1F1A74DB);
+        return Colors.transparent;
+      }),
+      foregroundColor: WidgetStateProperty.all(const Color(0xFF1468CC)),
+      shape: WidgetStateProperty.all(
+        const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final isToday = _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+
     return ScaffoldPage.scrollable(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       children: [
-        const Text(
-          'Doctors V2',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF12355F),
-          ),
-        ),
-        const SizedBox(height: 10),
         MStreamBuilder(
           streams: [
             doctors.observableMap.stream,
             appointments.observableMap.stream,
           ],
           builder: (context, _) {
-            final allDoctors = doctors.present.values.toList(growable: false);
+            final allDoctors = doctors.present.values.toList(growable: false)
+              ..sort((a, b) =>
+                  a.title.toLowerCase().compareTo(b.title.toLowerCase()));
             final allAppointments =
                 appointments.present.values.toList(growable: false);
-            final now = DateTime.now();
-            final startOfToday = DateTime(now.year, now.month, now.day);
-            final endOfToday = startOfToday.add(const Duration(days: 1));
 
+            final currentStart = _rangeStart(_selectedDate, _range);
+            final currentEnd = _rangeEndExclusive(_selectedDate);
+            final currentSpanDays = math.max(1, currentEnd.difference(currentStart).inDays);
+            final compareEnd = currentStart;
+            final compareStart = compareEnd.subtract(Duration(days: currentSpanDays));
+
+            final scopedCurrent = allAppointments
+                .where((a) =>
+                    !a.date.isBefore(currentStart) && a.date.isBefore(currentEnd))
+                .toList(growable: false);
+
+            final scopedCompare = allAppointments
+                .where((a) =>
+                    !a.date.isBefore(compareStart) && a.date.isBefore(compareEnd))
+                .toList(growable: false);
+
+            final startOfDay = _dateOnly(_selectedDate);
+            final endOfDay = startOfDay.add(const Duration(days: 1));
             final todaysAppointments = allAppointments
-                .where(
-                  (a) =>
-                      !a.date.isBefore(startOfToday) && a.date.isBefore(endOfToday),
-                )
+                .where((a) => !a.date.isBefore(startOfDay) && a.date.isBefore(endOfDay))
                 .toList(growable: false);
 
             final activeDoctorIdsToday = <String>{};
@@ -47,6 +138,18 @@ class DoctorsScreenV2 extends StatelessWidget {
               activeDoctorIdsToday.addAll(appointment.operatorsIDs);
               todayDoctorPay += appointment.paidToDoctor;
             }
+
+            final handledRows = _doctorMetrics(
+              doctorsList: allDoctors,
+              scoped: scopedCurrent,
+            );
+            final compareRows = _doctorMetrics(
+              doctorsList: allDoctors,
+              scoped: scopedCompare,
+            );
+            final compareById = {
+              for (final row in compareRows) row.doctor.id: row,
+            };
 
             final doctorActivity = allDoctors
                 .map((doctor) {
@@ -57,12 +160,263 @@ class DoctorsScreenV2 extends StatelessWidget {
                   final paid = rows.fold<double>(0, (s, a) => s + a.paidToDoctor);
                   return (doctor: doctor, count: count, paid: paid);
                 })
+                .where((row) => row.count > 0)
                 .toList(growable: false)
               ..sort((a, b) => b.count.compareTo(a.count));
+
+            _drilldownDoctorId ??= allDoctors.isNotEmpty ? allDoctors.first.id : null;
+            final drillDoctor = _drilldownDoctorId == null
+                ? null
+                : doctors.get(_drilldownDoctorId!);
+
+            final drillCurrent = drillDoctor == null
+                ? const <Appointment>[]
+                : scopedCurrent
+                    .where((a) => a.operatorsIDs.contains(drillDoctor.id))
+                    .toList(growable: false);
+
+            final drillCompare = drillDoctor == null
+                ? const <Appointment>[]
+                : scopedCompare
+                    .where((a) => a.operatorsIDs.contains(drillDoctor.id))
+                    .toList(growable: false);
+
+            final procedureTrends = _procedureMonthOverMonth(
+              allAppointments: allAppointments,
+              doctorId: _drilldownDoctorId,
+              anchor: _selectedDate,
+            );
+
+            final heatmap = _slotPressureHeatmap(
+              appointmentsList: scopedCurrent,
+              doctorId: _drilldownDoctorId,
+            );
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                SizedBox(
+                  height: 56,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Doctors V2',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF12355F),
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFD6E2F0)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Button(
+                                    onPressed: () => _changeDate(-1),
+                                    style: _dateButtonStyle,
+                                    child: const Icon(FluentIcons.chevron_left, size: 12),
+                                  ),
+                                  Button(
+                                    onPressed: () => _pickDate(context),
+                                    style: _dateButtonStyle,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          DateFormat('MMMM d, yyyy').format(_selectedDate),
+                                          style: const TextStyle(
+                                            color: Color(0xFF25466E),
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 1),
+                                        Text(
+                                          DateFormat('EEEE').format(_selectedDate),
+                                          style: const TextStyle(
+                                            color: Color(0xFF557195),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Button(
+                                    onPressed: () => _changeDate(1),
+                                    style: _dateButtonStyle,
+                                    child: const Icon(FluentIcons.chevron_right, size: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 84,
+                              child: Visibility(
+                                visible: !isToday,
+                                maintainSize: true,
+                                maintainAnimation: true,
+                                maintainState: true,
+                                child: FilledButton(
+                                  onPressed: () =>
+                                      setState(() => _selectedDate = _dateOnly(DateTime.now())),
+                                  child: const Text('Today'),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 320,
+                              child: material.Autocomplete<Doctor>(
+                                optionsBuilder: (value) {
+                                  final q = value.text.trim().toLowerCase();
+                                  if (q.isEmpty) return const Iterable<Doctor>.empty();
+                                  return allDoctors.where((d) {
+                                    final name = d.title.toLowerCase();
+                                    final email = d.email.toLowerCase();
+                                    return name.contains(q) || email.contains(q);
+                                  }).take(8);
+                                },
+                                displayStringForOption: (d) => d.title,
+                                onSelected: (doctor) => openDoctor(doctor),
+                                fieldViewBuilder:
+                                    (context, controller, focusNode, onSubmit) {
+                                  return TextBox(
+                                    controller: controller,
+                                    focusNode: focusNode,
+                                    placeholder: 'Search doctors',
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 10),
+                                    decoration: WidgetStateProperty.all(
+                                      BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(999),
+                                        border: Border.all(color: const Color(0xFFCFE0F3)),
+                                      ),
+                                    ),
+                                    prefix: const Padding(
+                                      padding: EdgeInsets.only(left: 8),
+                                      child: Icon(FluentIcons.search, size: 12),
+                                    ),
+                                    suffix: controller.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(FluentIcons.clear),
+                                            onPressed: controller.clear,
+                                          )
+                                        : null,
+                                  );
+                                },
+                                optionsViewBuilder: (context, onSelected, options) {
+                                  return Align(
+                                    alignment: Alignment.topRight,
+                                    child: material.Material(
+                                      color: material.Colors.transparent,
+                                      child: Container(
+                                        width: 320,
+                                        margin: const EdgeInsets.only(top: 8),
+                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: const Color(0xFFD6E2F0)),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Color(0x160D2F5B),
+                                              blurRadius: 10,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ListView.builder(
+                                          padding: EdgeInsets.zero,
+                                          shrinkWrap: true,
+                                          itemCount: options.length,
+                                          itemBuilder: (context, index) {
+                                            final doctor = options.elementAt(index);
+                                            return GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () => onSelected(doctor),
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 10, vertical: 8),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      doctor.title.trim().isEmpty
+                                                          ? 'Unnamed doctor'
+                                                          : doctor.title,
+                                                      style: const TextStyle(
+                                                        color: Color(0xFF1F446E),
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    if (doctor.email.trim().isNotEmpty)
+                                                      Text(
+                                                        doctor.email,
+                                                        style: const TextStyle(
+                                                          color: Color(0xFF6D84A8),
+                                                          fontSize: 11,
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              onPressed: () => openDoctor(),
+                              style: ButtonStyle(
+                                backgroundColor:
+                                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                                foregroundColor: WidgetStateProperty.all(Colors.white),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(FluentIcons.add, size: 12),
+                                  SizedBox(width: 6),
+                                  Text('Add Doctor'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
@@ -90,7 +444,32 @@ class DoctorsScreenV2 extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
+                _DoctorHandledRangeCard(
+                  selectedRange: _range,
+                  compareMode: _compareMode,
+                  onToggleCompare: (value) => setState(() => _compareMode = value),
+                  onSelectRange: (value) => setState(() => _range = value),
+                  rows: handledRows,
+                  compareById: compareById,
+                ),
+                const SizedBox(height: 12),
                 _DoctorsActivityCard(rows: doctorActivity),
+                const SizedBox(height: 12),
+                _DoctorDrilldownCard(
+                  doctorsList: allDoctors,
+                  selectedDoctorId: _drilldownDoctorId,
+                  onSelectDoctor: (id) => setState(() => _drilldownDoctorId = id),
+                  currentRows: drillCurrent,
+                  compareRows: drillCompare,
+                  currentStart: currentStart,
+                  currentEndExclusive: currentEnd,
+                  compareStart: compareStart,
+                  compareEndExclusive: compareEnd,
+                ),
+                const SizedBox(height: 12),
+                _ProcedureMixTrendCard(rows: procedureTrends),
+                const SizedBox(height: 12),
+                _SlotPressureHeatmapCard(heatmap: heatmap),
               ],
             );
           },
@@ -98,6 +477,105 @@ class DoctorsScreenV2 extends StatelessWidget {
       ],
     );
   }
+}
+
+List<({
+  Doctor doctor,
+  int appointmentCount,
+  int patientCount,
+  double earned,
+})> _doctorMetrics({
+  required List<Doctor> doctorsList,
+  required List<Appointment> scoped,
+}) {
+  return doctorsList
+      .map((doctor) {
+        final doctorRows = scoped
+            .where((a) => a.operatorsIDs.contains(doctor.id))
+            .toList(growable: false);
+
+        final uniquePatients = <String>{};
+        for (final appt in doctorRows) {
+          final pid = appt.patientID;
+          if (pid != null && pid.isNotEmpty) uniquePatients.add(pid);
+        }
+
+        final earned = doctorRows.fold<double>(0, (s, a) => s + a.paidToDoctor);
+
+        return (
+          doctor: doctor,
+          appointmentCount: doctorRows.length,
+          patientCount: uniquePatients.length,
+          earned: earned,
+        );
+      })
+      .where((row) => row.appointmentCount > 0)
+      .toList(growable: false)
+    ..sort((a, b) => b.appointmentCount.compareTo(a.appointmentCount));
+}
+
+List<({String procedure, int thisMonth, int lastMonth, int delta})>
+    _procedureMonthOverMonth({
+  required List<Appointment> allAppointments,
+  required String? doctorId,
+  required DateTime anchor,
+}) {
+  final currentMonthStart = DateTime(anchor.year, anchor.month, 1);
+  final nextMonthStart = DateTime(anchor.year, anchor.month + 1, 1);
+  final lastMonthStart = DateTime(anchor.year, anchor.month - 1, 1);
+
+  final current = <String, int>{};
+  final previous = <String, int>{};
+
+  for (final appointment in allAppointments) {
+    if (doctorId != null && !appointment.operatorsIDs.contains(doctorId)) continue;
+
+    final inCurrent = !appointment.date.isBefore(currentMonthStart) &&
+        appointment.date.isBefore(nextMonthStart);
+    final inPrevious = !appointment.date.isBefore(lastMonthStart) &&
+        appointment.date.isBefore(currentMonthStart);
+
+    if (!inCurrent && !inPrevious) continue;
+
+    for (final treatment in appointment.selectedTreatments) {
+      final name = treatment.trim();
+      if (name.isEmpty) continue;
+      if (inCurrent) current[name] = (current[name] ?? 0) + 1;
+      if (inPrevious) previous[name] = (previous[name] ?? 0) + 1;
+    }
+  }
+
+  final keys = <String>{...current.keys, ...previous.keys};
+  final rows = keys
+      .map((k) {
+        final thisMonth = current[k] ?? 0;
+        final lastMonth = previous[k] ?? 0;
+        return (
+          procedure: k,
+          thisMonth: thisMonth,
+          lastMonth: lastMonth,
+          delta: thisMonth - lastMonth,
+        );
+      })
+      .toList(growable: false)
+    ..sort((a, b) => b.thisMonth.compareTo(a.thisMonth));
+
+  return rows;
+}
+
+Map<int, Map<int, int>> _slotPressureHeatmap({
+  required List<Appointment> appointmentsList,
+  required String? doctorId,
+}) {
+  final heatmap = <int, Map<int, int>>{};
+  for (final appointment in appointmentsList) {
+    if (doctorId != null && !appointment.operatorsIDs.contains(doctorId)) continue;
+    final weekday = appointment.date.weekday;
+    final hour = appointment.date.hour;
+    final row = heatmap.putIfAbsent(weekday, () => <int, int>{});
+    row[hour] = (row[hour] ?? 0) + 1;
+  }
+  return heatmap;
 }
 
 class _MetricCard extends StatelessWidget {
@@ -159,6 +637,192 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
+class _DoctorHandledRangeCard extends StatelessWidget {
+  final String selectedRange;
+  final bool compareMode;
+  final ValueChanged<bool> onToggleCompare;
+  final ValueChanged<String> onSelectRange;
+  final List<({
+    Doctor doctor,
+    int appointmentCount,
+    int patientCount,
+    double earned,
+  })> rows;
+  final Map<String,
+      ({
+        Doctor doctor,
+        int appointmentCount,
+        int patientCount,
+        double earned,
+      })> compareById;
+
+  const _DoctorHandledRangeCard({
+    required this.selectedRange,
+    required this.compareMode,
+    required this.onToggleCompare,
+    required this.onSelectRange,
+    required this.rows,
+    required this.compareById,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget tab(String key, String label) {
+      final selected = selectedRange == key;
+      return GestureDetector(
+        onTap: () => onSelectRange(key),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD6E2F0),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF355279),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Patients Handled By Doctor',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF183A67),
+                  ),
+                ),
+                const Spacer(),
+                ToggleSwitch(
+                  checked: compareMode,
+                  content: const Text('Compare Mode'),
+                  onChanged: onToggleCompare,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                tab('today', 'Today'),
+                tab('week', 'Week'),
+                tab('month', 'Month'),
+                tab('6months', '6 Months'),
+                tab('year', 'Year'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Doctor',
+                    style: TextStyle(
+                      color: Color(0xFF5B789F),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Tooltip(
+                  message: 'Appts = appointment count, Pts = unique patients, Earned = paid to doctor',
+                  child: const Text(
+                    'Appts • Pts • Earned',
+                    style: TextStyle(
+                      color: Color(0xFF5B789F),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (rows.isEmpty)
+              const Text(
+                'No doctor activity in selected range.',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              )
+            else
+              ...rows.take(12).map(
+                (row) {
+                  final compare = compareById[row.doctor.id];
+                  final appointmentDelta = row.appointmentCount - (compare?.appointmentCount ?? 0);
+                  final earnedDelta = row.earned - (compare?.earned ?? 0);
+
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => openDoctor(row.doctor),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              row.doctor.title,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF1F446E),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: compareMode ? 300 : 220,
+                            child: Text(
+                              compareMode
+                                  ? '${row.appointmentCount} (${appointmentDelta >= 0 ? '+' : ''}$appointmentDelta) • ${row.patientCount} • Rs ${row.earned.toStringAsFixed(0)} (${earnedDelta >= 0 ? '+' : ''}${earnedDelta.toStringAsFixed(0)})'
+                                  : '${row.appointmentCount} • ${row.patientCount} • Rs ${row.earned.toStringAsFixed(0)}',
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                color: Color(0xFF5B789F),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _DoctorsActivityCard extends StatelessWidget {
   final List<({Doctor doctor, int count, double paid})> rows;
 
@@ -194,22 +858,290 @@ class _DoctorsActivityCard extends StatelessWidget {
                 color: Color(0xFF183A67),
               ),
             ),
+            const SizedBox(height: 4),
+            const Text(
+              'Legend: Blue bar shows relative appointment load today.',
+              style: TextStyle(
+                color: Color(0xFF6D84A8),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 10),
             if (rows.isEmpty)
               const Text(
-                'No doctors available.',
+                'No doctors have appointments today.',
                 style: TextStyle(color: Color(0xFF6D84A8)),
               )
             else
               ...rows.take(12).map(
-                (row) => Padding(
+                (row) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => openDoctor(row.doctor),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 180,
+                          child: Text(
+                            row.doctor.title,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF1F446E),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              height: 10,
+                              color: const Color(0xFFEAF2FC),
+                              child: FractionallySizedBox(
+                                alignment: Alignment.centerLeft,
+                                widthFactor: maxCount == 0 ? 0 : row.count / maxCount,
+                                child: Container(color: const Color(0xFF2D7BD8)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          width: 140,
+                          child: Text(
+                            '${row.count} appts | Rs ${row.paid.toStringAsFixed(0)}',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              color: Color(0xFF5B789F),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DoctorDrilldownCard extends StatelessWidget {
+  final List<Doctor> doctorsList;
+  final String? selectedDoctorId;
+  final ValueChanged<String?> onSelectDoctor;
+  final List<Appointment> currentRows;
+  final List<Appointment> compareRows;
+  final DateTime currentStart;
+  final DateTime currentEndExclusive;
+  final DateTime compareStart;
+  final DateTime compareEndExclusive;
+
+  const _DoctorDrilldownCard({
+    required this.doctorsList,
+    required this.selectedDoctorId,
+    required this.onSelectDoctor,
+    required this.currentRows,
+    required this.compareRows,
+    required this.currentStart,
+    required this.currentEndExclusive,
+    required this.compareStart,
+    required this.compareEndExclusive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final currentPatients = <String>{
+      for (final a in currentRows)
+        if (a.patientID != null && a.patientID!.isNotEmpty) a.patientID!,
+    };
+    final comparePatients = <String>{
+      for (final a in compareRows)
+        if (a.patientID != null && a.patientID!.isNotEmpty) a.patientID!,
+    };
+
+    final currentEarnings = currentRows.fold<double>(0, (s, a) => s + a.paidToDoctor);
+    final compareEarnings = compareRows.fold<double>(0, (s, a) => s + a.paidToDoctor);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Per-Doctor Drilldown',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: 320,
+              child: ComboBox<String>(
+                isExpanded: true,
+                value: selectedDoctorId,
+                placeholder: const Text('Select doctor'),
+                items: doctorsList
+                    .map(
+                      (d) => ComboBoxItem<String>(
+                        value: d.id,
+                        child: Text(d.title.trim().isEmpty ? 'Unnamed doctor' : d.title),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: onSelectDoctor,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                _deltaTile(
+                  label:
+                      '${DateFormat('dd MMM').format(currentStart)} - ${DateFormat('dd MMM').format(currentEndExclusive.subtract(const Duration(days: 1)))} appointments',
+                  current: currentRows.length,
+                  compare: compareRows.length,
+                ),
+                _deltaTile(
+                  label: 'Unique patients',
+                  current: currentPatients.length,
+                  compare: comparePatients.length,
+                ),
+                _deltaTile(
+                  label: 'Earnings (Rs)',
+                  current: currentEarnings,
+                  compare: compareEarnings,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Compared against ${DateFormat('dd MMM').format(compareStart)} - ${DateFormat('dd MMM').format(compareEndExclusive.subtract(const Duration(days: 1)))}',
+              style: const TextStyle(
+                color: Color(0xFF6D84A8),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _deltaTile({
+    required String label,
+    required num current,
+    required num compare,
+  }) {
+    final delta = current - compare;
+    final positive = delta >= 0;
+    return SizedBox(
+      width: 320,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6FAFF),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFDCE8F6)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF36557C),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            Text(
+              '$current (${positive ? '+' : ''}$delta)',
+              style: TextStyle(
+                color: positive ? const Color(0xFF2BA58D) : const Color(0xFFD6455D),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProcedureMixTrendCard extends StatelessWidget {
+  final List<({String procedure, int thisMonth, int lastMonth, int delta})> rows;
+
+  const _ProcedureMixTrendCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Procedure Mix Trends (MoM)',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (rows.isEmpty)
+              const Text(
+                'No procedure data for selected doctor and month.',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              )
+            else
+              ...rows.take(12).map((row) {
+                final positive = row.delta >= 0;
+                return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 180,
+                      Expanded(
                         child: Text(
-                          row.doctor.title,
+                          row.procedure,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Color(0xFF1F446E),
@@ -217,28 +1149,15 @@ class _DoctorsActivityCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            height: 10,
-                            color: const Color(0xFFEAF2FC),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: maxCount == 0 ? 0 : row.count / maxCount,
-                              child: Container(color: const Color(0xFF2D7BD8)),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
                       SizedBox(
-                        width: 140,
+                        width: 220,
                         child: Text(
-                          '${row.count} appts | Rs ${row.paid.toStringAsFixed(0)}',
+                          '${row.thisMonth} vs ${row.lastMonth} (${positive ? '+' : ''}${row.delta})',
                           textAlign: TextAlign.right,
-                          style: const TextStyle(
-                            color: Color(0xFF5B789F),
+                          style: TextStyle(
+                            color: positive
+                                ? const Color(0xFF2BA58D)
+                                : const Color(0xFFD6455D),
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
                           ),
@@ -246,8 +1165,147 @@ class _DoctorsActivityCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SlotPressureHeatmapCard extends StatelessWidget {
+  final Map<int, Map<int, int>> heatmap;
+
+  const _SlotPressureHeatmapCard({required this.heatmap});
+
+  static const _dayNames = {
+    DateTime.monday: 'Mon',
+    DateTime.tuesday: 'Tue',
+    DateTime.wednesday: 'Wed',
+    DateTime.thursday: 'Thu',
+    DateTime.friday: 'Fri',
+    DateTime.saturday: 'Sat',
+    DateTime.sunday: 'Sun',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    int peak = 0;
+    for (final row in heatmap.values) {
+      for (final count in row.values) {
+        if (count > peak) peak = count;
+      }
+    }
+    peak = math.max(1, peak);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Slot Pressure Heatmap (Hour x Day)',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
               ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Legend: darker cell means more bookings for that day/hour window.',
+              style: TextStyle(
+                color: Color(0xFF6D84A8),
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const SizedBox(width: 52),
+                      ...List.generate(12, (i) {
+                        final hour = 8 + i;
+                        return SizedBox(
+                          width: 34,
+                          child: Text(
+                            '$hour',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFF6D84A8),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ...List.generate(7, (index) {
+                    final weekday = DateTime.monday + index;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 52,
+                            child: Text(
+                              _dayNames[weekday]!,
+                              style: const TextStyle(
+                                color: Color(0xFF36557C),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          ...List.generate(12, (i) {
+                            final hour = 8 + i;
+                            final count = heatmap[weekday]?[hour] ?? 0;
+                            final ratio = count / peak;
+                            final base = const Color(0xFFEAF2FC);
+                            final hot = const Color(0xFF2D7BD8);
+                            final color = Color.lerp(base, hot, ratio)!;
+
+                            return Tooltip(
+                              message: '${_dayNames[weekday]} $hour:00 - $count bookings',
+                              child: Container(
+                                width: 30,
+                                height: 20,
+                                margin: const EdgeInsets.symmetric(horizontal: 2),
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: const Color(0xFFD3E2F4)),
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
           ],
         ),
       ),

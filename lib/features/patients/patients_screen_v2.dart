@@ -9,6 +9,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
 class PatientsScreenV2 extends StatefulWidget {
@@ -20,14 +21,12 @@ class PatientsScreenV2 extends StatefulWidget {
 
 class _PatientsScreenV2State extends State<PatientsScreenV2> {
   final TextEditingController _listSearchController = TextEditingController();
-  final TextEditingController _quickSearchController = TextEditingController();
 
   String _listQuery = '';
   String _topRange = '6Months';
   String _outstandingRange = '6Months';
   String _procedureTab = 'RCT';
   String _selectedAlphabet = 'All';
-  String _quickSearchQuery = '';
   String _sortBy = 'name';
   bool _sortAscending = true;
   int _topPatientsVisibleCount = 10;
@@ -53,17 +52,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         _currentPage = 1;
       });
     });
-    _quickSearchController.addListener(() {
-      setState(() {
-        _quickSearchQuery = _quickSearchController.text.trim().toLowerCase();
-      });
-    });
   }
 
   @override
   void dispose() {
     _listSearchController.dispose();
-    _quickSearchController.dispose();
     super.dispose();
   }
 
@@ -256,18 +249,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             final start = (currentPage - 1) * _pageSize;
             final end = math.min(start + _pageSize, filteredPatients.length);
             final pagedPatients = filteredPatients.sublist(start, end);
-            final quickSearchResults = _quickSearchQuery.isEmpty
-                ? const <Patient>[]
-                : allPatients
-                    .where((p) {
-                      final name = p.title.toLowerCase();
-                      final phone = p.phone.toLowerCase();
-                      return name.contains(_quickSearchQuery) ||
-                          phone.contains(_quickSearchQuery);
-                    })
-                    .take(8)
-                    .toList(growable: false);
-
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -278,14 +259,26 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                     const Spacer(),
                     SizedBox(
                       width: 520,
-                      child: Stack(
-                        clipBehavior: Clip.none,
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextBox(
-                                  controller: _quickSearchController,
+                          Expanded(
+                            child: material.Autocomplete<Patient>(
+                              optionsBuilder: (value) {
+                                final q = value.text.trim().toLowerCase();
+                                if (q.isEmpty) return const Iterable<Patient>.empty();
+                                return allPatients.where((p) {
+                                  final name = p.title.toLowerCase();
+                                  final phone = p.phone.toLowerCase();
+                                  return name.contains(q) || phone.contains(q);
+                                }).take(8);
+                              },
+                              displayStringForOption: (p) => p.title,
+                              onSelected: (patient) => openPatient(patient, 1),
+                              fieldViewBuilder:
+                                  (context, controller, focusNode, onSubmit) {
+                                return TextBox(
+                                  controller: controller,
+                                  focusNode: focusNode,
                                   placeholder: 'Quick search by name or phone',
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 10),
@@ -306,128 +299,106 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                                       color: Color(0xFF6D84A8),
                                     ),
                                   ),
-                                  suffix: _quickSearchController.text.isNotEmpty
+                                  suffix: controller.text.isNotEmpty
                                       ? IconButton(
                                           icon: const Icon(FluentIcons.clear),
-                                          onPressed: () =>
-                                              _quickSearchController.clear(),
+                                          onPressed: controller.clear,
                                         )
                                       : null,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              FilledButton(
-                                onPressed: () => openPatient(),
-                                style: ButtonStyle(
-                                  backgroundColor: WidgetStateProperty.all(
-                                      const Color(0xFF2D7BD8)),
-                                  foregroundColor:
-                                      WidgetStateProperty.all(Colors.white),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(FluentIcons.add, size: 12),
-                                    SizedBox(width: 6),
-                                    Text('Add Patient'),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (quickSearchResults.isNotEmpty)
-                            Positioned(
-                              top: 44,
-                              right: 0,
-                              child: Container(
-                                width: 420,
-                                padding: const EdgeInsets.symmetric(vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border:
-                                      Border.all(color: const Color(0xFFD6E2F0)),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x160D2F5B),
-                                      blurRadius: 10,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  children: quickSearchResults.map(
-                                    (patient) {
-                                      final visits =
-                                          visitsByPatient[patient.id] ??
-                                              const <Appointment>[];
-                                      final lastVisit = visits.isEmpty
-                                          ? '-'
-                                          : DateFormat('dd MMM yyyy')
-                                              .format(visits.last.date);
-                                      return GestureDetector(
-                                        onTap: () {
-                                          _quickSearchController.clear();
-                                          openPatient(patient, 1);
-                                        },
-                                        child: Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 8),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      patient.title
-                                                              .trim()
-                                                              .isEmpty
-                                                          ? 'Unnamed patient'
-                                                          : patient.title,
-                                                      style: const TextStyle(
-                                                        color:
-                                                            Color(0xFF1F446E),
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 2),
-                                                    Text(
-                                                      '${patient.phone} • ${patient.age}y • Last: $lastVisit',
-                                                      style: const TextStyle(
-                                                        color:
-                                                            Color(0xFF6D84A8),
-                                                        fontSize: 11,
-                                                      ),
-                                                    ),
-                                                    if (patient.address
-                                                        .trim()
-                                                        .isNotEmpty)
-                                                      Text(
-                                                        patient.address,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        style: const TextStyle(
-                                                          color:
-                                                              Color(0xFF8AA0BC),
-                                                          fontSize: 11,
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
+                                );
+                              },
+                              optionsViewBuilder: (context, onSelected, options) {
+                                return Align(
+                                  alignment: Alignment.topRight,
+                                  child: material.Material(
+                                    color: material.Colors.transparent,
+                                    child: Container(
+                                      width: 420,
+                                      margin: const EdgeInsets.only(top: 8),
+                                      padding: const EdgeInsets.symmetric(vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border:
+                                            Border.all(color: const Color(0xFFD6E2F0)),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x160D2F5B),
+                                            blurRadius: 10,
+                                            offset: Offset(0, 2),
                                           ),
-                                        ),
-                                      );
-                                    },
-                                  ).toList(growable: false),
-                                ),
-                              ),
+                                        ],
+                                      ),
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        shrinkWrap: true,
+                                        itemCount: options.length,
+                                        itemBuilder: (context, index) {
+                                          final patient = options.elementAt(index);
+                                          final visits = visitsByPatient[patient.id] ??
+                                              const <Appointment>[];
+                                          final lastVisit = visits.isEmpty
+                                              ? '-'
+                                              : DateFormat('dd MMM yyyy')
+                                                  .format(visits.last.date);
+                                          return GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () => onSelected(patient),
+                                            child: Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 10, vertical: 8),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    patient.title.trim().isEmpty
+                                                        ? 'Unnamed patient'
+                                                        : patient.title,
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF1F446E),
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    '${patient.phone} • ${patient.age}y • Last: $lastVisit',
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF6D84A8),
+                                                      fontSize: 11,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: () => openPatient(),
+                            style: ButtonStyle(
+                              backgroundColor: WidgetStateProperty.all(
+                                  const Color(0xFF2D7BD8)),
+                              foregroundColor:
+                                  WidgetStateProperty.all(Colors.white),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(FluentIcons.add, size: 12),
+                                SizedBox(width: 6),
+                                Text('Add Patient'),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -446,7 +417,9 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                     SizedBox(
                       width: 280,
                       height: 160,
-                      child: _CompactAgeDistributionCard(buckets: ageBuckets),
+                      child: _TreatmentJourneyTimelineCard(
+                        metrics: journeyMetrics,
+                      ),
                     ),
                     _DonutMetricCard(
                       title: 'Payment Mode',
@@ -465,13 +438,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                         ),
                       ],
                     ),
-                    SizedBox(
-                      width: 280,
-                      height: 160,
-                      child: _TreatmentJourneyTimelineCard(
-                        metrics: journeyMetrics,
-                      ),
-                    ),
                     _DonutMetricCard(
                       title: 'Gender Distribution',
                       centerValue:
@@ -488,6 +454,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                           color: const Color(0xFF2BA58D),
                         ),
                       ],
+                    ),
+                    SizedBox(
+                      width: 280,
+                      height: 160,
+                      child: _CompactAgeDistributionCard(buckets: ageBuckets),
                     ),
                   ],
                 ),
@@ -616,11 +587,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       '11-20': {'Male': 0, 'Female': 0},
       '21-30': {'Male': 0, 'Female': 0},
       '31-40': {'Male': 0, 'Female': 0},
-      '41-50': {'Male': 0, 'Female': 0},
-      '51-60': {'Male': 0, 'Female': 0},
-      '61-70': {'Male': 0, 'Female': 0},
-      '71-80': {'Male': 0, 'Female': 0},
-      '81+': {'Male': 0, 'Female': 0},
+      '41-49': {'Male': 0, 'Female': 0},
+      '50+': {'Male': 0, 'Female': 0},
     };
 
     for (final p in items) {
@@ -636,16 +604,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         bucket = '21-30';
       } else if (age <= 40) {
         bucket = '31-40';
-      } else if (age <= 50) {
-        bucket = '41-50';
-      } else if (age <= 60) {
-        bucket = '51-60';
-      } else if (age <= 70) {
-        bucket = '61-70';
-      } else if (age <= 80) {
-        bucket = '71-80';
+      } else if (age <= 49) {
+        bucket = '41-49';
       } else {
-        bucket = '81+';
+        bucket = '50+';
       }
       buckets[bucket]![gender] = buckets[bucket]![gender]! + 1;
     }
@@ -1263,83 +1225,86 @@ class _CompactAgeDistributionCardState
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                const rowHeight = 20.0;
-                final visibleRows = rows
-                    .take(math.max(1, (constraints.maxHeight / rowHeight).floor()))
-                    .toList(growable: false);
-
-                return Column(
-                  children: visibleRows
-                      .map(
-                        (row) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 42,
-                                child: Text(
-                                  row.label,
-                                  style: const TextStyle(
-                                    color: Color(0xFF36557C),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+            child: SingleChildScrollView(
+              child: Column(
+                children: rows
+                    .map(
+                      (row) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 42,
+                              child: Text(
+                                row.label,
+                                style: const TextStyle(
+                                  color: Color(0xFF36557C),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              Expanded(
-                                child: LayoutBuilder(
-                                  builder: (context, inner) {
-                                    final total = row.male + row.female;
-                                    final width = maxValue == 0
-                                        ? 0.0
-                                        : inner.maxWidth * (total / maxValue);
-                                    return Stack(
+                            ),
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, inner) {
+                                  final total = row.male + row.female;
+                                  final totalWidth = maxValue == 0
+                                      ? 0.0
+                                      : inner.maxWidth * (total / maxValue);
+                                  final maleWidth = total == 0
+                                      ? 0.0
+                                      : totalWidth * (row.male / total);
+                                  final femaleWidth = totalWidth - maleWidth;
+
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Stack(
                                       children: [
                                         Container(
                                           height: 8,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFEAF2FC),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
+                                          color: const Color(0xFFEAF2FC),
                                         ),
-                                        if (width > 0)
-                                          Container(
-                                            height: 8,
-                                            width: width,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF2D7BD8),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                          ),
+                                        Row(
+                                          children: [
+                                            if (maleWidth > 0)
+                                              Container(
+                                                height: 8,
+                                                width: maleWidth,
+                                                color: const Color(0xFF2D7BD8),
+                                              ),
+                                            if (femaleWidth > 0)
+                                              Container(
+                                                height: 8,
+                                                width: femaleWidth,
+                                                color: const Color(0xFF2BA58D),
+                                              ),
+                                          ],
+                                        ),
                                       ],
-                                    );
-                                  },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 84,
+                              child: Text(
+                                '${row.male + row.female} M:${row.male} F:${row.female}',
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  color: Color(0xFF1F446E),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 36,
-                                child: Text(
-                                  '${row.male + row.female}',
-                                  textAlign: TextAlign.right,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1F446E),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      )
-                      .toList(growable: false),
-                );
-              },
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
             ),
           ),
         ],
