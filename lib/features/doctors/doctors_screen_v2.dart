@@ -476,23 +476,6 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1040),
-                    child: _DoctorHandledRangeCard(
-                      selectedRange: _handledRange,
-                      compareMode: _compareMode,
-                      customRangeLabel: _customRangeLabel(),
-                      onPickCustomRange: () => _pickCustomRange(context),
-                      onToggleCompare: (value) => setState(() => _compareMode = value),
-                      onSelectRange: (value) => setState(() => _handledRange = value),
-                      rows: handledRows,
-                      compareById: compareById,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
                 _DoctorPerformanceCard(
                   rows: performanceRows,
                   selectedRange: _performanceRange,
@@ -1406,8 +1389,6 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
       );
     }
 
-    final maxDone = rows.fold<int>(1, (m, e) => e.doneCount > m ? e.doneCount : m);
-
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1460,8 +1441,7 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 170,
+                      Expanded(
                         child: Text(
                           row.doctor.title,
                           overflow: TextOverflow.ellipsis,
@@ -1471,31 +1451,12 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            height: 10,
-                            color: const Color(0xFFEAF2FC),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: row.doneCount / maxDone,
-                              child: Container(color: const Color(0xFF2BA58D)),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 170,
-                        child: Text(
-                          '${row.doneCount} done / ${row.totalCount} total',
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                            color: Color(0xFF5B789F),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
+                      Text(
+                        '${row.totalCount} appointments',
+                        style: const TextStyle(
+                          color: Color(0xFF5B789F),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
                         ),
                       ),
                     ],

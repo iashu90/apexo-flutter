@@ -1330,7 +1330,7 @@ class _CompactAgeDistributionCardState
                             ),
                             const SizedBox(width: 8),
                             SizedBox(
-                              width: 92,
+                              width: 118,
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
@@ -1365,6 +1365,15 @@ class _CompactAgeDistributionCardState
                                     '${row.female}',
                                     style: const TextStyle(
                                       color: Color(0xFF1F446E),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'T:${row.male + row.female}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF5A7397),
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -2655,6 +2664,30 @@ class _AllPatientsListCard extends StatelessWidget {
                   onSort: onSort,
                   onDark: selectedAlphabet != 'All',
                 ),
+                Expanded(
+                  flex: 16,
+                  child: Text(
+                    'Last Visit',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: selectedAlphabet != 'All'
+                          ? Colors.white
+                          : const Color(0xFF2C4468),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 16,
+                  child: Text(
+                    'Paid So Far',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: selectedAlphabet != 'All'
+                          ? Colors.white
+                          : const Color(0xFF2C4468),
+                    ),
+                  ),
+                ),
                 _SortableHead(
                   flex: 16,
                   label: 'Outstanding',
@@ -2698,9 +2731,16 @@ class _AllPatientsListCard extends StatelessWidget {
                         patientsList.toList().asMap().entries.map((entry) {
                       final patient = entry.value;
                       final serial = serialOffset + entry.key + 1;
-                      final visits =
-                          (visitsByPatient[patient.id] ?? const <Appointment>[])
-                              .length;
+                        final patientVisits =
+                          (visitsByPatient[patient.id] ?? const <Appointment>[]);
+                        final visits = patientVisits.length;
+                        final lastVisit = patientVisits.isEmpty
+                          ? '-'
+                          : DateFormat('dd MMM yyyy').format(patientVisits.last.date);
+                        final paidSoFar = patientVisits.fold<double>(
+                        0,
+                        (sum, visit) => sum + visit.paid + visit.prescriptionPaid,
+                        );
                       final outstanding = patient.outstandingPayments;
 
                       return Container(
@@ -2760,6 +2800,26 @@ class _AllPatientsListCard extends StatelessWidget {
                                 '$visits',
                                 style: const TextStyle(
                                   color: Color(0xFF2D476D),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 16,
+                              child: Text(
+                                lastVisit,
+                                style: const TextStyle(
+                                  color: Color(0xFF2D476D),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 16,
+                              child: Text(
+                                '₹${paidSoFar.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  color: Color(0xFF1459AD),
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
