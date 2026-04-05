@@ -9,7 +9,6 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
 class PatientsScreenV2 extends StatefulWidget {
@@ -2441,6 +2440,8 @@ class _AllPatientsListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final searchWidth = screenWidth < 900 ? 190.0 : 280.0;
+    final isHeaderHighlighted =
+        selectedAlphabet != 'All' || behaviorFilter != 'all';
 
     const letters = [
       'All',
@@ -2507,6 +2508,15 @@ class _AllPatientsListCard extends StatelessWidget {
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: Color(0xFF183A67),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$totalItems matching patients',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF5A7397),
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
@@ -2611,7 +2621,7 @@ class _AllPatientsListCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             decoration: BoxDecoration(
-              color: selectedAlphabet != 'All'
+              color: isHeaderHighlighted
                   ? const Color(0xFF1A74DB)
                   : const Color(0xFFEFF4FB),
               borderRadius:
@@ -2626,7 +2636,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
-                  onDark: selectedAlphabet != 'All',
+                  onDark: isHeaderHighlighted,
                 ),
                 _SortableHead(
                   flex: 24,
@@ -2635,7 +2645,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
-                  onDark: selectedAlphabet != 'All',
+                  onDark: isHeaderHighlighted,
                 ),
                 _SortableHead(
                   flex: 18,
@@ -2644,7 +2654,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
-                  onDark: selectedAlphabet != 'All',
+                  onDark: isHeaderHighlighted,
                 ),
                 _SortableHead(
                   flex: 10,
@@ -2653,7 +2663,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
-                  onDark: selectedAlphabet != 'All',
+                  onDark: isHeaderHighlighted,
                 ),
                 _SortableHead(
                   flex: 12,
@@ -2662,7 +2672,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
-                  onDark: selectedAlphabet != 'All',
+                  onDark: isHeaderHighlighted,
                 ),
                 Expanded(
                   flex: 16,
@@ -2670,7 +2680,7 @@ class _AllPatientsListCard extends StatelessWidget {
                     'Last Visit',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: selectedAlphabet != 'All'
+                      color: isHeaderHighlighted
                           ? Colors.white
                           : const Color(0xFF2C4468),
                     ),
@@ -2682,7 +2692,7 @@ class _AllPatientsListCard extends StatelessWidget {
                     'Paid So Far',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: selectedAlphabet != 'All'
+                      color: isHeaderHighlighted
                           ? Colors.white
                           : const Color(0xFF2C4468),
                     ),
@@ -2695,7 +2705,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   current: sortBy,
                   ascending: sortAscending,
                   onSort: onSort,
-                  onDark: selectedAlphabet != 'All',
+                  onDark: isHeaderHighlighted,
                 ),
                 Expanded(
                   flex: 12,
@@ -2703,7 +2713,7 @@ class _AllPatientsListCard extends StatelessWidget {
                     'Actions',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: selectedAlphabet != 'All'
+                      color: isHeaderHighlighted
                           ? Colors.white
                           : const Color(0xFF2C4468),
                     ),
