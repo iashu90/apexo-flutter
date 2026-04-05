@@ -1,6 +1,7 @@
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -74,6 +75,9 @@ class ReportV2Screen extends StatelessWidget {
 
             final timeSpider = _timeOfDaySpider(allAppointments);
             final daySpider = _dayOfWeekSpider(allAppointments);
+            final trafficByTime = _trafficByTime(allAppointments);
+            final trafficByDay = _trafficByDay(allAppointments);
+            final doctorWorkload = _doctorWorkloadRows(allAppointments);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -119,6 +123,17 @@ class ReportV2Screen extends StatelessWidget {
                       labels: const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
                       values: daySpider,
                     ),
+                    _TrafficBarsCard(
+                      title: 'Traffic by Time',
+                      rows: trafficByTime,
+                      barColor: const Color(0xFF2D7BD8),
+                    ),
+                    _TrafficBarsCard(
+                      title: 'Traffic by Day',
+                      rows: trafficByDay,
+                      barColor: const Color(0xFF2BA58D),
+                    ),
+                    _DoctorWorkloadMetricsReportCard(rows: doctorWorkload),
                   ],
                 ),
               ],
@@ -197,6 +212,99 @@ List<double> _dayOfWeekSpider(List<Appointment> rows) {
     buckets[a.date.weekday - 1]++;
   }
   return buckets;
+}
+
+List<({String label, double value})> _trafficByTime(List<Appointment> rows) {
+  final buckets = <String, double>{
+    '6-9': 0,
+    '9-12': 0,
+    '12-15': 0,
+    '15-18': 0,
+    '18-21': 0,
+    '21+': 0,
+  };
+  for (final appointment in rows) {
+    final h = appointment.date.hour;
+    if (h < 9) {
+      buckets['6-9'] = (buckets['6-9'] ?? 0) + 1;
+    } else if (h < 12) {
+      buckets['9-12'] = (buckets['9-12'] ?? 0) + 1;
+    } else if (h < 15) {
+      buckets['12-15'] = (buckets['12-15'] ?? 0) + 1;
+    } else if (h < 18) {
+      buckets['15-18'] = (buckets['15-18'] ?? 0) + 1;
+    } else if (h < 21) {
+      buckets['18-21'] = (buckets['18-21'] ?? 0) + 1;
+    } else {
+      buckets['21+'] = (buckets['21+'] ?? 0) + 1;
+    }
+  }
+
+  return buckets.entries
+      .map((entry) => (label: entry.key, value: entry.value))
+      .toList(growable: false);
+}
+
+List<({String label, double value})> _trafficByDay(List<Appointment> rows) {
+  final buckets = <String, double>{
+    'Mon': 0,
+    'Tue': 0,
+    'Wed': 0,
+    'Thu': 0,
+    'Fri': 0,
+    'Sat': 0,
+    'Sun': 0,
+  };
+  for (final appointment in rows) {
+    final key = switch (appointment.date.weekday) {
+      1 => 'Mon',
+      2 => 'Tue',
+      3 => 'Wed',
+      4 => 'Thu',
+      5 => 'Fri',
+      6 => 'Sat',
+      _ => 'Sun',
+    };
+    buckets[key] = (buckets[key] ?? 0) + 1;
+  }
+
+  return buckets.entries
+      .map((entry) => (label: entry.key, value: entry.value))
+      .toList(growable: false);
+}
+
+List<({String doctor, int appointments, int uniquePatients, double completionRate})>
+    _doctorWorkloadRows(List<Appointment> allAppointments) {
+  final now = DateTime.now();
+  final start = DateTime(now.year, now.month, now.day);
+  final end = start.add(const Duration(days: 1));
+
+  final rows = <({String doctor, int appointments, int uniquePatients, double completionRate})>[];
+  for (final doctor in doctors.present.values) {
+    final scoped = allAppointments
+        .where((a) =>
+            !a.date.isBefore(start) &&
+            a.date.isBefore(end) &&
+            a.operatorsIDs.contains(doctor.id))
+        .toList(growable: false);
+    if (scoped.isEmpty) continue;
+
+    final patientIds = <String>{
+      for (final appointment in scoped)
+        if (appointment.patientID != null && appointment.patientID!.isNotEmpty)
+          appointment.patientID!,
+    };
+    final doneCount = scoped.where((a) => a.isDone).length;
+    rows.add((
+      doctor: doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title,
+      appointments: scoped.length,
+      uniquePatients: patientIds.length,
+      completionRate: doneCount / scoped.length,
+    ));
+  }
+
+  rows.sort((a, b) => b.appointments.compareTo(a.appointments));
+  return rows;
 }
 
 class _RevenuePeriodsCard extends StatelessWidget {
@@ -303,27 +411,53 @@ class _AppointmentsTrendsCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: rows
-                  .map(
-                    (row) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 1),
-                        child: Tooltip(
-                          message: '${row.label}: ${row.value.toStringAsFixed(0)}',
-                          child: Container(
-                            height: (60 * (row.value / max)).clamp(2, 60).toDouble(),
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
+            SizedBox(
+              height: 96,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: rows
+                    .map(
+                      (row) => Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                row.value.toStringAsFixed(0),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF36557C),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Tooltip(
+                                message: '${row.label}: ${row.value.toStringAsFixed(0)}',
+                                child: Container(
+                                  height: (54 * (row.value / max)).clamp(3, 54).toDouble(),
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                row.label,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF6D84A8),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                  )
-                  .toList(growable: false),
+                    )
+                    .toList(growable: false),
+              ),
             ),
           ],
         ),
@@ -341,6 +475,177 @@ class _AppointmentsTrendsCard extends StatelessWidget {
             trend('Monthly', monthly, const Color(0xFFE09C31)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TrafficBarsCard extends StatelessWidget {
+  final String title;
+  final List<({String label, double value})> rows;
+  final Color barColor;
+
+  const _TrafficBarsCard({
+    required this.title,
+    required this.rows,
+    required this.barColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final max = rows.fold<double>(1, (m, row) => row.value > m ? row.value : m);
+    return SizedBox(
+      width: 430,
+      child: _ReportContainer(
+        title: title,
+        child: SizedBox(
+          height: 250,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: rows
+                .map(
+                  (row) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            row.value.toStringAsFixed(0),
+                            style: const TextStyle(
+                              color: Color(0xFF36557C),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            height: (150 * (row.value / max)).clamp(4, 150).toDouble(),
+                            decoration: BoxDecoration(
+                              color: barColor,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            row.label,
+                            style: const TextStyle(
+                              color: Color(0xFF5A7397),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DoctorWorkloadMetricsReportCard extends StatelessWidget {
+  final List<({String doctor, int appointments, int uniquePatients, double completionRate})>
+      rows;
+
+  const _DoctorWorkloadMetricsReportCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    final totalAppointments =
+        rows.fold<int>(0, (sum, row) => sum + row.appointments);
+    final totalPatients =
+        rows.fold<int>(0, (sum, row) => sum + row.uniquePatients);
+
+    return SizedBox(
+      width: 660,
+      child: _ReportContainer(
+        title: 'Doctor Workload Metrics (Today)',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                _metricPill('Appointments', '$totalAppointments'),
+                _metricPill('Unique Patients', '$totalPatients'),
+                _metricPill('Active Doctors', '${rows.length}'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (rows.isEmpty)
+              const Text(
+                'No doctor workload data for today.',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              )
+            else
+              ...rows.take(10).map(
+                (row) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          row.doctor,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF1F446E),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${row.appointments} appts • ${row.uniquePatients} patients • ${(row.completionRate * 100).toStringAsFixed(0)}% done',
+                        style: const TextStyle(
+                          color: Color(0xFF5B789F),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _metricPill(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6FAFF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDCE8F6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              color: Color(0xFF36557C),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF1459AD),
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }

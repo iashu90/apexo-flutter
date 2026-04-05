@@ -442,6 +442,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final thisMonthStart = DateTime(selectedDate.year, selectedDate.month, 1);
         final nextMonthStart = DateTime(selectedDate.year, selectedDate.month + 1, 1);
         final lastMonthStart = DateTime(selectedDate.year, selectedDate.month - 1, 1);
+        final twoMonthsAgoStart = DateTime(selectedDate.year, selectedDate.month - 2, 1);
+        final threeMonthsAgoStart = DateTime(selectedDate.year, selectedDate.month - 3, 1);
 
         final thisMonthAppointments = allAppointments
           .where((a) => !a.date.isBefore(thisMonthStart) && a.date.isBefore(nextMonthStart))
@@ -458,6 +460,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           0,
           (sum, a) => sum + a.paid + a.prescriptionPaid,
         );
+        final twoMonthsAgoRevenue = allAppointments
+          .where((a) =>
+            !a.date.isBefore(twoMonthsAgoStart) &&
+            a.date.isBefore(lastMonthStart))
+          .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
+        final threeMonthsAgoRevenue = allAppointments
+          .where((a) =>
+            !a.date.isBefore(threeMonthsAgoStart) &&
+            a.date.isBefore(twoMonthsAgoStart))
+          .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
         final revenueVsLastMonthPct = lastMonthRevenue == 0
           ? (thisMonthRevenue > 0 ? 100.0 : 0.0)
           : ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
@@ -603,9 +615,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       _TopMonthRevenueCard(
                         thisMonthRevenue: thisMonthRevenue,
                         lastMonthRevenue: lastMonthRevenue,
+                        twoMonthsAgoRevenue: twoMonthsAgoRevenue,
+                        threeMonthsAgoRevenue: threeMonthsAgoRevenue,
                         changePct: revenueVsLastMonthPct,
                         thisMonthLabel: DateFormat('MMMM').format(thisMonthStart),
                         lastMonthLabel: DateFormat('MMMM').format(lastMonthStart),
+                        twoMonthsAgoLabel:
+                            DateFormat('MMMM').format(twoMonthsAgoStart),
+                        threeMonthsAgoLabel:
+                            DateFormat('MMMM').format(threeMonthsAgoStart),
                       ),
                       _TopPatientGrowthCard(
                         newPatientsWeek: newPatientsWeek,
@@ -1706,6 +1724,10 @@ class _AppointmentRow extends StatelessWidget {
         appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
     final patientPhone = appointment.patient?.phone ?? '-';
     final patientAge = appointment.patient?.age ?? 0;
+    final previousVisit = _previousVisitForPatient(appointment);
+    final previousVisitText = previousVisit == null
+      ? 'Prev: -'
+      : 'Prev: ${DateFormat('dd MMM yyyy').format(previousVisit)}';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -1738,6 +1760,15 @@ class _AppointmentRow extends StatelessWidget {
                   ),
                   Text(
                     '$patientPhone • ${patientAge}y',
+                    style: const TextStyle(
+                      color: Color(0xFF7C93B1),
+                      fontSize: 11,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    previousVisitText,
                     style: const TextStyle(
                       color: Color(0xFF7C93B1),
                       fontSize: 11,
@@ -1835,6 +1866,23 @@ class _AppointmentRow extends StatelessWidget {
       ),
     );
   }
+}
+
+DateTime? _previousVisitForPatient(Appointment current) {
+  final patientId = current.patientID;
+  if (patientId == null || patientId.isEmpty) return null;
+
+  DateTime? previous;
+  for (final row in appointments.present.values) {
+    if (row.id == current.id) continue;
+    if (row.patientID != patientId) continue;
+    if (!row.date.isBefore(current.date)) continue;
+    if (previous == null || row.date.isAfter(previous)) {
+      previous = row.date;
+    }
+  }
+
+  return previous;
 }
 
 class _ActionIconButton extends StatefulWidget {
@@ -2537,7 +2585,7 @@ class _TopDailyTreatmentCard extends StatelessWidget {
               const Text(
                 'Daily Treatment',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   color: Color(0xFF496489),
                   fontWeight: FontWeight.w600,
                 ),
@@ -2561,7 +2609,7 @@ class _TopDailyTreatmentCard extends StatelessWidget {
                         style: TextStyle(
                           color: color,
                           fontWeight: FontWeight.w700,
-                          fontSize: 10,
+                          fontSize: 12,
                         ),
                       );
                     }).toList(growable: false),
@@ -2686,23 +2734,37 @@ class _TopCurrentMonthAppointmentsCard extends StatelessWidget {
 class _TopMonthRevenueCard extends StatelessWidget {
   final double thisMonthRevenue;
   final double lastMonthRevenue;
+  final double twoMonthsAgoRevenue;
+  final double threeMonthsAgoRevenue;
   final double changePct;
   final String thisMonthLabel;
   final String lastMonthLabel;
+  final String twoMonthsAgoLabel;
+  final String threeMonthsAgoLabel;
 
   const _TopMonthRevenueCard({
     required this.thisMonthRevenue,
     required this.lastMonthRevenue,
+    required this.twoMonthsAgoRevenue,
+    required this.threeMonthsAgoRevenue,
     required this.changePct,
     required this.thisMonthLabel,
     required this.lastMonthLabel,
+    required this.twoMonthsAgoLabel,
+    required this.threeMonthsAgoLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     final up = changePct >= 0;
     final color = up ? const Color(0xFF2BA58D) : const Color(0xFFD6455D);
-    final maxBar = math.max(1.0, math.max(thisMonthRevenue, lastMonthRevenue));
+    final maxBar = math.max(
+      1.0,
+      math.max(
+        math.max(thisMonthRevenue, lastMonthRevenue),
+        math.max(twoMonthsAgoRevenue, threeMonthsAgoRevenue),
+      ),
+    );
 
     Widget barLine(String label, double value, Color barColor) {
       return Tooltip(
@@ -2769,15 +2831,10 @@ class _TopMonthRevenueCard extends StatelessWidget {
               barLine(thisMonthLabel, thisMonthRevenue, const Color(0xFF2D7BD8)),
               const SizedBox(height: 4),
               barLine(lastMonthLabel, lastMonthRevenue, const Color(0xFF9BB9DD)),
-              const SizedBox(height: 3),
-              Text(
-                'Compared with $lastMonthLabel revenue',
-                style: const TextStyle(
-                  color: Color(0xFF6D84A8),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              const SizedBox(height: 4),
+              barLine(twoMonthsAgoLabel, twoMonthsAgoRevenue, const Color(0xFFC6D8EE)),
+              const SizedBox(height: 4),
+              barLine(threeMonthsAgoLabel, threeMonthsAgoRevenue, const Color(0xFFDCE8F6)),
             ],
           ),
         ),

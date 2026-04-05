@@ -1294,9 +1294,23 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     _applyDiscount();
   }
 
-  List<String> _topTreatments() {
+  List<String> _topTreatmentsForPatient() {
     final counts = <String, int>{};
     for (final appointment in widget.allAppointmentsForPatient) {
+      for (final treatment in appointment.selectedTreatments) {
+        final key = treatment.trim();
+        if (key.isEmpty) continue;
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    final rows = counts.entries.toList(growable: false)
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return rows.take(10).map((e) => e.key).toList(growable: false);
+  }
+
+  List<String> _topTreatmentsAcrossClinic() {
+    final counts = <String, int>{};
+    for (final appointment in appointments.present.values) {
       for (final treatment in appointment.selectedTreatments) {
         final key = treatment.trim();
         if (key.isEmpty) continue;
@@ -1366,7 +1380,14 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   @override
   Widget build(BuildContext context) {
     final a = widget.appointment;
-    final topTreatments = _topTreatments();
+    final topTreatments = _topTreatmentsForPatient();
+    final globalTopTreatments = _topTreatmentsAcrossClinic();
+    final suggestedPrices = allTreatments
+        .map((t) => t.price.toInt())
+        .where((price) => price > 0)
+        .toSet()
+        .toList(growable: false)
+      ..sort();
 
     return Container(
       width: double.infinity,
@@ -1426,7 +1447,31 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       placeholder: 'Diagnosis...',
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: allDiagnosis
+                        .take(16)
+                        .map(
+                          (diagnosis) => _quickChip(
+                            label: diagnosis,
+                            selected: a.diagnosis.contains(diagnosis),
+                            onTap: () {
+                              setState(() {
+                                if (a.diagnosis.contains(diagnosis)) {
+                                  a.diagnosis.remove(diagnosis);
+                                } else {
+                                  a.diagnosis.add(diagnosis);
+                                }
+                                appointments.set(a);
+                              });
+                            },
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                  const SizedBox(height: 10),
                   InfoLabel(
                     label: 'Treatment:',
                     child: TagInputWidget(
@@ -1452,8 +1497,53 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       placeholder: 'Treatments...',
                     ),
                   ),
+                  if (globalTopTreatments.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Top 10 provided treatments (all patients):',
+                      style: TextStyle(
+                        color: Color(0xFF5A7397),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: globalTopTreatments
+                          .map(
+                            (t) => _quickChip(
+                              label: t,
+                              selected: _selectedTreatments.contains(t),
+                              onTap: () {
+                                setState(() {
+                                  if (_selectedTreatments.contains(t)) {
+                                    _selectedTreatments.remove(t);
+                                  } else {
+                                    _selectedTreatments.add(t);
+                                  }
+                                  a.selectedTreatments =
+                                      _selectedTreatments.toList(growable: false);
+                                  appointments.set(a);
+                                });
+                              },
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ],
                   if (topTreatments.isNotEmpty) ...[
                     const SizedBox(height: 6),
+                    const Text(
+                      'Patient previous treatments:',
+                      style: TextStyle(
+                        color: Color(0xFF5A7397),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
@@ -1479,7 +1569,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           .toList(growable: false),
                     ),
                   ],
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   _EnhancedTeethPickerCard(
                     selectedTeeth: _selectedTeeth,
                     onChanged: (teeth) {
@@ -1489,7 +1579,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       setState(() {});
                     },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   _SvgOdontogramCard(
                     teeth: _teethStates,
                     selectedTreatment: _selectedOdontogramTreatment,
@@ -1521,7 +1611,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       placeholder: 'Post-operative notes',
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       const Text(
@@ -1545,7 +1635,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   if (_discountEnabled) ...[
                     InfoLabel(
                       label: 'Discount',
@@ -1559,7 +1649,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         placeholder: 'Discount',
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
@@ -1582,7 +1672,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
@@ -1595,7 +1685,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           )
                           .toList(growable: false),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                   ],
                   Row(
                     children: [
@@ -1637,11 +1727,11 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: [100, 200, 500, 1000, 2000]
+                    children: suggestedPrices
                         .map(
                           (v) => GestureDetector(
                             onTap: () => _applyPriceSuggestion(v),
@@ -1954,8 +2044,8 @@ class _SvgOdontogramCard extends StatelessWidget {
             );
           }
 
-          final leftPanel = Container(
-            width: 210,
+          final treatmentSelectionPanel = Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: const Color(0xFFEFF4FC),
@@ -1974,17 +2064,14 @@ class _SvgOdontogramCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     treatmentChip(TreatmentType.filling, 'Filling'),
-                    const SizedBox(height: 6),
                     treatmentChip(TreatmentType.rootCanal, 'Root Canal'),
-                    const SizedBox(height: 6),
                     treatmentChip(TreatmentType.crown, 'Crown'),
-                    const SizedBox(height: 6),
                     treatmentChip(TreatmentType.extraction, 'Extraction'),
-                    const SizedBox(height: 6),
                     treatmentChip(TreatmentType.implant, 'Implant'),
                   ],
                 ),
@@ -2155,7 +2242,7 @@ class _SvgOdontogramCard extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                leftPanel,
+                treatmentSelectionPanel,
                 const SizedBox(height: 8),
                 SizedBox(height: 280, child: centerPanel),
                 const SizedBox(height: 8),
@@ -2164,18 +2251,23 @@ class _SvgOdontogramCard extends StatelessWidget {
             );
           }
 
-          return SizedBox(
-            height: 360,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                leftPanel,
-                const SizedBox(width: 8),
-                centerPanel,
-                const SizedBox(width: 8),
-                rightPanel,
-              ],
-            ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              treatmentSelectionPanel,
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 360,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    centerPanel,
+                    const SizedBox(width: 8),
+                    rightPanel,
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),
