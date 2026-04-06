@@ -10,6 +10,7 @@ import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
@@ -2770,30 +2771,48 @@ class _TopMonthRevenueCard extends StatelessWidget {
       return Tooltip(
         message: '$label: ₹${value.toStringAsFixed(0)}',
         child: Row(
-        children: [
-          SizedBox(
-            width: 64,
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF456284), fontWeight: FontWeight.w600),
-            ),
-          ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Container(
-                height: 8,
-                color: const Color(0xFFEAF2FC),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: (value / maxBar).clamp(0.0, 1.0),
-                  child: Container(color: barColor),
+          children: [
+            SizedBox(
+              width: 64,
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF456284),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-          ),
-        ],
-      ));
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  height: 8,
+                  color: const Color(0xFFEAF2FC),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: (value / maxBar).clamp(0.0, 1.0),
+                    child: Container(color: barColor),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            SizedBox(
+              width: 54,
+              child: Text(
+                formatIndianShortCurrency(value),
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF456284),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return ConstrainedBox(
@@ -2815,7 +2834,7 @@ class _TopMonthRevenueCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '₹${thisMonthRevenue.toStringAsFixed(0)}',
+                    formatIndianShortCurrency(thisMonthRevenue),
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF1468CC)),
                   ),
                   const SizedBox(width: 6),
@@ -2851,6 +2870,12 @@ class _DailyRevenueChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final peak = rows.fold<double>(1, (m, e) => e.value > m ? e.value : m);
+    const tickCount = 7;
+    final yTicks = List<double>.generate(
+      tickCount,
+      (index) => peak * ((tickCount - 1 - index) / (tickCount - 1)),
+      growable: false,
+    );
     final startLabel =
         rows.isEmpty ? '-' : DateFormat('dd MMM').format(rows.first.day);
     final endLabel =
@@ -2879,22 +2904,17 @@ class _DailyRevenueChartCard extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '₹${peak.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF5B789F),
-                        ),
-                      ),
-                      const Text(
-                        '₹0',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF5B789F),
-                        ),
-                      ),
-                    ],
+                    children: yTicks
+                        .map(
+                          (tick) => Text(
+                            formatIndianShortCurrency(tick),
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: Color(0xFF5B789F),
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -2906,7 +2926,7 @@ class _DailyRevenueChartCard extends StatelessWidget {
                           children: [
                             Column(
                               children: List.generate(
-                                5,
+                                tickCount,
                                 (index) => Expanded(
                                   child: Container(
                                     decoration: const BoxDecoration(
@@ -3010,6 +3030,12 @@ class _AppointmentTrendChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final peak = rows.fold<int>(1, (m, e) => e.count > m ? e.count : m);
+    const tickCount = 7;
+    final yTicks = List<int>.generate(
+      tickCount,
+      (index) => ((peak * ((tickCount - 1 - index) / (tickCount - 1))).round()),
+      growable: false,
+    );
     final startLabel =
         rows.isEmpty ? '-' : DateFormat('dd MMM').format(rows.first.day);
     final endLabel =
@@ -3038,22 +3064,17 @@ class _AppointmentTrendChartCard extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '$peak',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF5B789F),
-                        ),
-                      ),
-                      const Text(
-                        '0',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF5B789F),
-                        ),
-                      ),
-                    ],
+                    children: yTicks
+                        .map(
+                          (tick) => Text(
+                            '$tick',
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: Color(0xFF5B789F),
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -3065,7 +3086,7 @@ class _AppointmentTrendChartCard extends StatelessWidget {
                           children: [
                             Column(
                               children: List.generate(
-                                5,
+                                tickCount,
                                 (index) => Expanded(
                                   child: Container(
                                     decoration: const BoxDecoration(

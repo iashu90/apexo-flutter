@@ -167,17 +167,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 _selectedDate.month == now.month &&
                 _selectedDate.day == now.day;
 
-            if (_selectedAppointment != null) {
-              final stillVisible =
-                  filtered.any((a) => a.id == _selectedAppointment!.id);
-              if (!stillVisible) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  setState(() => _selectedAppointment = null);
-                });
-              }
-            }
-
             return Container(
               color: const Color(0xFFF3F7FC),
               child: SingleChildScrollView(
@@ -1172,7 +1161,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   late final TextEditingController _discountController;
 
   String _discountType = 'flat';
+  String? _activeDiscountMode;
   bool _discountEnabled = false;
+  double _basePriceBeforeDiscount = 0;
   TreatmentType _selectedOdontogramTreatment = TreatmentType.filling;
   String _selectedOdontogramToothId = '16';
   final Map<String, String> _odontogramNotes = <String, String>{};
@@ -1228,6 +1219,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         text: a.discount == 0 ? '' : a.discount.toStringAsFixed(0));
     _discountType = a.discountType;
     _discountEnabled = a.discount > 0;
+    _activeDiscountMode = a.discount > 0 ? a.discountType : null;
+    _basePriceBeforeDiscount = a.price;
     _selectedTreatments = a.selectedTreatments.toSet();
     _selectedTeeth = a.selectedTeeth.toSet();
     _teethStates = {
@@ -1253,17 +1246,17 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
 
   void _applyDiscount() {
     final a = widget.appointment;
-    final rawPrice = double.tryParse(_priceController.text.trim()) ?? 0;
-    final discount = _discountEnabled
-      ? (double.tryParse(_discountController.text.trim()) ?? 0.0)
-      : 0.0;
+    final discount = (_discountEnabled && _activeDiscountMode != null)
+        ? (double.tryParse(_discountController.text.trim()) ?? 0.0)
+        : 0.0;
 
-    double finalPrice = rawPrice;
-    if (discount > 0) {
-      if (_discountType == 'percent') {
-        finalPrice = rawPrice - (rawPrice * discount / 100);
+    double finalPrice = _basePriceBeforeDiscount;
+    if (discount > 0 && _activeDiscountMode != null) {
+      if (_activeDiscountMode == 'percent') {
+        finalPrice =
+            _basePriceBeforeDiscount - (_basePriceBeforeDiscount * discount / 100);
       } else {
-        finalPrice = rawPrice - discount;
+        finalPrice = _basePriceBeforeDiscount - discount;
       }
       if (finalPrice < 0) finalPrice = 0;
     }
@@ -1272,16 +1265,47 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     a.discountType = _discountType;
     a.price = finalPrice;
 
-    _priceController.text =
-        finalPrice == 0 ? '' : finalPrice.toStringAsFixed(0);
+    _priceController.text = finalPrice == 0 ? '' : finalPrice.toStringAsFixed(0);
     appointments.set(a);
     setState(() {});
+  }
+
+  void _toggleDiscountMode(String mode) {
+    final a = widget.appointment;
+    if (!_discountEnabled) return;
+
+    if (_activeDiscountMode == mode) {
+      _activeDiscountMode = null;
+      a.discount = 0;
+      a.price = _basePriceBeforeDiscount;
+      _priceController.text = a.price == 0 ? '' : a.price.toStringAsFixed(0);
+      appointments.set(a);
+      setState(() {});
+      return;
+    }
+
+    _discountType = mode;
+    _activeDiscountMode = mode;
+    _applyDiscount();
   }
 
   void _applyPriceSuggestion(int value) {
     final a = widget.appointment;
     _priceController.text = '$value';
-    a.price = value.toDouble();
+    _basePriceBeforeDiscount = value.toDouble();
+    if (_discountEnabled && _activeDiscountMode != null) {
+      _applyDiscount();
+      return;
+    }
+    a.price = _basePriceBeforeDiscount;
+    appointments.set(a);
+    setState(() {});
+  }
+
+  void _applyPaidSuggestion(int value) {
+    final a = widget.appointment;
+    _paidController.text = '$value';
+    a.paid = value.toDouble();
     appointments.set(a);
     setState(() {});
   }
@@ -1382,12 +1406,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     final a = widget.appointment;
     final topTreatments = _topTreatmentsForPatient();
     final globalTopTreatments = _topTreatmentsAcrossClinic();
-    final suggestedPrices = allTreatments
-        .map((t) => t.price.toInt())
-        .where((price) => price > 0)
-        .toSet()
-        .toList(growable: false)
-      ..sort();
 
     return Container(
       width: double.infinity,
@@ -1422,13 +1440,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
           const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
-              final twoColumns = constraints.maxWidth >= 860;
               final firstColumn = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   InfoLabel(
                     label: 'Diagnosis:',
                     child: TagInputWidget(
+                      key: ValueKey('diag-${a.diagnosis.join('|')}'),
                       suggestions: allDiagnosis
                           .map((d) => TagInputItem(value: d, label: d))
                           .toList(),
@@ -1497,10 +1515,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       placeholder: 'Treatments...',
                     ),
                   ),
-                  if (globalTopTreatments.isNotEmpty) ...[
+                  if (topTreatments.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     const Text(
-                      'Top 10 provided treatments (all patients):',
+                      'Patient previous treatments:',
                       style: TextStyle(
                         color: Color(0xFF5A7397),
                         fontSize: 11,
@@ -1511,7 +1529,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
-                      children: globalTopTreatments
+                      children: topTreatments
                           .map(
                             (t) => _quickChip(
                               label: t,
@@ -1533,10 +1551,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           .toList(growable: false),
                     ),
                   ],
-                  if (topTreatments.isNotEmpty) ...[
+                  if (globalTopTreatments.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     const Text(
-                      'Patient previous treatments:',
+                      'Top 10 provided treatments (all patients):',
                       style: TextStyle(
                         color: Color(0xFF5A7397),
                         fontSize: 11,
@@ -1547,7 +1565,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
-                      children: topTreatments
+                      children: globalTopTreatments
                           .map(
                             (t) => _quickChip(
                               label: t,
@@ -1626,11 +1644,22 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       ToggleSwitch(
                         checked: _discountEnabled,
                         onChanged: (value) {
+                          final a = widget.appointment;
                           setState(() => _discountEnabled = value);
                           if (!value) {
+                            _activeDiscountMode = null;
                             _discountController.clear();
+                            a.discount = 0;
+                            a.price = _basePriceBeforeDiscount;
+                            _priceController.text = a.price == 0
+                                ? ''
+                                : a.price.toStringAsFixed(0);
+                            appointments.set(a);
+                            return;
                           }
-                          _applyDiscount();
+                          _basePriceBeforeDiscount =
+                              double.tryParse(_priceController.text.trim()) ??
+                                  _basePriceBeforeDiscount;
                         },
                       ),
                     ],
@@ -1656,19 +1685,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       children: [
                         _quickChip(
                           label: '₹ Flat',
-                          selected: _discountType == 'flat',
-                          onTap: () {
-                            setState(() => _discountType = 'flat');
-                            _applyDiscount();
-                          },
+                          selected: _activeDiscountMode == 'flat',
+                          onTap: () => _toggleDiscountMode('flat'),
                         ),
                         _quickChip(
                           label: '% Percent',
-                          selected: _discountType == 'percent',
-                          onTap: () {
-                            setState(() => _discountType = 'percent');
-                            _applyDiscount();
-                          },
+                          selected: _activeDiscountMode == 'percent',
+                          onTap: () => _toggleDiscountMode('percent'),
                         ),
                       ],
                     ),
@@ -1687,51 +1710,31 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     ),
                     const SizedBox(height: 10),
                   ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InfoLabel(
-                          label:
-                              'Price in ${globalSettings.get("currency_______").value}',
-                          child: CupertinoTextField(
-                            controller: _priceController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-                            ],
-                            onChanged: (value) {
-                              a.price = double.tryParse(value) ?? 0;
-                              appointments.set(a);
-                              _applyDiscount();
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: InfoLabel(
-                          label:
-                              'Paid in ${globalSettings.get("currency_______").value}',
-                          child: CupertinoTextField(
-                            controller: _paidController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-                            ],
-                            onChanged: (value) {
-                              a.paid = double.tryParse(value) ?? 0;
-                              appointments.set(a);
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+                  InfoLabel(
+                    label:
+                        'Price in ${globalSettings.get("currency_______").value}',
+                    child: CupertinoTextField(
+                      controller: _priceController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                      ],
+                      onChanged: (value) {
+                        _basePriceBeforeDiscount = double.tryParse(value) ?? 0;
+                        if (_discountEnabled && _activeDiscountMode != null) {
+                          _applyDiscount();
+                          return;
+                        }
+                        a.price = _basePriceBeforeDiscount;
+                        appointments.set(a);
+                      },
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: suggestedPrices
+                    children: [100, 200, 500, 1000, 2000]
                         .map(
                           (v) => GestureDetector(
                             onTap: () => _applyPriceSuggestion(v),
@@ -1756,25 +1759,60 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         )
                         .toList(growable: false),
                   ),
+                  const SizedBox(height: 10),
+                  InfoLabel(
+                    label:
+                        'Paid in ${globalSettings.get("currency_______").value}',
+                    child: CupertinoTextField(
+                      controller: _paidController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                      ],
+                      onChanged: (value) {
+                        a.paid = double.tryParse(value) ?? 0;
+                        appointments.set(a);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [100, 200, 500, 1000, 2000]
+                        .map(
+                          (v) => GestureDetector(
+                            onTap: () => _applyPaidSuggestion(v),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEAF2FC),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                    color: const Color(0xFFD5E5F7)),
+                              ),
+                              child: Text(
+                                '₹$v',
+                                style: const TextStyle(
+                                  color: Color(0xFF2F5B88),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
                 ],
               );
 
-              if (!twoColumns) {
-                return Column(
-                  children: [
-                    firstColumn,
-                    const SizedBox(height: 8),
-                    secondColumn,
-                  ],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              return Column(
                 children: [
-                  Expanded(child: firstColumn),
-                  const SizedBox(width: 10),
-                  Expanded(child: secondColumn),
+                  firstColumn,
+                  const SizedBox(height: 10),
+                  secondColumn,
                 ],
               );
             },

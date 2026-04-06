@@ -253,6 +253,20 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   return a.phone.toLowerCase().compareTo(b.phone.toLowerCase());
                 case 'age':
                   return a.age.compareTo(b.age);
+                case 'lastVisit':
+                  final aRows = visitsByPatient[a.id] ?? const <Appointment>[];
+                  final bRows = visitsByPatient[b.id] ?? const <Appointment>[];
+                  final aLast = aRows.isEmpty
+                      ? DateTime.fromMillisecondsSinceEpoch(0)
+                      : aRows.last.date;
+                  final bLast = bRows.isEmpty
+                      ? DateTime.fromMillisecondsSinceEpoch(0)
+                      : bRows.last.date;
+                  return aLast.compareTo(bLast);
+                case 'paidSoFar':
+                  final aPaid = spentByPatient[a.id] ?? 0;
+                  final bPaid = spentByPatient[b.id] ?? 0;
+                  return aPaid.compareTo(bPaid);
                 case 'visits':
                   final aVisits =
                       (visitsByPatient[a.id] ?? const <Appointment>[]).length;
@@ -505,7 +519,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     required DateTime anchor,
   }) {
     final buckets = <DateTime, Set<String>>{};
-    for (int i = 5; i >= 0; i--) {
+    for (int i = 23; i >= 0; i--) {
       final month = DateTime(anchor.year, anchor.month - i, 1);
       buckets[month] = <String>{};
     }
@@ -930,16 +944,46 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _PatientGrowthMonthlyCard extends StatelessWidget {
+class _PatientGrowthMonthlyCard extends StatefulWidget {
   final List<({String label, int count})> rows;
 
   const _PatientGrowthMonthlyCard({required this.rows});
 
   @override
+  State<_PatientGrowthMonthlyCard> createState() =>
+      _PatientGrowthMonthlyCardState();
+}
+
+class _PatientGrowthMonthlyCardState extends State<_PatientGrowthMonthlyCard> {
+  static const int _windowSize = 6;
+  int _windowEnd = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _windowEnd = widget.rows.length;
+  }
+
+  @override
+  void didUpdateWidget(covariant _PatientGrowthMonthlyCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.rows.length != widget.rows.length) {
+      _windowEnd = widget.rows.length;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final peak = rows.fold<int>(1, (m, e) => e.count > m ? e.count : m);
-    final hasGrowth = rows.length >= 2 && rows.last.count >= rows[rows.length - 2].count;
+    final safeWindowEnd = _windowEnd.clamp(0, widget.rows.length).toInt();
+    final safeWindowStart =
+      (safeWindowEnd - _windowSize).clamp(0, safeWindowEnd).toInt();
+    final visibleRows = widget.rows.sublist(safeWindowStart, safeWindowEnd);
+    final peak = visibleRows.fold<int>(1, (m, e) => e.count > m ? e.count : m);
+    final hasGrowth = widget.rows.length >= 2 &&
+        widget.rows.last.count >= widget.rows[widget.rows.length - 2].count;
     final trendColor = hasGrowth ? const Color(0xFF2BA58D) : const Color(0xFFD6455D);
+    final canGoBack = safeWindowStart > 0;
+    final canGoForward = safeWindowEnd < widget.rows.length;
 
     return _CardShell(
       child: Column(
@@ -955,6 +999,24 @@ class _PatientGrowthMonthlyCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              const SizedBox(width: 6),
+              _MiniNavArrow(
+                icon: FluentIcons.chevron_left,
+                enabled: canGoBack,
+                onTap: () {
+                  if (!canGoBack) return;
+                  setState(() => _windowEnd = safeWindowEnd - _windowSize);
+                },
+              ),
+              const SizedBox(width: 4),
+              _MiniNavArrow(
+                icon: FluentIcons.chevron_right,
+                enabled: canGoForward,
+                onTap: () {
+                  if (!canGoForward) return;
+                  setState(() => _windowEnd = safeWindowEnd + _windowSize);
+                },
+              ),
               const Spacer(),
               Icon(
                 hasGrowth ? FluentIcons.up : FluentIcons.down,
@@ -967,7 +1029,7 @@ class _PatientGrowthMonthlyCard extends StatelessWidget {
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: rows.map((row) {
+              children: visibleRows.map((row) {
                 final ratio = peak == 0 ? 0.0 : row.count / peak;
                 return Expanded(
                   child: Padding(
@@ -1008,6 +1070,41 @@ class _PatientGrowthMonthlyCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MiniNavArrow extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _MiniNavArrow({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          color: enabled ? const Color(0xFFEAF2FC) : const Color(0xFFF4F8FD),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: enabled ? const Color(0xFFBED4F1) : const Color(0xFFE2ECF8),
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 9,
+          color: enabled ? const Color(0xFF2D7BD8) : const Color(0xFF9FB4CF),
+        ),
       ),
     );
   }
@@ -2676,26 +2773,26 @@ class _AllPatientsListCard extends StatelessWidget {
                 ),
                 Expanded(
                   flex: 16,
-                  child: Text(
-                    'Last Visit',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: isHeaderHighlighted
-                          ? Colors.white
-                          : const Color(0xFF2C4468),
-                    ),
+                  child: _SortableHead(
+                    flex: 16,
+                    label: 'Last Visit',
+                    keyName: 'lastVisit',
+                    current: sortBy,
+                    ascending: sortAscending,
+                    onSort: onSort,
+                    onDark: isHeaderHighlighted,
                   ),
                 ),
                 Expanded(
                   flex: 16,
-                  child: Text(
-                    'Paid So Far',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: isHeaderHighlighted
-                          ? Colors.white
-                          : const Color(0xFF2C4468),
-                    ),
+                  child: _SortableHead(
+                    flex: 16,
+                    label: 'Paid So Far',
+                    keyName: 'paidSoFar',
+                    current: sortBy,
+                    ascending: sortAscending,
+                    onSort: onSort,
+                    onDark: isHeaderHighlighted,
                   ),
                 ),
                 _SortableHead(
