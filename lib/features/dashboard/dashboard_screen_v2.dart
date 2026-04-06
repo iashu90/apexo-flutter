@@ -474,6 +474,22 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final revenueVsLastMonthPct = lastMonthRevenue == 0
           ? (thisMonthRevenue > 0 ? 100.0 : 0.0)
           : ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+        final monthlyRevenueBars = List<({String month, double value})>.generate(
+          12,
+          (index) {
+            final monthStart = DateTime(selectedDate.year, index + 1, 1);
+            final monthEnd = DateTime(selectedDate.year, index + 2, 1);
+            final value = allAppointments
+                .where((a) =>
+                    !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
+                .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
+            return (
+              month: DateFormat('MMM').format(monthStart),
+              value: value,
+            );
+          },
+          growable: false,
+        );
 
         final treatmentRevenue =
             todaysAppointments.fold<double>(0, (sum, a) => sum + a.paid);
@@ -626,6 +642,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         threeMonthsAgoLabel:
                             DateFormat('MMMM').format(threeMonthsAgoStart),
                       ),
+                      _TopMonthlyRevenueBarsCard(rows: monthlyRevenueBars),
                       _TopPatientGrowthCard(
                         newPatientsWeek: newPatientsWeek,
                         newPatientsPrevWeek: newPatientsPrevWeek,
@@ -2862,6 +2879,101 @@ class _TopMonthRevenueCard extends StatelessWidget {
   }
 }
 
+class _TopMonthlyRevenueBarsCard extends StatelessWidget {
+  final List<({String month, double value})> rows;
+
+  const _TopMonthlyRevenueBarsCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = rows.fold<double>(1, (m, e) => e.value > m ? e.value : m);
+    final latest = rows.isEmpty ? 0.0 : rows.last.value;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 240, maxWidth: 360),
+      child: SizedBox(
+        height: 160,
+        child: _CardShell(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Monthly Revenue Snapshot',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF496489),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    formatIndianShortCurrency(latest),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF1468CC),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final item in rows)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 1.5),
+                          child: Tooltip(
+                            message: '${item.month}: ${formatIndianShortCurrency(item.value)}',
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: FractionallySizedBox(
+                                      heightFactor: (item.value / maxValue).clamp(0.04, 1.0),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                                          color: item.value == latest
+                                              ? const Color(0xFF2D7BD8)
+                                              : const Color(0xFFB8CCE6),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  item.month,
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    color: Color(0xFF6D84A8),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DailyRevenueChartCard extends StatelessWidget {
   final List<({DateTime day, double value})> rows;
 
@@ -3671,7 +3783,7 @@ class _TopTimingSummaryCard extends StatelessWidget {
       return Row(
         children: [
           SizedBox(
-            width: 78,
+            width: 132,
             child: Text(
               label,
               style: const TextStyle(
@@ -3730,19 +3842,19 @@ class _TopTimingSummaryCard extends StatelessWidget {
               Expanded(
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: miniBar('Morning', morning, const Color(0xFF2D7BD8)),
+                  child: miniBar('Morning (6:00-11:59)', morning, const Color(0xFF2D7BD8)),
                 ),
               ),
               Expanded(
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: miniBar('Afternoon', afternoon, const Color(0xFF2BA58D)),
+                  child: miniBar('Afternoon (12:00-16:59)', afternoon, const Color(0xFF2BA58D)),
                 ),
               ),
               Expanded(
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: miniBar('Evening', evening, const Color(0xFFE09C31)),
+                  child: miniBar('Evening (17:00-21:59)', evening, const Color(0xFFE09C31)),
                 ),
               ),
             ],

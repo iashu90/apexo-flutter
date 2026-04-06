@@ -2,6 +2,7 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/utils/indian_money.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 
@@ -23,7 +24,7 @@ class ReportV2Screen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'Report V2',
+                  'Reports',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
@@ -43,8 +44,10 @@ class ReportV2Screen extends StatelessWidget {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    _DailyAppointmentsTrend30Card(rows: allAppointments),
-                    _MonthlyAppointmentsTrend12Card(rows: allAppointments),
+                    _DailyAppointmentsTrendWindowCard(rows: allAppointments),
+                    _MonthlyAppointmentsTrendWindowCard(rows: allAppointments),
+                    _DailyRevenueTrendWindowCard(rows: allAppointments),
+                    _MonthlyRevenueTrendWindowCard(rows: allAppointments),
                     _TrafficByTimeCard(rows: allAppointments),
                     _TrafficByDayCard(rows: allAppointments),
                     _AppointmentMetricsCard(rows: allAppointments),
@@ -172,24 +175,33 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
-class _DailyAppointmentsTrend30Card extends StatelessWidget {
+class _DailyAppointmentsTrendWindowCard extends StatefulWidget {
   final List<Appointment> rows;
 
-  const _DailyAppointmentsTrend30Card({required this.rows});
+  const _DailyAppointmentsTrendWindowCard({required this.rows});
+
+  @override
+  State<_DailyAppointmentsTrendWindowCard> createState() =>
+      _DailyAppointmentsTrendWindowCardState();
+}
+
+class _DailyAppointmentsTrendWindowCardState
+    extends State<_DailyAppointmentsTrendWindowCard> {
+  int _monthOffset = 0;
 
   @override
   Widget build(BuildContext context) {
-    final now = _dateOnly(DateTime.now());
-    final starts = List<DateTime>.generate(
-      30,
-      (i) => now.subtract(Duration(days: 29 - i)),
-      growable: false,
-    );
+    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    final monthStart = DateTime(currentMonth.year, currentMonth.month - _monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final dayCount = monthEnd.difference(monthStart).inDays;
+
+    final starts = List<DateTime>.generate(dayCount, (i) => monthStart.add(Duration(days: i)), growable: false);
 
     final points = starts
         .map((start) {
           final end = start.add(const Duration(days: 1));
-          final count = rows
+          final count = widget.rows
               .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
               .length
               .toDouble();
@@ -198,35 +210,54 @@ class _DailyAppointmentsTrend30Card extends StatelessWidget {
         .toList(growable: false);
 
     return SizedBox(
-      width: 660,
+      width: 560,
       child: _SimpleBarsCard(
-        title: 'Appointment Trend (Daily - 30 Days)',
+        title: 'Appointment Trend (Daily)',
+        subtitle: DateFormat('MMMM yyyy').format(monthStart),
         rows: points,
         barColor: const Color(0xFF2D7BD8),
         showEveryNthXLabel: 5,
+        trailing: _TrendNavButtons(
+          canGoForward: _monthOffset > 0,
+          onBack: () => setState(() => _monthOffset += 1),
+          onForward: _monthOffset > 0
+              ? () => setState(() => _monthOffset -= 1)
+              : null,
+        ),
       ),
     );
   }
 }
 
-class _MonthlyAppointmentsTrend12Card extends StatelessWidget {
+class _MonthlyAppointmentsTrendWindowCard extends StatefulWidget {
   final List<Appointment> rows;
 
-  const _MonthlyAppointmentsTrend12Card({required this.rows});
+  const _MonthlyAppointmentsTrendWindowCard({required this.rows});
+
+  @override
+  State<_MonthlyAppointmentsTrendWindowCard> createState() =>
+      _MonthlyAppointmentsTrendWindowCardState();
+}
+
+class _MonthlyAppointmentsTrendWindowCardState
+    extends State<_MonthlyAppointmentsTrendWindowCard> {
+  int _windowOffset = 0;
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+    final windowEnd = DateTime(now.year, now.month - _windowOffset + 1, 1);
+    final windowStart = DateTime(windowEnd.year, windowEnd.month - 12, 1);
     final starts = List<DateTime>.generate(
       12,
-      (i) => DateTime(now.year, now.month - (11 - i), 1),
+      (i) => DateTime(windowStart.year, windowStart.month + i, 1),
       growable: false,
     );
 
     final points = starts
         .map((start) {
           final end = DateTime(start.year, start.month + 1, 1);
-          final count = rows
+          final count = widget.rows
               .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
               .length
               .toDouble();
@@ -235,27 +266,189 @@ class _MonthlyAppointmentsTrend12Card extends StatelessWidget {
         .toList(growable: false);
 
     return SizedBox(
-      width: 660,
+      width: 560,
       child: _SimpleBarsCard(
-        title: 'Appointment Trend (Monthly - 12 Months)',
+        title: 'Appointment Trend (Monthly)',
+        subtitle:
+            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
         rows: points,
         barColor: const Color(0xFF2BA58D),
+        trailing: _TrendNavButtons(
+          canGoForward: _windowOffset > 0,
+          onBack: () => setState(() => _windowOffset += 1),
+          onForward: _windowOffset > 0
+              ? () => setState(() => _windowOffset -= 1)
+              : null,
+        ),
       ),
+    );
+  }
+}
+
+class _DailyRevenueTrendWindowCard extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _DailyRevenueTrendWindowCard({required this.rows});
+
+  @override
+  State<_DailyRevenueTrendWindowCard> createState() =>
+      _DailyRevenueTrendWindowCardState();
+}
+
+class _DailyRevenueTrendWindowCardState
+    extends State<_DailyRevenueTrendWindowCard> {
+  int _monthOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    final monthStart = DateTime(currentMonth.year, currentMonth.month - _monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final dayCount = monthEnd.difference(monthStart).inDays;
+
+    final starts = List<DateTime>.generate(dayCount, (i) => monthStart.add(Duration(days: i)), growable: false);
+
+    final points = starts
+        .map((start) {
+          final end = start.add(const Duration(days: 1));
+          final value = widget.rows
+              .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
+              .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
+          return (label: DateFormat('dd').format(start), value: value);
+        })
+        .toList(growable: false);
+
+    return SizedBox(
+      width: 560,
+      child: _SimpleBarsCard(
+        title: 'Revenue Trend (Daily)',
+        subtitle: DateFormat('MMMM yyyy').format(monthStart),
+        rows: points,
+        barColor: const Color(0xFF1468CC),
+        showEveryNthXLabel: 5,
+        valueFormatter: formatIndianShortCurrency,
+        trailing: _TrendNavButtons(
+          canGoForward: _monthOffset > 0,
+          onBack: () => setState(() => _monthOffset += 1),
+          onForward: _monthOffset > 0
+              ? () => setState(() => _monthOffset -= 1)
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthlyRevenueTrendWindowCard extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _MonthlyRevenueTrendWindowCard({required this.rows});
+
+  @override
+  State<_MonthlyRevenueTrendWindowCard> createState() =>
+      _MonthlyRevenueTrendWindowCardState();
+}
+
+class _MonthlyRevenueTrendWindowCardState
+    extends State<_MonthlyRevenueTrendWindowCard> {
+  int _windowOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final windowEnd = DateTime(now.year, now.month - _windowOffset + 1, 1);
+    final windowStart = DateTime(windowEnd.year, windowEnd.month - 12, 1);
+    final starts = List<DateTime>.generate(
+      12,
+      (i) => DateTime(windowStart.year, windowStart.month + i, 1),
+      growable: false,
+    );
+
+    final points = starts
+        .map((start) {
+          final end = DateTime(start.year, start.month + 1, 1);
+          final value = widget.rows
+              .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
+              .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
+          return (label: DateFormat('MMM').format(start), value: value);
+        })
+        .toList(growable: false);
+
+    return SizedBox(
+      width: 560,
+      child: _SimpleBarsCard(
+        title: 'Revenue Trend (Monthly)',
+        subtitle:
+            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
+        rows: points,
+        barColor: const Color(0xFF2BA58D),
+        valueFormatter: formatIndianShortCurrency,
+        trailing: _TrendNavButtons(
+          canGoForward: _windowOffset > 0,
+          onBack: () => setState(() => _windowOffset += 1),
+          onForward: _windowOffset > 0
+              ? () => setState(() => _windowOffset -= 1)
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
+class _TrendNavButtons extends StatelessWidget {
+  final VoidCallback onBack;
+  final VoidCallback? onForward;
+  final bool canGoForward;
+
+  const _TrendNavButtons({
+    required this.onBack,
+    required this.onForward,
+    required this.canGoForward,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: IconButton(
+            icon: const Icon(FluentIcons.chevron_left, size: 11),
+            onPressed: onBack,
+          ),
+        ),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: IconButton(
+            icon: const Icon(FluentIcons.chevron_right, size: 11),
+            onPressed: canGoForward ? onForward : null,
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _SimpleBarsCard extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final List<({String label, double value})> rows;
   final Color barColor;
   final int showEveryNthXLabel;
+  final Widget? trailing;
+  final String Function(double value)? valueFormatter;
 
   const _SimpleBarsCard({
     required this.title,
+    this.subtitle,
     required this.rows,
     required this.barColor,
     this.showEveryNthXLabel = 1,
+    this.trailing,
+    this.valueFormatter,
   });
 
   @override
@@ -264,6 +457,8 @@ class _SimpleBarsCard extends StatelessWidget {
 
     return _ReportContainer(
       title: title,
+      subtitle: subtitle,
+      trailing: trailing,
       child: SizedBox(
         height: 250,
         child: Row(
@@ -277,7 +472,9 @@ class _SimpleBarsCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
-                          entry.value.value.toStringAsFixed(0),
+                          valueFormatter == null
+                              ? entry.value.value.toStringAsFixed(0)
+                              : valueFormatter!(entry.value.value),
                           style: const TextStyle(
                             color: Color(0xFF36557C),
                             fontWeight: FontWeight.w700,
@@ -368,7 +565,7 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
         .toList(growable: false);
 
     return SizedBox(
-      width: 660,
+      width: 560,
       child: _ReportContainer(
         title: 'Traffic by Time',
         child: Column(
@@ -485,7 +682,7 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
     final max = points.fold<double>(1, (m, e) => e.value > m ? e.value : m);
 
     return SizedBox(
-      width: 660,
+      width: 560,
       child: _ReportContainer(
         title: 'Traffic by Day',
         child: Column(
@@ -590,7 +787,7 @@ class _AppointmentMetricsCardState extends State<_AppointmentMetricsCard> {
     final totalEarned = data.fold<double>(0, (sum, row) => sum + row.earned);
 
     return SizedBox(
-      width: 660,
+      width: 560,
       child: _ReportContainer(
         title: 'Appointment Metrics',
         child: Column(
@@ -606,7 +803,7 @@ class _AppointmentMetricsCardState extends State<_AppointmentMetricsCard> {
               runSpacing: 8,
               children: [
                 _metricPill('Appointments', '$totalAppointments'),
-                _metricPill('Money Earned', 'Rs ${totalEarned.toStringAsFixed(0)}'),
+                _metricPill('Money Earned', formatIndianShortCurrency(totalEarned)),
                 _metricPill('Active Doctors', '${data.length}'),
               ],
             ),
@@ -634,7 +831,7 @@ class _AppointmentMetricsCardState extends State<_AppointmentMetricsCard> {
                         ),
                       ),
                       Text(
-                        '${row.appointments} appts • Rs ${row.earned.toStringAsFixed(0)}',
+                        '${row.appointments} appts • ${formatIndianShortCurrency(row.earned)}',
                         style: const TextStyle(
                           color: Color(0xFF5B789F),
                           fontWeight: FontWeight.w700,
@@ -686,10 +883,14 @@ class _AppointmentMetricsCardState extends State<_AppointmentMetricsCard> {
 
 class _ReportContainer extends StatelessWidget {
   final String title;
+  final String? subtitle;
+  final Widget? trailing;
   final Widget child;
 
   const _ReportContainer({
     required this.title,
+    this.subtitle,
+    this.trailing,
     required this.child,
   });
 
@@ -712,14 +913,32 @@ class _ReportContainer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Color(0xFF183A67),
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF183A67),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (trailing != null) trailing!,
+            ],
           ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle!,
+              style: const TextStyle(
+                color: Color(0xFF5A7397),
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           child,
         ],

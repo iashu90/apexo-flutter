@@ -1493,6 +1493,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   InfoLabel(
                     label: 'Treatment:',
                     child: TagInputWidget(
+                      key: ValueKey(
+                        'tx-${_selectedTreatments.toList()..sort()}',
+                      ),
                       suggestions: allTreatments
                           .map((t) => TagInputItem(
                               value: t.name, label: '${t.name} - ₹${t.price}'))
@@ -2352,6 +2355,12 @@ class _PatientJourneyTimeline extends StatelessWidget {
               final treatments = item.selectedTreatments
                   .where((t) => t.trim().isNotEmpty)
                   .join(', ');
+                final doctorNames = item.operators.isEmpty
+                  ? 'Unassigned'
+                  : item.operators.map((d) => d.title).join(', ');
+                final teeth = item.selectedTeeth
+                  .where((t) => t.trim().isNotEmpty)
+                  .join(', ');
               final isLast = entry.key == points.length - 1;
 
               return Row(
@@ -2396,6 +2405,56 @@ class _PatientJourneyTimeline extends StatelessWidget {
                               color: Color(0xFF5F789B),
                               fontSize: 11,
                             ),
+                          ),
+                          const SizedBox(height: 3),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEAF2FC),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: const Color(0xFFD5E5F7),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Doctor: $doctorNames',
+                                  style: const TextStyle(
+                                    color: Color(0xFF355279),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                              if (teeth.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF2F8E9),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: const Color(0xFFD9EBC0),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Teeth: $teeth',
+                                    style: const TextStyle(
+                                      color: Color(0xFF456824),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ],
                       ),

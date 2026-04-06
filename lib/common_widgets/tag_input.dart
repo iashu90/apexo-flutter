@@ -209,12 +209,43 @@ class TagInputWidgetState extends State<TagInputWidget> {
     );
   }
 
+  Color _chipBackground(String label) {
+    const palette = [
+      Color(0xFFE8F1FF),
+      Color(0xFFEAF9F4),
+      Color(0xFFFFF3E8),
+      Color(0xFFF2EEFF),
+      Color(0xFFFFEAF1),
+      Color(0xFFE9F7FF),
+      Color(0xFFF2F8E9),
+      Color(0xFFFFF7E6),
+    ];
+    return palette[label.hashCode.abs() % palette.length];
+  }
+
+  Color _chipBorder(String label) {
+    const palette = [
+      Color(0xFF8FB7EE),
+      Color(0xFF95D3B7),
+      Color(0xFFE7BC8F),
+      Color(0xFFB7A6E8),
+      Color(0xFFE59AB9),
+      Color(0xFF9FD0E8),
+      Color(0xFFBFD8A0),
+      Color(0xFFE8CC8F),
+    ];
+    return palette[label.hashCode.abs() % palette.length];
+  }
+
   Padding _buildTag(TagInputItem tag) {
+    final chipBg = _chipBackground(tag.label);
+    final chipBorder = _chipBorder(tag.label);
     return Padding(
       padding: const EdgeInsets.only(right: 2, bottom: 2),
       child: Acrylic(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         elevation: 1,
+        tint: chipBg,
         child: IconButton(
           onPressed: () =>
               widget.onItemTap == null ? null : widget.onItemTap!(tag),
@@ -225,7 +256,15 @@ class TagInputWidgetState extends State<TagInputWidget> {
           icon: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Txt(tag.label),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: chipBg,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: chipBorder),
+                ),
+                child: Txt(tag.label),
+              ),
               const SizedBox(width: 5),
               IconButton(
                 key: Key("${tag.label}_clear"),
