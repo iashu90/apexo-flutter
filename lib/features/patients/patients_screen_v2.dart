@@ -281,19 +281,16 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               }
             });
 
-            if (!_sortAscending) {
-              filteredPatients.replaceRange(
-                0,
-                filteredPatients.length,
-                filteredPatients.reversed,
-              );
-            }
+            final sortedPatients = _sortAscending
+                ? filteredPatients
+                : filteredPatients.reversed.toList(growable: false);
 
-            final totalPages = math.max(1, (filteredPatients.length / _pageSize).ceil());
+            final totalPages =
+                math.max(1, (sortedPatients.length / _pageSize).ceil());
             final currentPage = _currentPage.clamp(1, totalPages);
             final start = (currentPage - 1) * _pageSize;
-            final end = math.min(start + _pageSize, filteredPatients.length);
-            final pagedPatients = filteredPatients.sublist(start, end);
+            final end = math.min(start + _pageSize, sortedPatients.length);
+            final pagedPatients = sortedPatients.sublist(start, end);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -500,7 +497,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   onSort: _onSort,
                   listSearchController: _listSearchController,
                   onOpenHistory: _openPatientHistoryDialog,
-                  totalItems: filteredPatients.length,
+                  totalItems: sortedPatients.length,
                   currentPage: currentPage,
                   totalPages: totalPages,
                   onPageChanged: (page) => setState(() => _currentPage = page),

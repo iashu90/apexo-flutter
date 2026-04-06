@@ -191,36 +191,14 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
               for (final row in compareRows) row.doctor.id: row,
             };
 
-            final performanceRows = _doctorPerformance(
-              doctorsList: allDoctors,
-              scoped: _scopedForRange(
-                allAppointments: allAppointments,
-                selectedDate: _selectedDate,
-                range: _performanceRange,
-                customRangeStart: _customRangeStart,
-                customRangeEnd: _customRangeEnd,
-              ),
-            );
-
             final doneRows = _doctorDoneMetrics(
               doctorsList: allDoctors,
               scoped: _scopedForRange(
                 allAppointments: allAppointments,
-                selectedDate: _selectedDate,
-                range: _doneRange,
-                customRangeStart: _customRangeStart,
-                customRangeEnd: _customRangeEnd,
-              ),
-            );
-
-            final workloadRows = _doctorWorkloadMetrics(
-              doctorsList: allDoctors,
-              scoped: _scopedForRange(
-                allAppointments: allAppointments,
-                selectedDate: _selectedDate,
-                range: _workloadRange,
-                customRangeStart: _customRangeStart,
-                customRangeEnd: _customRangeEnd,
+                selectedDate: _dateOnly(DateTime.now()),
+                range: 'today',
+                customRangeStart: null,
+                customRangeEnd: null,
               ),
             );
 
@@ -476,22 +454,12 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _DoctorPerformanceCard(
-                  rows: performanceRows,
-                  selectedRange: _performanceRange,
-                  onSelectRange: (value) => setState(() => _performanceRange = value),
-                ),
-                const SizedBox(height: 12),
+                _DoctorTodayEarningsCompactCard(rows: doneRows),
+                const SizedBox(height: 10),
                 _DoctorAppointmentDoneChartCard(
                   rows: doneRows,
                   selectedRange: _doneRange,
                   onSelectRange: (value) => setState(() => _doneRange = value),
-                ),
-                const SizedBox(height: 12),
-                _DoctorWorkloadMetricsCard(
-                  rows: workloadRows,
-                  selectedRange: _workloadRange,
-                  onSelectRange: (value) => setState(() => _workloadRange = value),
                 ),
               ],
             );
@@ -655,6 +623,83 @@ class _MetricCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DoctorTodayEarningsCompactCard extends StatelessWidget {
+  final List<({Doctor doctor, int doneCount, int totalCount, double earned})>
+      rows;
+
+  const _DoctorTodayEarningsCompactCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    final totalAppointments = rows.fold<int>(0, (s, e) => s + e.totalCount);
+    final totalDone = rows.fold<int>(0, (s, e) => s + e.doneCount);
+    final totalEarned = rows.fold<double>(0, (s, e) => s + e.earned);
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFD7E3F0)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x160D2F5B),
+              blurRadius: 10,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _miniPill('Appts', '$totalAppointments'),
+              const SizedBox(width: 8),
+              _miniPill('Done', '$totalDone'),
+              const SizedBox(width: 8),
+              _miniPill('Earned', 'Rs ${totalEarned.toStringAsFixed(0)}'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _miniPill(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6FAFF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDCE8F6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              color: Color(0xFF36557C),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF1459AD),
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -984,7 +1029,7 @@ List<Appointment> _scopedForRange({
       .toList(growable: false);
 }
 
-List<({Doctor doctor, int doneCount, int totalCount})> _doctorDoneMetrics({
+List<({Doctor doctor, int doneCount, int totalCount, double earned})> _doctorDoneMetrics({
   required List<Doctor> doctorsList,
   required List<Appointment> scoped,
 }) {
@@ -994,7 +1039,16 @@ List<({Doctor doctor, int doneCount, int totalCount})> _doctorDoneMetrics({
             .where((a) => a.operatorsIDs.contains(doctor.id))
             .toList(growable: false);
         final doneCount = rows.where((a) => a.isDone).length;
-        return (doctor: doctor, doneCount: doneCount, totalCount: rows.length);
+        final earned = rows.fold<double>(
+          0,
+          (sum, a) => sum + a.paid + a.prescriptionPaid,
+        );
+        return (
+          doctor: doctor,
+          doneCount: doneCount,
+          totalCount: rows.length,
+          earned: earned,
+        );
       })
       .where((row) => row.totalCount > 0)
       .toList(growable: false)
@@ -1352,7 +1406,7 @@ class _DoctorPerformanceCard extends StatelessWidget {
 }
 
 class _DoctorAppointmentDoneChartCard extends StatelessWidget {
-  final List<({Doctor doctor, int doneCount, int totalCount})> rows;
+  final List<({Doctor doctor, int doneCount, int totalCount, double earned})> rows;
   final String selectedRange;
   final ValueChanged<String> onSelectRange;
 
