@@ -557,9 +557,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       _TopTimingSummaryCard(
                         appointmentsForView: todaysAppointments,
                       ),
-                      _TopHourlyTimingCard(
-                        appointmentsForView: todaysAppointments,
-                      ),
                       _TopPatientGrowthCard(
                         firstVisitByPatient: firstVisitByPatient,
                         anchorDate: selectedDate,
@@ -2499,11 +2496,37 @@ class _TopDailyTreatmentCard extends StatelessWidget {
       const Color(0xFF8D5CF6),
     ];
     final topRows = rows.take(10).toList(growable: false);
+    final splitAt = (topRows.length / 2).ceil();
+    final leftRows = topRows.take(splitAt).toList(growable: false);
+    final rightRows = topRows.skip(splitAt).toList(growable: false);
+
+    Widget buildColumn(List<MapEntry<String, int>> source, int paletteOffset) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: source.asMap().entries.map((entry) {
+          final color = palette[(entry.key + paletteOffset) % palette.length];
+          final row = entry.value;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              '${row.key} (${row.value})',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
+            ),
+          );
+        }).toList(growable: false),
+      );
+    }
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
       child: SizedBox(
-        height: 140,
+        height: 148,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2524,21 +2547,13 @@ class _TopDailyTreatmentCard extends StatelessWidget {
                 )
               else
                 Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: topRows.asMap().entries.map((entry) {
-                      final color = palette[entry.key % palette.length];
-                      final row = entry.value;
-                      return Text(
-                        '${row.key} (${row.value})',
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      );
-                    }).toList(growable: false),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: buildColumn(leftRows, 0)),
+                      const SizedBox(width: 8),
+                      Expanded(child: buildColumn(rightRows, leftRows.length)),
+                    ],
                   ),
                 ),
             ],
@@ -2972,8 +2987,7 @@ class _DailyRevenueChartCard extends StatelessWidget {
                                       message:
                                           'Revenue\n${DateFormat('dd MMM').format(row.day)}\n₹${row.value.toStringAsFixed(0)}',
                                       child: Container(
-                                        height:
-                                            140 * (row.value / peak).clamp(0.0, 1.0),
+                                        height: 140 * (row.value / peak).clamp(0.0, 1.0),
                                         decoration: BoxDecoration(
                                           gradient: const LinearGradient(
                                             colors: [
@@ -3132,8 +3146,7 @@ class _AppointmentTrendChartCard extends StatelessWidget {
                                       message:
                                           'Appointments\n${DateFormat('dd MMM').format(row.day)}\n${row.count}',
                                       child: Container(
-                                        height:
-                                            140 * (row.count / peak).clamp(0.0, 1.0),
+                                        height: 140 * (row.count / peak).clamp(0.0, 1.0),
                                         decoration: BoxDecoration(
                                           gradient: const LinearGradient(
                                             colors: [
@@ -3559,14 +3572,12 @@ class _TopPatientGrowthCardBodyState extends State<_TopPatientGrowthCardBody> {
                     height: 20,
                     child: IconButton(
                       icon: const Icon(FluentIcons.chevron_right, size: 10),
-                      onPressed: _weekOffset > 0
-                          ? () => setState(() => _weekOffset -= 1)
-                          : null,
+                      onPressed: () => setState(() => _weekOffset -= 1),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 '${DateFormat('dd MMM').format(weekDays.first)} - ${DateFormat('dd MMM').format(weekDays.last)}',
                 style: const TextStyle(
@@ -3592,93 +3603,20 @@ class _TopPatientGrowthCardBodyState extends State<_TopPatientGrowthCardBody> {
                               style: const TextStyle(
                                 color: Color(0xFF36557C),
                                 fontWeight: FontWeight.w700,
-                                fontSize: 10,
+                                fontSize: 9,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 1),
                             Container(
-                              height: (86 * (value / maxBar)).clamp(4, 86).toDouble(),
+                              height: (80 * (value / maxBar)).clamp(0, 80).toDouble(),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF2D7BD8),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              DateFormat('E').format(day),
-                              style: const TextStyle(
-                                color: Color(0xFF5A7397),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(growable: false),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TopHourlyTimingCard extends StatelessWidget {
-  final List<Appointment> appointmentsForView;
-
-  const _TopHourlyTimingCard({required this.appointmentsForView});
-
-  @override
-  Widget build(BuildContext context) {
-    final hourly = List<int>.filled(24, 0, growable: false);
-    for (final a in appointmentsForView) {
-      hourly[a.date.hour] = hourly[a.date.hour] + 1;
-    }
-    final maxBar = hourly.fold<int>(1, (m, e) => e > m ? e : m);
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 260, maxWidth: 360),
-      child: SizedBox(
-        height: 180,
-        child: _CardShell(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Appointment Timing (Hourly)',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF496489),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: List<Widget>.generate(24, (hour) {
-                    final count = hourly[hour];
-                    final showLabel = hour % 3 == 0;
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 1),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Container(
-                              height: (90 * (count / maxBar)).clamp(3, 90).toDouble(),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2BA58D),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
                             const SizedBox(height: 3),
                             Text(
-                              showLabel ? '$hour' : '',
+                              DateFormat('E').format(day),
                               style: const TextStyle(
                                 color: Color(0xFF5A7397),
                                 fontWeight: FontWeight.w700,
@@ -3689,7 +3627,7 @@ class _TopHourlyTimingCard extends StatelessWidget {
                         ),
                       ),
                     );
-                  }),
+                  }).toList(growable: false),
                 ),
               ),
             ],
