@@ -1,11 +1,11 @@
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
 import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
-import 'package:apexo/features/checkin/odontogram/treatment_colors.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -90,7 +90,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
       'patientID': patient.id,
       'date': _withCurrentTime(_selectedDate).millisecondsSinceEpoch,
       'isCheckedIn': true,
-      'checkinStage': 'pending',
+      'checkinStage': 'waiting',
       'checkedInAt': DateTime.now().millisecondsSinceEpoch,
     });
     appointments.set(appointment);
@@ -144,11 +144,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
               return a.operatorsIDs.contains(_selectedDoctor);
             }).toList(growable: false);
 
-            final pending = filtered
-              .where((a) => a.checkinStage == 'pending')
+            final waiting = filtered
+              .where((a) => a.checkinStage == 'waiting' || a.checkinStage == 'pending')
               .toList(growable: false);
-            final treatment = filtered
-              .where((a) => a.checkinStage == 'treatment')
+            final withDoctor = filtered
+              .where((a) => a.checkinStage == 'with_doctor' || a.checkinStage == 'treatment')
+              .toList(growable: false);
+            final checkout = filtered
+              .where((a) => a.checkinStage == 'checkout')
               .toList(growable: false);
             final completed = filtered
               .where((a) => a.checkinStage == 'completed' || a.isDone)
@@ -456,10 +459,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           child: Column(
                             children: [
                               _WorkflowColumn(
-                                title: 'Pending',
-                                stage: 'pending',
+                                title: 'Waiting',
+                                stage: 'waiting',
                                 color: const Color(0xFFE4A11B),
-                                rows: pending,
+                                rows: waiting,
                                 showHistoryAction: true,
                                 onSelect: (a) =>
                                     setState(() => _selectedAppointment = a),
@@ -467,10 +470,20 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                               const SizedBox(height: 10),
                               _WorkflowColumn(
-                                title: 'Treatment',
-                                stage: 'treatment',
+                                title: 'With Doctor',
+                                stage: 'with_doctor',
                                 color: const Color(0xFF2D7BD8),
-                                rows: treatment,
+                                rows: withDoctor,
+                                onSelect: (a) =>
+                                    setState(() => _selectedAppointment = a),
+                                selectedAppointmentId: _selectedAppointment?.id,
+                              ),
+                              const SizedBox(height: 10),
+                              _WorkflowColumn(
+                                title: 'Checkout',
+                                stage: 'checkout',
+                                color: const Color(0xFF2BA58D),
+                                rows: checkout,
                                 onSelect: (a) =>
                                     setState(() => _selectedAppointment = a),
                                 selectedAppointmentId: _selectedAppointment?.id,
@@ -666,8 +679,8 @@ class _WorkflowRow extends StatelessWidget {
       final shouldUndo = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => ContentDialog(
-          title: const Text('Move back to Treatment?'),
-          content: const Text('This appointment will be moved back to Treatment.'),
+          title: const Text('Move back to Checkout?'),
+          content: const Text('This appointment will be moved back to Checkout.'),
           actions: [
             Button(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -679,20 +692,27 @@ class _WorkflowRow extends StatelessWidget {
                 backgroundColor:
                     WidgetStateProperty.all(const Color(0xFFD6455D)),
               ),
-              child: const Text('Move to Treatment'),
+              child: const Text('Move to Checkout'),
             ),
           ],
         ),
       );
       if (shouldUndo != true) return;
-      appointment.checkinStage = 'treatment';
+      appointment.checkinStage = 'checkout';
       appointment.isDone = false;
       appointments.set(appointment);
       return;
     }
 
-    if (stage == 'pending') {
-      appointment.checkinStage = 'treatment';
+    if (stage == 'waiting') {
+      appointment.checkinStage = 'with_doctor';
+      appointment.isDone = false;
+      appointments.set(appointment);
+      return;
+    }
+
+    if (stage == 'with_doctor') {
+      appointment.checkinStage = 'checkout';
       appointment.isDone = false;
       appointments.set(appointment);
       return;
@@ -865,18 +885,22 @@ class _WorkflowRow extends StatelessWidget {
                 backgroundColor: WidgetStateProperty.all(
                   stage == 'completed'
                       ? const Color(0xFFD6455D)
-                      : stage == 'pending'
+                      : stage == 'waiting'
                           ? const Color(0xFF2D7BD8)
-                          : const Color(0xFF3B9A42),
+                          : stage == 'with_doctor'
+                              ? const Color(0xFF2BA58D)
+                              : const Color(0xFF3B9A42),
                 ),
                 foregroundColor: WidgetStateProperty.all(Colors.white),
               ),
               child: Text(
                 stage == 'completed'
-                    ? 'Back to Treatment'
-                    : stage == 'pending'
-                        ? 'Start Treatment'
-                        : 'Complete',
+                    ? 'Back to Checkout'
+                    : stage == 'waiting'
+                        ? 'Move to Doctor'
+                        : stage == 'with_doctor'
+                            ? 'Move to Checkout'
+                            : 'Complete',
               ),
             ),
             if (showHistoryAction) ...[
@@ -924,7 +948,7 @@ class _CheckinHistoryPanel extends StatelessWidget {
                 height: 220,
                 child: Center(
                   child: Text(
-                    'Select a patient from Pending, Treatment, or Completed to view history.',
+                    'Select a patient from Waiting, With Doctor, Checkout, or Completed to view history.',
                     style: TextStyle(color: Color(0xFF6D84A8)),
                   ),
                 ),
@@ -974,63 +998,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         .toList(growable: false);
 
     final lastAppointment = otherRows.isNotEmpty ? otherRows.first : null;
-
-    Widget historyCard(Appointment a) {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF6FAFF),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE2ECF8)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  DateFormat('dd MMM yyyy • h:mm a').format(a.date),
-                  style: const TextStyle(
-                    color: Color(0xFF2F4F76),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  a.checkinStage == 'completed' || a.isDone
-                      ? 'Completed'
-                      : a.checkinStage == 'treatment'
-                          ? 'Treatment'
-                          : 'Pending',
-                  style: TextStyle(
-                    color: a.checkinStage == 'completed' || a.isDone
-                        ? const Color(0xFF3B9A42)
-                        : a.checkinStage == 'treatment'
-                            ? const Color(0xFF2D7BD8)
-                            : const Color(0xFFE4A11B),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 5),
-            Text(
-              a.operators.isEmpty
-                  ? 'Doctor: Unassigned'
-                  : 'Doctor: ${a.operators.map((d) => d.title).join(', ')}',
-              style: const TextStyle(
-                color: Color(0xFF1357A8),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1085,7 +1052,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
           ],
         ),
         const SizedBox(height: 10),
-        if (appointment.checkinStage == 'treatment')
+        if (appointment.checkinStage == 'with_doctor' ||
+            appointment.checkinStage == 'checkout')
           _CheckinOperativeForm(
               appointment: appointment, allAppointmentsForPatient: all)
         else
@@ -1099,7 +1067,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               border: Border.all(color: const Color(0xFFE2ECF8)),
             ),
             child: const Text(
-              'Operative payment and treatment details are available only in Treatment stage.',
+              'Operative payment and treatment details are available in With Doctor and Checkout stages.',
               style: TextStyle(color: Color(0xFF5F789B), fontSize: 12),
             ),
           ),
@@ -1119,22 +1087,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               style: const TextStyle(color: Color(0xFF5F789B), fontSize: 12),
             ),
           ),
-        const Text(
-          'Other Appointments',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2C4E76),
-          ),
-        ),
-        const SizedBox(height: 8),
         if (otherRows.isEmpty)
-          const Text(
-            'No older history found for this patient.',
-            style: TextStyle(color: Color(0xFF6D84A8)),
-          )
-        else
-          ...otherRows.map(historyCard),
+          const SizedBox.shrink(),
       ],
     );
   }
@@ -1430,7 +1384,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   Future<void> _confirmDoneToggle() async {
     final a = widget.appointment;
     if (a.isDone) {
-      a.checkinStage = 'treatment';
+      a.checkinStage = 'checkout';
       setState(() => a.isDone = false);
       appointments.set(a);
       return;
@@ -1507,7 +1461,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 children: [
                   InfoLabel(
                     label: 'Diagnosis:',
-                    child: _ColorChipInput(
+                    child: _CheckinSearchableTagInput(
                       initialValues: a.diagnosis,
                       suggestions: allDiagnosis,
                       placeholder: 'Add diagnosis...',
@@ -1544,7 +1498,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   const SizedBox(height: 10),
                   InfoLabel(
                     label: 'Treatment:',
-                    child: _ColorChipInput(
+                    child: _CheckinSearchableTagInput(
                       initialValues: _selectedTreatments.toList(growable: false),
                       suggestions: allTreatments.map((t) => t.name).toList(growable: false),
                       placeholder: 'Add treatment...',
@@ -1714,6 +1668,18 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         ],
                         onChanged: (_) => _applyDiscount(),
                         placeholder: 'Discount',
+                        suffix: _activeDiscountMode == 'percent'
+                            ? const Padding(
+                                padding: EdgeInsets.only(right: 10),
+                                child: Text(
+                                  '%',
+                                  style: TextStyle(
+                                    color: Color(0xFF5A7397),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              )
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1737,7 +1703,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
-                      children: [5, 10, 15, 20, 25]
+                      children: ((_activeDiscountMode ?? _discountType) == 'percent'
+                              ? [5, 10, 15, 20, 25]
+                              : [50, 100, 200, 500, 1000])
                           .map(
                             (v) => _quickChip(
                               label: _discountType == 'percent' ? '$v%' : '₹$v',
@@ -2016,13 +1984,13 @@ class _EnhancedTeethPickerCard extends StatelessWidget {
   }
 }
 
-class _ColorChipInput extends StatefulWidget {
+class _CheckinSearchableTagInput extends StatelessWidget {
   final List<String> initialValues;
   final List<String> suggestions;
   final String placeholder;
   final ValueChanged<List<String>> onChanged;
 
-  const _ColorChipInput({
+  const _CheckinSearchableTagInput({
     required this.initialValues,
     required this.suggestions,
     required this.placeholder,
@@ -2030,177 +1998,28 @@ class _ColorChipInput extends StatefulWidget {
   });
 
   @override
-  State<_ColorChipInput> createState() => _ColorChipInputState();
-}
-
-class _ColorChipInputState extends State<_ColorChipInput> {
-  late final TextEditingController _controller;
-  late List<String> _values;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-    _values = widget.initialValues
-        .where((e) => e.trim().isNotEmpty)
-        .map((e) => e.trim())
-        .toSet()
-        .toList(growable: true);
-  }
-
-  @override
-  void didUpdateWidget(covariant _ColorChipInput oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialValues.join('|') != widget.initialValues.join('|')) {
-      _values = widget.initialValues
-          .where((e) => e.trim().isNotEmpty)
-          .map((e) => e.trim())
-          .toSet()
-          .toList(growable: true);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _addValue(String raw) {
-    final value = raw.trim();
-    if (value.isEmpty) return;
-    if (_values.any((v) => v.toLowerCase() == value.toLowerCase())) {
-      _controller.clear();
-      return;
-    }
-    setState(() {
-      _values.add(value);
-      _controller.clear();
-    });
-    widget.onChanged(_values.toList(growable: false));
-  }
-
-  void _removeValue(String value) {
-    setState(() {
-      _values.removeWhere((v) => v == value);
-    });
-    widget.onChanged(_values.toList(growable: false));
-  }
-
-  Color _chipBg(String value) {
-    const palette = [
-      Color(0xFFE8F1FF),
-      Color(0xFFEAF9F4),
-      Color(0xFFFFF3E8),
-      Color(0xFFF2EEFF),
-      Color(0xFFFFEAF1),
-      Color(0xFFE9F7FF),
-    ];
-    return palette[value.hashCode.abs() % palette.length];
-  }
-
-  Color _chipBorder(String value) {
-    const palette = [
-      Color(0xFF8FB7EE),
-      Color(0xFF95D3B7),
-      Color(0xFFE7BC8F),
-      Color(0xFFB7A6E8),
-      Color(0xFFE59AB9),
-      Color(0xFF9FD0E8),
-    ];
-    return palette[value.hashCode.abs() % palette.length];
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final filteredSuggestions = widget.suggestions
-        .where((s) => !_values.any((v) => v.toLowerCase() == s.toLowerCase()))
-        .take(14)
-        .toList(growable: false);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextBox(
-                controller: _controller,
-                placeholder: widget.placeholder,
-                onSubmitted: _addValue,
-              ),
-            ),
-            const SizedBox(width: 6),
-            FilledButton(
-              onPressed: () => _addValue(_controller.text),
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: _values.map((value) {
-            final bg = _chipBg(value);
-            final border = _chipBorder(value);
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: border),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      color: Color(0xFF274B73),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () => _removeValue(value),
-                    child: const Icon(FluentIcons.chrome_close, size: 10),
-                  ),
-                ],
-              ),
-            );
-          }).toList(growable: false),
-        ),
-        if (filteredSuggestions.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: filteredSuggestions.map((value) {
-              return GestureDetector(
-                onTap: () => _addValue(value),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F7FD),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFD5E5F7)),
-                  ),
-                  child: Text(
-                    value,
-                    style: const TextStyle(
-                      color: Color(0xFF2F5B88),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(growable: false),
-          ),
-        ],
-      ],
+    return TagInputWidget(
+      suggestions: suggestions
+          .map((item) => TagInputItem(value: item, label: item))
+          .toList(growable: false),
+      initialValue: initialValues
+          .where((item) => item.trim().isNotEmpty)
+          .map((item) => TagInputItem(value: item.trim(), label: item.trim()))
+          .toList(growable: false),
+      strict: false,
+      limit: 999,
+      placeholder: placeholder,
+      clearButton: true,
+      onChanged: (items) {
+        onChanged(
+          items
+              .where((item) => item.value != null && item.value!.trim().isNotEmpty)
+              .map((item) => item.value!.trim())
+              .toSet()
+              .toList(growable: false),
+        );
+      },
     );
   }
 }
@@ -2239,37 +2058,6 @@ class _SvgOdontogramCard extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isDesktop = constraints.maxWidth >= 980;
-          final selectedTooth =
-              teeth[selectedToothId] ?? ToothState(toothId: selectedToothId);
-
-          Widget surfaceButton(String label, ToothSurface surface) {
-            final value = selectedTooth.surfaces[surface];
-            final active = value != null;
-            final color = getTreatmentColor(value);
-            return GestureDetector(
-              onTap: () => onSurfaceTap(selectedToothId, surface),
-              child: Container(
-                width: 36,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: active ? color.withValues(alpha: 0.18) : const Color(0xFFF4F8FD),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: active ? color : const Color(0xFFD6E2F0),
-                  ),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: active ? color : const Color(0xFF355279),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            );
-          }
 
           final centerPanel = Expanded(
             child: Container(
@@ -2333,18 +2121,6 @@ class _SvgOdontogramCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     fontSize: 20,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    surfaceButton('M', ToothSurface.mesial),
-                    surfaceButton('D', ToothSurface.distal),
-                    surfaceButton('O', ToothSurface.occlusal),
-                    surfaceButton('B', ToothSurface.buccal),
-                    surfaceButton('L', ToothSurface.lingual),
-                  ],
                 ),
                 const SizedBox(height: 8),
                 const Text(

@@ -22,15 +22,9 @@ class ReportV2Screen extends StatelessWidget {
             final allAppointments =
                 appointments.present.values.toList(growable: false);
             final now = DateTime.now();
-            final today = DateTime(now.year, now.month, now.day);
-            final tomorrow = today.add(const Duration(days: 1));
             final monthStart = DateTime(now.year, now.month, 1);
             final nextMonthStart = DateTime(now.year, now.month + 1, 1);
 
-            final todaysAppointments = allAppointments
-                .where(
-                    (a) => !a.date.isBefore(today) && a.date.isBefore(tomorrow))
-                .toList(growable: false);
             final thisMonthAppointments = allAppointments
                 .where((a) =>
                     !a.date.isBefore(monthStart) &&
@@ -45,10 +39,6 @@ class ReportV2Screen extends StatelessWidget {
                   .where((a) => !a.firstAppointmentForThisPatient)
                   .length,
             );
-            final monthlyTreatmentRows =
-                _treatmentDistributionRows(thisMonthAppointments);
-            final dailyTreatmentRows =
-                _treatmentDistributionRows(todaysAppointments);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -78,16 +68,16 @@ class ReportV2Screen extends StatelessWidget {
                     _MonthlyAppointmentsTrendWindowCard(rows: allAppointments),
                     _DailyRevenueTrendWindowCard(rows: allAppointments),
                     _MonthlyRevenueTrendWindowCard(rows: allAppointments),
+                    _MonthlyTreatmentDistributionCard(
+                      rows: allAppointments,
+                    ),
+                    _TrafficByTimeCard(rows: allAppointments),
+                    _TrafficByDayCard(rows: allAppointments),
+                    _AppointmentMetricsCard(rows: allAppointments),
                     _NewVsReturningCard(
                       newCount: newVsReturning.newCount,
                       returningCount: newVsReturning.returningCount,
                     ),
-                    _MonthlyTreatmentDistributionCard(
-                        rows: monthlyTreatmentRows),
-                    _DailyTreatmentDistributionCard(rows: dailyTreatmentRows),
-                    _TrafficByTimeCard(rows: allAppointments),
-                    _TrafficByDayCard(rows: allAppointments),
-                    _AppointmentMetricsCard(rows: allAppointments),
                   ],
                 ),
               ],
@@ -278,13 +268,29 @@ class _NewVsReturningCard extends StatelessWidget {
   }
 }
 
-class _MonthlyTreatmentDistributionCard extends StatelessWidget {
-  final List<MapEntry<String, int>> rows;
+class _MonthlyTreatmentDistributionCard extends StatefulWidget {
+  final List<Appointment> rows;
 
   const _MonthlyTreatmentDistributionCard({required this.rows});
 
   @override
+  State<_MonthlyTreatmentDistributionCard> createState() =>
+      _MonthlyTreatmentDistributionCardState();
+}
+
+class _MonthlyTreatmentDistributionCardState
+    extends State<_MonthlyTreatmentDistributionCard> {
+  int _monthOffset = 0;
+
+  @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month - _monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final scoped = widget.rows
+        .where((a) => !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
+        .toList(growable: false);
+    final rows = _treatmentDistributionRows(scoped);
     final total = rows.fold<int>(0, (s, e) => s + e.value);
     final colors = const [
       Color(0xFF2D7BD8),
@@ -299,141 +305,88 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
       width: 560,
       child: _ReportContainer(
         title: 'Monthly Treatment Distribution',
-        child: rows.isEmpty
-            ? const Text(
-                'No treatment data for the current month.',
-                style: TextStyle(color: Color(0xFF6D84A8)),
-              )
-            : Row(
-                children: [
-                  SizedBox(
-                    width: 140,
-                    height: 140,
-                    child: CustomPaint(
-                      painter: _DonutPainter(
-                        rows: rows,
-                        colors: colors,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$total',
-                          style: const TextStyle(
-                            color: Color(0xFF1D3E67),
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
+        subtitle: DateFormat('MMMM yyyy').format(monthStart),
+        trailing: _TrendNavButtons(
+          canGoForward: _monthOffset > 0,
+          onBack: () => setState(() => _monthOffset += 1),
+          onForward: _monthOffset > 0
+              ? () => setState(() => _monthOffset -= 1)
+              : null,
+        ),
+        child: SizedBox(
+          height: 250,
+          child: rows.isEmpty
+              ? const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'No treatment data for this month.',
+                    style: TextStyle(color: Color(0xFF6D84A8)),
+                  ),
+                )
+              : Row(
+                  children: [
+                    SizedBox(
+                      width: 124,
+                      height: 124,
+                      child: CustomPaint(
+                        painter: _DonutPainter(
+                          rows: rows,
+                          colors: colors,
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: rows.asMap().entries.map((entry) {
-                        final row = entry.value;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: colors[entry.key % colors.length],
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  '${row.key} (${row.value})',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF36557C),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(growable: false),
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
-class _DailyTreatmentDistributionCard extends StatelessWidget {
-  final List<MapEntry<String, int>> rows;
-
-  const _DailyTreatmentDistributionCard({required this.rows});
-
-  @override
-  Widget build(BuildContext context) {
-    final max = rows.fold<int>(1, (m, e) => e.value > m ? e.value : m);
-    return SizedBox(
-      width: 560,
-      child: _ReportContainer(
-        title: 'Daily Treatment Distribution',
-        child: rows.isEmpty
-            ? const Text(
-                'No treatment data for today.',
-                style: TextStyle(color: Color(0xFF6D84A8)),
-              )
-            : Column(
-                children: rows.map((row) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 190,
+                        child: Center(
                           child: Text(
-                            row.key,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            '$total',
                             style: const TextStyle(
-                              color: Color(0xFF1F446E),
+                              color: Color(0xFF1D3E67),
+                              fontSize: 18,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              height: 8,
-                              color: const Color(0xFFEAF2FC),
-                              child: FractionallySizedBox(
-                                alignment: Alignment.centerLeft,
-                                widthFactor: (row.value / max).clamp(0.0, 1.0),
-                                child:
-                                    Container(color: const Color(0xFF2D7BD8)),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${row.value}',
-                          style: const TextStyle(
-                            color: Color(0xFF36557C),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  );
-                }).toList(growable: false),
-              ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: rows.asMap().entries.map((entry) {
+                            final row = entry.value;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 9,
+                                    height: 9,
+                                    decoration: BoxDecoration(
+                                      color: colors[entry.key % colors.length],
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      '${row.key} (${row.value})',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF36557C),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(growable: false),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -863,7 +816,7 @@ class _SimpleBarsCard extends StatelessWidget {
                         const SizedBox(height: 3),
                         Container(
                           height: (145 * (entry.value.value / max))
-                              .clamp(4, 145)
+                              .clamp(0, 145)
                               .toDouble(),
                           decoration: BoxDecoration(
                             color: barColor,
