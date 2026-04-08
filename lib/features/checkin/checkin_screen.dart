@@ -1,5 +1,4 @@
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
-import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -91,6 +90,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
       'patientID': patient.id,
       'date': _withCurrentTime(_selectedDate).millisecondsSinceEpoch,
       'isCheckedIn': true,
+      'checkinStage': 'pending',
       'checkedInAt': DateTime.now().millisecondsSinceEpoch,
     });
     appointments.set(appointment);
@@ -144,10 +144,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
               return a.operatorsIDs.contains(_selectedDoctor);
             }).toList(growable: false);
 
-            final pending =
-                filtered.where((a) => !a.isDone).toList(growable: false);
-            final completed =
-                filtered.where((a) => a.isDone).toList(growable: false);
+            final pending = filtered
+              .where((a) => a.checkinStage == 'pending')
+              .toList(growable: false);
+            final treatment = filtered
+              .where((a) => a.checkinStage == 'treatment')
+              .toList(growable: false);
+            final completed = filtered
+              .where((a) => a.checkinStage == 'completed' || a.isDone)
+              .toList(growable: false);
 
             final allPatients = patients.present.values.toList(growable: false);
             final quickPatientSearchResults = _quickPatientSearchQuery.isEmpty
@@ -452,6 +457,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             children: [
                               _WorkflowColumn(
                                 title: 'Pending',
+                                stage: 'pending',
                                 color: const Color(0xFFE4A11B),
                                 rows: pending,
                                 showHistoryAction: true,
@@ -461,7 +467,18 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                               const SizedBox(height: 10),
                               _WorkflowColumn(
+                                title: 'Treatment',
+                                stage: 'treatment',
+                                color: const Color(0xFF2D7BD8),
+                                rows: treatment,
+                                onSelect: (a) =>
+                                    setState(() => _selectedAppointment = a),
+                                selectedAppointmentId: _selectedAppointment?.id,
+                              ),
+                              const SizedBox(height: 10),
+                              _WorkflowColumn(
                                 title: 'Completed',
+                                stage: 'completed',
                                 color: const Color(0xFF3B9A42),
                                 rows: completed,
                                 onSelect: (a) =>
@@ -549,6 +566,7 @@ class _DoctorFilterChip extends StatelessWidget {
 
 class _WorkflowColumn extends StatelessWidget {
   final String title;
+  final String stage;
   final Color color;
   final List<Appointment> rows;
   final bool showHistoryAction;
@@ -557,6 +575,7 @@ class _WorkflowColumn extends StatelessWidget {
 
   const _WorkflowColumn({
     required this.title,
+    required this.stage,
     required this.color,
     required this.rows,
     this.showHistoryAction = false,
@@ -615,6 +634,7 @@ class _WorkflowColumn extends StatelessWidget {
             ...rows.map(
               (a) => _WorkflowRow(
                 appointment: a,
+                stage: stage,
                 showHistoryAction: showHistoryAction,
                 selected: selectedAppointmentId == a.id,
                 onSelect: onSelect,
@@ -628,25 +648,26 @@ class _WorkflowColumn extends StatelessWidget {
 
 class _WorkflowRow extends StatelessWidget {
   final Appointment appointment;
+  final String stage;
   final bool showHistoryAction;
   final bool selected;
   final ValueChanged<Appointment>? onSelect;
 
   const _WorkflowRow({
     required this.appointment,
+    required this.stage,
     this.showHistoryAction = false,
     this.selected = false,
     this.onSelect,
   });
 
-  Future<void> _toggleDone(BuildContext context) async {
-    if (appointment.isDone) {
+  Future<void> _moveStage(BuildContext context) async {
+    if (stage == 'completed') {
       final shouldUndo = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => ContentDialog(
-          title: const Text('Undo completion?'),
-          content:
-              const Text('This appointment will be moved back to Pending.'),
+          title: const Text('Move back to Treatment?'),
+          content: const Text('This appointment will be moved back to Treatment.'),
           actions: [
             Button(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -658,12 +679,20 @@ class _WorkflowRow extends StatelessWidget {
                 backgroundColor:
                     WidgetStateProperty.all(const Color(0xFFD6455D)),
               ),
-              child: const Text('Undo Complete'),
+              child: const Text('Move to Treatment'),
             ),
           ],
         ),
       );
       if (shouldUndo != true) return;
+      appointment.checkinStage = 'treatment';
+      appointment.isDone = false;
+      appointments.set(appointment);
+      return;
+    }
+
+    if (stage == 'pending') {
+      appointment.checkinStage = 'treatment';
       appointment.isDone = false;
       appointments.set(appointment);
       return;
@@ -672,7 +701,7 @@ class _WorkflowRow extends StatelessWidget {
     final shouldComplete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => ContentDialog(
-        title: const Text('Mark as complete?'),
+        title: const Text('Move to Completed?'),
         content: const Text('This appointment will be moved to Completed.'),
         actions: [
           Button(
@@ -691,6 +720,7 @@ class _WorkflowRow extends StatelessWidget {
     );
 
     if (shouldComplete != true) return;
+    appointment.checkinStage = 'completed';
     appointment.isDone = true;
     appointments.set(appointment);
   }
@@ -830,16 +860,24 @@ class _WorkflowRow extends StatelessWidget {
               ),
             ),
             FilledButton(
-              onPressed: () => _toggleDone(context),
+              onPressed: () => _moveStage(context),
               style: ButtonStyle(
                 backgroundColor: WidgetStateProperty.all(
-                  appointment.isDone
+                  stage == 'completed'
                       ? const Color(0xFFD6455D)
-                      : const Color(0xFF3B9A42),
+                      : stage == 'pending'
+                          ? const Color(0xFF2D7BD8)
+                          : const Color(0xFF3B9A42),
                 ),
                 foregroundColor: WidgetStateProperty.all(Colors.white),
               ),
-              child: Text(appointment.isDone ? 'Undo Complete' : 'Complete'),
+              child: Text(
+                stage == 'completed'
+                    ? 'Back to Treatment'
+                    : stage == 'pending'
+                        ? 'Start Treatment'
+                        : 'Complete',
+              ),
             ),
             if (showHistoryAction) ...[
               const SizedBox(width: 8),
@@ -886,7 +924,7 @@ class _CheckinHistoryPanel extends StatelessWidget {
                 height: 220,
                 child: Center(
                   child: Text(
-                    'Select a patient from Pending or Completed to view history.',
+                    'Select a patient from Pending, Treatment, or Completed to view history.',
                     style: TextStyle(color: Color(0xFF6D84A8)),
                   ),
                 ),
@@ -961,11 +999,17 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                 ),
                 const Spacer(),
                 Text(
-                  a.isDone ? 'Completed' : 'Pending',
+                  a.checkinStage == 'completed' || a.isDone
+                      ? 'Completed'
+                      : a.checkinStage == 'treatment'
+                          ? 'Treatment'
+                          : 'Pending',
                   style: TextStyle(
-                    color: a.isDone
+                    color: a.checkinStage == 'completed' || a.isDone
                         ? const Color(0xFF3B9A42)
-                        : const Color(0xFFE4A11B),
+                        : a.checkinStage == 'treatment'
+                            ? const Color(0xFF2D7BD8)
+                            : const Color(0xFFE4A11B),
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
@@ -1041,8 +1085,24 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
           ],
         ),
         const SizedBox(height: 10),
-        _CheckinOperativeForm(
-            appointment: appointment, allAppointmentsForPatient: all),
+        if (appointment.checkinStage == 'treatment')
+          _CheckinOperativeForm(
+              appointment: appointment, allAppointmentsForPatient: all)
+        else
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7FBFF),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE2ECF8)),
+            ),
+            child: const Text(
+              'Operative payment and treatment details are available only in Treatment stage.',
+              style: TextStyle(color: Color(0xFF5F789B), fontSize: 12),
+            ),
+          ),
         const SizedBox(height: 10),
         if (patientNotes.isNotEmpty)
           Container(
@@ -1370,6 +1430,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   Future<void> _confirmDoneToggle() async {
     final a = widget.appointment;
     if (a.isDone) {
+      a.checkinStage = 'treatment';
       setState(() => a.isDone = false);
       appointments.set(a);
       return;
@@ -1397,6 +1458,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     );
 
     if (shouldComplete != true) return;
+    a.checkinStage = 'completed';
     setState(() => a.isDone = true);
     appointments.set(a);
   }
@@ -1445,24 +1507,14 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 children: [
                   InfoLabel(
                     label: 'Diagnosis:',
-                    child: TagInputWidget(
-                      key: ValueKey('diag-${a.diagnosis.join('|')}'),
-                      suggestions: allDiagnosis
-                          .map((d) => TagInputItem(value: d, label: d))
-                          .toList(),
+                    child: _ColorChipInput(
+                      initialValues: a.diagnosis,
+                      suggestions: allDiagnosis,
+                      placeholder: 'Add diagnosis...',
                       onChanged: (values) {
-                        a.diagnosis = values
-                            .where((e) => e.value != null)
-                            .map((e) => e.value!)
-                            .toList(growable: false);
+                        a.diagnosis = values;
                         appointments.set(a);
                       },
-                      initialValue: a.diagnosis
-                          .map((v) => TagInputItem(value: v, label: v))
-                          .toList(),
-                      strict: false,
-                      limit: 999,
-                      placeholder: 'Diagnosis...',
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -1492,30 +1544,16 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   const SizedBox(height: 10),
                   InfoLabel(
                     label: 'Treatment:',
-                    child: TagInputWidget(
-                      key: ValueKey(
-                        'tx-${_selectedTreatments.toList()..sort()}',
-                      ),
-                      suggestions: allTreatments
-                          .map((t) => TagInputItem(
-                              value: t.name, label: '${t.name} - ₹${t.price}'))
-                          .toList(),
+                    child: _ColorChipInput(
+                      initialValues: _selectedTreatments.toList(growable: false),
+                      suggestions: allTreatments.map((t) => t.name).toList(growable: false),
+                      placeholder: 'Add treatment...',
                       onChanged: (values) {
-                        _selectedTreatments = values
-                            .where((e) => e.value != null)
-                            .map((e) => e.value!)
-                            .toSet();
-                        a.selectedTreatments =
-                            _selectedTreatments.toList(growable: false);
+                        _selectedTreatments = values.toSet();
+                        a.selectedTreatments = values;
                         appointments.set(a);
                         setState(() {});
                       },
-                      initialValue: _selectedTreatments
-                          .map((v) => TagInputItem(value: v, label: v))
-                          .toList(growable: false),
-                      strict: false,
-                      limit: 999,
-                      placeholder: 'Treatments...',
                     ),
                   ),
                   if (topTreatments.isNotEmpty) ...[
@@ -1603,7 +1641,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   const SizedBox(height: 10),
                   _SvgOdontogramCard(
                     teeth: _teethStates,
-                    selectedTreatment: _selectedOdontogramTreatment,
                     selectedToothId: _selectedOdontogramToothId,
                     selectedToothNote: _odontogramNotes[_selectedOdontogramToothId] ?? '',
                     onToothNoteChanged: (value) {
@@ -1611,8 +1648,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     },
                     onSelectTooth: (toothId) =>
                         setState(() => _selectedOdontogramToothId = toothId),
-                    onTreatmentChanged: (value) =>
-                        setState(() => _selectedOdontogramTreatment = value),
                     onSurfaceTap: _onOdontogramSurfaceTap,
                   ),
                 ],
@@ -1981,60 +2016,214 @@ class _EnhancedTeethPickerCard extends StatelessWidget {
   }
 }
 
+class _ColorChipInput extends StatefulWidget {
+  final List<String> initialValues;
+  final List<String> suggestions;
+  final String placeholder;
+  final ValueChanged<List<String>> onChanged;
+
+  const _ColorChipInput({
+    required this.initialValues,
+    required this.suggestions,
+    required this.placeholder,
+    required this.onChanged,
+  });
+
+  @override
+  State<_ColorChipInput> createState() => _ColorChipInputState();
+}
+
+class _ColorChipInputState extends State<_ColorChipInput> {
+  late final TextEditingController _controller;
+  late List<String> _values;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _values = widget.initialValues
+        .where((e) => e.trim().isNotEmpty)
+        .map((e) => e.trim())
+        .toSet()
+        .toList(growable: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ColorChipInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialValues.join('|') != widget.initialValues.join('|')) {
+      _values = widget.initialValues
+          .where((e) => e.trim().isNotEmpty)
+          .map((e) => e.trim())
+          .toSet()
+          .toList(growable: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _addValue(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return;
+    if (_values.any((v) => v.toLowerCase() == value.toLowerCase())) {
+      _controller.clear();
+      return;
+    }
+    setState(() {
+      _values.add(value);
+      _controller.clear();
+    });
+    widget.onChanged(_values.toList(growable: false));
+  }
+
+  void _removeValue(String value) {
+    setState(() {
+      _values.removeWhere((v) => v == value);
+    });
+    widget.onChanged(_values.toList(growable: false));
+  }
+
+  Color _chipBg(String value) {
+    const palette = [
+      Color(0xFFE8F1FF),
+      Color(0xFFEAF9F4),
+      Color(0xFFFFF3E8),
+      Color(0xFFF2EEFF),
+      Color(0xFFFFEAF1),
+      Color(0xFFE9F7FF),
+    ];
+    return palette[value.hashCode.abs() % palette.length];
+  }
+
+  Color _chipBorder(String value) {
+    const palette = [
+      Color(0xFF8FB7EE),
+      Color(0xFF95D3B7),
+      Color(0xFFE7BC8F),
+      Color(0xFFB7A6E8),
+      Color(0xFFE59AB9),
+      Color(0xFF9FD0E8),
+    ];
+    return palette[value.hashCode.abs() % palette.length];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredSuggestions = widget.suggestions
+        .where((s) => !_values.any((v) => v.toLowerCase() == s.toLowerCase()))
+        .take(14)
+        .toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TextBox(
+                controller: _controller,
+                placeholder: widget.placeholder,
+                onSubmitted: _addValue,
+              ),
+            ),
+            const SizedBox(width: 6),
+            FilledButton(
+              onPressed: () => _addValue(_controller.text),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: _values.map((value) {
+            final bg = _chipBg(value);
+            final border = _chipBorder(value);
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      color: Color(0xFF274B73),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => _removeValue(value),
+                    child: const Icon(FluentIcons.chrome_close, size: 10),
+                  ),
+                ],
+              ),
+            );
+          }).toList(growable: false),
+        ),
+        if (filteredSuggestions.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: filteredSuggestions.map((value) {
+              return GestureDetector(
+                onTap: () => _addValue(value),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F7FD),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFD5E5F7)),
+                  ),
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      color: Color(0xFF2F5B88),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(growable: false),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _SvgOdontogramCard extends StatelessWidget {
   final Map<String, ToothState> teeth;
-  final TreatmentType selectedTreatment;
   final String selectedToothId;
   final String selectedToothNote;
   final ValueChanged<String> onSelectTooth;
   final ValueChanged<String> onToothNoteChanged;
-  final ValueChanged<TreatmentType> onTreatmentChanged;
   final void Function(String toothId, ToothSurface surface) onSurfaceTap;
 
   const _SvgOdontogramCard({
     required this.teeth,
-    required this.selectedTreatment,
     required this.selectedToothId,
     required this.selectedToothNote,
     required this.onSelectTooth,
     required this.onToothNoteChanged,
-    required this.onTreatmentChanged,
     required this.onSurfaceTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    Widget treatmentChip(TreatmentType treatment, String label) {
-      final selected = selectedTreatment == treatment;
-      return GestureDetector(
-        onTap: () => onTreatmentChanged(treatment),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected
-                ? getTreatmentColor(treatment).withValues(alpha: 0.18)
-                : const Color(0xFFF4F8FD),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected
-                  ? getTreatmentColor(treatment)
-                  : const Color(0xFFD6E2F0),
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected
-                  ? getTreatmentColor(treatment)
-                  : const Color(0xFF355279),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      );
-    }
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
@@ -2052,9 +2241,6 @@ class _SvgOdontogramCard extends StatelessWidget {
           final isDesktop = constraints.maxWidth >= 980;
           final selectedTooth =
               teeth[selectedToothId] ?? ToothState(toothId: selectedToothId);
-          final activeTreatments = selectedTooth.surfaces.entries
-              .where((entry) => entry.value != null)
-              .toList(growable: false);
 
           Widget surfaceButton(String label, ToothSurface surface) {
             final value = selectedTooth.surfaces[surface];
@@ -2084,41 +2270,6 @@ class _SvgOdontogramCard extends StatelessWidget {
               ),
             );
           }
-
-          final treatmentSelectionPanel = Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF4FC),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFD3E1F3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Treatment Selection',
-                  style: TextStyle(
-                    color: Color(0xFF2C4E76),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    treatmentChip(TreatmentType.filling, 'Filling'),
-                    treatmentChip(TreatmentType.rootCanal, 'Root Canal'),
-                    treatmentChip(TreatmentType.crown, 'Crown'),
-                    treatmentChip(TreatmentType.extraction, 'Extraction'),
-                    treatmentChip(TreatmentType.implant, 'Implant'),
-                  ],
-                ),
-              ],
-            ),
-          );
 
           final centerPanel = Expanded(
             child: Container(
@@ -2195,59 +2346,6 @@ class _SvgOdontogramCard extends StatelessWidget {
                     surfaceButton('L', ToothSurface.lingual),
                   ],
                 ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Current Treatments:',
-                  style: TextStyle(
-                    color: Color(0xFF2C4E76),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                if (activeTreatments.isEmpty)
-                  const Text(
-                    'No treatment assigned.',
-                    style: TextStyle(
-                      color: Color(0xFF6D84A8),
-                      fontSize: 12,
-                    ),
-                  )
-                else
-                  ...activeTreatments.map((entry) {
-                    final label = switch (entry.key) {
-                      ToothSurface.mesial => 'M',
-                      ToothSurface.distal => 'D',
-                      ToothSurface.occlusal => 'O',
-                      ToothSurface.buccal => 'B',
-                      ToothSurface.lingual => 'L',
-                    };
-                    final treatmentLabel = switch (entry.value!) {
-                      TreatmentType.filling => 'Filling',
-                      TreatmentType.rootCanal => 'Root Canal',
-                      TreatmentType.crown => 'Crown',
-                      TreatmentType.extraction => 'Extraction',
-                      TreatmentType.implant => 'Implant',
-                    };
-                    return Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 5),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5FAFF),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFD5E5F7)),
-                      ),
-                      child: Text(
-                        '$label - $treatmentLabel',
-                        style: const TextStyle(
-                          color: Color(0xFF355279),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    );
-                  }),
                 const SizedBox(height: 8),
                 const Text(
                   'Notes:',
@@ -2283,8 +2381,6 @@ class _SvgOdontogramCard extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                treatmentSelectionPanel,
-                const SizedBox(height: 8),
                 SizedBox(height: 280, child: centerPanel),
                 const SizedBox(height: 8),
                 rightPanel,
@@ -2295,8 +2391,6 @@ class _SvgOdontogramCard extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              treatmentSelectionPanel,
-              const SizedBox(height: 8),
               SizedBox(
                 height: 360,
                 child: Row(

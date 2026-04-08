@@ -68,7 +68,6 @@ class TopTabsNavBar extends StatelessWidget {
       'checkin',
       'doctors',
       'doctors_v2',
-      'statistics',
       'report_v2',
     ];
 

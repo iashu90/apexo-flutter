@@ -440,57 +440,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final revenueToday = todaysAppointments.fold<double>(
             0, (sum, a) => sum + a.paid + a.prescriptionPaid);
 
-        final thisMonthStart = DateTime(selectedDate.year, selectedDate.month, 1);
-        final nextMonthStart = DateTime(selectedDate.year, selectedDate.month + 1, 1);
-        final lastMonthStart = DateTime(selectedDate.year, selectedDate.month - 1, 1);
-        final twoMonthsAgoStart = DateTime(selectedDate.year, selectedDate.month - 2, 1);
-        final threeMonthsAgoStart = DateTime(selectedDate.year, selectedDate.month - 3, 1);
-
-        final thisMonthAppointments = allAppointments
-          .where((a) => !a.date.isBefore(thisMonthStart) && a.date.isBefore(nextMonthStart))
-          .toList(growable: false);
-        final lastMonthAppointments = allAppointments
-          .where((a) => !a.date.isBefore(lastMonthStart) && a.date.isBefore(thisMonthStart))
-          .toList(growable: false);
-
-        final thisMonthRevenue = thisMonthAppointments.fold<double>(
-          0,
-          (sum, a) => sum + a.paid + a.prescriptionPaid,
-        );
-        final lastMonthRevenue = lastMonthAppointments.fold<double>(
-          0,
-          (sum, a) => sum + a.paid + a.prescriptionPaid,
-        );
-        final twoMonthsAgoRevenue = allAppointments
-          .where((a) =>
-            !a.date.isBefore(twoMonthsAgoStart) &&
-            a.date.isBefore(lastMonthStart))
-          .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
-        final threeMonthsAgoRevenue = allAppointments
-          .where((a) =>
-            !a.date.isBefore(threeMonthsAgoStart) &&
-            a.date.isBefore(twoMonthsAgoStart))
-          .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
-        final revenueVsLastMonthPct = lastMonthRevenue == 0
-          ? (thisMonthRevenue > 0 ? 100.0 : 0.0)
-          : ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
-        final monthlyRevenueBars = List<({String month, double value})>.generate(
-          12,
-          (index) {
-            final monthStart = DateTime(selectedDate.year, index + 1, 1);
-            final monthEnd = DateTime(selectedDate.year, index + 2, 1);
-            final value = allAppointments
-                .where((a) =>
-                    !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
-                .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
-            return (
-              month: DateFormat('MMM').format(monthStart),
-              value: value,
-            );
-          },
-          growable: false,
-        );
-
         final treatmentRevenue =
             todaysAppointments.fold<double>(0, (sum, a) => sum + a.paid);
         final prescriptionRevenue = todaysAppointments.fold<double>(
@@ -545,30 +494,9 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           }
         }
 
-        final weekStart =
-          _dateOnly(selectedDate.subtract(const Duration(days: 6)));
-        final selectedEnd = _dateOnly(selectedDate).add(const Duration(days: 1));
-        final prevWeekStart = _dateOnly(weekStart.subtract(const Duration(days: 7)));
-        final prevWeekEnd = weekStart;
-
-        final newPatientsWeek = firstVisitByPatient.values
-            .where((d) => !d.isBefore(weekStart) && d.isBefore(selectedEnd))
-            .length;
-        final newPatientsPrevWeek = firstVisitByPatient.values
-            .where((d) => !d.isBefore(prevWeekStart) && d.isBefore(prevWeekEnd))
-            .length;
-        final growthPct = newPatientsPrevWeek == 0
-            ? (newPatientsWeek > 0 ? 100.0 : 0.0)
-            : ((newPatientsWeek - newPatientsPrevWeek) / newPatientsPrevWeek) * 100.0;
-
         final dailyRevenueRows = _dailyRevenueRows(allAppointments, selectedDate, 30);
         final appointmentTrendRows = _appointmentTrendRows(allAppointments, selectedDate, 30);
         final dailyTreatmentDistribution = _treatmentDistributionRows(todaysAppointments);
-        final newVsReturning = (
-          newCount: thisMonthAppointments.where((a) => a.firstAppointmentForThisPatient).length,
-          returningCount: thisMonthAppointments.where((a) => !a.firstAppointmentForThisPatient).length,
-        );
-        final treatmentDistribution = _treatmentDistributionRows(thisMonthAppointments);
 
         return Container(
           color: const Color(0xFFF3F7FC),
@@ -629,28 +557,12 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       _TopTimingSummaryCard(
                         appointmentsForView: todaysAppointments,
                       ),
-                      _TopMonthRevenueCard(
-                        thisMonthRevenue: thisMonthRevenue,
-                        lastMonthRevenue: lastMonthRevenue,
-                        twoMonthsAgoRevenue: twoMonthsAgoRevenue,
-                        threeMonthsAgoRevenue: threeMonthsAgoRevenue,
-                        changePct: revenueVsLastMonthPct,
-                        thisMonthLabel: DateFormat('MMMM').format(thisMonthStart),
-                        lastMonthLabel: DateFormat('MMMM').format(lastMonthStart),
-                        twoMonthsAgoLabel:
-                            DateFormat('MMMM').format(twoMonthsAgoStart),
-                        threeMonthsAgoLabel:
-                            DateFormat('MMMM').format(threeMonthsAgoStart),
+                      _TopHourlyTimingCard(
+                        appointmentsForView: todaysAppointments,
                       ),
-                      _TopMonthlyRevenueBarsCard(rows: monthlyRevenueBars),
                       _TopPatientGrowthCard(
-                        newPatientsWeek: newPatientsWeek,
-                        newPatientsPrevWeek: newPatientsPrevWeek,
-                        growthPct: growthPct,
-                      ),
-                      _NewVsReturningPieCard(
-                        newCount: newVsReturning.newCount,
-                        returningCount: newVsReturning.returningCount,
+                        firstVisitByPatient: firstVisitByPatient,
+                        anchorDate: selectedDate,
                       ),
                     ];
 
@@ -703,10 +615,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                     SizedBox(
                       width: 420,
                       child: _AppointmentTrendChartCard(rows: appointmentTrendRows),
-                    ),
-                    SizedBox(
-                      width: 420,
-                      child: _MonthlyTreatmentDistributionCard(rows: treatmentDistribution),
                     ),
                   ],
                 ),
@@ -3556,130 +3464,237 @@ class _RevenueCard extends StatelessWidget {
 }
 
 class _TopPatientGrowthCard extends StatelessWidget {
-  final int newPatientsWeek;
-  final int newPatientsPrevWeek;
-  final double growthPct;
+  final Map<String, DateTime> firstVisitByPatient;
+  final DateTime anchorDate;
 
   const _TopPatientGrowthCard({
-    required this.newPatientsWeek,
-    required this.newPatientsPrevWeek,
-    required this.growthPct,
+    required this.firstVisitByPatient,
+    required this.anchorDate,
   });
 
   @override
   Widget build(BuildContext context) {
-    final maxBar = math.max(1, math.max(newPatientsWeek, newPatientsPrevWeek));
-    final thisWeekRatio = newPatientsWeek / maxBar;
-    final prevWeekRatio = newPatientsPrevWeek / maxBar;
-    final trendUp = growthPct >= 0;
-    final trendColor = trendUp ? const Color(0xFF1F8F4E) : const Color(0xFFD6455D);
-    final trendLabel = trendUp ? 'Increase' : 'Decrease';
+    return _TopPatientGrowthCardBody(
+      firstVisitByPatient: firstVisitByPatient,
+      anchorDate: anchorDate,
+    );
+  }
+}
 
-    Widget barLine(String label, int value, double ratio, Color color) {
-      return Row(
-          children: [
-            SizedBox(
-              width: 50,
-              child: Text(
-                label,
+class _TopPatientGrowthCardBody extends StatefulWidget {
+  final Map<String, DateTime> firstVisitByPatient;
+  final DateTime anchorDate;
+
+  const _TopPatientGrowthCardBody({
+    required this.firstVisitByPatient,
+    required this.anchorDate,
+  });
+
+  @override
+  State<_TopPatientGrowthCardBody> createState() =>
+      _TopPatientGrowthCardBodyState();
+}
+
+class _TopPatientGrowthCardBodyState extends State<_TopPatientGrowthCardBody> {
+  int _weekOffset = 0;
+
+  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  DateTime _startOfWeek(DateTime input) {
+    final d = _dateOnly(input);
+    return d.subtract(Duration(days: d.weekday - 1));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final anchor = _dateOnly(widget.anchorDate);
+    final currentWeekStart = _startOfWeek(anchor);
+    final weekStart = currentWeekStart.subtract(Duration(days: _weekOffset * 7));
+    final weekDays = List<DateTime>.generate(
+      7,
+      (i) => weekStart.add(Duration(days: i)),
+      growable: false,
+    );
+
+    final counts = <DateTime, int>{for (final day in weekDays) day: 0};
+    for (final firstVisit in widget.firstVisitByPatient.values) {
+      final day = _dateOnly(firstVisit);
+      if (counts.containsKey(day)) {
+        counts[day] = (counts[day] ?? 0) + 1;
+      }
+    }
+
+    final maxBar = counts.values.fold<int>(1, (m, e) => e > m ? e : m);
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 240, maxWidth: 340),
+      child: SizedBox(
+        height: 180,
+        child: _CardShell(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    'Patient Growth',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF496489),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.chevron_left, size: 10),
+                      onPressed: () => setState(() => _weekOffset += 1),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.chevron_right, size: 10),
+                      onPressed: _weekOffset > 0
+                          ? () => setState(() => _weekOffset -= 1)
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${DateFormat('dd MMM').format(weekDays.first)} - ${DateFormat('dd MMM').format(weekDays.last)}',
                 style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF456284),
+                  color: Color(0xFF6D84A8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: weekDays.map((day) {
+                    final value = counts[day] ?? 0;
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              '$value',
+                              style: const TextStyle(
+                                color: Color(0xFF36557C),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Container(
+                              height: (86 * (value / maxBar)).clamp(4, 86).toDouble(),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2D7BD8),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              DateFormat('E').format(day),
+                              style: const TextStyle(
+                                color: Color(0xFF5A7397),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(growable: false),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopHourlyTimingCard extends StatelessWidget {
+  final List<Appointment> appointmentsForView;
+
+  const _TopHourlyTimingCard({required this.appointmentsForView});
+
+  @override
+  Widget build(BuildContext context) {
+    final hourly = List<int>.filled(24, 0, growable: false);
+    for (final a in appointmentsForView) {
+      hourly[a.date.hour] = hourly[a.date.hour] + 1;
+    }
+    final maxBar = hourly.fold<int>(1, (m, e) => e > m ? e : m);
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 260, maxWidth: 360),
+      child: SizedBox(
+        height: 180,
+        child: _CardShell(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Appointment Timing (Hourly)',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF496489),
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  height: 8,
-                  color: const Color(0xFFEAF2FC),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: ratio.clamp(0.0, 1.0),
-                      child: Container(color: color),
-                    ),
-                  ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: List<Widget>.generate(24, (hour) {
+                    final count = hourly[hour];
+                    final showLabel = hour % 3 == 0;
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 1),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: (90 * (count / maxBar)).clamp(3, 90).toDouble(),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2BA58D),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              showLabel ? '$hour' : '',
+                              style: const TextStyle(
+                                color: Color(0xFF5A7397),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
                 ),
               ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              '$value',
-              style: const TextStyle(
-                color: Color(0xFF1F446E),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        );
-    }
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
-      child: SizedBox(
-        height: 140,
-        child: _CardShell(
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Patient Growth',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF496489),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Icon(
-                  trendUp  ? material.Icons.trending_up
-                            : material.Icons.trending_down,
-                  size: 11,
-                  color: trendColor,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${growthPct.toStringAsFixed(1)}% $trendLabel',
-                  style: TextStyle(
-                    color: trendColor,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 7),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: barLine(
-                  'This week',
-                  newPatientsWeek,
-                  thisWeekRatio,
-                  const Color(0xFF2D7BD8),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: barLine(
-                  'Prev week',
-                  newPatientsPrevWeek,
-                  prevWeekRatio,
-                  const Color(0xFF9BB9DD),
-                ),
-              ),
-            ),
-            const SizedBox(height: 2),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

@@ -263,7 +263,7 @@ class _Routes {
           identifier: "statistics",
           icon: FluentIcons.chart,
           screen: StatsScreen.new,
-          accessible: permissions.list[5] || login.isAdmin,
+          accessible: false,
           onSelect: () async {
             chartsCtrl.resetSelected();
             await doctors.synchronize();
