@@ -3,6 +3,9 @@ import 'dart:math' as math;
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
+import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/doctors/open_doctor_panel.dart';
@@ -26,6 +29,9 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
   bool _compareMode = false;
   DateTime? _customRangeStart;
   DateTime? _customRangeEnd;
+  bool _odontogramAdult = true;
+  Set<String> _selectedAdultTeeth = <String>{};
+  Set<String> _selectedKidTeeth = <String>{};
 
   static DateTime _dateOnly(DateTime input) =>
       DateTime(input.year, input.month, input.day);
@@ -195,10 +201,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
               doctorsList: allDoctors,
               scoped: _scopedForRange(
                 allAppointments: allAppointments,
-                selectedDate: _dateOnly(DateTime.now()),
-                range: 'today',
-                customRangeStart: null,
-                customRangeEnd: null,
+                selectedDate: _selectedDate,
+                range: _doneRange,
+                customRangeStart: _customRangeStart,
+                customRangeEnd: _customRangeEnd,
               ),
             );
 
@@ -460,6 +466,18 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                   rows: doneRows,
                   selectedRange: _doneRange,
                   onSelectRange: (value) => setState(() => _doneRange = value),
+                ),
+                const SizedBox(height: 10),
+                _DoctorOdontogramPickerCard(
+                  isAdult: _odontogramAdult,
+                  selectedAdultTeeth: _selectedAdultTeeth,
+                  selectedKidTeeth: _selectedKidTeeth,
+                  onToggleMode: (isAdult) =>
+                      setState(() => _odontogramAdult = isAdult),
+                  onAdultChanged: (value) =>
+                      setState(() => _selectedAdultTeeth = value),
+                  onKidChanged: (value) =>
+                      setState(() => _selectedKidTeeth = value),
                 ),
               ],
             );
@@ -1457,19 +1475,19 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Appointment Done By Doctor',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF183A67),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -1491,8 +1509,11 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
               )
             else
               ...rows.take(12).map((row) {
+                final rate = row.totalCount == 0
+                    ? 0.0
+                    : row.doneCount / row.totalCount;
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: Row(
                     children: [
                       Expanded(
@@ -1505,18 +1526,169 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                      SizedBox(
+                        width: 160,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            height: 8,
+                            color: const Color(0xFFEAF2FC),
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: rate.clamp(0.0, 1.0),
+                              child: Container(color: const Color(0xFF2D7BD8)),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        '${row.totalCount} appointments',
+                        '${row.doneCount}/${row.totalCount}',
                         style: const TextStyle(
                           color: Color(0xFF5B789F),
                           fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                          fontSize: 11,
                         ),
                       ),
                     ],
                   ),
                 );
               }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DoctorOdontogramPickerCard extends StatelessWidget {
+  final bool isAdult;
+  final Set<String> selectedAdultTeeth;
+  final Set<String> selectedKidTeeth;
+  final ValueChanged<bool> onToggleMode;
+  final ValueChanged<Set<String>> onAdultChanged;
+  final ValueChanged<Set<String>> onKidChanged;
+
+  const _DoctorOdontogramPickerCard({
+    required this.isAdult,
+    required this.selectedAdultTeeth,
+    required this.selectedKidTeeth,
+    required this.onToggleMode,
+    required this.onAdultChanged,
+    required this.onKidChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final adultMap = <String, ToothState>{
+      for (final id in const [
+        '18',
+        '17',
+        '16',
+        '15',
+        '14',
+        '13',
+        '12',
+        '11',
+        '21',
+        '22',
+        '23',
+        '24',
+        '25',
+        '26',
+        '27',
+        '28',
+        '48',
+        '47',
+        '46',
+        '45',
+        '44',
+        '43',
+        '42',
+        '41',
+        '31',
+        '32',
+        '33',
+        '34',
+        '35',
+        '36',
+        '37',
+        '38',
+      ])
+        id: ToothState(toothId: id),
+    };
+
+    for (final id in selectedAdultTeeth) {
+      if (adultMap.containsKey(id)) {
+        adultMap[id]!.surfaces[ToothSurface.occlusal] = TreatmentType.filling;
+      }
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Odontogram Picker',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF183A67),
+                  ),
+                ),
+                const Spacer(),
+                ToggleSwitch(
+                  checked: isAdult,
+                  onChanged: onToggleMode,
+                  content: Text(isAdult ? 'Adult' : 'Kid'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (isAdult)
+              SizedBox(
+                height: 210,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: OdontogramPicker(
+                    teeth: adultMap,
+                    onToothTap: (toothId) {
+                      final updated = Set<String>.from(selectedAdultTeeth);
+                      if (updated.contains(toothId)) {
+                        updated.remove(toothId);
+                      } else {
+                        updated.add(toothId);
+                      }
+                      onAdultChanged(updated);
+                    },
+                    onSurfaceTap: (toothId, _) {
+                      final updated = Set<String>.from(selectedAdultTeeth);
+                      if (updated.contains(toothId)) {
+                        updated.remove(toothId);
+                      } else {
+                        updated.add(toothId);
+                      }
+                      onAdultChanged(updated);
+                    },
+                    toothSize: 46,
+                  ),
+                ),
+              )
+            else
+              TeethPicker(
+                selectedTeeth: selectedKidTeeth,
+                isAdult: false,
+                onChanged: onKidChanged,
+              ),
           ],
         ),
       ),
