@@ -2843,7 +2843,7 @@ class _TopMonthlyRevenueBarsCard extends StatelessWidget {
                                   child: Align(
                                     alignment: Alignment.bottomCenter,
                                     child: FractionallySizedBox(
-                                      heightFactor: (item.value / maxValue).clamp(0.04, 1.0),
+                                      heightFactor: (item.value / maxValue).clamp(0.0, 1.0),
                                       child: Container(
                                         decoration: BoxDecoration(
                                           borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
