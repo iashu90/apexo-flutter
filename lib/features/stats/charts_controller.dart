@@ -6,6 +6,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart' show showDateRangePicker;
@@ -378,6 +379,7 @@ class _ChartsController {
       context: context,
       firstDate: DateTime.now().subtract(const Duration(days: 9999)),
       lastDate: DateTime.now().add(const Duration(days: 9999)),
+      builder: apexoDatePickerBuilder(context),
     );
 
     if (selectedRange != null) {

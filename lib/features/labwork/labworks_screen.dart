@@ -5,6 +5,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
+import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -169,6 +170,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                                 initialDate: _fromDate ?? DateTime.now(),
                                 firstDate: DateTime(2000),
                                 lastDate: DateTime(2100),
+                                builder: apexoDatePickerBuilder(context),
                               );
                               if (picked != null) {
                                 setState(() {
@@ -211,6 +213,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                                 initialDate: _toDate ?? DateTime.now(),
                                 firstDate: DateTime(2000),
                                 lastDate: DateTime(2100),
+                                builder: apexoDatePickerBuilder(context),
                               );
                               if (picked != null) {
                                 setState(() {

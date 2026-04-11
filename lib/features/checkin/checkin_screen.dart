@@ -3,13 +3,13 @@ import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
 import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -37,24 +37,13 @@ class _CheckinScreenState extends State<CheckinScreen> {
     'completed': true,
   };
 
-  final TextEditingController _quickPatientSearchController =
-      TextEditingController();
-  String _quickPatientSearchQuery = '';
-
   @override
   void initState() {
     super.initState();
-    _quickPatientSearchController.addListener(() {
-      setState(() {
-        _quickPatientSearchQuery =
-            _quickPatientSearchController.text.trim().toLowerCase();
-      });
-    });
   }
 
   @override
   void dispose() {
-    _quickPatientSearchController.dispose();
     super.dispose();
   }
 
@@ -76,6 +65,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
       firstDate: DateTime(2000, 1, 1),
       lastDate: DateTime(2100, 12, 31),
       helpText: 'Select date',
+      builder: apexoDatePickerBuilder(context),
     );
 
     if (picked == null) return;
@@ -100,8 +90,150 @@ class _CheckinScreenState extends State<CheckinScreen> {
       'checkedInAt': DateTime.now().millisecondsSinceEpoch,
     });
     appointments.set(appointment);
-    _quickPatientSearchController.clear();
     setState(() => _selectedAppointment = appointment);
+  }
+
+  Future<void> _openQuickPatientSearchDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final queryController = TextEditingController(
+          text: '',
+        );
+        String query = queryController.text.trim().toLowerCase();
+
+        final allPatients = patients.present.values.toList(growable: false);
+        final todaysAppointments = appointments.forDate(_selectedDate);
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final matches = allPatients
+                .where((p) {
+                  if (query.isEmpty) return true;
+                  final name = p.title.toLowerCase();
+                  final phone = p.phone.toLowerCase();
+                  return name.contains(query) || phone.contains(query);
+                })
+                .take(40)
+                .toList(growable: false);
+
+            return ContentDialog(
+              title: const Text('Search Patient for Check-in'),
+              content: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextBox(
+                      controller: queryController,
+                      placeholder: 'Search by patient name or phone',
+                      autofocus: true,
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 10),
+                        child: Icon(
+                          FluentIcons.search,
+                          size: 12,
+                          color: Color(0xFF6D84A8),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setDialogState(() => query = value.trim().toLowerCase());
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 420),
+                      child: matches.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 30),
+                                child: Text(
+                                  'No matching patients.',
+                                  style: TextStyle(color: Color(0xFF6D84A8)),
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: matches.length,
+                              separatorBuilder: (_, __) => const Divider(size: 1),
+                              itemBuilder: (context, index) {
+                                final p = matches[index];
+                                final existing = todaysAppointments
+                                    .where((a) => a.patientID == p.id)
+                                    .toList(growable: false)
+                                    .lastOrNull;
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                    vertical: 6,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              p.title.trim().isEmpty
+                                                  ? 'Unnamed patient'
+                                                  : p.title,
+                                              style: const TextStyle(
+                                                color: Color(0xFF1F446E),
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${p.phone} • ${p.age}y',
+                                              style: const TextStyle(
+                                                color: Color(0xFF6D84A8),
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (existing != null)
+                                        Button(
+                                          onPressed: () {
+                                            setState(() =>
+                                                _selectedAppointment = existing);
+                                            Navigator.pop(dialogContext);
+                                          },
+                                          child: const Text('Open'),
+                                        )
+                                      else
+                                        FilledButton(
+                                          onPressed: () {
+                                            _checkInPatient(p);
+                                            Navigator.pop(dialogContext);
+                                          },
+                                          child: const Text('Check-in'),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Button(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   ButtonStyle get _dateButtonStyle {
@@ -163,19 +295,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
               .where((a) => a.checkinStage == 'completed' || a.isDone)
               .toList(growable: false);
 
-            final allPatients = patients.present.values.toList(growable: false);
-            final quickPatientSearchResults = _quickPatientSearchQuery.isEmpty
-                ? const <Patient>[]
-                : allPatients
-                    .where((p) {
-                      final name = p.title.toLowerCase();
-                      final phone = p.phone.toLowerCase();
-                      return name.contains(_quickPatientSearchQuery) ||
-                          phone.contains(_quickPatientSearchQuery);
-                    })
-                    .take(8)
-                    .toList(growable: false);
-
             final now = DateTime.now();
             final isToday = _selectedDate.year == now.year &&
                 _selectedDate.month == now.month &&
@@ -227,118 +346,24 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         ),
                         SizedBox(
                           width: 360,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              TextBox(
-                                controller: _quickPatientSearchController,
-                                placeholder: 'Search patient for check-in',
-                                padding: const EdgeInsets.symmetric(
+                          child: FilledButton(
+                            onPressed: _openQuickPatientSearchDialog,
+                            style: ButtonStyle(
+                              padding: WidgetStateProperty.all(
+                                const EdgeInsets.symmetric(
                                   horizontal: 12,
-                                  vertical: 10,
+                                  vertical: 11,
                                 ),
-                                decoration: WidgetStateProperty.all(
-                                  BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(color: const Color(0xFFCFE0F3)),
-                                  ),
-                                ),
-                                prefix: const Padding(
-                                  padding: EdgeInsets.only(left: 10),
-                                  child: Icon(
-                                    FluentIcons.search,
-                                    size: 12,
-                                    color: Color(0xFF6D84A8),
-                                  ),
-                                ),
-                                suffix: _quickPatientSearchController.text.isNotEmpty
-                                    ? IconButton(
-                                        icon: const Icon(FluentIcons.clear),
-                                        onPressed:
-                                            () => _quickPatientSearchController.clear(),
-                                      )
-                                    : null,
                               ),
-                              if (quickPatientSearchResults.isNotEmpty)
-                                Positioned(
-                                  top: 44,
-                                  right: 0,
-                                  child: Container(
-                                    width: 360,
-                                    padding: const EdgeInsets.symmetric(vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: const Color(0xFFD6E2F0)),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Color(0x160D2F5B),
-                                          blurRadius: 10,
-                                          offset: Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      children: quickPatientSearchResults.map((p) {
-                                        final existing = filtered
-                                            .where((a) => a.patientID == p.id)
-                                            .toList(growable: false)
-                                            .lastOrNull;
-                                        return GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTap: () {
-                                            _quickPatientSearchController.clear();
-                                            setState(() => _selectedAppointment = existing);
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 8,
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        p.title.trim().isEmpty
-                                                            ? 'Unnamed patient'
-                                                            : p.title,
-                                                        style: const TextStyle(
-                                                          color: Color(0xFF1F446E),
-                                                          fontWeight: FontWeight.w700,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(height: 2),
-                                                      Text(
-                                                        '${p.phone} • ${p.age}y',
-                                                        style: const TextStyle(
-                                                          color: Color(0xFF6D84A8),
-                                                          fontSize: 11,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                IconButton(
-                                                  icon: const Icon(
-                                                    FluentIcons.check_mark,
-                                                    size: 12,
-                                                  ),
-                                                  onPressed: () => _checkInPatient(p),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(growable: false),
-                                    ),
-                                  ),
-                                ),
-                            ],
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(FluentIcons.search, size: 12),
+                                SizedBox(width: 8),
+                                Text('Search Patient for Check-in'),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -810,10 +835,29 @@ class _WorkflowRow extends StatelessWidget {
       appointment.checkinStage = 'with_doctor';
       appointment.isDone = false;
       appointments.set(appointment);
+      onSelect?.call(appointment);
       return;
     }
 
     if (stage == 'with_doctor') {
+      final shouldMove = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: const Text('Move to Checkout?'),
+          content: const Text('This appointment will be moved to Checkout.'),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Move to Checkout'),
+            ),
+          ],
+        ),
+      );
+      if (shouldMove != true) return;
       appointment.checkinStage = 'checkout';
       appointment.isDone = false;
       appointments.set(appointment);
@@ -911,15 +955,6 @@ class _WorkflowRow extends StatelessWidget {
     final age = appointment.patient?.age ?? 0;
     final rawGender = appointment.patient?.gender;
     final genderLabel = rawGender == 1 ? 'M' : 'F';
-    final medicalHistory = appointment.patient?.allAppointments
-            .where((a) => a.id != appointment.id)
-            .expand((a) => a.selectedTreatments)
-            .where((t) => t.trim().isNotEmpty)
-            .toSet()
-            .take(3)
-            .toList(growable: false) ??
-        const <String>[];
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -961,34 +996,6 @@ class _WorkflowRow extends StatelessWidget {
                           color: Color(0xFF5A7397),
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
-                        ),
-                      ),
-                      if (medicalHistory.isNotEmpty)
-                        const Text(
-                          '· Medical History:',
-                          style: TextStyle(
-                            color: Color(0xFF5A7397),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ...medicalHistory.map(
-                        (h) => Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEAF2FC),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: const Color(0xFFD5E5F7)),
-                          ),
-                          child: Text(
-                            h,
-                            style: const TextStyle(
-                              color: Color(0xFF355279),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
                         ),
                       ),
                       ...doctorsList.map(
@@ -1070,13 +1077,6 @@ class _WorkflowRow extends StatelessWidget {
               Button(
                 onPressed: () => _openPatientHistoryDialog(context),
                 child: const Text('History'),
-              ),
-            ],
-            if (stage == 'waiting' || stage == 'with_doctor') ...[
-              const SizedBox(width: 8),
-              Button(
-                onPressed: () => openAppointment(appointment),
-                child: const Text('Open'),
               ),
             ],
           ],
@@ -1211,6 +1211,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
     final patient = appointment.patient;
 
     final age = patient?.age ?? 0;
+    final doctorName = appointment.operators.isEmpty
+      ? 'Unassigned'
+      : appointment.operators.first.title;
     final patientNotes = patient?.notes.trim() ?? '';
     final pid = appointment.patientID;
 
@@ -1265,17 +1268,36 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        if (appointment.checkinStage == 'with_doctor')
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Button(
-              onPressed: () => _changeDoctor(appointment),
-              child: const Text('Change Doctor'),
-            ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => _changeDoctor(appointment),
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Doctor:',
+                style: TextStyle(
+                  color: Color(0xFF6D84A8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                doctorName.trim().isEmpty ? 'Unnamed doctor' : doctorName,
+                style: const TextStyle(
+                  color: Color(0xFF1459AD),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(FluentIcons.chevron_down, size: 10),
+            ],
           ),
-        if (appointment.checkinStage == 'with_doctor')
-          const SizedBox(height: 8),
+        ),
+        const SizedBox(height: 10),
         if (appointment.checkinStage == 'checkout')
           _TodayAppointmentInsightCard(appointment: appointment)
         else
@@ -1881,7 +1903,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               fontSize: 12,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           if (isWithDoctor)
             LayoutBuilder(
             builder: (context, constraints) {
@@ -1900,7 +1922,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -1927,7 +1949,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         )
                         .toList(growable: false),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
                   InfoLabel(
                     label: 'Treatment:',
                     child: _CheckinSearchableTagInput(
@@ -1943,7 +1965,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     ),
                   ),
                   if (mergedTopTreatments.isNotEmpty) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 10),
                     Text(
                       topTreatments.isNotEmpty
                           ? 'Top 10 treatments (includes patient history):'
@@ -1954,7 +1976,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
@@ -1999,7 +2021,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       placeholder: 'Post-operative notes',
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 12),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -2008,6 +2030,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           (parent) => _quickChip(
                             label: parent,
                             selected: _selectedPostOpParent == parent,
+                            selectedColor: const Color(0xFFDCEBFF),
+                            selectedTextColor: const Color(0xFF134F9D),
+                            normalColor: const Color(0xFFEFF5FF),
+                            normalTextColor: const Color(0xFF355A84),
                             onTap: () => setState(
                               () => _selectedPostOpParent = parent,
                             ),
@@ -2015,7 +2041,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         )
                         .toList(growable: false),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -2024,6 +2050,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         .map(
                           (child) => _quickChip(
                             label: child,
+                            normalColor: const Color(0xFFF3F7FC),
+                            normalTextColor: const Color(0xFF4A678D),
                             onTap: () => _appendPostOpSuggestion(
                               _selectedPostOpParent,
                               child,
@@ -2032,7 +2060,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         )
                         .toList(growable: false),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 18),
                   Row(
                     children: [
                       Expanded(
@@ -2045,9 +2073,32 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 WidgetStateProperty.all(Colors.white),
                           ),
                           onPressed: () {
-                            a.checkinStage = 'checkout';
-                            a.isDone = false;
-                            appointments.set(a);
+                            showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => ContentDialog(
+                                title: const Text('Move to Checkout?'),
+                                content: const Text(
+                                  'This appointment will be moved to Checkout.',
+                                ),
+                                actions: [
+                                  Button(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, true),
+                                    child: const Text('Move to Checkout'),
+                                  ),
+                                ],
+                              ),
+                            ).then((confirmed) {
+                              if (confirmed != true) return;
+                              a.checkinStage = 'checkout';
+                              a.isDone = false;
+                              appointments.set(a);
+                            });
                           },
                           child: const Text('Move to Checkout'),
                         ),
@@ -2067,13 +2118,45 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               return Column(
                 children: [
                   firstColumn,
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
                   secondColumn,
                 ],
               );
             },
           ),
           if (isCheckout) ...[
+            _CheckoutPaymentCard(
+              appointment: a,
+              priceController: _priceController,
+              paidController: _paidController,
+              discountController: _discountController,
+              discountEnabled: _discountEnabled,
+              onToggleDiscount: (value) {
+                final a = widget.appointment;
+                setState(() => _discountEnabled = value);
+                if (!value) {
+                  _activeDiscountMode = null;
+                  _discountController.clear();
+                  a.discount = 0;
+                  a.price = _basePriceBeforeDiscount;
+                  _priceController.text =
+                      a.price == 0 ? '' : a.price.toStringAsFixed(0);
+                  appointments.set(a);
+                  return;
+                }
+                _basePriceBeforeDiscount =
+                    double.tryParse(_priceController.text.trim()) ??
+                        _basePriceBeforeDiscount;
+              },
+              onCollectFullBalance: () {
+                final full = a.price;
+                _paidController.text = full.toStringAsFixed(0);
+                a.paid = full;
+                appointments.set(a);
+                setState(() {});
+              },
+            ),
+            const SizedBox(height: 14),
             Row(
               children: [
                 const Text(
@@ -2107,7 +2190,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             if (_discountEnabled) ...[
               InfoLabel(
                 label: 'Discount',
@@ -2121,7 +2204,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   placeholder: 'Discount',
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -2138,7 +2221,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -2156,7 +2239,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     )
                     .toList(growable: false),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
             ],
             InfoLabel(
               label: 'Price in ${globalSettings.get("currency_______").value}',
@@ -2177,7 +2260,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 },
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -2190,7 +2273,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   )
                   .toList(growable: false),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
             InfoLabel(
               label: 'Paid in ${globalSettings.get("currency_______").value}',
               child: CupertinoTextField(
@@ -2205,7 +2288,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 },
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -2218,7 +2301,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   )
                   .toList(growable: false),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -2249,7 +2332,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 18),
             Row(
               children: [
                 Expanded(
@@ -2281,6 +2364,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   Widget _quickChip({
     required String label,
     bool selected = false,
+    Color selectedColor = const Color(0xFFDDEBFF),
+    Color normalColor = const Color(0xFFEAF2FC),
+    Color selectedTextColor = const Color(0xFF1459AD),
+    Color normalTextColor = const Color(0xFF2F5B88),
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -2288,7 +2375,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFDDEBFF) : const Color(0xFFEAF2FC),
+          color: selected ? selectedColor : normalColor,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD5E5F7),
@@ -2297,7 +2384,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFF1459AD) : const Color(0xFF2F5B88),
+            color: selected ? selectedTextColor : normalTextColor,
             fontSize: 11,
             fontWeight: FontWeight.w700,
           ),
@@ -2331,6 +2418,430 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
             fontSize: 12,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CheckoutPaymentCard extends StatefulWidget {
+  final Appointment appointment;
+  final TextEditingController priceController;
+  final TextEditingController paidController;
+  final TextEditingController discountController;
+  final bool discountEnabled;
+  final ValueChanged<bool> onToggleDiscount;
+  final VoidCallback onCollectFullBalance;
+
+  const _CheckoutPaymentCard({
+    required this.appointment,
+    required this.priceController,
+    required this.paidController,
+    required this.discountController,
+    required this.discountEnabled,
+    required this.onToggleDiscount,
+    required this.onCollectFullBalance,
+  });
+
+  @override
+  State<_CheckoutPaymentCard> createState() => _CheckoutPaymentCardState();
+}
+
+class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
+  String _paymentMode = 'UPI';
+  final TextEditingController _referenceController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+  DateTime _paymentDate = DateTime.now();
+  bool _sendWhatsapp = true;
+  bool _sendSms = false;
+  bool _sendEmail = false;
+
+  @override
+  void dispose() {
+    _referenceController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.appointment;
+    final outstanding = (a.price - a.paid).clamp(0, double.infinity);
+    final status = outstanding <= 0 ? 'PAID' : 'DUE';
+    final totalAfter =
+      (double.tryParse(widget.paidController.text.trim()) ?? a.paid)
+        .clamp(0, double.infinity);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDDE7F3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Collect Payment',
+            style: TextStyle(
+              color: Color(0xFF183A67),
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 860;
+              final left = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF2F2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFF2D3D3)),
+                    ),
+                    child: Text(
+                      'Outstanding Balance: ₹${outstanding.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        color: Color(0xFFD6455D),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Amount to Collect',
+                    style: TextStyle(
+                      color: Color(0xFF355279),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  CupertinoTextField(
+                    controller: widget.paidController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
+                    onChanged: (value) {
+                      a.paid = double.tryParse(value) ?? 0;
+                      appointments.set(a);
+                    },
+                    prefix: const Padding(
+                      padding: EdgeInsets.only(left: 10),
+                      child: Text('₹', style: TextStyle(color: Color(0xFF355279))),
+                    ),
+                    suffix: Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: Text(
+                        '₹${outstanding.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          color: Color(0xFF5A7397),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: ButtonStyle(
+                        backgroundColor:
+                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                      ),
+                      onPressed: widget.onCollectFullBalance,
+                      child: const Text('Collect Full Balance'),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Payment Mode',
+                    style: TextStyle(
+                      color: Color(0xFF355279),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ['Cash', 'UPI', 'Card', 'Bank'].map((mode) {
+                      final selected = _paymentMode == mode;
+                      return Button(
+                        style: ButtonStyle(
+                          padding: WidgetStateProperty.all(
+                            const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          ),
+                          backgroundColor: WidgetStateProperty.all(
+                            selected
+                                ? const Color(0xFFE5F0FF)
+                                : const Color(0xFFF8FBFF),
+                          ),
+                          shape: WidgetStateProperty.all(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(
+                                color: selected
+                                    ? const Color(0xFF2D7BD8)
+                                    : const Color(0xFFD8E3F1),
+                              ),
+                            ),
+                          ),
+                        ),
+                        onPressed: () => setState(() => _paymentMode = mode),
+                        child: Text(
+                          mode,
+                          style: TextStyle(
+                            color: selected
+                                ? const Color(0xFF1459AD)
+                                : const Color(0xFF5A7397),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      );
+                    }).toList(growable: false),
+                  ),
+                  if (_paymentMode == 'UPI' || _paymentMode == 'Bank') ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Reference ID (optional)',
+                      style: TextStyle(
+                        color: Color(0xFF355279),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    CupertinoTextField(
+                      controller: _referenceController,
+                      placeholder: 'Enter transaction reference',
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Date',
+                    style: TextStyle(
+                      color: Color(0xFF355279),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Button(
+                    onPressed: () async {
+                      final picked = await material.showDatePicker(
+                        context: context,
+                        initialDate: _paymentDate,
+                        firstDate: DateTime(2000, 1, 1),
+                        lastDate: DateTime(2100, 12, 31),
+                        builder: apexoDatePickerBuilder(context),
+                      );
+                      if (picked == null) return;
+                      setState(() => _paymentDate = picked);
+                    },
+                    child: Text(DateFormat('dd MMM yyyy').format(_paymentDate)),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Notes',
+                    style: TextStyle(
+                      color: Color(0xFF355279),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  CupertinoTextField(
+                    controller: _notesController,
+                    placeholder: 'Payment note',
+                    onChanged: (value) {
+                      a.preOpNotes = value;
+                      appointments.set(a);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Send Receipt Automatically',
+                    style: TextStyle(
+                      color: Color(0xFF355279),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Checkbox(
+                        checked: _sendWhatsapp,
+                        content: const Text('WhatsApp'),
+                        onChanged: (v) => setState(() => _sendWhatsapp = v ?? true),
+                      ),
+                      Checkbox(
+                        checked: _sendSms,
+                        content: const Text('SMS'),
+                        onChanged: (v) => setState(() => _sendSms = v ?? false),
+                      ),
+                      Checkbox(
+                        checked: _sendEmail,
+                        content: const Text('Email'),
+                        onChanged: (v) => setState(() => _sendEmail = v ?? false),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+
+              final right = Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F7FC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFD6E2F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      a.title.trim().isEmpty ? 'Unnamed patient' : a.title,
+                      style: const TextStyle(
+                        color: Color(0xFF2D476D),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Patient ID: ${a.patientID ?? '-'}',
+                      style: const TextStyle(color: Color(0xFF5A7397)),
+                    ),
+                    const SizedBox(height: 10),
+                    const Divider(),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Billing Summary',
+                      style: TextStyle(
+                        color: Color(0xFF2D476D),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _summaryLine('Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
+                    _summaryLine('Already Paid', '₹${a.paid.toStringAsFixed(0)}'),
+                    _summaryLine(
+                      'Remaining Balance',
+                      '₹${outstanding.toStringAsFixed(0)}',
+                      valueColor: const Color(0xFFD6455D),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'After Payment',
+                      style: TextStyle(
+                        color: Color(0xFF2D476D),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _summaryLine('Total Paid', '₹${totalAfter.toStringAsFixed(0)}'),
+                    _summaryLine(
+                      'Balance',
+                      '₹${(a.price - totalAfter).clamp(0, double.infinity).toStringAsFixed(0)}',
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: status == 'PAID'
+                            ? const Color(0xFFDCFCE7)
+                            : const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          color: status == 'PAID'
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFFD6455D),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+
+              if (narrow) {
+                return Column(
+                  children: [left, const SizedBox(height: 12), right],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 64, child: left),
+                  const SizedBox(width: 14),
+                  Expanded(flex: 36, child: right),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Button(
+                  onPressed: () {},
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  style: ButtonStyle(
+                    backgroundColor:
+                        WidgetStateProperty.all(const Color(0xFF22A06B)),
+                    foregroundColor: WidgetStateProperty.all(Colors.white),
+                  ),
+                  onPressed: widget.onCollectFullBalance,
+                  child: Text(
+                    'Collect ₹${(double.tryParse(widget.paidController.text.trim()) ?? a.paid).toStringAsFixed(0)}',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryLine(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF5A7397),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor ?? const Color(0xFF2D476D),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

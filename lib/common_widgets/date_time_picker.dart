@@ -1,5 +1,6 @@
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/acrylic_button.dart';
+import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' show showTimePicker, showDatePicker, TimeOfDay;
 import 'package:intl/intl.dart';
@@ -71,6 +72,7 @@ class DateTimePickerState extends State<DateTimePicker> {
             initialDate: value,
             firstDate: DateTime.now().subtract(const Duration(days: 9999)),
             lastDate: DateTime.now().add(const Duration(days: 9999)),
+        builder: apexoDatePickerBuilder(context),
           ) ??
           selected;
     }
