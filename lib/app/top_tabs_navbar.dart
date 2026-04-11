@@ -158,7 +158,7 @@ class _TabButton extends StatelessWidget {
 
   String _displayTitle(app_routes.Route route) {
     if (route.identifier == 'statistics') return txt('reports');
-    if (route.identifier == 'report_v2') return 'Report V2';
+    if (route.identifier == 'report_v2') return 'Report';
     return route.title;
   }
 }

@@ -30,6 +30,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
   DateTime _selectedDate = _dateOnly(checkinPersistedDate);
   String _selectedDoctor = '__all__';
   Appointment? _selectedAppointment;
+  final Map<String, bool> _expandedStages = {
+    'waiting': true,
+    'with_doctor': true,
+    'checkout': true,
+    'completed': true,
+  };
 
   final TextEditingController _quickPatientSearchController =
       TextEditingController();
@@ -182,239 +188,228 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(
-                      height: 56,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Checkin',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF183A67),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Text(
+                                'Checkin',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF183A67),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEAF2FC),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(color: const Color(0xFFD5E5F7)),
+                                ),
+                                child: Text(
+                                  'Patients: ${todaysAppointments.length}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1459AD),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          Align(
-                            alignment: Alignment.center,
+                        ),
+                        SizedBox(
+                          width: 360,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              TextBox(
+                                controller: _quickPatientSearchController,
+                                placeholder: 'Search patient for check-in',
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: WidgetStateProperty.all(
+                                  BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(color: const Color(0xFFCFE0F3)),
+                                  ),
+                                ),
+                                prefix: const Padding(
+                                  padding: EdgeInsets.only(left: 10),
+                                  child: Icon(
+                                    FluentIcons.search,
+                                    size: 12,
+                                    color: Color(0xFF6D84A8),
+                                  ),
+                                ),
+                                suffix: _quickPatientSearchController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(FluentIcons.clear),
+                                        onPressed:
+                                            () => _quickPatientSearchController.clear(),
+                                      )
+                                    : null,
+                              ),
+                              if (quickPatientSearchResults.isNotEmpty)
+                                Positioned(
+                                  top: 44,
+                                  right: 0,
+                                  child: Container(
+                                    width: 360,
+                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFD6E2F0)),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x160D2F5B),
+                                          blurRadius: 10,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      children: quickPatientSearchResults.map((p) {
+                                        final existing = filtered
+                                            .where((a) => a.patientID == p.id)
+                                            .toList(growable: false)
+                                            .lastOrNull;
+                                        return GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: () {
+                                            _quickPatientSearchController.clear();
+                                            setState(() => _selectedAppointment = existing);
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 8,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        p.title.trim().isEmpty
+                                                            ? 'Unnamed patient'
+                                                            : p.title,
+                                                        style: const TextStyle(
+                                                          color: Color(0xFF1F446E),
+                                                          fontWeight: FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 2),
+                                                      Text(
+                                                        '${p.phone} • ${p.age}y',
+                                                        style: const TextStyle(
+                                                          color: Color(0xFF6D84A8),
+                                                          fontSize: 11,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  icon: const Icon(
+                                                    FluentIcons.check_mark,
+                                                    size: 12,
+                                                  ),
+                                                  onPressed: () => _checkInPatient(p),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(growable: false),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFD6E2F0)),
+                            ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                        color: const Color(0xFFD6E2F0)),
-                                  ),
-                                  child: Row(
+                                Button(
+                                  onPressed: () => _changeDate(-1),
+                                  style: _dateButtonStyle,
+                                  child: const Icon(FluentIcons.chevron_left, size: 12),
+                                ),
+                                Button(
+                                  onPressed: () => _pickDate(context),
+                                  style: _dateButtonStyle,
+                                  child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Button(
-                                        onPressed: () => _changeDate(-1),
-                                        style: _dateButtonStyle,
-                                        child: const Icon(
-                                            FluentIcons.chevron_left,
-                                            size: 12),
-                                      ),
-                                      Button(
-                                        onPressed: () => _pickDate(context),
-                                        style: _dateButtonStyle,
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              DateFormat('MMMM d, yyyy')
-                                                  .format(_selectedDate),
-                                              style: const TextStyle(
-                                                color: Color(0xFF25466E),
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 1),
-                                            Text(
-                                              DateFormat('EEEE')
-                                                  .format(_selectedDate),
-                                              style: const TextStyle(
-                                                color: Color(0xFF557195),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
+                                      Text(
+                                        DateFormat('MMMM d, yyyy').format(_selectedDate),
+                                        style: const TextStyle(
+                                          color: Color(0xFF25466E),
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                      Button(
-                                        onPressed: () => _changeDate(1),
-                                        style: _dateButtonStyle,
-                                        child: const Icon(
-                                            FluentIcons.chevron_right,
-                                            size: 12),
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        DateFormat('EEEE').format(_selectedDate),
+                                        style: const TextStyle(
+                                          color: Color(0xFF557195),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                SizedBox(
-                                  width: 84,
-                                  child: Visibility(
-                                    visible: !isToday,
-                                    maintainSize: true,
-                                    maintainAnimation: true,
-                                    maintainState: true,
-                                    child: FilledButton(
-                                      onPressed: () => setState(() {
-                                        _selectedDate =
-                                            _dateOnly(DateTime.now());
-                                        checkinPersistedDate = _selectedDate;
-                                      }),
-                                      child: const Text('Today'),
-                                    ),
-                                  ),
+                                Button(
+                                  onPressed: () => _changeDate(1),
+                                  style: _dateButtonStyle,
+                                  child: const Icon(FluentIcons.chevron_right, size: 12),
                                 ),
                               ],
                             ),
                           ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: SizedBox(
-                              width: 360,
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  TextBox(
-                                    controller: _quickPatientSearchController,
-                                    placeholder: 'Search patient for check-in',
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 10),
-                                    decoration: WidgetStateProperty.all(
-                                      BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                        border: Border.all(
-                                            color: const Color(0xFFCFE0F3)),
-                                      ),
-                                    ),
-                                    prefix: const Padding(
-                                      padding: EdgeInsets.only(left: 10),
-                                      child: Icon(
-                                        FluentIcons.search,
-                                        size: 12,
-                                        color: Color(0xFF6D84A8),
-                                      ),
-                                    ),
-                                    suffix: _quickPatientSearchController
-                                            .text.isNotEmpty
-                                        ? IconButton(
-                                            icon: const Icon(FluentIcons.clear),
-                                            onPressed: () =>
-                                                _quickPatientSearchController
-                                                    .clear(),
-                                          )
-                                        : null,
-                                  ),
-                                  if (quickPatientSearchResults.isNotEmpty)
-                                    Positioned(
-                                      top: 44,
-                                      right: 0,
-                                      child: Container(
-                                        width: 360,
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          border: Border.all(
-                                              color: const Color(0xFFD6E2F0)),
-                                          boxShadow: const [
-                                            BoxShadow(
-                                              color: Color(0x160D2F5B),
-                                              blurRadius: 10,
-                                              offset: Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Column(
-                                          children: quickPatientSearchResults
-                                              .map((p) {
-                                            final existing = filtered
-                                                .where(
-                                                    (a) => a.patientID == p.id)
-                                                .toList(growable: false)
-                                                .lastOrNull;
-                                            return GestureDetector(
-                                              behavior: HitTestBehavior.opaque,
-                                              onTap: () {
-                                                _quickPatientSearchController
-                                                    .clear();
-                                                setState(() =>
-                                                    _selectedAppointment =
-                                                        existing);
-                                              },
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 8),
-                                                child: Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Text(
-                                                            p.title
-                                                                    .trim()
-                                                                    .isEmpty
-                                                                ? 'Unnamed patient'
-                                                                : p.title,
-                                                            style:
-                                                                const TextStyle(
-                                                              color: Color(
-                                                                  0xFF1F446E),
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w700,
-                                                            ),
-                                                          ),
-                                                          const SizedBox(
-                                                              height: 2),
-                                                          Text(
-                                                            '${p.phone} • ${p.age}y',
-                                                            style:
-                                                                const TextStyle(
-                                                              color: Color(
-                                                                  0xFF6D84A8),
-                                                              fontSize: 11,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    IconButton(
-                                                      icon: const Icon(
-                                                        FluentIcons.check_mark,
-                                                        size: 12,
-                                                      ),
-                                                      onPressed: () =>
-                                                          _checkInPatient(p),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(growable: false),
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 84,
+                            child: Visibility(
+                              visible: !isToday,
+                              maintainSize: true,
+                              maintainAnimation: true,
+                              maintainState: true,
+                              child: FilledButton(
+                                onPressed: () => setState(() {
+                                  _selectedDate = _dateOnly(DateTime.now());
+                                  checkinPersistedDate = _selectedDate;
+                                }),
+                                child: const Text('Today'),
                               ),
                             ),
                           ),
@@ -463,10 +458,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 stage: 'waiting',
                                 color: const Color(0xFFE4A11B),
                                 rows: waiting,
-                                showHistoryAction: true,
+                                showHistoryAction: false,
                                 onSelect: (a) =>
                                     setState(() => _selectedAppointment = a),
                                 selectedAppointmentId: _selectedAppointment?.id,
+                                expanded: _expandedStages['waiting'] ?? true,
+                                onToggleExpanded: () => setState(() {
+                                  _expandedStages['waiting'] =
+                                      !(_expandedStages['waiting'] ?? true);
+                                }),
                               ),
                               const SizedBox(height: 10),
                               _WorkflowColumn(
@@ -474,9 +474,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 stage: 'with_doctor',
                                 color: const Color(0xFF2D7BD8),
                                 rows: withDoctor,
+                                showHistoryAction: true,
                                 onSelect: (a) =>
                                     setState(() => _selectedAppointment = a),
                                 selectedAppointmentId: _selectedAppointment?.id,
+                                expanded:
+                                    _expandedStages['with_doctor'] ?? true,
+                                onToggleExpanded: () => setState(() {
+                                  _expandedStages['with_doctor'] =
+                                      !(_expandedStages['with_doctor'] ?? true);
+                                }),
                               ),
                               const SizedBox(height: 10),
                               _WorkflowColumn(
@@ -487,6 +494,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 onSelect: (a) =>
                                     setState(() => _selectedAppointment = a),
                                 selectedAppointmentId: _selectedAppointment?.id,
+                                expanded: _expandedStages['checkout'] ?? true,
+                                onToggleExpanded: () => setState(() {
+                                  _expandedStages['checkout'] =
+                                      !(_expandedStages['checkout'] ?? true);
+                                }),
                               ),
                               const SizedBox(height: 10),
                               _WorkflowColumn(
@@ -497,6 +509,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 onSelect: (a) =>
                                     setState(() => _selectedAppointment = a),
                                 selectedAppointmentId: _selectedAppointment?.id,
+                                expanded: _expandedStages['completed'] ?? true,
+                                onToggleExpanded: () => setState(() {
+                                  _expandedStages['completed'] =
+                                      !(_expandedStages['completed'] ?? true);
+                                }),
                               ),
                             ],
                           ),
@@ -583,6 +600,8 @@ class _WorkflowColumn extends StatelessWidget {
   final Color color;
   final List<Appointment> rows;
   final bool showHistoryAction;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
   final ValueChanged<Appointment>? onSelect;
   final String? selectedAppointmentId;
 
@@ -591,6 +610,8 @@ class _WorkflowColumn extends StatelessWidget {
     required this.stage,
     required this.color,
     required this.rows,
+    required this.expanded,
+    required this.onToggleExpanded,
     this.showHistoryAction = false,
     this.onSelect,
     this.selectedAppointmentId,
@@ -616,6 +637,15 @@ class _WorkflowColumn extends StatelessWidget {
             ),
             child: Row(
               children: [
+                IconButton(
+                  icon: Icon(
+                    expanded
+                        ? FluentIcons.chevron_down
+                        : FluentIcons.chevron_right,
+                    size: 11,
+                  ),
+                  onPressed: onToggleExpanded,
+                ),
                 Text(
                   title,
                   style: TextStyle(
@@ -632,10 +662,23 @@ class _WorkflowColumn extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                const Spacer(),
+                Button(
+                  onPressed: onToggleExpanded,
+                  child: Text(expanded ? 'Collapse' : 'Expand'),
+                ),
               ],
             ),
           ),
-          if (rows.isEmpty)
+          if (!expanded)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'Collapsed',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              ),
+            )
+          else if (rows.isEmpty)
             const Padding(
               padding: EdgeInsets.all(12),
               child: Text(
@@ -705,6 +748,52 @@ class _WorkflowRow extends StatelessWidget {
     }
 
     if (stage == 'waiting') {
+      final pickedDoctorId = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          final doctorRows = doctors.present.values.toList(growable: false)
+            ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+          return ContentDialog(
+            title: const Text('Assign Doctor'),
+            content: SizedBox(
+              width: 360,
+              child: doctorRows.isEmpty
+                  ? const Text('No doctors available to assign.')
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: doctorRows
+                          .map(
+                            (doctor) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: FilledButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, doctor.id),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    doctor.title.trim().isEmpty
+                                        ? 'Unnamed doctor'
+                                        : doctor.title,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+            ),
+            actions: [
+              Button(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
+      if (pickedDoctorId == null || pickedDoctorId.trim().isEmpty) return;
+      appointment.operatorsIDs = [pickedDoctorId];
       appointment.checkinStage = 'with_doctor';
       appointment.isDone = false;
       appointments.set(appointment);
@@ -807,6 +896,12 @@ class _WorkflowRow extends StatelessWidget {
 
     final phone = appointment.patient?.phone ?? '-';
     final age = appointment.patient?.age ?? 0;
+    final genderRaw = (appointment.patient?.gender ?? '')
+      .toString()
+      .trim()
+      .toLowerCase();
+    final isMale = genderRaw.startsWith('m');
+    final genderLabel = isMale ? 'M' : 'F';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -823,16 +918,47 @@ class _WorkflowRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    patientName,
-                    style: const TextStyle(
-                      color: Color(0xFF1459AD),
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          patientName,
+                          style: const TextStyle(
+                            color: Color(0xFF1459AD),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isMale
+                              ? const Color(0xFFE5F0FF)
+                              : const Color(0xFFFFEAF1),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: isMale
+                                ? const Color(0xFF9EC0EE)
+                                : const Color(0xFFE9A8C3),
+                          ),
+                        ),
+                        child: Text(
+                          '$genderLabel,$age',
+                          style: TextStyle(
+                            color: isMale
+                                ? const Color(0xFF1459AD)
+                                : const Color(0xFFC03A73),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${DateFormat('h:mm a').format(appointment.date)} • $phone • ${age}y',
+                    '${DateFormat('h:mm a').format(appointment.date)} • $phone',
                     style: const TextStyle(
                       color: Color(0xFF6D84A8),
                       fontSize: 12,
@@ -897,10 +1023,10 @@ class _WorkflowRow extends StatelessWidget {
                 stage == 'completed'
                     ? 'Back to Checkout'
                     : stage == 'waiting'
-                        ? 'Move to Doctor'
+                    ? 'Checkin'
                         : stage == 'with_doctor'
                             ? 'Move to Checkout'
-                            : 'Complete',
+                      : 'Mark Appointment Complete',
               ),
             ),
             if (showHistoryAction) ...[
@@ -910,11 +1036,13 @@ class _WorkflowRow extends StatelessWidget {
                 child: const Text('History'),
               ),
             ],
-            const SizedBox(width: 8),
-            Button(
-              onPressed: () => openAppointment(appointment),
-              child: const Text('Open'),
-            ),
+            if (stage == 'waiting' || stage == 'with_doctor') ...[
+              const SizedBox(width: 8),
+              Button(
+                onPressed: () => openAppointment(appointment),
+                child: const Text('Open'),
+              ),
+            ],
           ],
         ),
       ),
@@ -1417,9 +1545,64 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     appointments.set(a);
   }
 
+  Future<void> _moveBackToWaiting() async {
+    final shouldMove = await showDialog<bool>(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Move back to Waiting?'),
+        content: const Text(
+          'This patient will be moved back to Waiting and doctor assignment will be removed.',
+        ),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Move to Waiting'),
+          ),
+        ],
+      ),
+    );
+    if (shouldMove != true) return;
+    final a = widget.appointment;
+    a.operatorsIDs = [];
+    a.checkinStage = 'waiting';
+    a.isDone = false;
+    appointments.set(a);
+  }
+
+  Future<void> _moveBackToWithDoctor() async {
+    final shouldMove = await showDialog<bool>(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Move back to With Doctor?'),
+        content: const Text('This patient will be moved back to With Doctor stage.'),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Move to With Doctor'),
+          ),
+        ],
+      ),
+    );
+    if (shouldMove != true) return;
+    final a = widget.appointment;
+    a.checkinStage = 'with_doctor';
+    a.isDone = false;
+    appointments.set(a);
+  }
+
   @override
   Widget build(BuildContext context) {
     final a = widget.appointment;
+    final isWithDoctor = a.checkinStage == 'with_doctor';
+    final isCheckout = a.checkinStage == 'checkout';
     final topTreatments = _topTreatmentsForPatient();
     final globalTopTreatments = _topTreatmentsAcrossClinic();
 
@@ -1445,16 +1628,17 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Operative Inputs',
-            style: TextStyle(
+          Text(
+            isCheckout ? 'Checkout' : 'With Doctor',
+            style: const TextStyle(
               color: Color(0xFF2C4E76),
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 8),
-          LayoutBuilder(
+          if (isWithDoctor)
+            LayoutBuilder(
             builder: (context, constraints) {
               final firstColumn = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1582,28 +1766,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           .toList(growable: false),
                     ),
                   ],
-                  const SizedBox(height: 10),
-                  _EnhancedTeethPickerCard(
-                    selectedTeeth: _selectedTeeth,
-                    onChanged: (teeth) {
-                      _selectedTeeth = teeth;
-                      a.selectedTeeth = teeth.toList(growable: false);
-                      appointments.set(a);
-                      setState(() {});
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  _SvgOdontogramCard(
-                    teeth: _teethStates,
-                    selectedToothId: _selectedOdontogramToothId,
-                    selectedToothNote: _odontogramNotes[_selectedOdontogramToothId] ?? '',
-                    onToothNoteChanged: (value) {
-                      _odontogramNotes[_selectedOdontogramToothId] = value;
-                    },
-                    onSelectTooth: (toothId) =>
-                        setState(() => _selectedOdontogramToothId = toothId),
-                    onSurfaceTap: _onOdontogramSurfaceTap,
-                  ),
                 ],
               );
 
@@ -1622,194 +1784,23 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Text(
-                        'Enable Discount',
-                        style: TextStyle(
-                          color: Color(0xFF355279),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ToggleSwitch(
-                        checked: _discountEnabled,
-                        onChanged: (value) {
-                          final a = widget.appointment;
-                          setState(() => _discountEnabled = value);
-                          if (!value) {
-                            _activeDiscountMode = null;
-                            _discountController.clear();
-                            a.discount = 0;
-                            a.price = _basePriceBeforeDiscount;
-                            _priceController.text = a.price == 0
-                                ? ''
-                                : a.price.toStringAsFixed(0);
-                            appointments.set(a);
-                            return;
-                          }
-                          _basePriceBeforeDiscount =
-                              double.tryParse(_priceController.text.trim()) ??
-                                  _basePriceBeforeDiscount;
-                        },
-                      ),
-                    ],
+                  FilledButton(
+                    style: ButtonStyle(
+                      backgroundColor:
+                          WidgetStateProperty.all(const Color(0xFF2BA58D)),
+                      foregroundColor: WidgetStateProperty.all(Colors.white),
+                    ),
+                    onPressed: () {
+                      a.checkinStage = 'checkout';
+                      a.isDone = false;
+                      appointments.set(a);
+                    },
+                    child: const Text('Move to Checkout'),
                   ),
                   const SizedBox(height: 8),
-                  if (_discountEnabled) ...[
-                    InfoLabel(
-                      label: 'Discount',
-                      child: CupertinoTextField(
-                        controller: _discountController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-                        ],
-                        onChanged: (_) => _applyDiscount(),
-                        placeholder: 'Discount',
-                        suffix: _activeDiscountMode == 'percent'
-                            ? const Padding(
-                                padding: EdgeInsets.only(right: 10),
-                                child: Text(
-                                  '%',
-                                  style: TextStyle(
-                                    color: Color(0xFF5A7397),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              )
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _quickChip(
-                          label: '₹ Flat',
-                          selected: _activeDiscountMode == 'flat',
-                          onTap: () => _toggleDiscountMode('flat'),
-                        ),
-                        _quickChip(
-                          label: '% Percent',
-                          selected: _activeDiscountMode == 'percent',
-                          onTap: () => _toggleDiscountMode('percent'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: ((_activeDiscountMode ?? _discountType) == 'percent'
-                              ? [5, 10, 15, 20, 25]
-                              : [50, 100, 200, 500, 1000])
-                          .map(
-                            (v) => _quickChip(
-                              label: _discountType == 'percent' ? '$v%' : '₹$v',
-                              onTap: () => _applyDiscountSuggestion(v),
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                  InfoLabel(
-                    label:
-                        'Price in ${globalSettings.get("currency_______").value}',
-                    child: CupertinoTextField(
-                      controller: _priceController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-                      ],
-                      onChanged: (value) {
-                        _basePriceBeforeDiscount = double.tryParse(value) ?? 0;
-                        if (_discountEnabled && _activeDiscountMode != null) {
-                          _applyDiscount();
-                          return;
-                        }
-                        a.price = _basePriceBeforeDiscount;
-                        appointments.set(a);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [100, 200, 500, 1000, 2000]
-                        .map(
-                          (v) => GestureDetector(
-                            onTap: () => _applyPriceSuggestion(v),
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEAF2FC),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: const Color(0xFFD5E5F7)),
-                              ),
-                              child: Text(
-                                '₹$v',
-                                style: const TextStyle(
-                                  color: Color(0xFF2F5B88),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  const SizedBox(height: 10),
-                  InfoLabel(
-                    label:
-                        'Paid in ${globalSettings.get("currency_______").value}',
-                    child: CupertinoTextField(
-                      controller: _paidController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
-                      ],
-                      onChanged: (value) {
-                        a.paid = double.tryParse(value) ?? 0;
-                        appointments.set(a);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [100, 200, 500, 1000, 2000]
-                        .map(
-                          (v) => GestureDetector(
-                            onTap: () => _applyPaidSuggestion(v),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEAF2FC),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                    color: const Color(0xFFD5E5F7)),
-                              ),
-                              child: Text(
-                                '₹$v',
-                                style: const TextStyle(
-                                  color: Color(0xFF2F5B88),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(growable: false),
+                  Button(
+                    onPressed: _moveBackToWaiting,
+                    child: const Text('Move Back to Waiting'),
                   ),
                 ],
               );
@@ -1823,48 +1814,137 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               );
             },
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _paymentModeChip(
-                label: 'Cash',
-                selected: !a.treatmentGpayPaid,
-                color: const Color(0xFFE09C31),
-                onTap: () {
-                  setState(() {
-                    a.treatmentGpayPaid = false;
-                    a.prescriptionGpayPaid = false;
-                  });
-                  appointments.set(a);
-                },
-              ),
-              _paymentModeChip(
-                label: 'Digital (GPay)',
-                selected: a.treatmentGpayPaid,
-                color: const Color(0xFF2D7BD8),
-                onTap: () {
-                  setState(() {
-                    a.treatmentGpayPaid = true;
-                    a.prescriptionGpayPaid = true;
-                  });
-                  appointments.set(a);
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          FilledButton(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(
-                a.isDone ? const Color(0xFFD6455D) : const Color(0xFF2BA58D),
-              ),
-              foregroundColor: WidgetStateProperty.all(Colors.white),
+          if (isCheckout) ...[
+            Row(
+              children: [
+                const Text(
+                  'Enable Discount',
+                  style: TextStyle(
+                    color: Color(0xFF355279),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ToggleSwitch(
+                  checked: _discountEnabled,
+                  onChanged: (value) {
+                    final a = widget.appointment;
+                    setState(() => _discountEnabled = value);
+                    if (!value) {
+                      _activeDiscountMode = null;
+                      _discountController.clear();
+                      a.discount = 0;
+                      a.price = _basePriceBeforeDiscount;
+                      _priceController.text =
+                          a.price == 0 ? '' : a.price.toStringAsFixed(0);
+                      appointments.set(a);
+                      return;
+                    }
+                    _basePriceBeforeDiscount =
+                        double.tryParse(_priceController.text.trim()) ??
+                            _basePriceBeforeDiscount;
+                  },
+                ),
+              ],
             ),
-            onPressed: _confirmDoneToggle,
-            child: Text(a.isDone ? 'Undo Done' : 'Mark Appointment Done'),
-          ),
+            const SizedBox(height: 8),
+            if (_discountEnabled) ...[
+              InfoLabel(
+                label: 'Discount',
+                child: CupertinoTextField(
+                  controller: _discountController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
+                  onChanged: (_) => _applyDiscount(),
+                  placeholder: 'Discount',
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            InfoLabel(
+              label: 'Price in ${globalSettings.get("currency_______").value}',
+              child: CupertinoTextField(
+                controller: _priceController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                onChanged: (value) {
+                  _basePriceBeforeDiscount = double.tryParse(value) ?? 0;
+                  if (_discountEnabled && _activeDiscountMode != null) {
+                    _applyDiscount();
+                    return;
+                  }
+                  a.price = _basePriceBeforeDiscount;
+                  appointments.set(a);
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            InfoLabel(
+              label: 'Paid in ${globalSettings.get("currency_______").value}',
+              child: CupertinoTextField(
+                controller: _paidController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                onChanged: (value) {
+                  a.paid = double.tryParse(value) ?? 0;
+                  appointments.set(a);
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _paymentModeChip(
+                  label: 'Cash',
+                  selected: !a.treatmentGpayPaid,
+                  color: const Color(0xFFE09C31),
+                  onTap: () {
+                    setState(() {
+                      a.treatmentGpayPaid = false;
+                      a.prescriptionGpayPaid = false;
+                    });
+                    appointments.set(a);
+                  },
+                ),
+                _paymentModeChip(
+                  label: 'Digital (GPay)',
+                  selected: a.treatmentGpayPaid,
+                  color: const Color(0xFF2D7BD8),
+                  onTap: () {
+                    setState(() {
+                      a.treatmentGpayPaid = true;
+                      a.prescriptionGpayPaid = true;
+                    });
+                    appointments.set(a);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              style: ButtonStyle(
+                backgroundColor:
+                    WidgetStateProperty.all(const Color(0xFF3B9A42)),
+                foregroundColor: WidgetStateProperty.all(Colors.white),
+              ),
+              onPressed: _confirmDoneToggle,
+              child: const Text('Mark Appointment Complete'),
+            ),
+            const SizedBox(height: 8),
+            Button(
+              onPressed: _moveBackToWithDoctor,
+              child: const Text('Move Back to With Doctor'),
+            ),
+          ],
         ],
       ),
     );
