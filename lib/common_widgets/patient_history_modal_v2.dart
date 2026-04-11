@@ -1,7 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 Future<void> showPatientHistoryDialogV2({
   required BuildContext context,
@@ -70,7 +76,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   String _query = '';
   String _statusFilter = 'All';
   String _modeFilter = 'All';
-  String _dateRange = 'Last 30 days';
+  String _dateRange = 'All';
   String _doctorFilter = 'All Doctors';
   String? _expandedRowId;
 
@@ -115,6 +121,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     DateTime? startDate;
     if (_dateRange == 'Last 30 days') {
       startDate = now.subtract(const Duration(days: 30));
+    } else if (_dateRange == 'Last 90 days') {
+      startDate = now.subtract(const Duration(days: 90));
     }
 
     return _allRows.where((row) {
@@ -152,6 +160,100 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     if (status == 'Paid') return const Color(0xFF16A34A);
     if (status == 'Partial') return const Color(0xFFF59E0B);
     return const Color(0xFFDC2626);
+  }
+
+  Future<void> _exportCsv() async {
+    final rows = _visibleRows;
+    if (rows.isEmpty) return;
+
+    final csv = StringBuffer();
+    csv.writeln('Date,Tooth,Treatment,Doctor,Cost,Paid,Balance,Status,Mode');
+    for (final row in rows) {
+      final values = [
+        DateFormat('yyyy-MM-dd').format(row.date),
+        row.tooth,
+        row.treatment,
+        row.doctor,
+        row.cost.toStringAsFixed(0),
+        row.paid.toStringAsFixed(0),
+        row.balance.toStringAsFixed(0),
+        row.status,
+        row.mode,
+      ].map((v) => '"${v.replaceAll('"', '""')}"').join(',');
+      csv.writeln(values);
+    }
+
+    final savePath = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save CSV',
+      fileName:
+          'patient_report_${widget.patient.id}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv',
+      bytes: utf8.encode(csv.toString()),
+    );
+
+    if (savePath == null || savePath.trim().isEmpty) return;
+
+    await File(savePath).writeAsString(csv.toString());
+  }
+
+  Future<void> _exportPdf() async {
+    final rows = _visibleRows;
+    if (rows.isEmpty) return;
+
+    final doc = pw.Document();
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (context) => [
+          pw.Text(
+            'Patient Report - ${widget.patient.title.trim().isEmpty ? widget.patient.id : widget.patient.title}',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text('Generated on ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}'),
+          pw.SizedBox(height: 10),
+          pw.TableHelper.fromTextArray(
+            headers: const [
+              'Date',
+              'Tooth',
+              'Treatment',
+              'Doctor',
+              'Cost',
+              'Paid',
+              'Balance',
+              'Status',
+              'Mode',
+            ],
+            data: rows
+                .map(
+                  (r) => [
+                    DateFormat('dd MMM yyyy').format(r.date),
+                    r.tooth,
+                    r.treatment,
+                    r.doctor,
+                    '₹${r.cost.toStringAsFixed(0)}',
+                    '₹${r.paid.toStringAsFixed(0)}',
+                    '₹${r.balance.toStringAsFixed(0)}',
+                    r.status,
+                    r.mode,
+                  ],
+                )
+                .toList(growable: false),
+          ),
+        ],
+      ),
+    );
+
+    final bytes = await doc.save();
+    final savePath = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save PDF',
+      fileName:
+          'patient_report_${widget.patient.id}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf',
+      bytes: bytes,
+    );
+
+    if (savePath == null || savePath.trim().isEmpty) return;
+
+    await File(savePath).writeAsBytes(bytes, flush: true);
   }
 
   @override
@@ -254,7 +356,11 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
-    final modalWidth = screen.width < 1200 ? screen.width * 0.98 : 1120.0;
+    final modalWidth = screen.width < 900
+      ? screen.width * 0.99
+      : screen.width < 1500
+        ? screen.width * 0.95
+        : 1360.0;
     final modalHeight = screen.height * 0.92;
 
     final totalCost = _allRows.fold<double>(0, (s, r) => s + r.cost);
@@ -365,7 +471,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                     ),
                     Button(onPressed: _openShareOptions, child: const Text('Share')),
                     Button(onPressed: _openPrintOptions, child: const Text('Print')),
-                    Button(onPressed: () {}, child: const Text('Download PDF')),
+                    Button(onPressed: _exportPdf, child: const Text('Download PDF')),
                   ],
                 ),
               ],
@@ -425,6 +531,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                _filterHeader('Status', _statusFilter != 'All'),
+                const SizedBox(width: 6),
                 _combo(
                   value: _statusFilter,
                   values: const ['All', 'Paid', 'Due', 'Partial'],
@@ -432,6 +540,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   width: 140,
                 ),
                 const SizedBox(width: 8),
+                _filterHeader('Mode', _modeFilter != 'All'),
+                const SizedBox(width: 6),
                 _combo(
                   value: _modeFilter,
                   values: const ['All', 'Cash', 'UPI', 'Card', 'GPay'],
@@ -439,6 +549,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   width: 120,
                 ),
                 const SizedBox(width: 8),
+                _filterHeader('Date', _dateRange != 'All'),
+                const SizedBox(width: 6),
                 _combo(
                   value: _dateRange,
                   values: const ['Last 30 days', 'Last 90 days', 'All'],
@@ -446,6 +558,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   width: 150,
                 ),
                 const SizedBox(width: 8),
+                _filterHeader('Doctor', _doctorFilter != 'All Doctors'),
+                const SizedBox(width: 6),
                 _combo(
                   value: _doctorFilter,
                   values: const ['All Doctors', 'Dr Nowfar'],
@@ -453,9 +567,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   width: 140,
                 ),
                 const SizedBox(width: 8),
-                Button(onPressed: () {}, child: const Text('Export CSV')),
+                Button(onPressed: _exportCsv, child: const Text('Export CSV')),
                 const SizedBox(width: 6),
-                Button(onPressed: () {}, child: const Text('Export PDF')),
+                Button(onPressed: _exportPdf, child: const Text('Export PDF')),
               ],
             ),
           ),
@@ -533,27 +647,44 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                       ),
                                       Expanded(
                                         flex: 8,
-                                        child: Text('₹${row.paid.toStringAsFixed(0)}'),
-                                      ),
-                                      Expanded(
-                                        flex: 9,
-                                        child: Text('₹${row.balance.toStringAsFixed(0)}'),
-                                      ),
-                                      Expanded(
-                                        flex: 9,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: statusColor.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(999),
-                                            border: Border.all(color: statusColor),
+                                        child: Text(
+                                          '₹${row.paid.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                            color: row.paid < row.cost
+                                                ? const Color(0xFFD97706)
+                                                : const Color(0xFF16A34A),
+                                            fontWeight: FontWeight.w700,
                                           ),
-                                          child: Text(
-                                            row.status,
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: statusColor,
-                                              fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 9,
+                                        child: Text(
+                                          '₹${row.balance.toStringAsFixed(0)}',
+                                          style: const TextStyle(
+                                            color: Color(0xFFDC2626),
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 9,
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: statusColor.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(999),
+                                              border: Border.all(color: statusColor),
+                                            ),
+                                            child: Text(
+                                              row.status,
+                                              style: TextStyle(
+                                                color: statusColor,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 11,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -655,9 +786,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
 
   Widget _summaryCard(String title, String value, Color valueColor, Color bg) {
     return SizedBox(
-      width: 250,
+      width: 300,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(12),
@@ -670,20 +801,41 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
               title,
               style: const TextStyle(
                 color: Color(0xFF334155),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               value,
               style: TextStyle(
                 color: valueColor,
-                fontSize: 20,
+                fontSize: 24,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterHeader(String label, bool selected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFFE4EEFF) : const Color(0xFFF1F5FB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD7E2EF),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? const Color(0xFF1459AD) : const Color(0xFF64748B),
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
         ),
       ),
     );

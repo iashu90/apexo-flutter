@@ -155,12 +155,12 @@ class _Routes {
           navbarTitle: "Old Dashboard",
         ),
         Route(
-          title: 'Doctors V2',
+          title: 'Doctors',
           identifier: 'doctors_v2',
           icon: FluentIcons.medical,
           screen: DoctorsScreenV2.new,
           accessible: permissions.list[0] || login.isAdmin,
-          navbarTitle: 'Doctors V2',
+          navbarTitle: 'Doctors',
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();

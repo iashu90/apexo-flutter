@@ -13,6 +13,7 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
+import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
@@ -92,6 +93,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
       firstDate: DateTime(2000, 1, 1),
       lastDate: DateTime(2100, 12, 31),
       helpText: 'Select date',
+      builder: apexoDatePickerBuilder(context),
     );
 
     if (picked == null) return;

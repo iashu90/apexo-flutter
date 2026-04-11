@@ -3,6 +3,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart' as material;
+import 'package:apexo/theme/material_date_picker_theme.dart';
 
 class DateSelectorRow extends StatefulWidget {
   final DateTime selectedDate;
@@ -69,6 +70,7 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
                                 initialDate: selectedDate,
                                 firstDate: DateTime(2000),
                                 lastDate: DateTime(2100),
+                                builder: apexoDatePickerBuilder(context),
                               );
                               if (picked != null) {
                                 ActivityLogger.logAction(

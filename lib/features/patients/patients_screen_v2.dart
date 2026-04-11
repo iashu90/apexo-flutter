@@ -97,6 +97,35 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     );
   }
 
+  Future<void> _confirmDeletePatient(Patient patient) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: const Text('Delete patient?'),
+        content: Text(
+          'This will permanently delete ${patient.title.trim().isEmpty ? 'this patient' : patient.title} and cannot be undone.',
+        ),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: ButtonStyle(
+              backgroundColor:
+                  WidgetStateProperty.all(const Color(0xFFD6455D)),
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    await patients.hardDelete(patient.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage.scrollable(
@@ -494,6 +523,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   onSort: _onSort,
                   listSearchController: _listSearchController,
                   onOpenHistory: _openPatientHistoryDialog,
+                  onDeletePatient: _confirmDeletePatient,
                   totalItems: sortedPatients.length,
                   currentPage: currentPage,
                   totalPages: totalPages,
@@ -2500,6 +2530,7 @@ class _AllPatientsListCard extends StatelessWidget {
   final ValueChanged<String> onSort;
   final TextEditingController listSearchController;
   final ValueChanged<Patient> onOpenHistory;
+  final ValueChanged<Patient> onDeletePatient;
   final int totalItems;
   final int currentPage;
   final int totalPages;
@@ -2520,6 +2551,7 @@ class _AllPatientsListCard extends StatelessWidget {
     required this.onSort,
     required this.listSearchController,
     required this.onOpenHistory,
+    required this.onDeletePatient,
     required this.totalItems,
     required this.currentPage,
     required this.totalPages,
@@ -2941,13 +2973,21 @@ class _AllPatientsListCard extends StatelessWidget {
                             ),
                             Expanded(
                               flex: 12,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: _HoverActionItem(
-                                  icon: FluentIcons.history,
-                                  label: 'History',
-                                  onTap: () => onOpenHistory(patient),
-                                ),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  _HoverActionItem(
+                                    icon: FluentIcons.history,
+                                    label: 'History',
+                                    onTap: () => onOpenHistory(patient),
+                                  ),
+                                  _HoverActionItem(
+                                    icon: FluentIcons.delete,
+                                    label: 'Delete',
+                                    onTap: () => onDeletePatient(patient),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
