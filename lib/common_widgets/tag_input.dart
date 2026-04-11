@@ -51,6 +51,24 @@ class TagInputWidgetState extends State<TagInputWidget> {
     _tags = widget.initialValue;
   }
 
+  @override
+  void didUpdateWidget(covariant TagInputWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final oldValues = oldWidget.initialValue
+        .map((e) => '${e.value}|${e.label}')
+        .toList(growable: false);
+    final newValues = widget.initialValue
+        .map((e) => '${e.value}|${e.label}')
+        .toList(growable: false);
+
+    if (oldValues.join('||') != newValues.join('||')) {
+      _tags = List<TagInputItem>.from(widget.initialValue, growable: true);
+    }
+
+    _filteredSuggestions = widget.suggestions;
+  }
+
   void _onTextChanged(String inputVal, _) {
     // this CAN be triggered while the widget has been unmounted/rebuilt
     // that's why we're keeping the "mounted" condition

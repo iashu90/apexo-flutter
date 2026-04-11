@@ -456,10 +456,16 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                 const SizedBox(height: 12),
                 _DoctorTodayEarningsCompactCard(rows: doneRows),
                 const SizedBox(height: 10),
-                _DoctorAppointmentDoneChartCard(
-                  rows: doneRows,
-                  selectedRange: _doneRange,
-                  onSelectRange: (value) => setState(() => _doneRange = value),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 620),
+                    child: _DoctorAppointmentDoneChartCard(
+                      rows: doneRows,
+                      selectedRange: _doneRange,
+                      onSelectRange: (value) => setState(() => _doneRange = value),
+                    ),
+                  ),
                 ),
               ],
             );

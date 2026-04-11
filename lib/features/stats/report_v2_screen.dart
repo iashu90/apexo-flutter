@@ -325,27 +325,30 @@ class _MonthlyTreatmentDistributionCardState
                 )
               : Row(
                   children: [
-                    SizedBox(
-                      width: 124,
-                      height: 124,
-                      child: CustomPaint(
-                        painter: _DonutPainter(
-                          rows: rows,
-                          colors: colors,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '$total',
-                            style: const TextStyle(
-                              color: Color(0xFF1D3E67),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8, right: 2),
+                      child: SizedBox(
+                        width: 112,
+                        height: 112,
+                        child: CustomPaint(
+                          painter: _DonutPainter(
+                            rows: rows,
+                            colors: colors,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$total',
+                              style: const TextStyle(
+                                color: Color(0xFF1D3E67),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
@@ -799,9 +802,11 @@ class _SimpleBarsCard extends StatelessWidget {
                             child: SizedBox(
                               width: 44,
                               child: Text(
-                                valueFormatter == null
-                                    ? entry.value.value.toStringAsFixed(0)
-                                    : valueFormatter!(entry.value.value),
+                                entry.value.value == 0
+                                    ? ''
+                                    : (valueFormatter == null
+                                        ? entry.value.value.toStringAsFixed(0)
+                                        : valueFormatter!(entry.value.value)),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(

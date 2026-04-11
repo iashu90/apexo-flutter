@@ -272,7 +272,7 @@ class _Routes {
           },
         ),
         Route(
-          title: 'Report V2',
+          title: 'Report',
           identifier: 'report_v2',
           icon: FluentIcons.report_document,
           screen: ReportV2Screen.new,

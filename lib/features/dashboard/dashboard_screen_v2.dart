@@ -557,10 +557,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       _TopTimingSummaryCard(
                         appointmentsForView: todaysAppointments,
                       ),
-                      _TopPatientGrowthCard(
-                        firstVisitByPatient: firstVisitByPatient,
-                        anchorDate: selectedDate,
-                      ),
                     ];
 
                     int columns;
