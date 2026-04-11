@@ -12,6 +12,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
@@ -1583,24 +1584,10 @@ class _AppointmentRow extends StatelessWidget {
   void _openPatientHistoryDialog(BuildContext context) {
     final patient = appointment.patient;
     if (patient == null) return;
-    showDialog(
+    showPatientHistoryDialogV2(
       context: context,
-      builder: (_) => Align(
-        alignment: Alignment.center,
-        child: Container(
-          color: Colors.white,
-          child: PatientDetailsDialog(
-            rows: patient.patientDetails,
-            patient: patient,
-            hiddenColumns: const [
-              'Prescription',
-              'P.Mode',
-              'Doc Paid',
-              'TotalDocPay',
-            ],
-          ),
-        ),
-      ),
+      patient: patient,
+      rows: patient.patientDetails,
     );
   }
 

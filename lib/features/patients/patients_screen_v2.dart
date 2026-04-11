@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -90,24 +90,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   }
 
   void _openPatientHistoryDialog(Patient patient) {
-    showDialog(
+    showPatientHistoryDialogV2(
       context: context,
-      builder: (_) => Align(
-        alignment: Alignment.center,
-        child: Container(
-          color: Colors.white,
-          child: PatientDetailsDialog(
-            rows: patient.patientDetails,
-            patient: patient,
-            hiddenColumns: const [
-              'Prescription',
-              'P.Mode',
-              'Doc Paid',
-              'TotalDocPay',
-            ],
-          ),
-        ),
-      ),
+      patient: patient,
+      rows: patient.patientDetails,
     );
   }
 
@@ -240,6 +226,17 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   return visits.isNotEmpty && daysSinceFirst <= 30;
                 case 'oneTimer':
                   return visits.length == 1;
+                case 'invalidPhone':
+                  final digits =
+                      patient.phone.replaceAll(RegExp(r'[^0-9]'), '');
+                  return digits.length != 10;
+                case 'noVisit':
+                  return visits.isEmpty;
+                case 'todayVisited':
+                  return visits.any((a) =>
+                      a.date.year == now.year &&
+                      a.date.month == now.month &&
+                      a.date.day == now.day);
                 default:
                   return true;
               }
@@ -2696,6 +2693,9 @@ class _AllPatientsListCard extends StatelessWidget {
               behaviorChip('inactive', 'Inactive patients'),
               behaviorChip('new', 'New patients'),
               behaviorChip('oneTimer', 'One timer'),
+              behaviorChip('invalidPhone', 'Invalid Phone Number'),
+              behaviorChip('noVisit', 'No Visit'),
+              behaviorChip('todayVisited', "Today's"),
               if (behaviorFilter == 'highValue')
                 SizedBox(
                   width: 180,

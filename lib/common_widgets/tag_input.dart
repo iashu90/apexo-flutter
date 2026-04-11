@@ -48,7 +48,7 @@ class TagInputWidgetState extends State<TagInputWidget> {
     _controller = widget.controller ?? TextEditingController();
     _focusNode = widget.focusNode ?? FocusNode();
     _filteredSuggestions = widget.suggestions;
-    _tags = widget.initialValue;
+    _tags = List<TagInputItem>.from(widget.initialValue, growable: true);
   }
 
   @override
