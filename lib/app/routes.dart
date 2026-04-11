@@ -26,7 +26,6 @@ import 'package:apexo/services/users.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../services/localization/locale.dart';
 import 'package:apexo/features/appointments/calendar_screen.dart';
-import 'package:apexo/features/doctors/doctors_screen.dart';
 import 'package:apexo/features/doctors/doctors_screen_v2.dart';
 import 'package:apexo/features/settings/settings_screen.dart';
 import '../core/observable.dart';
@@ -154,18 +153,6 @@ class _Routes {
           screen: DashboardScreen.new,
           accessible: true,
           navbarTitle: "Old Dashboard",
-        ),
-        Route(
-          title: txt("doctors"),
-          identifier: "doctors",
-          icon: FluentIcons.medical,
-          screen: DoctorsScreen.new,
-          accessible: permissions.list[0] || login.isAdmin,
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            appointments.synchronize();
-          },
         ),
         Route(
           title: 'Doctors V2',
