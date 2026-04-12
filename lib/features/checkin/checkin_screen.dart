@@ -2232,6 +2232,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   String _paymentMode = 'Cash';
   final TextEditingController _notesController = TextEditingController();
   DateTime _paymentDate = DateTime.now();
+  int _receiptExportSequence = 0;
   bool _sendWhatsapp = true;
   bool _sendSms = false;
   String _discountMode = 'flat';
@@ -2288,6 +2289,77 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   String _safeName(String source) {
     final compact = source.trim().isEmpty ? 'patient' : source.trim();
     return compact.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_');
+  }
+
+  String _nextReceiptLogTag() {
+    _receiptExportSequence += 1;
+    return 'receipt-${DateTime.now().millisecondsSinceEpoch}-$_receiptExportSequence';
+  }
+
+  void _logReceiptExport(String tag, String message, [Object? error, StackTrace? stackTrace]) {
+    debugPrint('[Export][$tag] $message');
+    if (error != null) {
+      debugPrint('[Export][$tag] ERROR: $error');
+    }
+    if (stackTrace != null) {
+      debugPrint('[Export][$tag] STACK: $stackTrace');
+    }
+  }
+
+  Iterable<List<int>> _chunkBytes(List<int> bytes, int chunkSize) sync* {
+    for (var offset = 0; offset < bytes.length; offset += chunkSize) {
+      final end = (offset + chunkSize < bytes.length)
+          ? offset + chunkSize
+          : bytes.length;
+      yield bytes.sublist(offset, end);
+    }
+  }
+
+  Future<void> _writeReceiptPdfWithRetry({
+    required String target,
+    required List<int> bytes,
+    required ExportProgressController progress,
+    required String logTag,
+  }) async {
+    final tempFile = File('$target.tmp');
+    const maxAttempts = 3;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      IOSink? sink;
+      try {
+        _logReceiptExport(logTag, 'Receipt PDF write attempt $attempt started: $target (${bytes.length} bytes)');
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+
+        sink = tempFile.openWrite();
+        await sink.addStream(Stream<List<int>>.fromIterable(_chunkBytes(bytes, 128 * 1024)));
+        await sink.flush();
+        await sink.close();
+        sink = null;
+        await tempFile.openRead().drain<void>();
+
+        if (!progress.isCancelled) {
+          final targetFile = File(target);
+          if (await targetFile.exists()) {
+            await targetFile.delete();
+          }
+          await tempFile.rename(target);
+          _logReceiptExport(logTag, 'Receipt PDF write finished successfully: $target');
+        }
+        return;
+      } catch (error, stackTrace) {
+        _logReceiptExport(logTag, 'Receipt PDF write attempt $attempt failed', error, stackTrace);
+        await sink?.close();
+        if (attempt == maxAttempts) rethrow;
+        await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
+      } finally {
+        await sink?.close();
+        if (await tempFile.exists() && progress.isCancelled) {
+          await tempFile.delete();
+        }
+      }
+    }
   }
 
   pw.Document _buildReceiptPdf() {
@@ -2476,10 +2548,12 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final ageLabel = widget.appointment.patient?.age ?? 0;
     final patientName = _safeName(widget.appointment.title);
     final fileName = '${patientName}_${ageLabel}_$nowLabel.pdf';
+    final logTag = _nextReceiptLogTag();
     await runWithExportProgressDialog<void>(
       context: context,
       title: 'Preparing receipt PDF',
       task: (progress) async {
+        _logReceiptExport(logTag, 'Receipt export started');
         progress.setProgress(0.2);
         final bytes = await _buildReceiptPdf().save();
         if (progress.isCancelled) return;
@@ -2489,38 +2563,31 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
           fileName: fileName,
         );
         if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+          _logReceiptExport(logTag, 'Receipt export cancelled before write');
           return;
         }
         final target = savePath.toLowerCase().endsWith('.pdf')
             ? savePath
             : '$savePath.pdf';
-        IOSink? sink;
-        try {
-          sink = File(target).openWrite();
-          sink.add(bytes);
-          if (progress.isCancelled) return;
-          await sink.flush();
-        } finally {
-          await sink?.close();
-        }
+        await _writeReceiptPdfWithRetry(
+          target: target,
+          bytes: bytes,
+          progress: progress,
+          logTag: logTag,
+        );
         progress.setProgress(1.0);
+        _logReceiptExport(logTag, 'Receipt export completed');
       },
     );
   }
 
   Future<void> _printReceipt() async {
-    await runWithExportProgressDialog<void>(
-      context: context,
-      title: 'Opening print preview',
-      task: (progress) async {
-        progress.setProgress(0.4);
-        final doc = _buildReceiptPdf();
-        if (progress.isCancelled) return;
-        progress.setProgress(0.8);
-        await Printing.layoutPdf(onLayout: (_) async => doc.save());
-        progress.setProgress(1.0);
-      },
-    );
+    final doc = _buildReceiptPdf();
+    try {
+      await Printing.layoutPdf(onLayout: (_) async => doc.save());
+    } catch (_) {
+      // Print cancelled or virtual printer error – ignore
+    }
   }
 
   @override
