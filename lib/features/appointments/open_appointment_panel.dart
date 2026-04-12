@@ -910,7 +910,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               widget.appointment.treatmentGpayPaid = checked ?? false;
             });
           },
-          content: Txt("Paid via GPay"),
+          content: Txt("Paid via UPI"),
         ),
 
         const Divider(direction: Axis.horizontal),
@@ -1094,7 +1094,7 @@ class _PrescriptionInputState extends State<PrescriptionInput> {
                 widget.appointment.prescriptionGpayPaid = checked ?? false;
               });
             },
-            content: Txt("Paid via GPay"),
+            content: Txt("Paid via UPI"),
           ),
         ),
       ],

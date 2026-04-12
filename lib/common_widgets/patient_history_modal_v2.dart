@@ -80,6 +80,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   String? _expandedRowId;
   String _sortBy = 'date';
   bool _sortAscending = false;
+  bool _isExportingCsv = false;
+  bool _isExportingPdf = false;
 
   double _toAmount(String source) {
     return double.tryParse(source.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
@@ -89,7 +91,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     final value = raw.trim().toLowerCase();
     if (value.isEmpty) return 'Cash';
     if (value.contains('cash')) return 'Cash';
-    return 'Digital';
+    return 'UPI';
   }
 
   String _fileStem() {
@@ -234,8 +236,13 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   }
 
   Future<void> _exportCsv() async {
+    if (_isExportingCsv || _isExportingPdf) return;
     final rows = _visibleRows;
     if (rows.isEmpty) return;
+
+    setState(() => _isExportingCsv = true);
+
+    try {
 
     final csv = StringBuffer();
     csv.writeln('Date,Tooth,Treatment,Doctor,Cost,Paid,Balance,Status,Mode');
@@ -254,22 +261,32 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
       csv.writeln(values);
     }
 
-    final savePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save CSV',
-      fileName: '${_fileStem()}.csv',
-    );
+      final savePath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save CSV',
+        fileName: '${_fileStem()}.csv',
+      );
 
-    if (savePath == null || savePath.trim().isEmpty) return;
+      if (savePath == null || savePath.trim().isEmpty) return;
 
-    final target = savePath.toLowerCase().endsWith('.csv')
-        ? savePath
-        : '$savePath.csv';
-    await File(target).writeAsString(csv.toString(), flush: true);
+      final target = savePath.toLowerCase().endsWith('.csv')
+          ? savePath
+          : '$savePath.csv';
+      await File(target).writeAsString(csv.toString(), flush: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingCsv = false);
+      }
+    }
   }
 
   Future<void> _exportPdf() async {
+    if (_isExportingCsv || _isExportingPdf) return;
     final rows = _visibleRows;
     if (rows.isEmpty) return;
+
+    setState(() => _isExportingPdf = true);
+
+    try {
 
     final doc = pw.Document();
     doc.addPage(
@@ -315,18 +332,23 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
       ),
     );
 
-    final bytes = await doc.save();
-    final savePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save PDF',
-      fileName: '${_fileStem()}.pdf',
-    );
+      final bytes = await doc.save();
+      final savePath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save PDF',
+        fileName: '${_fileStem()}.pdf',
+      );
 
-    if (savePath == null || savePath.trim().isEmpty) return;
+      if (savePath == null || savePath.trim().isEmpty) return;
 
-    final target = savePath.toLowerCase().endsWith('.pdf')
-        ? savePath
-        : '$savePath.pdf';
-    await File(target).writeAsBytes(bytes, flush: true);
+      final target = savePath.toLowerCase().endsWith('.pdf')
+          ? savePath
+          : '$savePath.pdf';
+      await File(target).writeAsBytes(bytes, flush: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingPdf = false);
+      }
+    }
   }
 
   @override
@@ -550,8 +572,24 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                     ),
                     Button(onPressed: _openShareOptions, child: const Text('Share')),
                     Button(onPressed: _openPrintOptions, child: const Text('Print')),
-                    Button(onPressed: _exportCsv, child: const Text('Download CSV')),
-                    Button(onPressed: _exportPdf, child: const Text('Download PDF')),
+                    Button(
+                      onPressed: _isExportingCsv || _isExportingPdf ? null : _exportCsv,
+                      child: const Text('Download CSV'),
+                    ),
+                    Button(
+                      onPressed: _isExportingCsv || _isExportingPdf ? null : _exportPdf,
+                      child: const Text('Download PDF'),
+                    ),
+                    if (_isExportingCsv)
+                      const SizedBox(
+                        width: 120,
+                        child: ProgressBar(),
+                      ),
+                    if (_isExportingPdf)
+                      const SizedBox(
+                        width: 120,
+                        child: ProgressBar(),
+                      ),
                   ],
                 ),
               ],
@@ -611,7 +649,11 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _filterHeader('Status', _statusFilter != 'All'),
+                _filterHeaderIcon(
+                  icon: FluentIcons.completed,
+                  tooltip: 'Status',
+                  selected: _statusFilter != 'All',
+                ),
                 const SizedBox(width: 6),
                 _combo(
                   value: _statusFilter,
@@ -620,16 +662,24 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   width: 140,
                 ),
                 const SizedBox(width: 8),
-                _filterHeader('Mode', _modeFilter != 'All'),
+                _filterHeaderIcon(
+                  icon: FluentIcons.payment_card,
+                  tooltip: 'Mode',
+                  selected: _modeFilter != 'All',
+                ),
                 const SizedBox(width: 6),
                 _combo(
                   value: _modeFilter,
-                  values: const ['All', 'Cash', 'Digital'],
+                  values: const ['All', 'Cash', 'UPI'],
                   onChanged: (v) => setState(() => _modeFilter = v),
                   width: 120,
                 ),
                 const SizedBox(width: 8),
-                _filterHeader('Date', _dateRange != 'All'),
+                _filterHeaderIcon(
+                  icon: FluentIcons.date_time,
+                  tooltip: 'Date',
+                  selected: _dateRange != 'All',
+                ),
                 const SizedBox(width: 6),
                 _combo(
                   value: _dateRange,
@@ -638,7 +688,11 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   width: 150,
                 ),
                 const SizedBox(width: 8),
-                _filterHeader('Doctor', _doctorFilter != 'All Doctors'),
+                _filterHeaderIcon(
+                  icon: FluentIcons.medical,
+                  tooltip: 'Doctor',
+                  selected: _doctorFilter != 'All Doctors',
+                ),
                 const SizedBox(width: 6),
                 _combo(
                   value: _doctorFilter,
@@ -646,10 +700,6 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   onChanged: (v) => setState(() => _doctorFilter = v),
                   width: 140,
                 ),
-                const SizedBox(width: 8),
-                Button(onPressed: _exportCsv, child: const Text('Download CSV')),
-                const SizedBox(width: 6),
-                Button(onPressed: _exportPdf, child: const Text('Download PDF')),
               ],
             ),
           ),
@@ -984,7 +1034,11 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     );
   }
 
-  Widget _filterHeader(String label, bool selected) {
+  Widget _filterHeaderIcon({
+    required IconData icon,
+    required String tooltip,
+    required bool selected,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
@@ -994,12 +1048,12 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
           color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD7E2EF),
         ),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
+      child: Tooltip(
+        message: tooltip,
+        child: Icon(
+          icon,
+          size: 12,
           color: selected ? const Color(0xFF1459AD) : const Color(0xFF64748B),
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
         ),
       ),
     );

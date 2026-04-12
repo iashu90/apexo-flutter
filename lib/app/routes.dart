@@ -9,6 +9,7 @@ import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
+import 'package:apexo/features/doctors/doctors_screen.dart';
 import 'package:apexo/features/patients/patients_screen.dart';
 import 'package:apexo/features/patients/patients_screen_v2.dart';
 import 'package:apexo/features/stats/screen_stats.dart';
@@ -26,7 +27,6 @@ import 'package:apexo/services/users.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../services/localization/locale.dart';
 import 'package:apexo/features/appointments/calendar_screen.dart';
-import 'package:apexo/features/doctors/doctors_screen_v2.dart';
 import 'package:apexo/features/settings/settings_screen.dart';
 import '../core/observable.dart';
 import "../features/appointments/appointments_store.dart";
@@ -72,9 +72,9 @@ class Panel<T extends Model> {
     this.title,
   }) {
     identifier =
-        store.get(item.id) == null ? "new+${store.local?.name}" : item.id;
+        store.get(item.id) == null ? "new+${store.local!.name}" : item.id;
     savedJson = jsonEncode(item.toJson());
-    hasValidTitle(item.title?.isNotEmpty ?? false);
+    hasValidTitle(item.title.isNotEmpty);
   }
 
   String get storeSingularName {
@@ -158,7 +158,7 @@ class _Routes {
           title: 'Doctors',
           identifier: 'doctors_v2',
           icon: FluentIcons.medical,
-          screen: DoctorsScreenV2.new,
+          screen: DoctorsScreen.new,
           accessible: permissions.list[0] || login.isAdmin,
           navbarTitle: 'Doctors',
           onSelect: () async {
@@ -173,7 +173,8 @@ class _Routes {
           navbarTitle: txt("labworks"),
           icon: FluentIcons.manufacturing,
           screen: LabworksScreen.new,
-          accessible: permissions.list[3] || login.isAdmin,
+          accessible:
+              permissions.list[3] || permissions.list[0] || login.isAdmin,
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();

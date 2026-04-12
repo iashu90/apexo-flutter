@@ -1296,6 +1296,13 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         .take(20)
         .toList(growable: false);
 
+    if (appointment.checkinStage == 'checkout') {
+      return _CheckinOperativeForm(
+        appointment: appointment,
+        allAppointmentsForPatient: all,
+      );
+    }
+
     final lastAppointment = otherRows.isNotEmpty ? otherRows.first : null;
 
     return Column(
@@ -1367,27 +1374,23 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
           ),
         ),
         const SizedBox(height: 10),
-        if (appointment.checkinStage == 'checkout')
-          _TodayAppointmentInsightCard(appointment: appointment)
-        else
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _LastAppointmentInsightCard(lastAppointment: lastAppointment),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _LastAppointmentInsightCard(lastAppointment: lastAppointment),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PatientJourneyTimeline(
+                appointments: all,
+                excludeDate: appointment.date,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _PatientJourneyTimeline(
-                  appointments: all,
-                  excludeDate: appointment.date,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
+        ),
         const SizedBox(height: 10),
-        if (appointment.checkinStage == 'with_doctor' ||
-            appointment.checkinStage == 'checkout')
+        if (appointment.checkinStage == 'with_doctor')
           _CheckinOperativeForm(
               appointment: appointment, allAppointmentsForPatient: all)
         else
@@ -1476,10 +1479,10 @@ class _LastAppointmentInsightCard extends StatelessWidget {
   }
 }
 
-class _TodayAppointmentInsightCard extends StatelessWidget {
+class TodayAppointmentInsightCard extends StatelessWidget {
   final Appointment appointment;
 
-  const _TodayAppointmentInsightCard({required this.appointment});
+  const TodayAppointmentInsightCard({super.key, required this.appointment});
 
   @override
   Widget build(BuildContext context) {
@@ -1553,15 +1556,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   late final TextEditingController _paidController;
   late final TextEditingController _discountController;
 
-  String _discountType = 'flat';
-  String? _activeDiscountMode;
   bool _discountEnabled = false;
-  double _basePriceBeforeDiscount = 0;
-  TreatmentType _selectedOdontogramTreatment = TreatmentType.filling;
-  String _selectedOdontogramToothId = '16';
-  final Map<String, String> _odontogramNotes = <String, String>{};
   Set<String> _selectedTreatments = {};
-  String _selectedPostOpParent = 'Bleeding Control';
+  String? _selectedPostOpParent;
   Set<String> _selectedTeeth = {};
   Map<String, ToothState> _teethStates = {};
 
@@ -1671,10 +1668,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         text: a.paid == 0 ? '' : a.paid.toStringAsFixed(0));
     _discountController = TextEditingController(
         text: a.discount == 0 ? '' : a.discount.toStringAsFixed(0));
-    _discountType = a.discountType;
     _discountEnabled = a.discount > 0;
-    _activeDiscountMode = a.discount > 0 ? a.discountType : null;
-    _basePriceBeforeDiscount = a.price;
     _selectedTreatments = a.selectedTreatments.toSet();
     _selectedTeeth = a.selectedTeeth.toSet();
     _teethStates = {
@@ -1684,8 +1678,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       if (!_teethStates.containsKey(id)) {
         _teethStates[id] = ToothState(toothId: id);
       }
-      _teethStates[id]!.surfaces[ToothSurface.occlusal] =
-          _selectedOdontogramTreatment;
+        _teethStates[id]!.surfaces[ToothSurface.occlusal] =
+          TreatmentType.filling;
     }
   }
 
@@ -1696,100 +1690,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     _paidController.dispose();
     _discountController.dispose();
     super.dispose();
-  }
-
-  void _applyDiscount() {
-    final a = widget.appointment;
-    final discount = (_discountEnabled && _activeDiscountMode != null)
-        ? (double.tryParse(_discountController.text.trim()) ?? 0.0)
-        : 0.0;
-
-    double finalPrice = _basePriceBeforeDiscount;
-    if (discount > 0 && _activeDiscountMode != null) {
-      if (_activeDiscountMode == 'percent') {
-        finalPrice =
-            _basePriceBeforeDiscount - (_basePriceBeforeDiscount * discount / 100);
-      } else {
-        finalPrice = _basePriceBeforeDiscount - discount;
-      }
-      if (finalPrice < 0) finalPrice = 0;
-    }
-
-    a.discount = discount;
-    a.discountType = _discountType;
-    a.price = finalPrice;
-
-    _priceController.text = finalPrice == 0 ? '' : finalPrice.toStringAsFixed(0);
-    appointments.set(a);
-    setState(() {});
-  }
-
-  void _toggleDiscountMode(String mode) {
-    final a = widget.appointment;
-    if (!_discountEnabled) return;
-
-    if (_activeDiscountMode == mode) {
-      _activeDiscountMode = null;
-      a.discount = 0;
-      a.price = _basePriceBeforeDiscount;
-      _priceController.text = a.price == 0 ? '' : a.price.toStringAsFixed(0);
-      appointments.set(a);
-      setState(() {});
-      return;
-    }
-
-    _discountType = mode;
-    _activeDiscountMode = mode;
-    _applyDiscount();
-  }
-
-  void _applyPriceSuggestion(int value) {
-    final a = widget.appointment;
-    _priceController.text = '$value';
-    _basePriceBeforeDiscount = value.toDouble();
-    if (_discountEnabled && _activeDiscountMode != null) {
-      _applyDiscount();
-      return;
-    }
-    a.price = _basePriceBeforeDiscount;
-    appointments.set(a);
-    setState(() {});
-  }
-
-  void _applyPaidSuggestion(int value) {
-    final a = widget.appointment;
-    _paidController.text = '$value';
-    a.paid = value.toDouble();
-    appointments.set(a);
-    setState(() {});
-  }
-
-  void _applyDiscountSuggestion(int value) {
-    if (!_discountEnabled) {
-      setState(() => _discountEnabled = true);
-    }
-    _discountController.text = '$value';
-    _applyDiscount();
-  }
-
-  void _appendPostOpSuggestion(String parent, String child) {
-    final a = widget.appointment;
-    final line = '$parent · $child';
-    final current = _postOpController.text.trim();
-    final lines = current.isEmpty
-        ? <String>[]
-        : current
-            .split('\n')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList(growable: true);
-    if (!lines.contains(line)) {
-      lines.add(line);
-      _postOpController.text = lines.join('\n');
-      a.postOpNotes = _postOpController.text;
-      appointments.set(a);
-      setState(() {});
-    }
   }
 
   List<String> _topTreatmentsForPatient() {
@@ -1820,27 +1720,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     return rows.take(10).map((e) => e.key).toList(growable: false);
   }
 
-  void _onOdontogramSurfaceTap(String toothId, ToothSurface surface) {
-    final a = widget.appointment;
-    _selectedOdontogramToothId = toothId;
-    final tooth = _teethStates[toothId] ?? ToothState(toothId: toothId);
-    final current = tooth.surfaces[surface];
-    tooth.surfaces[surface] =
-        current == _selectedOdontogramTreatment ? null : _selectedOdontogramTreatment;
-    _teethStates[toothId] = tooth;
-
-    final hasAnySurface = tooth.surfaces.values.any((v) => v != null);
-    if (hasAnySurface) {
-      _selectedTeeth.add(toothId);
-    } else {
-      _selectedTeeth.remove(toothId);
-    }
-
-    a.selectedTeeth = _selectedTeeth.toList(growable: false);
-    appointments.set(a);
-    setState(() {});
-  }
-
   Future<void> _confirmDoneToggle() async {
     final a = widget.appointment;
     if (a.isDone) {
@@ -1850,7 +1729,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       return;
     }
 
-    final paymentMode = a.treatmentGpayPaid ? 'Digital (GPay)' : 'Cash';
+    final paymentMode = a.treatmentGpayPaid ? 'UPI' : 'Cash';
     final discountLabel = a.discount <= 0
         ? 'No discount'
         : a.discountType == 'percent'
@@ -1960,6 +1839,31 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     final a = widget.appointment;
     final isWithDoctor = a.checkinStage == 'with_doctor';
     final isCheckout = a.checkinStage == 'checkout';
+
+    if (isCheckout) {
+      return _CheckoutPaymentCard(
+        appointment: a,
+        priceController: _priceController,
+        paidController: _paidController,
+        discountController: _discountController,
+        discountEnabled: _discountEnabled,
+        onToggleDiscount: (value) => setState(() => _discountEnabled = value),
+        onCollectFullBalance: () {
+          final discount = a.discount;
+          final discountedTotal = (a.discountType == 'percent'
+              ? (a.price - (a.price * discount / 100)).clamp(0, double.infinity)
+            : (a.price - discount).clamp(0, double.infinity))
+            .toDouble();
+          _paidController.text = discountedTotal.toStringAsFixed(0);
+          a.paid = discountedTotal;
+          appointments.set(a);
+          setState(() {});
+        },
+        onComplete: _confirmDoneToggle,
+        onMoveBackToWithDoctor: _moveBackToWithDoctor,
+      );
+    }
+
     final topTreatments = _topTreatmentsForPatient();
     final globalTopTreatments = _topTreatmentsAcrossClinic();
     final mergedTopTreatments = [
@@ -2129,30 +2033,15 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             selectedTextColor: const Color(0xFF134F9D),
                             normalColor: const Color(0xFFEFF5FF),
                             normalTextColor: const Color(0xFF355A84),
-                            onTap: () => setState(
-                              () => _selectedPostOpParent = parent,
-                            ),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: (_postOpSuggestions[_selectedPostOpParent] ??
-                            const <String>[])
-                        .map(
-                          (child) => _quickChip(
-                            label: child,
-                            normalColor: const Color(0xFFFFE7CC),
-                            normalTextColor: const Color(0xFF7A3400),
-                            selectedColor: const Color(0xFFFFC58E),
-                            selectedTextColor: const Color(0xFF5F2200),
-                            onTap: () => _appendPostOpSuggestion(
-                              _selectedPostOpParent,
-                              child,
-                            ),
+                            onTap: () {
+                              setState(() => _selectedPostOpParent = parent);
+                              final current = _postOpController.text.trim();
+                              if (current.contains(parent)) return;
+                              _postOpController.text =
+                                  current.isEmpty ? parent : '$current\n$parent';
+                              a.postOpNotes = _postOpController.text;
+                              appointments.set(a);
+                            },
                           ),
                         )
                         .toList(growable: false),
@@ -2221,24 +2110,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               );
             },
           ),
-          if (isCheckout)
-            _CheckoutPaymentCard(
-              appointment: a,
-              priceController: _priceController,
-              paidController: _paidController,
-              discountController: _discountController,
-              discountEnabled: _discountEnabled,
-              onToggleDiscount: (value) => setState(() => _discountEnabled = value),
-              onCollectFullBalance: () {
-                final full = a.price;
-                _paidController.text = full.toStringAsFixed(0);
-                a.paid = full;
-                appointments.set(a);
-                setState(() {});
-              },
-              onComplete: _confirmDoneToggle,
-              onMoveBackToWithDoctor: _moveBackToWithDoctor,
-            ),
         ],
       ),
     );
@@ -2276,34 +2147,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     );
   }
 
-  Widget _paymentModeChip({
-    required String label,
-    required bool selected,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.14) : const Color(0xFFF4F8FD),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? color : const Color(0xFFD6E2F0),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? color : const Color(0xFF355279),
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _CheckoutPaymentCard extends StatefulWidget {
@@ -2339,7 +2182,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   DateTime _paymentDate = DateTime.now();
   bool _sendWhatsapp = true;
   bool _sendSms = false;
-  bool _sendEmail = false;
   String _discountMode = 'flat';
   double _basePrice = 0;
 
@@ -2347,7 +2189,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   void initState() {
     super.initState();
     final a = widget.appointment;
-    _paymentMode = a.treatmentGpayPaid ? 'Digital' : 'Cash';
+    _paymentMode = a.treatmentGpayPaid ? 'UPI' : 'Cash';
     _discountMode = a.discountType == 'percent' ? 'percent' : 'flat';
     _basePrice = a.price;
   }
@@ -2364,20 +2206,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         ? (double.tryParse(widget.discountController.text.trim()) ?? 0)
         : 0;
 
-    double finalPrice = _basePrice;
-    if (widget.discountEnabled && discount > 0) {
-      if (_discountMode == 'percent') {
-        finalPrice = _basePrice - (_basePrice * discount / 100);
-      } else {
-        finalPrice = _basePrice - discount;
-      }
-    }
-    if (finalPrice < 0) finalPrice = 0.0;
-
     a.discount = discount;
     a.discountType = _discountMode;
-    a.price = finalPrice;
-    widget.priceController.text = finalPrice == 0 ? '' : finalPrice.toStringAsFixed(0);
+    a.price = _basePrice;
+    widget.priceController.text = _basePrice == 0 ? '' : _basePrice.toStringAsFixed(0);
     appointments.set(a);
     setState(() {});
   }
@@ -2390,20 +2222,69 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   pw.Document _buildReceiptPdf() {
     final a = widget.appointment;
     final patient = a.patient;
+    final discount = a.discount;
+    final discountedTotal = a.discountType == 'percent'
+        ? (a.price - (a.price * discount / 100)).clamp(0, double.infinity)
+        : (a.price - discount).clamp(0, double.infinity);
     final paid = double.tryParse(widget.paidController.text.trim()) ?? a.paid;
-    final balance = (a.price - paid).clamp(0, double.infinity);
+    final balance = (discountedTotal - paid).clamp(0, double.infinity);
+    final treatmentLabel = a.selectedTreatments
+        .where((t) => t.trim().isNotEmpty)
+        .join(', ');
     final doc = pw.Document();
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(24),
         build: (context) => [
           pw.Text(
-            'INVOICE / PAYMENT RECEIPT PREVIEW',
-            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+            '3) INVOICE / PAYMENT RECEIPT PREVIEW',
+            style: pw.TextStyle(
+              fontSize: 21,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue900,
+            ),
           ),
           pw.SizedBox(height: 12),
           pw.Container(
-            padding: const pw.EdgeInsets.all(10),
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300),
+              borderRadius: pw.BorderRadius.circular(8),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Dr Nowfar Dental Clinic',
+                      style: pw.TextStyle(
+                        fontSize: 16,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue900,
+                      ),
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Text('Ado Croou - Patient ID: ${a.patientID ?? '-'}'),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('Patient ID: ${a.patientID ?? '-'}'),
+                    pw.Text('Invoice ID: VC-${DateTime.now().millisecondsSinceEpoch % 10000}'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(12),
             decoration: pw.BoxDecoration(
               border: pw.Border.all(color: PdfColors.grey300),
               borderRadius: pw.BorderRadius.circular(8),
@@ -2411,20 +2292,107 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Bill To: ${a.title}'),
-                pw.Text('Patient ID: ${a.patientID ?? '-'}'),
-                pw.Text('Phone: ${patient?.phone ?? '-'}   Age: ${patient?.age ?? 0}'),
-                pw.Text('Date: ${DateFormat('dd MMM yyyy').format(_paymentDate)}'),
-                pw.SizedBox(height: 8),
-                pw.Text('Treatment: ${a.selectedTreatments.join(', ').trim().isEmpty ? '-' : a.selectedTreatments.join(', ')}'),
-                pw.Text('Teeth: ${a.selectedTeeth.join(', ').trim().isEmpty ? '-' : a.selectedTeeth.join(', ')}'),
-                pw.SizedBox(height: 8),
-                pw.Text('Cost: Rs ${a.price.toStringAsFixed(0)}'),
-                pw.Text('Paid: Rs ${paid.toStringAsFixed(0)}'),
-                pw.Text('Balance: Rs ${balance.toStringAsFixed(0)}'),
-                pw.Text('Payment Mode: $_paymentMode'),
+                pw.Text('Bill To:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 6),
+                pw.Text(a.title.trim().isEmpty ? 'Unnamed patient' : a.title),
+                pw.Text('Phone: ${patient?.phone ?? '-'} | Age: ${patient?.age ?? 0}'),
+                pw.Text('Doctor: Dr Nowfar'),
               ],
             ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.TableHelper.fromTextArray(
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            cellAlignment: pw.Alignment.centerLeft,
+            headers: const ['Details', 'Desc', 'Cost', 'Amount'],
+            data: [
+              [
+                DateFormat('dd MMM yyyy').format(_paymentDate),
+                treatmentLabel.isEmpty ? '-' : treatmentLabel,
+                'Rs ${a.price.toStringAsFixed(0)}',
+                'Rs ${paid.toStringAsFixed(0)}',
+              ],
+            ],
+          ),
+          pw.SizedBox(height: 12),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.green50,
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Payment Summary',
+                        style: pw.TextStyle(
+                          color: PdfColors.green800,
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.Text('Amount Paid: Rs ${paid.toStringAsFixed(0)}'),
+                      pw.Text('Outstanding: Rs ${balance.toStringAsFixed(0)}'),
+                      pw.Text('Payment Status: ${balance <= 0 ? 'PAID' : 'DUE'}'),
+                    ],
+                  ),
+                ),
+              ),
+              pw.SizedBox(width: 10),
+              pw.Expanded(
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Treatment Cost: Rs ${a.price.toStringAsFixed(0)}'),
+                      pw.Text(
+                        'Discount: ${discount <= 0 ? '-' : (a.discountType == 'percent' ? '-${discount.toStringAsFixed(0)}%' : '-Rs ${discount.toStringAsFixed(0)}')}',
+                      ),
+                      pw.Text('Net Total: Rs ${discountedTotal.toStringAsFixed(0)}'),
+                      pw.Text('Paid: Rs ${paid.toStringAsFixed(0)}'),
+                      pw.Text('TOTAL: Rs ${discountedTotal.toStringAsFixed(0)}'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text('Payment History', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
+          pw.TableHelper.fromTextArray(
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            headers: const ['Date', 'Reference', 'Mode', 'Amount'],
+            data: [
+              [
+                DateFormat('dd MMM yyyy').format(_paymentDate),
+                'TX-${DateTime.now().millisecondsSinceEpoch % 1000000}',
+                _paymentMode,
+                'Rs ${paid.toStringAsFixed(0)}',
+              ],
+            ],
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text('Notes: ${_notesController.text.trim().isEmpty ? '-' : _notesController.text.trim()}'),
+          pw.SizedBox(height: 24),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Device: Reception', style: const pw.TextStyle(fontSize: 10)),
+              pw.Text('Dentice Regemens', style: const pw.TextStyle(fontSize: 10)),
+              pw.Text('Dr Nowfar Dental Clinic', style: const pw.TextStyle(fontSize: 10)),
+            ],
           ),
         ],
       ),
@@ -2454,7 +2422,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   @override
   Widget build(BuildContext context) {
     final a = widget.appointment;
-    final outstanding = (a.price - a.paid).clamp(0, double.infinity);
+    final discountedTotal = a.discountType == 'percent'
+        ? (a.price - (a.price * a.discount / 100)).clamp(0, double.infinity)
+        : (a.price - a.discount).clamp(0, double.infinity);
+    final outstanding = (discountedTotal - a.paid).clamp(0, double.infinity);
     final status = outstanding <= 0 ? 'PAID' : 'DUE';
     final totalAfter =
       (double.tryParse(widget.paidController.text.trim()) ?? a.paid)
@@ -2635,6 +2606,24 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [100, 200, 500, 1000, 2000]
+                        .map(
+                          (v) => Button(
+                            onPressed: () {
+                              widget.paidController.text = '$v';
+                              a.paid = v.toDouble();
+                              appointments.set(a);
+                              setState(() {});
+                            },
+                            child: Text('₹$v'),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -2658,7 +2647,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: ['Cash', 'Digital'].map((mode) {
+                    children: ['Cash', 'UPI'].map((mode) {
                       final selected = _paymentMode == mode;
                       return Button(
                         style: ButtonStyle(
@@ -2683,7 +2672,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         ),
                         onPressed: () {
                           setState(() => _paymentMode = mode);
-                          final isDigital = mode == 'Digital';
+                          final isDigital = mode == 'UPI';
                           a.treatmentGpayPaid = isDigital;
                           a.prescriptionGpayPaid = isDigital;
                           appointments.set(a);
@@ -2756,35 +2745,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         content: const Text('WhatsApp'),
                         onChanged: (v) => setState(() => _sendWhatsapp = v ?? true),
                       ),
+                      const SizedBox(width: 10),
                       Checkbox(
                         checked: _sendSms,
                         content: const Text('SMS'),
                         onChanged: (v) => setState(() => _sendSms = v ?? false),
                       ),
-                      Checkbox(
-                        checked: _sendEmail,
-                        content: const Text('Email'),
-                        onChanged: (v) => setState(() => _sendEmail = v ?? false),
-                      ),
                     ],
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [100, 200, 500, 1000, 2000]
-                        .map(
-                          (v) => Button(
-                            onPressed: () {
-                              widget.paidController.text = '$v';
-                              a.paid = v.toDouble();
-                              appointments.set(a);
-                              setState(() {});
-                            },
-                            child: Text('₹$v'),
-                          ),
-                        )
-                        .toList(growable: false),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -2862,6 +2829,11 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                               : '-₹${a.discount.toStringAsFixed(0)}',
                       valueColor: const Color(0xFFD6455D),
                     ),
+                    _summaryLine(
+                      'Discounted Total',
+                      '₹${discountedTotal.toStringAsFixed(0)}',
+                      valueColor: const Color(0xFF1459AD),
+                    ),
                     const SizedBox(height: 10),
                     const Text(
                       'Treatment',
@@ -2919,7 +2891,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     _summaryLine('Total Paid', '₹${totalAfter.toStringAsFixed(0)}'),
                     _summaryLine(
                       'Balance',
-                      '₹${(a.price - totalAfter).clamp(0, double.infinity).toStringAsFixed(0)}',
+                      '₹${(discountedTotal - totalAfter).clamp(0, double.infinity).toStringAsFixed(0)}',
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -3007,11 +2979,12 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   }
 }
 
-class _EnhancedTeethPickerCard extends StatelessWidget {
+class EnhancedTeethPickerCard extends StatelessWidget {
   final Set<String> selectedTeeth;
   final ValueChanged<Set<String>> onChanged;
 
-  const _EnhancedTeethPickerCard({
+  const EnhancedTeethPickerCard({
+    super.key,
     required this.selectedTeeth,
     required this.onChanged,
   });
@@ -3103,7 +3076,7 @@ class _CheckinSearchableTagInput extends StatelessWidget {
   }
 }
 
-class _SvgOdontogramCard extends StatelessWidget {
+class SvgOdontogramCard extends StatelessWidget {
   final Map<String, ToothState> teeth;
   final String selectedToothId;
   final String selectedToothNote;
@@ -3111,7 +3084,8 @@ class _SvgOdontogramCard extends StatelessWidget {
   final ValueChanged<String> onToothNoteChanged;
   final void Function(String toothId, ToothSurface surface) onSurfaceTap;
 
-  const _SvgOdontogramCard({
+  const SvgOdontogramCard({
+    super.key,
     required this.teeth,
     required this.selectedToothId,
     required this.selectedToothNote,
