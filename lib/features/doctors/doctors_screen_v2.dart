@@ -865,7 +865,7 @@ class _DoctorHandledRangeCard extends StatelessWidget {
                 Tooltip(
                   message: 'Appts = appointment count, Pts = unique patients, Earned = paid to doctor',
                   child: const Text(
-                    'Appts â€¢ Pts â€¢ Earned',
+                    'Appts GÇó Pts GÇó Earned',
                     style: TextStyle(
                       color: Color(0xFF5B789F),
                       fontWeight: FontWeight.w700,
@@ -932,8 +932,8 @@ class _DoctorHandledRangeCard extends StatelessWidget {
                             width: compareMode ? 300 : 220,
                             child: Text(
                               compareMode
-                                  ? '${row.appointmentCount} (${appointmentDelta >= 0 ? '+' : ''}$appointmentDelta) â€¢ ${row.patientCount} â€¢ Rs ${row.earned.toStringAsFixed(0)} (${earnedDelta >= 0 ? '+' : ''}${earnedDelta.toStringAsFixed(0)})'
-                                  : '${row.appointmentCount} â€¢ ${row.patientCount} â€¢ Rs ${row.earned.toStringAsFixed(0)}',
+                                  ? '${row.appointmentCount} (${appointmentDelta >= 0 ? '+' : ''}$appointmentDelta) GÇó ${row.patientCount} GÇó Rs ${row.earned.toStringAsFixed(0)} (${earnedDelta >= 0 ? '+' : ''}${earnedDelta.toStringAsFixed(0)})'
+                                  : '${row.appointmentCount} GÇó ${row.patientCount} GÇó Rs ${row.earned.toStringAsFixed(0)}',
                               textAlign: TextAlign.right,
                               style: const TextStyle(
                                 color: Color(0xFF5B789F),
@@ -1290,7 +1290,7 @@ class _DoctorPerformanceCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             const Text(
-              'Appts â€¢ Completion â€¢ Revenue â€¢ Avg/Appt â€¢ Treatments',
+              'Appts GÇó Completion GÇó Revenue GÇó Avg/Appt GÇó Treatments',
               style: TextStyle(
                 color: Color(0xFF5B789F),
                 fontWeight: FontWeight.w700,
@@ -1394,7 +1394,7 @@ class _DoctorPerformanceCard extends StatelessWidget {
                       SizedBox(
                         width: 210,
                         child: Text(
-                          '${(row.completionRate * 100).toStringAsFixed(0)}% â€¢ Avg Rs ${row.avgRevenue.toStringAsFixed(0)} â€¢ ${row.treatmentsCount} tx',
+                          '${(row.completionRate * 100).toStringAsFixed(0)}% GÇó Avg Rs ${row.avgRevenue.toStringAsFixed(0)} GÇó ${row.treatmentsCount} tx',
                           textAlign: TextAlign.right,
                           style: const TextStyle(
                             color: Color(0xFF5B789F),

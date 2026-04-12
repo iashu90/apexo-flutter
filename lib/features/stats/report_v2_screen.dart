@@ -39,6 +39,18 @@ class ReportV2Screen extends StatelessWidget {
                   .where((a) => !a.firstAppointmentForThisPatient)
                   .length,
             );
+            final screenWidth = MediaQuery.of(context).size.width;
+            final horizontalPadding = screenWidth < 700 ? 32.0 : 42.0;
+            final available = (screenWidth - horizontalPadding).clamp(320.0, 1800.0);
+            final cardsPerRow = available >= 1600
+              ? 3
+              : available >= 980
+                ? 2
+                : 1;
+            final cardWidth = cardsPerRow == 1
+              ? available
+              : ((available - ((cardsPerRow - 1) * 10)) / cardsPerRow)
+                .clamp(320.0, 820.0);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -64,19 +76,49 @@ class ReportV2Screen extends StatelessWidget {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    _DailyAppointmentsTrendWindowCard(rows: allAppointments),
-                    _MonthlyAppointmentsTrendWindowCard(rows: allAppointments),
-                    _DailyRevenueTrendWindowCard(rows: allAppointments),
-                    _MonthlyRevenueTrendWindowCard(rows: allAppointments),
-                    _MonthlyTreatmentDistributionCard(
-                      rows: allAppointments,
+                    SizedBox(
+                      width: cardWidth,
+                      child:
+                          _DailyAppointmentsTrendWindowCard(rows: allAppointments),
                     ),
-                    _TrafficByTimeCard(rows: allAppointments),
-                    _TrafficByDayCard(rows: allAppointments),
-                    _AppointmentMetricsCard(rows: allAppointments),
-                    _NewVsReturningCard(
-                      newCount: newVsReturning.newCount,
-                      returningCount: newVsReturning.returningCount,
+                    SizedBox(
+                      width: cardWidth,
+                      child: _MonthlyAppointmentsTrendWindowCard(
+                        rows: allAppointments,
+                      ),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _DailyRevenueTrendWindowCard(rows: allAppointments),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _MonthlyRevenueTrendWindowCard(rows: allAppointments),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _MonthlyTreatmentDistributionCard(
+                        rows: allAppointments,
+                      ),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _TrafficByTimeCard(rows: allAppointments),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _TrafficByDayCard(rows: allAppointments),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _AppointmentMetricsCard(rows: allAppointments),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _NewVsReturningCard(
+                        newCount: newVsReturning.newCount,
+                        returningCount: newVsReturning.returningCount,
+                      ),
                     ),
                   ],
                 ),
@@ -777,70 +819,74 @@ class _SimpleBarsCard extends StatelessWidget {
               .entries
               .map(
                 (entry) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (!verticalValueLabels)
-                          Text(
-                            valueFormatter == null
-                                ? entry.value.value.toStringAsFixed(0)
-                                : valueFormatter!(entry.value.value),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF36557C),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        if (verticalValueLabels)
-                          RotatedBox(
-                            quarterTurns: 3,
-                            child: SizedBox(
-                              width: 44,
-                              child: Text(
-                                entry.value.value == 0
-                                    ? ''
-                                    : (valueFormatter == null
+                        child: Tooltip(
+                          message:
+                              '${entry.value.label}: ${valueFormatter == null ? entry.value.value.toStringAsFixed(0) : valueFormatter!(entry.value.value)}',
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                if (!verticalValueLabels)
+                                  Text(
+                                    valueFormatter == null
                                         ? entry.value.value.toStringAsFixed(0)
-                                        : valueFormatter!(entry.value.value)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Color(0xFF36557C),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 9,
+                                        : valueFormatter!(entry.value.value),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF36557C),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                if (verticalValueLabels)
+                                  RotatedBox(
+                                    quarterTurns: 3,
+                                    child: SizedBox(
+                                      width: 44,
+                                      child: Text(
+                                        entry.value.value == 0
+                                            ? ''
+                                            : (valueFormatter == null
+                                                ? entry.value.value.toStringAsFixed(0)
+                                                : valueFormatter!(entry.value.value)),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFF36557C),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 9,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 3),
+                                Container(
+                                  height: (145 * (entry.value.value / max))
+                                      .clamp(0, 145)
+                                      .toDouble(),
+                                  decoration: BoxDecoration(
+                                    color: barColor,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
                                 ),
-                                textAlign: TextAlign.center,
-                              ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  entry.key % showEveryNthXLabel == 0
+                                      ? entry.value.label
+                                      : '',
+                                  style: const TextStyle(
+                                    color: Color(0xFF5A7397),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        const SizedBox(height: 3),
-                        Container(
-                          height: (145 * (entry.value.value / max))
-                              .clamp(0, 145)
-                              .toDouble(),
-                          decoration: BoxDecoration(
-                            color: barColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          entry.key % showEveryNthXLabel == 0
-                              ? entry.value.label
-                              : '',
-                          style: const TextStyle(
-                            color: Color(0xFF5A7397),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               )
@@ -921,46 +967,49 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
                 children: points
                     .map(
                       (point) => Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                point.value.toStringAsFixed(0),
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Color(0xFF36557C),
-                                  fontWeight: FontWeight.w700,
+                        child: Tooltip(
+                          message: '${point.label}: ${point.value.toStringAsFixed(0)}',
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  point.value.toStringAsFixed(0),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Color(0xFF36557C),
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 3),
-                              Container(
-                                height: (120 *
-                                        (point.value /
-                                            points.fold<double>(
-                                              1,
-                                              (m, e) =>
-                                                  e.value > m ? e.value : m,
-                                            )))
-                                    .clamp(4, 120)
-                                    .toDouble(),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2D7BD8),
-                                  borderRadius: BorderRadius.circular(4),
+                                const SizedBox(height: 3),
+                                Container(
+                                  height: (120 *
+                                          (point.value /
+                                              points.fold<double>(
+                                                1,
+                                                (m, e) =>
+                                                    e.value > m ? e.value : m,
+                                              )))
+                                      .clamp(4, 120)
+                                      .toDouble(),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2D7BD8),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                point.label,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Color(0xFF5A7397),
-                                  fontWeight: FontWeight.w700,
+                                const SizedBox(height: 6),
+                                Text(
+                                  point.label,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Color(0xFF5A7397),
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -1038,39 +1087,42 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
                 children: points
                     .map(
                       (point) => Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                point.value.toStringAsFixed(0),
-                                style: const TextStyle(
-                                  color: Color(0xFF36557C),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 10,
+                        child: Tooltip(
+                          message: '${point.label}: ${point.value.toStringAsFixed(0)}',
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  point.value.toStringAsFixed(0),
+                                  style: const TextStyle(
+                                    color: Color(0xFF36557C),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 3),
-                              Container(
-                                height: (130 * (point.value / max))
-                                    .clamp(4, 130)
-                                    .toDouble(),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2BA58D),
-                                  borderRadius: BorderRadius.circular(4),
+                                const SizedBox(height: 3),
+                                Container(
+                                  height: (130 * (point.value / max))
+                                      .clamp(4, 130)
+                                      .toDouble(),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2BA58D),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                point.label,
-                                style: const TextStyle(
-                                  color: Color(0xFF5A7397),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 11,
+                                const SizedBox(height: 6),
+                                Text(
+                                  point.label,
+                                  style: const TextStyle(
+                                    color: Color(0xFF5A7397),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

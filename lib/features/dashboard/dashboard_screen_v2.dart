@@ -600,59 +600,109 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                 const SizedBox(height: 16),
                 const _SectionTitle('Trends & Mix'),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    SizedBox(
-                      width: 420,
-                      child: _DailyRevenueChartCard(rows: dailyRevenueRows),
-                    ),
-                    SizedBox(
-                      width: 420,
-                      child: _AppointmentTrendChartCard(rows: appointmentTrendRows),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 920;
+                    final chartWidth = isNarrow
+                        ? constraints.maxWidth
+                        : ((constraints.maxWidth - 10) / 2).clamp(360.0, 620.0);
+
+                    return Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        SizedBox(
+                          width: chartWidth,
+                          child: _DailyRevenueChartCard(rows: dailyRevenueRows),
+                        ),
+                        SizedBox(
+                          width: chartWidth,
+                          child: _AppointmentTrendChartCard(
+                            rows: appointmentTrendRows,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 const _SectionTitle('Financial Summary'),
                 const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _FinanceCard(
-                        title: 'Treatment Revenue',
-                        value: _money(treatmentRevenue),
-                        icon: FluentIcons.money,
-                        iconColor: const Color(0xFF16A4AF),
-                        iconBackground: const Color(0xFFD6F2F4),
-                        valueColor: const Color(0xFF1468CC),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _FinanceCard(
-                        title: 'Prescription Revenue',
-                        value: _money(prescriptionRevenue),
-                        icon: FluentIcons.precipitation,
-                        iconColor: const Color(0xFF16A084),
-                        iconBackground: const Color(0xFFD3F4EA),
-                        valueColor: const Color(0xFF1468CC),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _FinanceCard(
-                        title: 'Outstanding Balance',
-                        value: _money(outstandingBalance),
-                        icon: FluentIcons.status_error_full,
-                        iconColor: const Color(0xFFD6455D),
-                        iconBackground: const Color(0xFFF8D5DB),
-                        valueColor: const Color(0xFF213B5F),
-                        onTap: _openOutstandingDialog,
-                      ),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 980;
+                    if (isNarrow) {
+                      return Column(
+                        children: [
+                          _FinanceCard(
+                            title: 'Treatment Revenue',
+                            value: _money(treatmentRevenue),
+                            icon: FluentIcons.money,
+                            iconColor: const Color(0xFF16A4AF),
+                            iconBackground: const Color(0xFFD6F2F4),
+                            valueColor: const Color(0xFF1468CC),
+                          ),
+                          const SizedBox(height: 10),
+                          _FinanceCard(
+                            title: 'Prescription Revenue',
+                            value: _money(prescriptionRevenue),
+                            icon: FluentIcons.precipitation,
+                            iconColor: const Color(0xFF16A084),
+                            iconBackground: const Color(0xFFD3F4EA),
+                            valueColor: const Color(0xFF1468CC),
+                          ),
+                          const SizedBox(height: 10),
+                          _FinanceCard(
+                            title: 'Outstanding Balance',
+                            value: _money(outstandingBalance),
+                            icon: FluentIcons.status_error_full,
+                            iconColor: const Color(0xFFD6455D),
+                            iconBackground: const Color(0xFFF8D5DB),
+                            valueColor: const Color(0xFF213B5F),
+                            onTap: _openOutstandingDialog,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _FinanceCard(
+                            title: 'Treatment Revenue',
+                            value: _money(treatmentRevenue),
+                            icon: FluentIcons.money,
+                            iconColor: const Color(0xFF16A4AF),
+                            iconBackground: const Color(0xFFD6F2F4),
+                            valueColor: const Color(0xFF1468CC),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _FinanceCard(
+                            title: 'Prescription Revenue',
+                            value: _money(prescriptionRevenue),
+                            icon: FluentIcons.precipitation,
+                            iconColor: const Color(0xFF16A084),
+                            iconBackground: const Color(0xFFD3F4EA),
+                            valueColor: const Color(0xFF1468CC),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _FinanceCard(
+                            title: 'Outstanding Balance',
+                            value: _money(outstandingBalance),
+                            icon: FluentIcons.status_error_full,
+                            iconColor: const Color(0xFFD6455D),
+                            iconBackground: const Color(0xFFF8D5DB),
+                            valueColor: const Color(0xFF213B5F),
+                            onTap: _openOutstandingDialog,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 14),
                 LayoutBuilder(

@@ -168,6 +168,19 @@ class _Routes {
           },
         ),
         Route(
+          title: txt("labworks"),
+          identifier: "labworks",
+          navbarTitle: txt("labworks"),
+          icon: FluentIcons.manufacturing,
+          screen: LabworksScreen.new,
+          accessible: permissions.list[3] || login.isAdmin,
+          onSelect: () async {
+            await doctors.synchronize();
+            await patients.synchronize();
+            labworks.synchronize();
+          },
+        ),
+        Route(
           title: txt("patients"),
           identifier: "patients",
           navbarTitle: txt("patients"),
@@ -217,19 +230,6 @@ class _Routes {
             await doctors.synchronize();
             await patients.synchronize();
             appointments.synchronize();
-          },
-        ),
-        Route(
-          title: txt("labworks"),
-          identifier: "labworks",
-          navbarTitle: txt("labworks"),
-          icon: FluentIcons.manufacturing,
-          screen: LabworksScreen.new,
-          accessible: permissions.list[3] || login.isAdmin,
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            labworks.synchronize();
           },
         ),
         Route(
