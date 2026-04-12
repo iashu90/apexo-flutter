@@ -4,19 +4,32 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 class ExportProgressController {
   bool _cancelled = false;
+  bool _disposed = false;
+  bool _closed = false;
   final ValueNotifier<double?> progress = ValueNotifier<double?>(null);
 
   bool get isCancelled => _cancelled;
+  bool get isClosed => _closed;
 
   void cancel() {
     _cancelled = true;
   }
 
   void setProgress(double? value) {
-    progress.value = value;
+    if (_disposed || _closed) return;
+    if (value == null) {
+      progress.value = null;
+      return;
+    }
+    progress.value = value.clamp(0.0, 1.0);
+  }
+
+  void markClosed() {
+    _closed = true;
   }
 
   void dispose() {
+    _disposed = true;
     progress.dispose();
   }
 }
@@ -28,13 +41,16 @@ Future<T?> runWithExportProgressDialog<T>({
   required Future<T?> Function(ExportProgressController controller) task,
 }) async {
   final controller = ExportProgressController();
-  var dialogOpen = true;
+  BuildContext? dialogContext;
+  var dialogBuilt = false;
 
   unawaited(
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
+      builder: (ctx) {
+        dialogBuilt = true;
+        dialogContext = ctx;
         return ContentDialog(
           title: Row(
             children: [
@@ -43,7 +59,8 @@ Future<T?> runWithExportProgressDialog<T>({
                 icon: const Icon(FluentIcons.chrome_close, size: 10),
                 onPressed: () {
                   controller.cancel();
-                  Navigator.pop(dialogContext);
+                  controller.markClosed();
+                  Navigator.pop(ctx);
                 },
               ),
             ],
@@ -82,22 +99,26 @@ Future<T?> runWithExportProgressDialog<T>({
             Button(
               onPressed: () {
                 controller.cancel();
-                Navigator.pop(dialogContext);
+                controller.markClosed();
+                Navigator.pop(ctx);
               },
               child: const Text('Close'),
             ),
           ],
         );
       },
-    ).then((_) => dialogOpen = false),
+    ).whenComplete(controller.markClosed),
   );
+
+  await Future<void>.delayed(Duration.zero);
 
   try {
     return await task(controller);
   } finally {
-    controller.dispose();
-    if (dialogOpen && context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
+    if (dialogBuilt && !controller.isClosed && dialogContext != null && dialogContext!.mounted) {
+      Navigator.of(dialogContext!).pop();
+      controller.markClosed();
     }
+    controller.dispose();
   }
 }

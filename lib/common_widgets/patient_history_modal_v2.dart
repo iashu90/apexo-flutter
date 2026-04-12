@@ -114,16 +114,42 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     if (target == null) {
       return 'Patient ${widget.patient.title} invoice details are currently unavailable.';
     }
-    return 'Patient: ${widget.patient.title.trim().isEmpty ? widget.patient.id : widget.patient.title}\n'
+    final patientName = widget.patient.title.trim().isEmpty
+      ? widget.patient.id
+      : widget.patient.title;
+    final date = DateFormat('dd MMM yyyy').format(target.date);
+
+    return 'Patient: $patientName\n'
         'Date: ${DateFormat('dd MMM yyyy').format(target.date)}\n'
         'Treatment: ${target.treatment}\n'
         'Cost: Rs ${target.cost.toStringAsFixed(0)}\n'
         'Paid: Rs ${target.paid.toStringAsFixed(0)}\n'
         'Balance: Rs ${target.balance.toStringAsFixed(0)}\n'
-        'Status: ${target.status}';
+      'Status: ${target.status}\n\n'
+      'Hello $patientName,\n\n'
+      'This is a message from Dr. Nowfar Dental Clinic. We are reaching out to provide a summary of your recent visit and confirm your next scheduled appointment.\n'
+      'Appointment Details\n\n'
+      'Status: Reminder\n'
+      'Date: $date\n'
+      'Time: ${DateFormat('hh:mm a').format(target.date)}\n'
+      'Procedure: ${target.treatment}\n\n'
+      'Treatment History Summary\n\n'
+      'Last Visit: $date\n'
+      'Treatment Completed: ${target.treatment}\n'
+      'Notes/Follow-up: ${target.notes}\n\n'
+      'Dr. Nowfar Dental Clinic\n'
+      'Address: 15, Kamaraj St, Senthamarai Nagar, Muthialpet, Puducherry, 605003, India\n'
+      'Phone: +91 89035 61075\n'
+      'Website: drnowfardental.in\n'
+      'Google Maps: https://www.google.com/maps/dir//Dr+Nowfar+Dental+Clinic,+15,+Kamaraj+St,+Senthamarai+Nagar,+Muthialpet,+Puducherry,+605003,+India/@37.6009928,-122.072381,15z/data=!4m8!4m7!1m0!1m5!1m1!1s0x3a536380a76ba4db:0x67c7b38d3a5474cf!2m2!1d79.8307924!2d11.9504623?entry=ttu';
   }
 
   pw.Document _buildPdfDocument(List<_LedgerRowData> rows) {
+    final totalCost = rows.fold<double>(0, (sum, r) => sum + r.cost);
+    final totalPaid = rows.fold<double>(0, (sum, r) => sum + r.paid);
+    final outstanding = (totalCost - totalPaid).clamp(0, double.infinity);
+    final firstRow = rows.isEmpty ? null : rows.first;
+
     final doc = pw.Document();
     doc.addPage(
       pw.MultiPage(
@@ -131,12 +157,61 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
         margin: const pw.EdgeInsets.all(24),
         build: (context) => [
           pw.Text(
-            'Patient Report - ${widget.patient.title.trim().isEmpty ? widget.patient.id : widget.patient.title}',
-            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            'INVOICE / PAYMENT RECEIPT',
+            style: pw.TextStyle(fontSize: 21, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
           ),
-          pw.SizedBox(height: 8),
-          pw.Text('Generated on ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}'),
-          pw.SizedBox(height: 10),
+          pw.SizedBox(height: 12),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300),
+              borderRadius: pw.BorderRadius.circular(8),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Dr. Nowfar Dental Clinic',
+                      style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text('Patient ID: ${widget.patient.id}'),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('Invoice ID: VC-${DateTime.now().millisecondsSinceEpoch % 10000}'),
+                    pw.Text('Date: ${DateFormat('dd MMM yyyy').format(DateTime.now())}'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300),
+              borderRadius: pw.BorderRadius.circular(8),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Bill To:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 6),
+                pw.Text(widget.patient.title.trim().isEmpty ? 'Unnamed patient' : widget.patient.title),
+                pw.Text('Phone: ${widget.patient.phone.trim().isEmpty ? '-' : widget.patient.phone}'),
+                pw.Text('Doctor: Dr Nowfar'),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
           pw.TableHelper.fromTextArray(
             headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
             headers: const [
@@ -166,6 +241,68 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                 )
                 .toList(growable: false),
           ),
+          pw.SizedBox(height: 12),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.green50,
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Payment Summary', style: pw.TextStyle(color: PdfColors.green800, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(height: 6),
+                      pw.Text('Amount Paid: Rs ${totalPaid.toStringAsFixed(0)}'),
+                      pw.Text('Outstanding: Rs ${outstanding.toStringAsFixed(0)}'),
+                      pw.Text('Payment Status: ${outstanding <= 0 ? 'PAID' : 'DUE'}'),
+                    ],
+                  ),
+                ),
+              ),
+              pw.SizedBox(width: 10),
+              pw.Expanded(
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Treatment Cost: Rs ${totalCost.toStringAsFixed(0)}'),
+                      pw.Text('Paid: Rs ${totalPaid.toStringAsFixed(0)}'),
+                      pw.Text('TOTAL: Rs ${totalCost.toStringAsFixed(0)}'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text('Payment History', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
+          pw.TableHelper.fromTextArray(
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            headers: const ['Date', 'For Service', 'Mode', 'Amount'],
+            data: rows
+                .map(
+                  (r) => [
+                    DateFormat('dd MMM yyyy').format(r.date),
+                    r.treatment,
+                    r.mode,
+                    'Rs ${r.paid.toStringAsFixed(0)}',
+                  ],
+                )
+                .toList(growable: false),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text('Notes: ${firstRow == null ? '-' : firstRow.notes}'),
         ],
       ),
     );
@@ -332,7 +469,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
               row.mode,
             ].map((v) => '"${v.replaceAll('"', '""')}"').join(',');
             csv.writeln(values);
-            progress.setProgress((i + 1) / (rows.length + 1));
+            progress.setProgress(((i + 1) / rows.length) * 0.7);
           }
 
           final savePath = await FilePicker.platform.saveFile(
@@ -345,7 +482,15 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
           final target = savePath.toLowerCase().endsWith('.csv')
               ? savePath
               : '$savePath.csv';
-          await File(target).writeAsString(csv.toString(), flush: true);
+          IOSink? sink;
+          try {
+            sink = File(target).openWrite();
+            sink.write(csv.toString());
+            if (progress.isCancelled) return;
+            await sink.flush();
+          } finally {
+            await sink?.close();
+          }
           progress.setProgress(1.0);
         },
       );
@@ -383,7 +528,15 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
           final target = savePath.toLowerCase().endsWith('.pdf')
               ? savePath
               : '$savePath.pdf';
-          await File(target).writeAsBytes(bytes, flush: true);
+          IOSink? sink;
+          try {
+            sink = File(target).openWrite();
+            sink.add(bytes);
+            if (progress.isCancelled) return;
+            await sink.flush();
+          } finally {
+            await sink?.close();
+          }
           progress.setProgress(1.0);
         },
       );
@@ -429,18 +582,48 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                 children: [
                   FilledButton(
                     onPressed: () async {
-                      await openWhatsApp(widget.patient.phone, message);
+                      try {
+                        await openWhatsApp(widget.patient.phone, message);
+                      } catch (_) {
+                        if (!dialogContext.mounted) return;
+                        displayInfoBar(
+                          dialogContext,
+                          builder: (ctx, close) => InfoBar(
+                            title: const Text('Unable to open WhatsApp'),
+                            severity: InfoBarSeverity.error,
+                            action: IconButton(
+                              icon: const Icon(FluentIcons.clear),
+                              onPressed: close,
+                            ),
+                          ),
+                        );
+                      }
                     },
                     child: const Text('WhatsApp'),
                   ),
                   Button(
                     onPressed: canEmail
                         ? () async {
-                            await sendEmail(
-                              to: email,
-                              subject: 'Patient Invoice Details',
-                              body: message,
-                            );
+                            try {
+                              await sendEmail(
+                                to: email,
+                                subject: 'Patient Invoice Details',
+                                body: message,
+                              );
+                            } catch (_) {
+                              if (!dialogContext.mounted) return;
+                              displayInfoBar(
+                                dialogContext,
+                                builder: (ctx, close) => InfoBar(
+                                  title: const Text('Unable to open email client'),
+                                  severity: InfoBarSeverity.error,
+                                  action: IconButton(
+                                    icon: const Icon(FluentIcons.clear),
+                                    onPressed: close,
+                                  ),
+                                ),
+                              );
+                            }
                           }
                         : null,
                     child: Text(canEmail ? 'Email' : 'Email (No address)'),
