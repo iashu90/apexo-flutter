@@ -342,8 +342,8 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                               value: 'Cash',
                             ),
                             ComboBoxItem(
-                              child: Text('GPay'),
-                              value: 'GPay',
+                              child: Text('UPI'),
+                              value: 'UPI',
                             ),
                           ],
                           onChanged: (value) {

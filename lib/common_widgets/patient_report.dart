@@ -479,13 +479,15 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                                     0) ==
                                 0
                             ? ''
-                            : row.treatmentPaymentMode,
+                            : (row.treatmentPaymentMode.toLowerCase() == 'gpay'
+                                ? 'UPI'
+                                : row.treatmentPaymentMode),
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w500,
-                          color:
-                              row.treatmentPaymentMode.toLowerCase() == 'gpay'
-                                  ? Colors.green
-                                  : Colors.brown,
+                          color: (row.treatmentPaymentMode.toLowerCase() == 'gpay' ||
+                                  row.treatmentPaymentMode.toLowerCase() == 'upi')
+                              ? Colors.green
+                              : Colors.brown,
                         ),
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,
@@ -503,13 +505,15 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                                     0) ==
                                 0
                             ? ''
-                            : row.preceptionPaymentMode,
+                            : (row.preceptionPaymentMode.toLowerCase() == 'gpay'
+                                ? 'UPI'
+                                : row.preceptionPaymentMode),
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w500,
-                          color:
-                              row.preceptionPaymentMode.toLowerCase() == 'gpay'
-                                  ? Colors.green
-                                  : Colors.brown,
+                          color: (row.preceptionPaymentMode.toLowerCase() == 'gpay' ||
+                                  row.preceptionPaymentMode.toLowerCase() == 'upi')
+                              ? Colors.green
+                              : Colors.brown,
                         ),
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,
