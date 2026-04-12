@@ -35,7 +35,12 @@ material.TransitionBuilder apexoDatePickerBuilder(BuildContext context) {
         }
         return null;
       }),
-      todayForegroundColor: material.WidgetStateProperty.all(scheme.primary),
+      todayForegroundColor: material.WidgetStateProperty.resolveWith((states) {
+        if (states.contains(material.WidgetState.selected)) {
+          return scheme.onPrimary;
+        }
+        return scheme.primary;
+      }),
       todayBorder: material.BorderSide(color: scheme.primary),
       rangeSelectionBackgroundColor: scheme.primary.withValues(alpha: 0.14),
       confirmButtonStyle: material.ButtonStyle(

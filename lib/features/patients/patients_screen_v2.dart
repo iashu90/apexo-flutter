@@ -102,8 +102,19 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       context: context,
       builder: (dialogContext) => ContentDialog(
         title: const Text('Delete patient?'),
-        content: Text(
-          'This will permanently delete ${patient.title.trim().isEmpty ? 'this patient' : patient.title} and cannot be undone.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Name: ${patient.title.trim().isEmpty ? 'Unnamed patient' : patient.title}',
+            ),
+            Text('Patient ID: ${patient.id}'),
+            Text('Phone: ${patient.phone.trim().isEmpty ? '-' : patient.phone}'),
+            Text('Age: ${patient.age}'),
+            const SizedBox(height: 8),
+            const Text('This action is permanent and cannot be undone.'),
+          ],
         ),
         actions: [
           Button(
@@ -317,34 +328,68 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             final start = (currentPage - 1) * _pageSize;
             final end = math.min(start + _pageSize, sortedPatients.length);
             final pagedPatients = sortedPatients.sublist(start, end);
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isMobile = screenWidth < 820;
+            final isTablet = screenWidth >= 820 && screenWidth < 1180;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    const Expanded(child: _TopBar()),
-                    SizedBox(
-                      width: 180,
-                      child: FilledButton(
-                        onPressed: () => openPatient(),
-                        style: ButtonStyle(
-                          backgroundColor:
-                              WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                          foregroundColor: WidgetStateProperty.all(Colors.white),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(FluentIcons.add, size: 12),
-                            SizedBox(width: 6),
-                            Text('Add Patient'),
-                          ],
+                if (isMobile)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _TopBar(),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () => openPatient(),
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateProperty.all(
+                              const Color(0xFF2D7BD8),
+                            ),
+                            foregroundColor: WidgetStateProperty.all(Colors.white),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(FluentIcons.add, size: 12),
+                              SizedBox(width: 6),
+                              Text('Add Patient'),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      const Expanded(child: _TopBar()),
+                      SizedBox(
+                        width: isTablet ? 160 : 180,
+                        child: FilledButton(
+                          onPressed: () => openPatient(),
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateProperty.all(
+                              const Color(0xFF2D7BD8),
+                            ),
+                            foregroundColor: WidgetStateProperty.all(Colors.white),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(FluentIcons.add, size: 12),
+                              SizedBox(width: 6),
+                              Text('Add Patient'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 10,
@@ -409,16 +454,17 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                SizedBox(
-                  height: 420,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 460,
-                          child: _TopPatientsCard(
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final useHorizontalStrip = constraints.maxWidth >= 1240;
+                    final cardWidth = useHorizontalStrip
+                        ? 460.0
+                        : constraints.maxWidth;
+
+                    final cards = [
+                      SizedBox(
+                        width: cardWidth,
+                        child: _TopPatientsCard(
                             rows: topPatientsByVisits,
                             visitsByPatient: visitsByPatient,
                             selectedRange: _topRange,
@@ -440,12 +486,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                                 );
                               }
                             }),
-                          ),
                         ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 460,
-                          child: _TopOutstandingCard(
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        child: _TopOutstandingCard(
                             rows: topOutstanding,
                             visitsByPatient: visitsByPatient,
                             selectedRange: _outstandingRange,
@@ -467,12 +512,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                                 );
                               }
                             }),
-                          ),
                         ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 460,
-                          child: _TopProcedurePatientsCard(
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        child: _TopProcedurePatientsCard(
                             selectedTab: _procedureTab,
                             rows: topProcedurePatients.toList(growable: false),
                             visitsByPatient: visitsByPatient,
@@ -493,11 +537,39 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                                 );
                               }
                             }),
+                        ),
+                      ),
+                    ];
+
+                    if (useHorizontalStrip) {
+                      return SizedBox(
+                        height: 420,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              cards[0],
+                              const SizedBox(width: 10),
+                              cards[1],
+                              const SizedBox(width: 10),
+                              cards[2],
+                            ],
                           ),
                         ),
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        cards[0],
+                        const SizedBox(height: 10),
+                        cards[1],
+                        const SizedBox(height: 10),
+                        cards[2],
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
                 _AllPatientsListCard(
@@ -2005,12 +2077,26 @@ class _TopPatientsCard extends StatelessWidget {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  subtitle: Text(
-                                    '${entry.value.key.phone} • ${entry.value.key.age}y',
-                                    style: const TextStyle(
-                                      color: Color(0xFF7C93B1),
-                                      fontSize: 11,
-                                    ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${entry.value.key.phone} • ${entry.value.key.age}y',
+                                        style: const TextStyle(
+                                          color: Color(0xFF7C93B1),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 4,
+                                        runSpacing: 4,
+                                        children: _treatmentChips(
+                                          visitsByPatient,
+                                          entry.value.key,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   trailing: Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -2066,6 +2152,50 @@ class _TopPatientsCard extends StatelessWidget {
     final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
     if (visits.isEmpty) return '-';
     return DateFormat('dd MMM').format(visits.last.date);
+  }
+
+  List<Widget> _treatmentChips(
+    Map<String, List<Appointment>> visitsByPatient,
+    Patient patient,
+  ) {
+    final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
+    final unique = <String>{};
+    for (final appointment in visits) {
+      for (final treatment in appointment.selectedTreatments) {
+        final value = treatment.trim();
+        if (value.isNotEmpty) unique.add(value);
+      }
+    }
+    final rows = unique.toList(growable: false)..sort();
+    if (rows.isEmpty) {
+      return const [
+        Text(
+          'No treatments',
+          style: TextStyle(color: Color(0xFF8AA0BC), fontSize: 10),
+        ),
+      ];
+    }
+    final visible = rows.take(3).toList(growable: false);
+    return visible
+        .map(
+          (row) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF2FC),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFFD5E5F7)),
+            ),
+            child: Text(
+              row,
+              style: const TextStyle(
+                color: Color(0xFF2F5B88),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        )
+        .toList(growable: false);
   }
 }
 
@@ -2188,12 +2318,26 @@ class _TopOutstandingCard extends StatelessWidget {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  subtitle: Text(
-                                    '${entry.value.key.phone} • ${entry.value.key.age}y',
-                                    style: const TextStyle(
-                                      color: Color(0xFF7C93B1),
-                                      fontSize: 11,
-                                    ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${entry.value.key.phone} • ${entry.value.key.age}y',
+                                        style: const TextStyle(
+                                          color: Color(0xFF7C93B1),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 4,
+                                        runSpacing: 4,
+                                        children: _treatmentChips(
+                                          visitsByPatient,
+                                          entry.value.key,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   trailing: Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -2248,6 +2392,50 @@ class _TopOutstandingCard extends StatelessWidget {
     final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
     if (visits.isEmpty) return '-';
     return DateFormat('dd MMM').format(visits.last.date);
+  }
+
+  List<Widget> _treatmentChips(
+    Map<String, List<Appointment>> visitsByPatient,
+    Patient patient,
+  ) {
+    final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
+    final unique = <String>{};
+    for (final appointment in visits) {
+      for (final treatment in appointment.selectedTreatments) {
+        final value = treatment.trim();
+        if (value.isNotEmpty) unique.add(value);
+      }
+    }
+    final rows = unique.toList(growable: false)..sort();
+    if (rows.isEmpty) {
+      return const [
+        Text(
+          'No treatments',
+          style: TextStyle(color: Color(0xFF8AA0BC), fontSize: 10),
+        ),
+      ];
+    }
+    final visible = rows.take(3).toList(growable: false);
+    return visible
+        .map(
+          (row) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF2FC),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFFD5E5F7)),
+            ),
+            child: Text(
+              row,
+              style: const TextStyle(
+                color: Color(0xFF2F5B88),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        )
+        .toList(growable: false);
   }
 }
 
@@ -2985,6 +3173,9 @@ class _AllPatientsListCard extends StatelessWidget {
                                   _HoverActionItem(
                                     icon: FluentIcons.delete,
                                     label: 'Delete',
+                                    iconColor: const Color(0xFFD6455D),
+                                    hoverColor: const Color(0xFFFFECEF),
+                                    hoverBorderColor: const Color(0xFFF6C8CF),
                                     onTap: () => onDeletePatient(patient),
                                   ),
                                 ],
@@ -3116,11 +3307,17 @@ class _HoverActionItem extends StatefulWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final Color iconColor;
+  final Color hoverColor;
+  final Color hoverBorderColor;
 
   const _HoverActionItem({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.iconColor = const Color(0xFF2D7BD8),
+    this.hoverColor = const Color(0xFFE7F1FF),
+    this.hoverBorderColor = const Color(0xFFBFD8F8),
   });
 
   @override
@@ -3144,16 +3341,16 @@ class _HoverActionItemState extends State<_HoverActionItem> {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: _hovered ? const Color(0xFFE7F1FF) : Colors.transparent,
+              color: _hovered ? widget.hoverColor : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: _hovered ? const Color(0xFFBFD8F8) : Colors.transparent,
+                color: _hovered ? widget.hoverBorderColor : Colors.transparent,
               ),
             ),
             child: Icon(
               widget.icon,
               size: 14,
-              color: const Color(0xFF2D7BD8),
+              color: widget.iconColor,
             ),
           ),
         ),
