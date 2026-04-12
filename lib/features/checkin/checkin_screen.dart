@@ -584,7 +584,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                               const SizedBox(height: 10),
                               _WorkflowColumn(
-                                title: 'Checkout',
+                                title: 'Billing',
                                 stage: 'checkout',
                                 color: const Color(0xFF2BA58D),
                                 rows: checkout,
@@ -875,8 +875,8 @@ class _WorkflowRow extends StatelessWidget {
       final shouldUndo = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => ContentDialog(
-          title: const Text('Move back to Checkout?'),
-          content: const Text('This appointment will be moved back to Checkout.'),
+          title: const Text('Move back to Billing?'),
+          content: const Text('This appointment will be moved back to Billing.'),
           actions: [
             Button(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -888,7 +888,7 @@ class _WorkflowRow extends StatelessWidget {
                 backgroundColor:
                   WidgetStateProperty.all(const Color(0xFFE56E7D)),
               ),
-              child: const Text('Checkout'),
+              child: const Text('Billing'),
             ),
           ],
         ),
@@ -915,8 +915,8 @@ class _WorkflowRow extends StatelessWidget {
       final shouldMove = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => ContentDialog(
-          title: const Text('Move to Checkout?'),
-          content: const Text('This appointment will be moved to Checkout.'),
+          title: const Text('Move to Billing?'),
+          content: const Text('This appointment will be moved to Billing.'),
           actions: [
             Button(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -924,7 +924,7 @@ class _WorkflowRow extends StatelessWidget {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Checkout'),
+              child: const Text('Billing'),
             ),
           ],
         ),
@@ -963,30 +963,12 @@ class _WorkflowRow extends StatelessWidget {
     appointments.set(appointment);
   }
 
-  static Color _doctorChipColor(String doctor) {
-    const palette = [
-      Color(0xFFFFE3E3),
-      Color(0xFFE2F8E8),
-      Color(0xFFFFF0D8),
-      Color(0xFFE3ECFF),
-      Color(0xFFFFE6F1),
-      Color(0xFFE0F7FF),
-      Color(0xFFF0F7DD),
-    ];
-    return palette[doctor.hashCode.abs() % palette.length];
-  }
-
-  static Color _doctorChipBorderColor(String doctor) {
-    const palette = [
-      Color(0xFFE05050),
-      Color(0xFF3FAF64),
-      Color(0xFFE2952B),
-      Color(0xFF4C78D8),
-      Color(0xFFD34F8D),
-      Color(0xFF2E9BC1),
-      Color(0xFF95B334),
-    ];
-    return palette[doctor.hashCode.abs() % palette.length];
+  String _waitingLabel() {
+    if (appointment.checkedInAt == null) return 'Waiting';
+    final wait = DateTime.now().difference(appointment.checkedInAt!);
+    final mins = wait.inMinutes;
+    if (mins <= 0) return 'Waiting';
+    return 'Waiting ${mins}m';
   }
 
   void _openPatientHistoryDialog(BuildContext context) {
@@ -1027,6 +1009,7 @@ class _WorkflowRow extends StatelessWidget {
     final age = appointment.patient?.age ?? 0;
     final rawGender = appointment.patient?.gender;
     final genderLabel = rawGender == 1 ? 'M' : 'F';
+    final doctorLabel = doctorsList.first;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -1042,108 +1025,109 @@ class _WorkflowRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                  Text(
+                    patientName,
+                    style: const TextStyle(
+                      color: Color(0xFF000000),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
                     children: [
                       Text(
-                        patientName,
+                        '$age$genderLabel',
                         style: const TextStyle(
-                          color: Color(0xFF1459AD),
-                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF6B7280),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      Text(
-                        '· $age/$genderLabel',
-                        style: const TextStyle(
-                          color: Color(0xFF5A7397),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        '· $phone',
-                        style: const TextStyle(
-                          color: Color(0xFF5A7397),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                      ...doctorsList.map(
-                        (doctor) => GestureDetector(
-                          onTap: (stage == 'with_doctor' && selected)
-                              ? () async {
-                                  final pickedDoctorId =
-                                      await _pickDoctor(context);
-                                  if (pickedDoctorId == null ||
-                                      pickedDoctorId.trim().isEmpty) {
-                                    return;
-                                  }
-                                  appointment.operatorsIDs = [pickedDoctorId];
-                                  appointments.set(appointment);
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: (stage == 'with_doctor' && selected)
+                            ? () async {
+                                final pickedDoctorId = await _pickDoctor(context);
+                                if (pickedDoctorId == null || pickedDoctorId.trim().isEmpty) {
+                                  return;
                                 }
-                              : null,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _doctorChipColor(doctor),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                  color: _doctorChipBorderColor(doctor)),
+                                appointment.operatorsIDs = [pickedDoctorId];
+                                appointments.set(appointment);
+                              }
+                            : null,
+                        child: Row(
+                          children: [
+                            const Icon(
+                              FluentIcons.contact,
+                              size: 11,
+                              color: Color(0xFF6B7280),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  FluentIcons.contact,
-                                  size: 10,
-                                  color: Color(0xFF0B4A96),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  doctor,
-                                  style: const TextStyle(
-                                    color: Color(0xFF0B4A96),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(width: 4),
+                            Text(
+                              doctorLabel,
+                              style: const TextStyle(
+                                color: Color(0xFF6B7280),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (stage == 'waiting') ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFE8A3),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            _waitingLabel(),
+                            style: const TextStyle(
+                              color: Color(0xFF7A5A00),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    phone,
+                    style: const TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
             ),
-            FilledButton(
-              onPressed: () => _moveStage(context),
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(
-                  stage == 'completed'
-                      ? const Color(0xFFE56E7D)
-                      : stage == 'waiting'
-                          ? const Color(0xFF2D7BD8)
-                          : stage == 'with_doctor'
-                              ? const Color(0xFF2BA58D)
-                              : const Color(0xFF3B9A42),
-                ),
-                foregroundColor: WidgetStateProperty.all(Colors.white),
-              ),
-              child: Text(
-                stage == 'completed'
-                  ? 'Checkout'
-                    : stage == 'waiting'
-                    ? 'Checkin'
+            if (stage != 'completed')
+              FilledButton(
+                onPressed: () => _moveStage(context),
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.all(
+                    stage == 'waiting'
+                        ? const Color(0xFF2D7BD8)
                         : stage == 'with_doctor'
-                      ? 'Checkout'
-                    : 'Complete',
+                            ? const Color(0xFF2BA58D)
+                            : const Color(0xFF3B9A42),
+                  ),
+                  foregroundColor: WidgetStateProperty.all(Colors.white),
+                ),
+                child: Text(
+                  stage == 'waiting'
+                      ? 'Checkin'
+                      : stage == 'with_doctor'
+                          ? 'Billing'
+                          : 'Complete',
+                ),
               ),
-            ),
             if (showHistoryAction) ...[
               const SizedBox(width: 8),
               Button(
@@ -1188,7 +1172,7 @@ class _CheckinHistoryPanel extends StatelessWidget {
                 height: 220,
                 child: Center(
                   child: Text(
-                    'Select a patient from Waiting, With Doctor, Checkout, or Completed to view history.',
+                    'Select a patient from Waiting, With Doctor, Billing, or Completed to view history.',
                     style: TextStyle(color: Color(0xFF6D84A8)),
                   ),
                 ),
@@ -1278,6 +1262,33 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
 
     if (pickedDoctorId == null || pickedDoctorId.trim().isEmpty) return;
     appointment.operatorsIDs = [pickedDoctorId];
+    appointments.set(appointment);
+  }
+
+  Future<void> _moveCompletedToBilling(Appointment appointment) async {
+    final shouldMove = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: const Text('Move back to Billing?'),
+        content: const Text('This appointment will be moved back to Billing stage.'),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(const Color(0xFFE56E7D)),
+            ),
+            child: const Text('Billing'),
+          ),
+        ],
+      ),
+    );
+    if (shouldMove != true) return;
+    appointment.checkinStage = 'checkout';
+    appointment.isDone = false;
     appointments.set(appointment);
   }
 
@@ -1402,6 +1413,19 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               appointment: appointment, allAppointmentsForPatient: all)
         else
           const SizedBox.shrink(),
+        if (appointment.checkinStage == 'completed') ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton(
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.all(const Color(0xFFE56E7D)),
+              ),
+              onPressed: () => _moveCompletedToBilling(appointment),
+              child: const Text('Move Back to Billing'),
+            ),
+          ),
+        ],
         const SizedBox(height: 10),
         if (patientNotes.isNotEmpty)
           Container(
@@ -2090,9 +2114,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             showDialog<bool>(
                               context: context,
                               builder: (dialogContext) => ContentDialog(
-                                title: const Text('Move to Checkout?'),
+                                title: const Text('Move to Billing?'),
                                 content: const Text(
-                                  'This appointment will be moved to Checkout stage.',
+                                  'This appointment will be moved to Billing stage.',
                                 ),
                                 actions: [
                                   Button(
@@ -2103,7 +2127,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                   FilledButton(
                                     onPressed: () =>
                                         Navigator.pop(dialogContext, true),
-                                    child: const Text('Checkout'),
+                                    child: const Text('Billing'),
                                   ),
                                 ],
                               ),
@@ -2114,7 +2138,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               appointments.set(a);
                             });
                           },
-                          child: const Text('Checkout'),
+                          child: const Text('Billing'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -2285,7 +2309,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         margin: const pw.EdgeInsets.all(24),
         build: (context) => [
           pw.Text(
-            '3) INVOICE / PAYMENT RECEIPT PREVIEW',
+            'INVOICE / PAYMENT RECEIPT',
             style: pw.TextStyle(
               fontSize: 21,
               fontWeight: pw.FontWeight.bold,
@@ -2315,7 +2339,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ),
                     ),
                     pw.SizedBox(height: 3),
-                    pw.Text('Ado Croou - Patient ID: ${a.patientID ?? '-'}'),
+                    pw.Text('Patient ID: ${a.patientID ?? '-'}'),
                   ],
                 ),
                 pw.Column(
@@ -2351,7 +2375,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
           pw.TableHelper.fromTextArray(
             headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
             cellAlignment: pw.Alignment.centerLeft,
-            headers: const ['Details', 'Desc', 'Cost', 'Amount'],
+            headers: const ['Details', 'Description', 'Cost', 'Amount'],
             data: [
               [
                 DateFormat('dd MMM yyyy').format(_paymentDate),
@@ -2470,7 +2494,15 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         final target = savePath.toLowerCase().endsWith('.pdf')
             ? savePath
             : '$savePath.pdf';
-        await File(target).writeAsBytes(bytes, flush: true);
+        IOSink? sink;
+        try {
+          sink = File(target).openWrite();
+          sink.add(bytes);
+          if (progress.isCancelled) return;
+          await sink.flush();
+        } finally {
+          await sink?.close();
+        }
         progress.setProgress(1.0);
       },
     );

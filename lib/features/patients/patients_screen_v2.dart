@@ -423,8 +423,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                           color: const Color(0xFF7D8FA7),
                         ),
                         _DonutSegment(
-                          label: 'GPay',
-                          value: paymentModeBuckets['GPay'] ?? 0,
+                          label: 'UPI',
+                          value: paymentModeBuckets['UPI'] ?? 0,
                           color: const Color(0xFF2D7BD8),
                         ),
                       ],
@@ -692,7 +692,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   Map<String, int> _paymentModeBuckets(List<Appointment> items) {
     final buckets = <String, int>{
       'Cash': 0,
-      'GPay': 0,
+      'UPI': 0,
     };
 
     for (final a in items) {
@@ -706,7 +706,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         buckets['Cash'] = buckets['Cash']! + 1;
       }
       if (hasGpay) {
-        buckets['GPay'] = buckets['GPay']! + 1;
+        buckets['UPI'] = buckets['UPI']! + 1;
       }
     }
 
@@ -1894,7 +1894,7 @@ class _PaymentModeDistributionCard extends StatelessWidget {
           const SizedBox(height: 10),
           ...buckets.entries.map((entry) {
             final ratio = maxValue == 0 ? 0.0 : (entry.value / maxValue);
-            final barColor = entry.key == 'GPay'
+            final barColor = entry.key == 'UPI'
                 ? const Color(0xFF2D7BD8)
                 : const Color(0xFF7D8FA7);
             return Padding(
