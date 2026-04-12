@@ -112,8 +112,14 @@ Future<T?> runWithExportProgressDialog<T>({
 
   await Future<void>.delayed(Duration.zero);
 
+  T? result;
+  Object? pendingError;
+  StackTrace? pendingStackTrace;
   try {
-    return await task(controller);
+    result = await task(controller);
+  } catch (error, stackTrace) {
+    pendingError = error;
+    pendingStackTrace = stackTrace;
   } finally {
     if (dialogBuilt && !controller.isClosed && dialogContext != null && dialogContext!.mounted) {
       Navigator.of(dialogContext!).pop();
@@ -121,4 +127,8 @@ Future<T?> runWithExportProgressDialog<T>({
     }
     controller.dispose();
   }
+  if (pendingError != null) {
+    Error.throwWithStackTrace(pendingError, pendingStackTrace ?? StackTrace.current);
+  }
+  return result;
 }

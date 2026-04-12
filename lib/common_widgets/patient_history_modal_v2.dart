@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
@@ -75,6 +76,7 @@ class PatientHistoryDialogV2 extends StatefulWidget {
 
 class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   final TextEditingController _searchController = TextEditingController();
+  int _exportLogSequence = 0;
   String _query = '';
   String _statusFilter = 'All';
   String _modeFilter = 'All';
@@ -105,6 +107,156 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     final age = widget.patient.age;
     final date = DateFormat('dd_MMM-yyyy').format(DateTime.now()).toLowerCase();
     return '${safeName}_${age}_$date';
+  }
+
+  String _nextExportTag(String prefix) {
+    _exportLogSequence += 1;
+    return '$prefix-${DateTime.now().millisecondsSinceEpoch}-$_exportLogSequence';
+  }
+
+  void _logExport(String tag, String message, [Object? error, StackTrace? stackTrace]) {
+    debugPrint('[Export][$tag] $message');
+    if (error != null) {
+      debugPrint('[Export][$tag] ERROR: $error');
+    }
+    if (stackTrace != null) {
+      debugPrint('[Export][$tag] STACK: $stackTrace');
+    }
+  }
+
+  Iterable<List<int>> _chunkBytes(List<int> bytes, int chunkSize) sync* {
+    for (var offset = 0; offset < bytes.length; offset += chunkSize) {
+      final end = (offset + chunkSize < bytes.length)
+          ? offset + chunkSize
+          : bytes.length;
+      yield bytes.sublist(offset, end);
+    }
+  }
+
+  String _csvRow(_LedgerRowData row) {
+    final values = [
+      DateFormat('yyyy-MM-dd').format(row.date),
+      row.tooth,
+      row.treatment,
+      row.doctor,
+      row.cost.toStringAsFixed(0),
+      row.paid.toStringAsFixed(0),
+      row.balance.toStringAsFixed(0),
+      row.status,
+      row.mode,
+    ];
+    return values.map((v) => '"${v.replaceAll('"', '""')}"').join(',');
+  }
+
+  Future<void> _writeCsvWithRetry({
+    required String target,
+    required List<_LedgerRowData> rows,
+    required ExportProgressController progress,
+    required String logTag,
+  }) async {
+    final tempFile = File('$target.tmp');
+    const maxAttempts = 3;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      IOSink? sink;
+      try {
+        _logExport(logTag, 'CSV write attempt $attempt started: $target');
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+
+        sink = tempFile.openWrite();
+        final encodedLines = <List<int>>[
+          utf8.encode('Date,Tooth,Treatment,Doctor,Cost,Paid,Balance,Status,Mode\n'),
+        ];
+
+        for (var i = 0; i < rows.length; i++) {
+          if (progress.isCancelled) {
+            _logExport(logTag, 'CSV write cancelled at row $i');
+            break;
+          }
+          encodedLines.add(utf8.encode('${_csvRow(rows[i])}\n'));
+          progress.setProgress(0.1 + 0.65 * ((i + 1) / rows.length));
+        }
+
+        await sink.addStream(Stream<List<int>>.fromIterable(encodedLines));
+        await sink.flush();
+        await sink.close();
+        sink = null;
+        await tempFile.openRead().drain<void>();
+
+        if (!progress.isCancelled) {
+          final targetFile = File(target);
+          if (await targetFile.exists()) {
+            await targetFile.delete();
+          }
+          await tempFile.rename(target);
+          _logExport(logTag, 'CSV write finished successfully: $target');
+        }
+        return;
+      } catch (error, stackTrace) {
+        _logExport(logTag, 'CSV write attempt $attempt failed', error, stackTrace);
+        await sink?.close();
+        if (attempt == maxAttempts) rethrow;
+        await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
+      } finally {
+        await sink?.close();
+        if (await tempFile.exists() && progress.isCancelled) {
+          await tempFile.delete();
+        }
+      }
+    }
+  }
+
+  Future<void> _writePdfWithRetry({
+    required String target,
+    required List<int> bytes,
+    required ExportProgressController progress,
+    required String logTag,
+  }) async {
+    final tempFile = File('$target.tmp');
+    const maxAttempts = 3;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      IOSink? sink;
+      try {
+        _logExport(logTag, 'PDF write attempt $attempt started: $target (${bytes.length} bytes)');
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+
+        sink = tempFile.openWrite();
+        final stream = Stream<List<int>>.fromIterable(_chunkBytes(bytes, 128 * 1024));
+        await sink.addStream(stream);
+        if (progress.isCancelled) {
+          _logExport(logTag, 'PDF write cancelled before flush');
+        }
+        await sink.flush();
+        await sink.close();
+        sink = null;
+        await tempFile.openRead().drain<void>();
+
+        if (!progress.isCancelled) {
+          final targetFile = File(target);
+          if (await targetFile.exists()) {
+            await targetFile.delete();
+          }
+          await tempFile.rename(target);
+          _logExport(logTag, 'PDF write finished successfully: $target');
+        }
+        return;
+      } catch (error, stackTrace) {
+        _logExport(logTag, 'PDF write attempt $attempt failed', error, stackTrace);
+        await sink?.close();
+        if (attempt == maxAttempts) rethrow;
+        await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
+      } finally {
+        await sink?.close();
+        if (await tempFile.exists() && progress.isCancelled) {
+          await tempFile.delete();
+        }
+      }
+    }
   }
 
   String _composeShareMessage([_LedgerRowData? row]) {
@@ -452,46 +604,31 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
         context: context,
         title: 'Exporting CSV',
         task: (progress) async {
-          final csv = StringBuffer();
-          csv.writeln('Date,Tooth,Treatment,Doctor,Cost,Paid,Balance,Status,Mode');
-          for (var i = 0; i < rows.length; i++) {
-            if (progress.isCancelled) return;
-            final row = rows[i];
-            final values = [
-              DateFormat('yyyy-MM-dd').format(row.date),
-              row.tooth,
-              row.treatment,
-              row.doctor,
-              row.cost.toStringAsFixed(0),
-              row.paid.toStringAsFixed(0),
-              row.balance.toStringAsFixed(0),
-              row.status,
-              row.mode,
-            ].map((v) => '"${v.replaceAll('"', '""')}"').join(',');
-            csv.writeln(values);
-            progress.setProgress(((i + 1) / rows.length) * 0.7);
-          }
+          final logTag = _nextExportTag('csv');
+          _logExport(logTag, 'CSV export started with ${rows.length} rows');
+          progress.setProgress(0.1);
 
           final savePath = await FilePicker.platform.saveFile(
             dialogTitle: 'Save CSV',
             fileName: '${_fileStem()}.csv',
           );
 
-          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) return;
+          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+            _logExport(logTag, 'CSV export cancelled before write');
+            return;
+          }
 
           final target = savePath.toLowerCase().endsWith('.csv')
               ? savePath
               : '$savePath.csv';
-          IOSink? sink;
-          try {
-            sink = File(target).openWrite();
-            sink.write(csv.toString());
-            if (progress.isCancelled) return;
-            await sink.flush();
-          } finally {
-            await sink?.close();
-          }
+          await _writeCsvWithRetry(
+            target: target,
+            rows: rows,
+            progress: progress,
+            logTag: logTag,
+          );
           progress.setProgress(1.0);
+          _logExport(logTag, 'CSV export completed');
         },
       );
     } finally {
@@ -513,6 +650,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
         context: context,
         title: 'Exporting PDF',
         task: (progress) async {
+          final logTag = _nextExportTag('pdf');
+          _logExport(logTag, 'PDF export started with ${rows.length} rows');
           progress.setProgress(0.2);
           final bytes = await _buildPdfDocument(rows).save();
           if (progress.isCancelled) return;
@@ -523,21 +662,22 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             fileName: '${_fileStem()}.pdf',
           );
 
-          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) return;
+          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+            _logExport(logTag, 'PDF export cancelled before write');
+            return;
+          }
 
           final target = savePath.toLowerCase().endsWith('.pdf')
               ? savePath
               : '$savePath.pdf';
-          IOSink? sink;
-          try {
-            sink = File(target).openWrite();
-            sink.add(bytes);
-            if (progress.isCancelled) return;
-            await sink.flush();
-          } finally {
-            await sink?.close();
-          }
+          await _writePdfWithRetry(
+            target: target,
+            bytes: bytes,
+            progress: progress,
+            logTag: logTag,
+          );
           progress.setProgress(1.0);
+          _logExport(logTag, 'PDF export completed');
         },
       );
     } finally {
@@ -648,14 +788,15 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   }
 
   Future<void> _openPrintOptions([_LedgerRowData? row]) async {
+    final stateContext = context; // capture before StatefulBuilder shadows it
     String invoiceType = 'Full Invoice';
     bool showBranding = true;
     bool showSignature = true;
 
     await showDialog<void>(
-      context: context,
+      context: stateContext,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setStateDialog) => ContentDialog(
+        builder: (ctx, setStateDialog) => ContentDialog(
           title: const Text('Print Options'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -696,17 +837,12 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                 Navigator.pop(dialogContext);
                 final rows = row == null ? _visibleRows : [row];
                 if (rows.isEmpty) return;
-                await runWithExportProgressDialog<void>(
-                  context: context,
-                  title: 'Opening print preview',
-                  task: (progress) async {
-                    progress.setProgress(0.5);
-                    final doc = _buildPdfDocument(rows);
-                    if (progress.isCancelled) return;
-                    await Printing.layoutPdf(onLayout: (_) async => doc.save());
-                    progress.setProgress(1.0);
-                  },
-                );
+                final doc = _buildPdfDocument(rows);
+                try {
+                  await Printing.layoutPdf(onLayout: (_) async => doc.save());
+                } catch (_) {
+                  // Print cancelled or virtual printer error – ignore
+                }
               },
               child: const Text('Print'),
             ),
