@@ -158,7 +158,7 @@ class _Routes {
           title: 'Doctors',
           identifier: 'doctors_v2',
           icon: FluentIcons.medical,
-          screen: DoctorsScreen.new,
+          screen: DoctorsScreenV2.new,
           accessible: permissions.list[0] || login.isAdmin,
           navbarTitle: 'Doctors',
           onSelect: () async {

@@ -1,12 +1,15 @@
 import 'dart:io';
 
+import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/utils/share_actions.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 Future<void> showPatientHistoryDialogV2({
   required BuildContext context,
@@ -100,8 +103,73 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             : widget.patient.title.trim())
         .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_');
     final age = widget.patient.age;
-    final date = DateFormat('yyyyMMdd').format(DateTime.now());
+    final date = DateFormat('dd_MMM-yyyy').format(DateTime.now()).toLowerCase();
     return '${safeName}_${age}_$date';
+  }
+
+  String _composeShareMessage([_LedgerRowData? row]) {
+    final target = row == null
+        ? (_visibleRows.isEmpty ? null : _visibleRows.first)
+        : row;
+    if (target == null) {
+      return 'Patient ${widget.patient.title} invoice details are currently unavailable.';
+    }
+    return 'Patient: ${widget.patient.title.trim().isEmpty ? widget.patient.id : widget.patient.title}\n'
+        'Date: ${DateFormat('dd MMM yyyy').format(target.date)}\n'
+        'Treatment: ${target.treatment}\n'
+        'Cost: Rs ${target.cost.toStringAsFixed(0)}\n'
+        'Paid: Rs ${target.paid.toStringAsFixed(0)}\n'
+        'Balance: Rs ${target.balance.toStringAsFixed(0)}\n'
+        'Status: ${target.status}';
+  }
+
+  pw.Document _buildPdfDocument(List<_LedgerRowData> rows) {
+    final doc = pw.Document();
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(24),
+        build: (context) => [
+          pw.Text(
+            'Patient Report - ${widget.patient.title.trim().isEmpty ? widget.patient.id : widget.patient.title}',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text('Generated on ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}'),
+          pw.SizedBox(height: 10),
+          pw.TableHelper.fromTextArray(
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            headers: const [
+              'Date',
+              'Tooth',
+              'Treatment',
+              'Doctor',
+              'Cost',
+              'Paid',
+              'Balance',
+              'Status',
+              'Mode',
+            ],
+            data: rows
+                .map(
+                  (r) => [
+                    DateFormat('dd MMM yyyy').format(r.date),
+                    r.tooth,
+                    r.treatment,
+                    r.doctor,
+                    'Rs ${r.cost.toStringAsFixed(0)}',
+                    'Rs ${r.paid.toStringAsFixed(0)}',
+                    'Rs ${r.balance.toStringAsFixed(0)}',
+                    r.status,
+                    r.mode,
+                  ],
+                )
+                .toList(growable: false),
+          ),
+        ],
+      ),
+    );
+    return doc;
   }
 
   List<_LedgerRowData> get _allRows {
@@ -243,35 +311,44 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     setState(() => _isExportingCsv = true);
 
     try {
+      await runWithExportProgressDialog<void>(
+        context: context,
+        title: 'Exporting CSV',
+        task: (progress) async {
+          final csv = StringBuffer();
+          csv.writeln('Date,Tooth,Treatment,Doctor,Cost,Paid,Balance,Status,Mode');
+          for (var i = 0; i < rows.length; i++) {
+            if (progress.isCancelled) return;
+            final row = rows[i];
+            final values = [
+              DateFormat('yyyy-MM-dd').format(row.date),
+              row.tooth,
+              row.treatment,
+              row.doctor,
+              row.cost.toStringAsFixed(0),
+              row.paid.toStringAsFixed(0),
+              row.balance.toStringAsFixed(0),
+              row.status,
+              row.mode,
+            ].map((v) => '"${v.replaceAll('"', '""')}"').join(',');
+            csv.writeln(values);
+            progress.setProgress((i + 1) / (rows.length + 1));
+          }
 
-    final csv = StringBuffer();
-    csv.writeln('Date,Tooth,Treatment,Doctor,Cost,Paid,Balance,Status,Mode');
-    for (final row in rows) {
-      final values = [
-        DateFormat('yyyy-MM-dd').format(row.date),
-        row.tooth,
-        row.treatment,
-        row.doctor,
-        row.cost.toStringAsFixed(0),
-        row.paid.toStringAsFixed(0),
-        row.balance.toStringAsFixed(0),
-        row.status,
-        row.mode,
-      ].map((v) => '"${v.replaceAll('"', '""')}"').join(',');
-      csv.writeln(values);
-    }
+          final savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save CSV',
+            fileName: '${_fileStem()}.csv',
+          );
 
-      final savePath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save CSV',
-        fileName: '${_fileStem()}.csv',
+          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) return;
+
+          final target = savePath.toLowerCase().endsWith('.csv')
+              ? savePath
+              : '$savePath.csv';
+          await File(target).writeAsString(csv.toString(), flush: true);
+          progress.setProgress(1.0);
+        },
       );
-
-      if (savePath == null || savePath.trim().isEmpty) return;
-
-      final target = savePath.toLowerCase().endsWith('.csv')
-          ? savePath
-          : '$savePath.csv';
-      await File(target).writeAsString(csv.toString(), flush: true);
     } finally {
       if (mounted) {
         setState(() => _isExportingCsv = false);
@@ -287,63 +364,29 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     setState(() => _isExportingPdf = true);
 
     try {
+      await runWithExportProgressDialog<void>(
+        context: context,
+        title: 'Exporting PDF',
+        task: (progress) async {
+          progress.setProgress(0.2);
+          final bytes = await _buildPdfDocument(rows).save();
+          if (progress.isCancelled) return;
+          progress.setProgress(0.6);
 
-    final doc = pw.Document();
-    doc.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (context) => [
-          pw.Text(
-            'Patient Report - ${widget.patient.title.trim().isEmpty ? widget.patient.id : widget.patient.title}',
-            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Text('Generated on ${DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now())}'),
-          pw.SizedBox(height: 10),
-          pw.TableHelper.fromTextArray(
-            headers: const [
-              'Date',
-              'Tooth',
-              'Treatment',
-              'Doctor',
-              'Cost',
-              'Paid',
-              'Balance',
-              'Status',
-              'Mode',
-            ],
-            data: rows
-                .map(
-                  (r) => [
-                    DateFormat('dd MMM yyyy').format(r.date),
-                    r.tooth,
-                    r.treatment,
-                    r.doctor,
-                    '₹${r.cost.toStringAsFixed(0)}',
-                    '₹${r.paid.toStringAsFixed(0)}',
-                    '₹${r.balance.toStringAsFixed(0)}',
-                    r.status,
-                    r.mode,
-                  ],
-                )
-                .toList(growable: false),
-          ),
-        ],
-      ),
-    );
+          final savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save PDF',
+            fileName: '${_fileStem()}.pdf',
+          );
 
-      final bytes = await doc.save();
-      final savePath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save PDF',
-        fileName: '${_fileStem()}.pdf',
+          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) return;
+
+          final target = savePath.toLowerCase().endsWith('.pdf')
+              ? savePath
+              : '$savePath.pdf';
+          await File(target).writeAsBytes(bytes, flush: true);
+          progress.setProgress(1.0);
+        },
       );
-
-      if (savePath == null || savePath.trim().isEmpty) return;
-
-      final target = savePath.toLowerCase().endsWith('.pdf')
-          ? savePath
-          : '$savePath.pdf';
-      await File(target).writeAsBytes(bytes, flush: true);
     } finally {
       if (mounted) {
         setState(() => _isExportingPdf = false);
@@ -365,23 +408,50 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     super.dispose();
   }
 
-  Future<void> _openShareOptions() async {
+  Future<void> _openShareOptions([_LedgerRowData? row]) async {
+    final message = _composeShareMessage(row);
+    final email = widget.patient.email.trim();
+    final canEmail = email.isNotEmpty;
+
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => ContentDialog(
         title: const Text('Share Invoice'),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Share options'),
-            SizedBox(height: 10),
-            Text('• WhatsApp'),
-            Text('• Email'),
-            Text('• SMS'),
-            Text('• Copy Link'),
-            SizedBox(height: 10),
-            Text('Includes treatment details, payment history, logo, and signature.'),
+            SizedBox(
+              width: 360,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton(
+                    onPressed: () async {
+                      await openWhatsApp(widget.patient.phone, message);
+                    },
+                    child: const Text('WhatsApp'),
+                  ),
+                  Button(
+                    onPressed: canEmail
+                        ? () async {
+                            await sendEmail(
+                              to: email,
+                              subject: 'Patient Invoice Details',
+                              body: message,
+                            );
+                          }
+                        : null,
+                    child: Text(canEmail ? 'Email' : 'Email (No address)'),
+                  ),
+                  Button(
+                    onPressed: null,
+                    child: const Text('SMS (Coming Soon)'),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         actions: [
@@ -394,7 +464,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     );
   }
 
-  Future<void> _openPrintOptions() async {
+  Future<void> _openPrintOptions([_LedgerRowData? row]) async {
     String invoiceType = 'Full Invoice';
     bool showBranding = true;
     bool showSignature = true;
@@ -438,6 +508,25 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             ],
           ),
           actions: [
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                final rows = row == null ? _visibleRows : [row];
+                if (rows.isEmpty) return;
+                await runWithExportProgressDialog<void>(
+                  context: context,
+                  title: 'Opening print preview',
+                  task: (progress) async {
+                    progress.setProgress(0.5);
+                    final doc = _buildPdfDocument(rows);
+                    if (progress.isCancelled) return;
+                    await Printing.layoutPdf(onLayout: (_) async => doc.save());
+                    progress.setProgress(1.0);
+                  },
+                );
+              },
+              child: const Text('Print'),
+            ),
             Button(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Close'),
@@ -580,17 +669,12 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                       onPressed: _isExportingCsv || _isExportingPdf ? null : _exportPdf,
                       child: const Text('Download PDF'),
                     ),
-                    if (_isExportingCsv)
-                      const SizedBox(
-                        width: 120,
-                        child: ProgressBar(),
-                      ),
-                    if (_isExportingPdf)
-                      const SizedBox(
-                        width: 120,
-                        child: ProgressBar(),
-                      ),
                   ],
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(FluentIcons.chrome_close, size: 10),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
@@ -837,14 +921,14 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                               onTap: () {},
                                             ),
                                             _actionIcon(
-                                              icon: FluentIcons.edit,
-                                              tooltip: 'Edit',
-                                              onTap: () {},
+                                              icon: FluentIcons.share,
+                                              tooltip: 'Share Invoice',
+                                              onTap: () => _openShareOptions(row),
                                             ),
                                             _actionIcon(
                                               icon: FluentIcons.print,
                                               tooltip: 'Print Receipt',
-                                              onTap: _openPrintOptions,
+                                              onTap: () => _openPrintOptions(row),
                                             ),
                                           ],
                                         ),
@@ -881,28 +965,6 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                       const SizedBox(height: 6),
                                       Text(
                                         '₹${row.paid.toStringAsFixed(0)} — ${row.mode} — ${DateFormat('dd MMM yyyy').format(row.date)}',
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: [
-                                          _actionIcon(
-                                            icon: FluentIcons.money,
-                                            tooltip: 'Add Payment',
-                                            onTap: () {},
-                                          ),
-                                          _actionIcon(
-                                            icon: FluentIcons.undo,
-                                            tooltip: 'Refund',
-                                            onTap: () {},
-                                          ),
-                                          _actionIcon(
-                                            icon: FluentIcons.print,
-                                            tooltip: 'Print Invoice',
-                                            onTap: _openPrintOptions,
-                                          ),
-                                        ],
                                       ),
                                     ],
                                   ),

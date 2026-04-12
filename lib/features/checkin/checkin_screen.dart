@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -1168,6 +1171,10 @@ class _CheckinHistoryPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final selected = selectedAppointment;
 
+    if (selected != null && selected.checkinStage == 'checkout') {
+      return _CheckinHistoryDetails(appointment: selected);
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1910,6 +1917,27 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   InfoLabel(
+                    label: 'Teeth:',
+                    child: TeethPicker(
+                      selectedTeeth: _selectedTeeth,
+                      isAdult: (a.patient?.age ?? 0) >= 13,
+                      onChanged: (teeth) {
+                        setState(() {
+                          _selectedTeeth = teeth;
+                          for (final id in teeth) {
+                            _teethStates.putIfAbsent(
+                              id,
+                              () => ToothState(toothId: id),
+                            );
+                          }
+                          a.selectedTeeth = teeth.toList(growable: false);
+                          appointments.set(a);
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  InfoLabel(
                     label: 'Diagnosis:',
                     child: _CheckinSearchableTagInput(
                       initialValues: a.diagnosis,
@@ -2214,6 +2242,25 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     setState(() {});
   }
 
+  ButtonStyle _pillStyle({required bool selected, Color accent = const Color(0xFF2D7BD8)}) {
+    return ButtonStyle(
+      padding: WidgetStateProperty.all(
+        const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      ),
+      backgroundColor: WidgetStateProperty.all(
+        selected ? accent.withValues(alpha: 0.12) : const Color(0xFFF8FBFF),
+      ),
+      shape: WidgetStateProperty.all(
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            color: selected ? accent : const Color(0xFFD8E3F1),
+          ),
+        ),
+      ),
+    );
+  }
+
   String _safeName(String source) {
     final compact = source.trim().isEmpty ? 'patient' : source.trim();
     return compact.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_');
@@ -2401,22 +2448,47 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   }
 
   Future<void> _downloadReceiptPdf() async {
-    final nowLabel = DateFormat('yyyyMMdd').format(DateTime.now());
+    final nowLabel = DateFormat('dd_MMM-yyyy').format(DateTime.now()).toLowerCase();
     final ageLabel = widget.appointment.patient?.age ?? 0;
     final patientName = _safeName(widget.appointment.title);
     final fileName = '${patientName}_${ageLabel}_$nowLabel.pdf';
-    final bytes = await _buildReceiptPdf().save();
-    final savePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save payment receipt',
-      fileName: fileName,
-      bytes: bytes,
+    await runWithExportProgressDialog<void>(
+      context: context,
+      title: 'Preparing receipt PDF',
+      task: (progress) async {
+        progress.setProgress(0.2);
+        final bytes = await _buildReceiptPdf().save();
+        if (progress.isCancelled) return;
+        progress.setProgress(0.6);
+        final savePath = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save payment receipt',
+          fileName: fileName,
+        );
+        if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+          return;
+        }
+        final target = savePath.toLowerCase().endsWith('.pdf')
+            ? savePath
+            : '$savePath.pdf';
+        await File(target).writeAsBytes(bytes, flush: true);
+        progress.setProgress(1.0);
+      },
     );
-    if (savePath == null || savePath.trim().isEmpty) return;
   }
 
   Future<void> _printReceipt() async {
-    final doc = _buildReceiptPdf();
-    await Printing.layoutPdf(onLayout: (_) async => doc.save());
+    await runWithExportProgressDialog<void>(
+      context: context,
+      title: 'Opening print preview',
+      task: (progress) async {
+        progress.setProgress(0.4);
+        final doc = _buildReceiptPdf();
+        if (progress.isCancelled) return;
+        progress.setProgress(0.8);
+        await Printing.layoutPdf(onLayout: (_) async => doc.save());
+        progress.setProgress(1.0);
+      },
+    );
   }
 
   @override
@@ -2505,6 +2577,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     children: [100, 200, 500, 1000, 2000]
                         .map(
                           (v) => Button(
+                            style: _pillStyle(
+                              selected: false,
+                              accent: const Color(0xFF2D7BD8),
+                            ),
                             onPressed: () {
                               _basePrice = v.toDouble();
                               widget.priceController.text = '$v';
@@ -2545,6 +2621,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       runSpacing: 8,
                       children: [
                         Button(
+                          style: _pillStyle(
+                            selected: _discountMode == 'flat',
+                            accent: const Color(0xFF2D7BD8),
+                          ),
                           onPressed: () {
                             setState(() => _discountMode = 'flat');
                             _recalculatePrice();
@@ -2552,6 +2632,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           child: Text(_discountMode == 'flat' ? '₹ Flat' : 'Flat'),
                         ),
                         Button(
+                          style: _pillStyle(
+                            selected: _discountMode == 'percent',
+                            accent: const Color(0xFF2D7BD8),
+                          ),
                           onPressed: () {
                             setState(() => _discountMode = 'percent');
                             _recalculatePrice();
@@ -2569,6 +2653,48 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ],
                       onChanged: (_) => _recalculatePrice(),
                       placeholder: 'Discount',
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [5, 10, 20, 25, 50]
+                          .map(
+                            (v) => Button(
+                              style: _pillStyle(
+                                selected: _discountMode == 'percent',
+                                accent: const Color(0xFF2D7BD8),
+                              ),
+                              onPressed: () {
+                                setState(() => _discountMode = 'percent');
+                                widget.discountController.text = '$v';
+                                _recalculatePrice();
+                              },
+                              child: Text('$v%'),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [100, 200, 500, 1000]
+                          .map(
+                            (v) => Button(
+                              style: _pillStyle(
+                                selected: _discountMode == 'flat',
+                                accent: const Color(0xFF2D7BD8),
+                              ),
+                              onPressed: () {
+                                setState(() => _discountMode = 'flat');
+                                widget.discountController.text = '$v';
+                                _recalculatePrice();
+                              },
+                              child: Text('₹$v'),
+                            ),
+                          )
+                          .toList(growable: false),
                     ),
                   ],
                   const SizedBox(height: 14),
@@ -2609,31 +2735,31 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: [100, 200, 500, 1000, 2000]
-                        .map(
-                          (v) => Button(
-                            onPressed: () {
-                              widget.paidController.text = '$v';
-                              a.paid = v.toDouble();
-                              appointments.set(a);
-                              setState(() {});
-                            },
-                            child: Text('₹$v'),
+                    children: [
+                      ...[100, 200, 500, 1000, 2000].map(
+                        (v) => Button(
+                          style: _pillStyle(
+                            selected: false,
+                            accent: const Color(0xFF2D7BD8),
                           ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      style: ButtonStyle(
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                          onPressed: () {
+                            widget.paidController.text = '$v';
+                            a.paid = v.toDouble();
+                            appointments.set(a);
+                            setState(() {});
+                          },
+                          child: Text('₹$v'),
+                        ),
                       ),
-                      onPressed: widget.onCollectFullBalance,
-                      child: const Text('Collect Full Balance'),
-                    ),
+                      Button(
+                        style: _pillStyle(
+                          selected: false,
+                          accent: const Color(0xFF16A34A),
+                        ),
+                        onPressed: widget.onCollectFullBalance,
+                        child: const Text('Full'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 14),
                   const Text(
@@ -2650,26 +2776,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     children: ['Cash', 'UPI'].map((mode) {
                       final selected = _paymentMode == mode;
                       return Button(
-                        style: ButtonStyle(
-                          padding: WidgetStateProperty.all(
-                            const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                          ),
-                          backgroundColor: WidgetStateProperty.all(
-                            selected
-                                ? const Color(0xFFE5F0FF)
-                                : const Color(0xFFF8FBFF),
-                          ),
-                          shape: WidgetStateProperty.all(
-                            RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: BorderSide(
-                                color: selected
-                                    ? const Color(0xFF2D7BD8)
-                                    : const Color(0xFFD8E3F1),
-                              ),
-                            ),
-                          ),
-                        ),
+                        style: _pillStyle(selected: selected),
                         onPressed: () {
                           setState(() => _paymentMode = mode);
                           final isDigital = mode == 'UPI';
@@ -2820,21 +2927,23 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    _summaryLine(
-                      'Discount Applied',
-                      a.discount <= 0
-                          ? '-'
-                          : a.discountType == 'percent'
-                              ? '-${a.discount.toStringAsFixed(0)}%'
-                              : '-₹${a.discount.toStringAsFixed(0)}',
-                      valueColor: const Color(0xFFD6455D),
-                    ),
-                    _summaryLine(
-                      'Discounted Total',
-                      '₹${discountedTotal.toStringAsFixed(0)}',
-                      valueColor: const Color(0xFF1459AD),
-                    ),
-                    const SizedBox(height: 10),
+                    if (widget.discountEnabled) ...[
+                      _summaryLine(
+                        'Discount Applied',
+                        a.discount <= 0
+                            ? '-'
+                            : a.discountType == 'percent'
+                                ? '-${a.discount.toStringAsFixed(0)}%'
+                                : '-₹${a.discount.toStringAsFixed(0)}',
+                        valueColor: const Color(0xFFD6455D),
+                      ),
+                      _summaryLine(
+                        'Discounted Total',
+                        '₹${discountedTotal.toStringAsFixed(0)}',
+                        valueColor: const Color(0xFF1459AD),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     const Text(
                       'Treatment',
                       style: TextStyle(
