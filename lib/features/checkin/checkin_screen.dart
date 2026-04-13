@@ -40,8 +40,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   final Map<String, bool> _expandedStages = {
     'waiting': true,
     'with_doctor': true,
-    'checkout': true,
-    'completed': true,
+    'billing_completed': true,
   };
 
   @override
@@ -98,6 +97,81 @@ class _CheckinScreenState extends State<CheckinScreen> {
     });
     appointments.set(appointment);
     setState(() => _selectedAppointment = appointment);
+  }
+
+  String _billingCombinedRowStage(Appointment appointment) {
+    if (appointment.checkinStage == 'completed' || appointment.isDone) {
+      return 'completed';
+    }
+    return 'checkout';
+  }
+
+  Future<void> _openAppointmentPopup(Appointment appointment) async {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final popupWidth = screenWidth < 760 ? screenWidth - 20 : 500.0;
+
+    await showDialog<void>(
+      context: context,
+      barrierColor: const Color(0x660A1B33),
+      builder: (dialogContext) => SafeArea(
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Container(
+            width: popupWidth,
+            height: double.infinity,
+            margin: const EdgeInsets.fromLTRB(10, 12, 12, 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x2A0D2F5B),
+                  blurRadius: 24,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Patient Details',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF183A67),
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(FluentIcons.cancel, size: 12),
+                        onPressed: () => Navigator.pop(dialogContext),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(size: 1),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(12),
+                    child: _CheckinHistoryDetails(appointment: appointment),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _selectAndOpenAppointment(Appointment appointment) {
+    setState(() => _selectedAppointment = appointment);
+    _openAppointmentPopup(appointment);
   }
 
   Future<void> _openQuickPatientSearchDialog() async {
@@ -302,12 +376,22 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     a.checkinStage == 'with_doctor' ||
                     a.checkinStage == 'treatment')
                 .toList(growable: false);
-            final checkout = filtered
-                .where((a) => a.checkinStage == 'checkout')
-                .toList(growable: false);
-            final completed = filtered
-                .where((a) => a.checkinStage == 'completed' || a.isDone)
-                .toList(growable: false);
+            final billingAndCompleted = filtered
+                .where(
+                  (a) =>
+                      a.checkinStage == 'checkout' ||
+                      a.checkinStage == 'completed' ||
+                      a.isDone,
+                )
+                .toList(growable: true)
+              ..sort((a, b) {
+                final aCompleted =
+                    a.checkinStage == 'completed' || a.isDone ? 1 : 0;
+                final bCompleted =
+                    b.checkinStage == 'completed' || b.isDone ? 1 : 0;
+                if (aCompleted != bCompleted) return aCompleted - bCompleted;
+                return a.date.compareTo(b.date);
+              });
 
             final now = DateTime.now();
             final isToday = _selectedDate.year == now.year &&
@@ -555,96 +639,62 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     const SizedBox(height: 12),
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final isWide = constraints.maxWidth >= 1360;
-                        final listWidth = constraints.maxWidth >= 1280
-                            ? 560.0
-                            : constraints.maxWidth >= 920
-                                ? 500.0
-                                : double.infinity;
+                        final stacked = constraints.maxWidth < 1120;
 
-                        final lists = SizedBox(
-                          width: isWide ? listWidth : double.infinity,
-                          child: Column(
-                            children: [
-                              _WorkflowColumn(
-                                title: 'Waiting (${waiting.length})',
-                                stage: 'waiting',
-                                color: const Color(0xFFE4A11B),
-                                rows: waiting,
-                                showHistoryAction: false,
-                                onSelect: (a) =>
-                                    setState(() => _selectedAppointment = a),
-                                selectedAppointmentId: _selectedAppointment?.id,
-                                expanded: _expandedStages['waiting'] ?? true,
-                                onToggleExpanded: () => setState(() {
-                                  _expandedStages['waiting'] =
-                                      !(_expandedStages['waiting'] ?? true);
-                                }),
-                              ),
-                              const SizedBox(height: 10),
-                              _WorkflowColumn(
-                                title: 'With Doctor (${withDoctor.length})',
-                                stage: 'with_doctor',
-                                color: const Color(0xFF2D7BD8),
-                                rows: withDoctor,
-                                showHistoryAction: false,
-                                onSelect: (a) =>
-                                    setState(() => _selectedAppointment = a),
-                                selectedAppointmentId: _selectedAppointment?.id,
-                                expanded:
-                                    _expandedStages['with_doctor'] ?? true,
-                                onToggleExpanded: () => setState(() {
-                                  _expandedStages['with_doctor'] =
-                                      !(_expandedStages['with_doctor'] ?? true);
-                                }),
-                              ),
-                              const SizedBox(height: 10),
-                              _WorkflowColumn(
-                                title: 'Billing (${checkout.length})',
-                                stage: 'checkout',
-                                color: const Color(0xFF2BA58D),
-                                rows: checkout,
-                                onSelect: (a) =>
-                                    setState(() => _selectedAppointment = a),
-                                selectedAppointmentId: _selectedAppointment?.id,
-                                expanded: _expandedStages['checkout'] ?? true,
-                                onToggleExpanded: () => setState(() {
-                                  _expandedStages['checkout'] =
-                                      !(_expandedStages['checkout'] ?? true);
-                                }),
-                              ),
-                              const SizedBox(height: 10),
-                              _WorkflowColumn(
-                                title: 'Completed (${completed.length})',
-                                stage: 'completed',
-                                color: const Color(0xFF3B9A42),
-                                rows: completed,
-                                onSelect: (a) =>
-                                    setState(() => _selectedAppointment = a),
-                                selectedAppointmentId: _selectedAppointment?.id,
-                                expanded: _expandedStages['completed'] ?? true,
-                                onToggleExpanded: () => setState(() {
-                                  _expandedStages['completed'] =
-                                      !(_expandedStages['completed'] ?? true);
-                                }),
-                              ),
-                            ],
-                          ),
+                        final waitingColumn = _WorkflowColumn(
+                          title: 'Waiting Room (${waiting.length})',
+                          stage: 'waiting',
+                          color: const Color(0xFFE4A11B),
+                          rows: waiting,
+                          showHistoryAction: false,
+                          onSelect: _selectAndOpenAppointment,
+                          selectedAppointmentId: _selectedAppointment?.id,
+                          expanded: _expandedStages['waiting'] ?? true,
+                          onToggleExpanded: () => setState(() {
+                            _expandedStages['waiting'] =
+                                !(_expandedStages['waiting'] ?? true);
+                          }),
                         );
 
-                        final right = Expanded(
-                          child: _CheckinHistoryPanel(
-                            selectedAppointment: _selectedAppointment,
-                            todaysAppointments: filtered,
-                          ),
+                        final withDoctorColumn = _WorkflowColumn(
+                          title: 'With Doctor (${withDoctor.length})',
+                          stage: 'with_doctor',
+                          color: const Color(0xFF2D7BD8),
+                          rows: withDoctor,
+                          showHistoryAction: false,
+                          onSelect: _selectAndOpenAppointment,
+                          selectedAppointmentId: _selectedAppointment?.id,
+                          expanded: _expandedStages['with_doctor'] ?? true,
+                          onToggleExpanded: () => setState(() {
+                            _expandedStages['with_doctor'] =
+                                !(_expandedStages['with_doctor'] ?? true);
+                          }),
                         );
 
-                        if (!isWide) {
+                        final billingColumn = _WorkflowColumn(
+                          title:
+                              'Billing & Completed (${billingAndCompleted.length})',
+                          stage: 'billing_completed',
+                          color: const Color(0xFF6C4CCF),
+                          rows: billingAndCompleted,
+                          rowStageBuilder: _billingCombinedRowStage,
+                          onSelect: _selectAndOpenAppointment,
+                          selectedAppointmentId: _selectedAppointment?.id,
+                          expanded: _expandedStages['billing_completed'] ?? true,
+                          onToggleExpanded: () => setState(() {
+                            _expandedStages['billing_completed'] =
+                                !(_expandedStages['billing_completed'] ?? true);
+                          }),
+                        );
+
+                        if (stacked) {
                           return Column(
                             children: [
-                              lists,
+                              waitingColumn,
                               const SizedBox(height: 10),
-                              SizedBox(width: double.infinity, child: right),
+                              withDoctorColumn,
+                              const SizedBox(height: 10),
+                              billingColumn,
                             ],
                           );
                         }
@@ -652,9 +702,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            lists,
+                            Expanded(child: waitingColumn),
                             const SizedBox(width: 10),
-                            right,
+                            Expanded(child: withDoctorColumn),
+                            const SizedBox(width: 10),
+                            Expanded(child: billingColumn),
                           ],
                         );
                       },
@@ -712,6 +764,7 @@ class _WorkflowColumn extends StatelessWidget {
   final String stage;
   final Color color;
   final List<Appointment> rows;
+  final String Function(Appointment)? rowStageBuilder;
   final bool showHistoryAction;
   final bool expanded;
   final VoidCallback onToggleExpanded;
@@ -723,6 +776,7 @@ class _WorkflowColumn extends StatelessWidget {
     required this.stage,
     required this.color,
     required this.rows,
+    this.rowStageBuilder,
     required this.expanded,
     required this.onToggleExpanded,
     this.showHistoryAction = false,
@@ -791,7 +845,7 @@ class _WorkflowColumn extends StatelessWidget {
             ...rows.map(
               (a) => _WorkflowRow(
                 appointment: a,
-                stage: stage,
+                stage: rowStageBuilder?.call(a) ?? stage,
                 showHistoryAction: showHistoryAction,
                 selected: selectedAppointmentId == a.id,
                 onSelect: onSelect,
@@ -1164,52 +1218,6 @@ String _waitingLabel() {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _CheckinHistoryPanel extends StatelessWidget {
-  final Appointment? selectedAppointment;
-  final List<Appointment> todaysAppointments;
-
-  const _CheckinHistoryPanel({
-    required this.selectedAppointment,
-    required this.todaysAppointments,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = selectedAppointment;
-
-    if (selected != null && selected.checkinStage == 'checkout') {
-      return _CheckinHistoryDetails(appointment: selected);
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD6E2F0)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: selected == null
-            ? const SizedBox(
-                height: 220,
-                child: Center(
-                  child: Text(
-                    'Select a patient from Waiting, With Doctor, Billing, or Completed to view history.',
-                    style: TextStyle(color: Color(0xFF6D84A8)),
-                  ),
-                ),
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _CheckinHistoryDetails(appointment: selected),
-                ],
-              ),
       ),
     );
   }

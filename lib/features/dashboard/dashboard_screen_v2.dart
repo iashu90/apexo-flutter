@@ -7,6 +7,8 @@ import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/dashboard/overall_due_helper.dart';
 import 'package:apexo/features/dashboard/patient_look_up.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/labwork/labwork_model.dart';
+import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -1550,7 +1552,7 @@ class _TableHeader extends StatelessWidget {
           Expanded(
               flex: 12,
               child: _SortableHeader(
-                  label: 'P.Mode',
+                label: 'Mode',
                   keyName: 'paymentMode',
                   current: sortBy,
                   ascending: sortAscending,
@@ -1666,6 +1668,20 @@ class _AppointmentRow extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _openLabworkForPatient() {
+    final patient = appointment.patient;
+    final draft = Labwork.fromJson({
+      'patientID': patient?.id,
+      'operatorsIDs': appointment.operatorsIDs,
+      'date': (appointment.date.millisecondsSinceEpoch / (60 * 60 * 1000)).round(),
+      'typeOfWork': appointment.selectedTreatments.isEmpty
+          ? ''
+          : appointment.selectedTreatments.first,
+      'selectedTeeth': appointment.selectedTeeth,
+    });
+    openLabwork(draft);
   }
 
   @override
@@ -1816,6 +1832,14 @@ class _AppointmentRow extends StatelessWidget {
                   color: const Color(0xFFD6455D),
                   hoverColor: const Color(0xFFFFECEF),
                   onTap: () => _deleteAppointment(context),
+                ),
+                const SizedBox(width: 10),
+                _ActionIconButton(
+                  tooltip: 'Add Labwork',
+                  icon: FluentIcons.manufacturing,
+                  color: const Color(0xFF2BA58D),
+                  hoverColor: const Color(0xFFEAF8F1),
+                  onTap: _openLabworkForPatient,
                 ),
               ],
             ),

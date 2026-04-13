@@ -1,15 +1,24 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/labwork/labwork_model.dart';
+import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 class PatientsScreenV2 extends StatefulWidget {
   const PatientsScreenV2({super.key});
@@ -22,8 +31,9 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   final TextEditingController _listSearchController = TextEditingController();
 
   String _listQuery = '';
-  String _topRange = '6Months';
-  String _outstandingRange = '6Months';
+  String _topRange = '1M';
+  String _outstandingRange = '1M';
+  String _procedureRange = '1M';
   String _procedureTab = 'RCT';
   String _selectedAlphabet = 'All';
   String _listBehaviorFilter = 'all';
@@ -34,13 +44,16 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   int _topOutstandingVisibleCount = 10;
   int _topProcedureVisibleCount = 10;
   int _currentPage = 1;
+  bool _isExportingPatientsCsv = false;
+  bool _isExportingPatientsPdf = false;
 
   static const int _pageSize = 200;
 
   static const List<String> _topRanges = [
-    '1Month',
-    '6Months',
-    '1Year',
+    '1M',
+    '3M',
+    '5M',
+    '1Y',
     'All',
   ];
 
@@ -65,9 +78,13 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     switch (range) {
       case '1Week':
         return now.subtract(const Duration(days: 7));
-      case '1Month':
+      case '1M':
         return now.subtract(const Duration(days: 30));
-      case '1Year':
+      case '3M':
+        return now.subtract(const Duration(days: 90));
+      case '5M':
+        return now.subtract(const Duration(days: 150));
+      case '1Y':
         return now.subtract(const Duration(days: 365));
       case '6Months':
         return now.subtract(const Duration(days: 182));
@@ -95,6 +112,244 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       patient: patient,
       rows: patient.patientDetails,
     );
+  }
+
+  void _openLabworkForPatient(Patient patient) {
+    final draft = Labwork.fromJson({
+      'patientID': patient.id,
+      'phoneNumber': patient.phone,
+      'date': (DateTime.now().millisecondsSinceEpoch / (60 * 60 * 1000)).round(),
+    });
+    openLabwork(draft);
+  }
+
+  void _showTopPatientsDialog({
+    required String title,
+    required List<MapEntry<Patient, int>> rows,
+    required String metricLabel,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: 640,
+          height: 420,
+          child: rows.length <= 10
+              ? const Text('No additional patients to show.')
+              : ListView.builder(
+                  itemCount: rows.length - 10,
+                  itemBuilder: (context, index) {
+                    final entry = rows[index + 10];
+                    return ListTile.selectable(
+                      title: Text(
+                        entry.key.title.trim().isEmpty
+                            ? 'Unnamed patient'
+                            : entry.key.title,
+                      ),
+                      subtitle: Text(entry.key.phone),
+                      trailing: Text('${entry.value} $metricLabel'),
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        _openPatientHistoryDialog(entry.key);
+                      },
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          Button(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _csvCell(String value) {
+    final escaped = value.replaceAll('"', '""');
+    return '"$escaped"';
+  }
+
+  String _patientsFileStem() {
+    final stamp = DateFormat('dd_MMM_yyyy_HH_mm').format(DateTime.now());
+    return 'patients_filtered_$stamp';
+  }
+
+  Future<void> _exportPatientsCsv({
+    required List<Patient> rows,
+    required Map<String, List<Appointment>> visitsByPatient,
+  }) async {
+    if (_isExportingPatientsCsv || _isExportingPatientsPdf || rows.isEmpty) {
+      return;
+    }
+
+    setState(() => _isExportingPatientsCsv = true);
+    try {
+      await runWithExportProgressDialog<void>(
+        context: context,
+        title: 'Exporting CSV',
+        task: (progress) async {
+          progress.setProgress(0.15);
+          final savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save CSV',
+            fileName: '${_patientsFileStem()}.csv',
+          );
+
+          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+            return;
+          }
+
+          final target = savePath.toLowerCase().endsWith('.csv')
+              ? savePath
+              : '$savePath.csv';
+
+          final buffer = StringBuffer();
+          buffer.writeln('ID,Patient,Phone,Age,Visits,Last Visit,Paid So Far,Outstanding');
+
+          for (int i = 0; i < rows.length; i++) {
+            if (progress.isCancelled) return;
+            final patient = rows[i];
+            final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
+            final paid = visits.fold<double>(
+              0,
+              (sum, visit) => sum + visit.paid + visit.prescriptionPaid,
+            );
+            final lastVisit = visits.isEmpty
+                ? '-'
+                : DateFormat('dd MMM yyyy').format(visits.last.date);
+            buffer.writeln(
+              [
+                _csvCell(patient.id),
+                _csvCell(patient.title.trim().isEmpty ? 'Unnamed patient' : patient.title),
+                _csvCell(patient.phone),
+                patient.age,
+                visits.length,
+                _csvCell(lastVisit),
+                paid.toStringAsFixed(0),
+                patient.outstandingPayments.toStringAsFixed(0),
+              ].join(','),
+            );
+            if (i % 20 == 0) {
+              progress.setProgress(0.15 + (0.8 * ((i + 1) / rows.length)));
+            }
+          }
+
+          await File(target).writeAsString(
+            buffer.toString(),
+            encoding: utf8,
+            flush: true,
+          );
+          progress.setProgress(1);
+        },
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingPatientsCsv = false);
+      }
+    }
+  }
+
+  Future<void> _exportPatientsPdf({
+    required List<Patient> rows,
+    required Map<String, List<Appointment>> visitsByPatient,
+  }) async {
+    if (_isExportingPatientsCsv || _isExportingPatientsPdf || rows.isEmpty) {
+      return;
+    }
+
+    setState(() => _isExportingPatientsPdf = true);
+    try {
+      await runWithExportProgressDialog<void>(
+        context: context,
+        title: 'Exporting PDF',
+        task: (progress) async {
+          progress.setProgress(0.2);
+          final doc = pw.Document();
+          final tableRows = <List<String>>[
+            const [
+              'ID',
+              'Patient',
+              'Phone',
+              'Age',
+              'Visits',
+              'Last Visit',
+              'Paid So Far',
+              'Outstanding',
+            ],
+          ];
+
+          for (int i = 0; i < rows.length; i++) {
+            final patient = rows[i];
+            final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
+            final paid = visits.fold<double>(
+              0,
+              (sum, visit) => sum + visit.paid + visit.prescriptionPaid,
+            );
+            final lastVisit = visits.isEmpty
+                ? '-'
+                : DateFormat('dd MMM yyyy').format(visits.last.date);
+            tableRows.add([
+              patient.id,
+              patient.title.trim().isEmpty ? 'Unnamed patient' : patient.title,
+              patient.phone,
+              '${patient.age}',
+              '${visits.length}',
+              lastVisit,
+              paid.toStringAsFixed(0),
+              patient.outstandingPayments.toStringAsFixed(0),
+            ]);
+            if (i % 20 == 0) {
+              progress.setProgress(0.2 + (0.4 * ((i + 1) / rows.length)));
+            }
+          }
+
+          doc.addPage(
+            pw.MultiPage(
+              pageFormat: PdfPageFormat.a4,
+              build: (context) => [
+                pw.Text(
+                  'Filtered Patients Export',
+                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+                ),
+                pw.SizedBox(height: 8),
+                pw.TableHelper.fromTextArray(
+                  cellAlignment: pw.Alignment.centerLeft,
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  headers: tableRows.first,
+                  data: tableRows.skip(1).toList(growable: false),
+                  cellStyle: const pw.TextStyle(fontSize: 9),
+                ),
+              ],
+            ),
+          );
+
+          progress.setProgress(0.75);
+          final bytes = await doc.save().timeout(const Duration(seconds: 45));
+          if (progress.isCancelled) return;
+
+          final savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save PDF',
+            fileName: '${_patientsFileStem()}.pdf',
+          );
+
+          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+            return;
+          }
+
+          final target = savePath.toLowerCase().endsWith('.pdf')
+              ? savePath
+              : '$savePath.pdf';
+          await File(target).writeAsBytes(bytes, flush: true);
+          progress.setProgress(1);
+        },
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingPatientsPdf = false);
+      }
+    }
   }
 
   Future<void> _confirmDeletePatient(Patient patient) async {
@@ -215,6 +470,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               allPatients: allPatients,
               allAppointments: allAppointments,
               procedureTab: _procedureTab,
+              rangeStart: _rangeStart(_procedureRange, now),
             );
 
             final journeyMetrics = _treatmentJourneyMetrics(
@@ -264,6 +520,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   return visits.isNotEmpty && daysSinceLast > 180;
                 case 'new':
                   return visits.isNotEmpty && daysSinceFirst <= 30;
+                case 'focused':
+                  return visits.isNotEmpty && daysSinceLast <= 90;
                 case 'oneTimer':
                   return visits.length == 1;
                 case 'invalidPhone':
@@ -488,21 +746,14 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                             ranges: _topRanges,
                             onSelectRange: (v) => setState(() {
                               _topRange = v;
-                              _topPatientsVisibleCount = 10;
                             }),
                             onOpenHistory: _openPatientHistoryDialog,
                             visibleCount: _topPatientsVisibleCount,
-                            onViewMore: () => setState(() {
-                              if (_topPatientsVisibleCount >=
-                                  topPatientsByVisits.length) {
-                                _topPatientsVisibleCount = 10;
-                              } else {
-                                _topPatientsVisibleCount = math.min(
-                                  _topPatientsVisibleCount + 10,
-                                  topPatientsByVisits.length,
-                                );
-                              }
-                            }),
+                            onViewMore: () => _showTopPatientsDialog(
+                              title: 'Top Patients by Visits',
+                              rows: topPatientsByVisits,
+                              metricLabel: 'visits',
+                            ),
                         ),
                       ),
                       SizedBox(
@@ -514,21 +765,16 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                             ranges: _topRanges,
                             onSelectRange: (v) => setState(() {
                               _outstandingRange = v;
-                              _topOutstandingVisibleCount = 10;
                             }),
                             onOpenHistory: _openPatientHistoryDialog,
                             visibleCount: _topOutstandingVisibleCount,
-                            onViewMore: () => setState(() {
-                              if (_topOutstandingVisibleCount >=
-                                  topOutstanding.length) {
-                                _topOutstandingVisibleCount = 10;
-                              } else {
-                                _topOutstandingVisibleCount = math.min(
-                                  _topOutstandingVisibleCount + 10,
-                                  topOutstanding.length,
-                                );
-                              }
-                            }),
+                            onViewMore: () => _showTopPatientsDialog(
+                              title: 'Top Outstanding Patients',
+                              rows: topOutstanding
+                                  .map((e) => MapEntry(e.key, e.value.round()))
+                                  .toList(growable: false),
+                              metricLabel: 'due',
+                            ),
                         ),
                       ),
                       SizedBox(
@@ -537,23 +783,21 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                             selectedTab: _procedureTab,
                             rows: topProcedurePatients.toList(growable: false),
                             visitsByPatient: visitsByPatient,
+                            selectedRange: _procedureRange,
+                            ranges: _topRanges,
+                            onSelectRange: (v) => setState(() {
+                              _procedureRange = v;
+                            }),
                             onSelectTab: (tab) => setState(() {
                               _procedureTab = tab;
-                              _topProcedureVisibleCount = 10;
                             }),
                             onOpenHistory: _openPatientHistoryDialog,
                             visibleCount: _topProcedureVisibleCount,
-                            onViewMore: () => setState(() {
-                              if (_topProcedureVisibleCount >=
-                                  topProcedurePatients.length) {
-                                _topProcedureVisibleCount = 10;
-                              } else {
-                                _topProcedureVisibleCount = math.min(
-                                  _topProcedureVisibleCount + 10,
-                                  topProcedurePatients.length,
-                                );
-                              }
-                            }),
+                            onViewMore: () => _showTopPatientsDialog(
+                              title: 'Procedure Focus Patients',
+                              rows: topProcedurePatients,
+                              metricLabel: 'sessions',
+                            ),
                         ),
                       ),
                     ];
@@ -600,6 +844,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   behaviorFilter: _listBehaviorFilter,
                   onBehaviorFilterChanged: (v) => setState(() {
                     _listBehaviorFilter = v;
+                    if (v == 'focused') {
+                      _sortBy = 'lastVisit';
+                      _sortAscending = false;
+                    }
                     _currentPage = 1;
                   }),
                   highValueThreshold: _highValueThreshold,
@@ -618,6 +866,17 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   totalPages: totalPages,
                   onPageChanged: (page) => setState(() => _currentPage = page),
                   serialOffset: start,
+                  onOpenLabwork: _openLabworkForPatient,
+                  onExportCsv: () => _exportPatientsCsv(
+                    rows: sortedPatients,
+                    visitsByPatient: visitsByPatient,
+                  ),
+                  onExportPdf: () => _exportPatientsPdf(
+                    rows: sortedPatients,
+                    visitsByPatient: visitsByPatient,
+                  ),
+                  isExportingCsv: _isExportingPatientsCsv,
+                  isExportingPdf: _isExportingPatientsPdf,
                 ),
               ],
             );
@@ -734,6 +993,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     required List<Patient> allPatients,
     required List<Appointment> allAppointments,
     required String procedureTab,
+    required DateTime? rangeStart,
   }) {
     final patientById = <String, Patient>{
       for (final p in allPatients)
@@ -746,6 +1006,9 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     for (final appointment in allAppointments) {
       final patientId = appointment.patientID;
       if (patientId == null || patientId.isEmpty) continue;
+      if (rangeStart != null && appointment.date.isBefore(rangeStart)) {
+        continue;
+      }
 
       final hasProcedure = appointment.selectedTreatments.any((treatment) {
         final normalized = treatment.toLowerCase();
@@ -1998,7 +2261,6 @@ class _TopPatientsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visibleRows = rows.take(visibleCount).toList(growable: false);
-    final hasMore = visibleCount < rows.length;
 
     return _CardShell(
       child: ConstrainedBox(
@@ -2150,7 +2412,7 @@ class _TopPatientsCard extends StatelessWidget {
                             const Color(0xFF2D7BD8),
                           ),
                         ),
-                        child: Text(hasMore ? 'View More (+10)' : 'Show Less'),
+                        child: const Text('Show More'),
                       ),
                   ],
                 ),
@@ -2239,7 +2501,6 @@ class _TopOutstandingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visibleRows = rows.take(visibleCount).toList(growable: false);
-    final hasMore = visibleCount < rows.length;
 
     return _CardShell(
       child: ConstrainedBox(
@@ -2390,7 +2651,7 @@ class _TopOutstandingCard extends StatelessWidget {
                             const Color(0xFF2D7BD8),
                           ),
                         ),
-                        child: Text(hasMore ? 'View More (+10)' : 'Show Less'),
+                        child: const Text('Show More'),
                       ),
                   ],
                 ),
@@ -2459,6 +2720,9 @@ class _TopProcedurePatientsCard extends StatelessWidget {
   final String selectedTab;
   final List<MapEntry<Patient, int>> rows;
   final Map<String, List<Appointment>> visitsByPatient;
+  final String selectedRange;
+  final List<String> ranges;
+  final ValueChanged<String> onSelectRange;
   final ValueChanged<String> onSelectTab;
   final ValueChanged<Patient> onOpenHistory;
   final int visibleCount;
@@ -2468,6 +2732,9 @@ class _TopProcedurePatientsCard extends StatelessWidget {
     required this.selectedTab,
     required this.rows,
     required this.visitsByPatient,
+    required this.selectedRange,
+    required this.ranges,
+    required this.onSelectRange,
     required this.onSelectTab,
     required this.onOpenHistory,
     required this.visibleCount,
@@ -2477,7 +2744,6 @@ class _TopProcedurePatientsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visibleRows = rows.take(visibleCount).toList(growable: false);
-    final hasMore = visibleCount < rows.length;
 
     Widget tabChip(String label) {
       final selected = selectedTab == label;
@@ -2526,6 +2792,45 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 tabChip('ORTHO'),
               ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: ranges
+                  .map(
+                    (range) => GestureDetector(
+                      onTap: () => onSelectRange(range),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: selectedRange == range
+                                ? const Color(0xFF2D7BD8)
+                                : const Color(0xFFD4E2F3),
+                          ),
+                          color: selectedRange == range
+                              ? const Color(0xFF2D7BD8)
+                              : const Color(0xFFEFF4FB),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          range,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: selectedRange == range
+                                ? Colors.white
+                                : const Color(0xFF345982),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(growable: false),
             ),
             const SizedBox(height: 14),
             if (rows.isEmpty)
@@ -2625,7 +2930,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                             const Color(0xFF2D7BD8),
                           ),
                         ),
-                        child: Text(hasMore ? 'View More (+10)' : 'Show Less'),
+                        child: const Text('Show More'),
                       ),
                   ],
                 ),
@@ -2734,7 +3039,12 @@ class _AllPatientsListCard extends StatelessWidget {
   final ValueChanged<String> onSort;
   final TextEditingController listSearchController;
   final ValueChanged<Patient> onOpenHistory;
+  final ValueChanged<Patient> onOpenLabwork;
   final ValueChanged<Patient> onDeletePatient;
+  final VoidCallback onExportCsv;
+  final VoidCallback onExportPdf;
+  final bool isExportingCsv;
+  final bool isExportingPdf;
   final int totalItems;
   final int currentPage;
   final int totalPages;
@@ -2755,7 +3065,12 @@ class _AllPatientsListCard extends StatelessWidget {
     required this.onSort,
     required this.listSearchController,
     required this.onOpenHistory,
+    required this.onOpenLabwork,
     required this.onDeletePatient,
+    required this.onExportCsv,
+    required this.onExportPdf,
+    required this.isExportingCsv,
+    required this.isExportingPdf,
     required this.totalItems,
     required this.currentPage,
     required this.totalPages,
@@ -2830,13 +3145,32 @@ class _AllPatientsListCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'All Patients',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
-            ),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'All Patients',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF183A67),
+                  ),
+                ),
+              ),
+              FilledButton(
+                onPressed: (totalItems == 0 || isExportingCsv || isExportingPdf)
+                    ? null
+                    : onExportCsv,
+                child: Text(isExportingCsv ? 'Exporting CSV...' : 'CSV'),
+              ),
+              const SizedBox(width: 6),
+              FilledButton(
+                onPressed: (totalItems == 0 || isExportingCsv || isExportingPdf)
+                    ? null
+                    : onExportPdf,
+                child: Text(isExportingPdf ? 'Exporting PDF...' : 'PDF'),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
@@ -3000,6 +3334,7 @@ class _AllPatientsListCard extends StatelessWidget {
               behaviorChip('frequent', 'Frequent visitors'),
               behaviorChip('inactive', 'Inactive patients'),
               behaviorChip('new', 'New patients'),
+              behaviorChip('focused', 'Focused by last visit'),
               behaviorChip('oneTimer', 'One timer'),
               behaviorChip('invalidPhone', 'Invalid Phone Number'),
               behaviorChip('noVisit', 'No Visit'),
@@ -3263,6 +3598,11 @@ class _AllPatientsListCard extends StatelessWidget {
                                     icon: FluentIcons.history,
                                     label: 'History',
                                     onTap: () => onOpenHistory(patient),
+                                  ),
+                                  _HoverActionItem(
+                                    icon: FluentIcons.manufacturing,
+                                    label: 'Lab',
+                                    onTap: () => onOpenLabwork(patient),
                                   ),
                                   _HoverActionItem(
                                     icon: FluentIcons.delete,
