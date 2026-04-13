@@ -67,14 +67,11 @@ class TopTabsNavBar extends StatelessWidget {
   List<app_routes.Route> get _primaryRoutes {
     final preferred = [
       'dashboard',
-      'dashboard_old',
       'patients',
-      'patients_old',
-      'calendar',
       'checkin',
       'doctors_v2',
-      'labworks',
       'labworks_v2',
+      'expenses',
       'report_v2',
     ];
 
