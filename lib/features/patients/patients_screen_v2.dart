@@ -9,7 +9,7 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
-import 'package:apexo/features/labwork/open_labwork_panel.dart';
+import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -117,7 +117,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       'phoneNumber': patient.phone,
       'date': (DateTime.now().millisecondsSinceEpoch / (60 * 60 * 1000)).round(),
     });
-    openLabwork(draft);
+    openLabworkV2Dialog(context, draft);
   }
 
   void _showTopPatientsDialog({
@@ -2412,54 +2412,73 @@ class _TopPatientsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Top Patients by Visits',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67),
-              ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Top Patients by Visits',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF183A67),
+                    ),
+                  ),
+                ),
+                if (rows.length > 10)
+                  Button(
+                    onPressed: onViewMore,
+                    style: ButtonStyle(
+                      padding: WidgetStateProperty.all(
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      backgroundColor: WidgetStateProperty.all(const Color(0xFFEAF2FF)),
+                    ),
+                    child: const Text('Show More'),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: ranges
-                  .map(
-                    (range) => GestureDetector(
-                      onTap: () => onSelectRange(range),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(
+            if (ranges.length > 1) ...[
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: ranges
+                    .map(
+                      (range) => GestureDetector(
+                        onTap: () => onSelectRange(range),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: selectedRange == range
+                                  ? const Color(0xFF2D7BD8)
+                                  : const Color(0xFFD4E2F3),
+                            ),
                             color: selectedRange == range
                                 ? const Color(0xFF2D7BD8)
-                                : const Color(0xFFD4E2F3),
+                                : const Color(0xFFEFF4FB),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          color: selectedRange == range
-                              ? const Color(0xFF2D7BD8)
-                              : const Color(0xFFEFF4FB),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          range,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: selectedRange == range
-                                ? Colors.white
-                                : const Color(0xFF345982),
+                          child: Text(
+                            range,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: selectedRange == range
+                                  ? Colors.white
+                                  : const Color(0xFF345982),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  )
-                  .toList(growable: false),
-            ),
-            const SizedBox(height: 14),
+                    )
+                    .toList(growable: false),
+              ),
+              const SizedBox(height: 14),
+            ],
             if (rows.isEmpty)
               const Text(
                 'No visits in this range.',
@@ -2548,16 +2567,7 @@ class _TopPatientsCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (rows.length > 10)
-                      FilledButton(
-                        onPressed: onViewMore,
-                        style: ButtonStyle(
-                          backgroundColor: WidgetStateProperty.all(
-                            const Color(0xFF2D7BD8),
-                          ),
-                        ),
-                        child: const Text('Show More'),
-                      ),
+                    if (rows.length > 10) const SizedBox.shrink(),
                   ],
                 ),
               ),
@@ -2652,16 +2662,34 @@ class _TopOutstandingCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Top Outstanding Patients',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67),
-              ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Top Outstanding Patients',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF183A67),
+                    ),
+                  ),
+                ),
+                if (rows.length > 10)
+                  Button(
+                    onPressed: onViewMore,
+                    style: ButtonStyle(
+                      padding: WidgetStateProperty.all(
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      backgroundColor: WidgetStateProperty.all(const Color(0xFFFFEEF0)),
+                    ),
+                    child: const Text('Show More'),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
-            Wrap(
+            if (ranges.length > 1)
+              Wrap(
               spacing: 6,
               runSpacing: 6,
               children: ranges
@@ -2699,7 +2727,7 @@ class _TopOutstandingCard extends StatelessWidget {
                   )
                   .toList(growable: false),
             ),
-            const SizedBox(height: 14),
+            if (ranges.length > 1) const SizedBox(height: 14),
             if (rows.isEmpty)
               const Text(
                 'No outstanding balances.',
@@ -2787,16 +2815,7 @@ class _TopOutstandingCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (rows.length > 10)
-                      FilledButton(
-                        onPressed: onViewMore,
-                        style: ButtonStyle(
-                          backgroundColor: WidgetStateProperty.all(
-                            const Color(0xFF2D7BD8),
-                          ),
-                        ),
-                        child: const Text('Show More'),
-                      ),
+                    if (rows.length > 10) const SizedBox.shrink(),
                   ],
                 ),
               ),
@@ -2921,13 +2940,30 @@ class _TopProcedurePatientsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Procedure Focus Patients',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67),
-              ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Procedure Focus Patients',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF183A67),
+                    ),
+                  ),
+                ),
+                if (rows.length > 10)
+                  Button(
+                    onPressed: onViewMore,
+                    style: ButtonStyle(
+                      padding: WidgetStateProperty.all(
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      backgroundColor: WidgetStateProperty.all(const Color(0xFFE9F7F2)),
+                    ),
+                    child: const Text('Show More'),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             Row(
@@ -2937,8 +2973,9 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                 tabChip('ORTHO'),
               ],
             ),
-            const SizedBox(height: 8),
-            Wrap(
+            if (ranges.length > 1) const SizedBox(height: 8),
+            if (ranges.length > 1)
+              Wrap(
               spacing: 6,
               runSpacing: 6,
               children: ranges
@@ -3066,16 +3103,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (rows.length > 10)
-                      FilledButton(
-                        onPressed: onViewMore,
-                        style: ButtonStyle(
-                          backgroundColor: WidgetStateProperty.all(
-                            const Color(0xFF2D7BD8),
-                          ),
-                        ),
-                        child: const Text('Show More'),
-                      ),
+                    if (rows.length > 10) const SizedBox.shrink(),
                   ],
                 ),
               ),

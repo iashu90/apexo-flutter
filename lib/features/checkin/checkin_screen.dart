@@ -125,6 +125,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
   Future<void> _openAppointmentPopup(Appointment appointment) async {
     final screenWidth = MediaQuery.of(context).size.width;
     final popupWidth = screenWidth < 760 ? screenWidth - 20 : 540.0;
+    final popupTitle = appointment.title.trim().isEmpty
+        ? 'Patient Details'
+        : '${_toTitleCase(appointment.title)} • ${appointment.checkinStage == 'with_doctor' ? 'Treatment' : appointment.checkinStage == 'checkout' ? 'Billing' : appointment.checkinStage == 'completed' ? 'Completed' : 'Check-in'}';
 
     await showDialog<void>(
       context: context,
@@ -154,9 +157,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   child: Row(
                     children: [
-                      const Text(
-                        'Patient Details',
-                        style: TextStyle(
+                      Text(
+                        popupTitle,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF183A67),
@@ -215,7 +218,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 .toList(growable: false);
 
             return ContentDialog(
-              title: const Text('Search Patient for Check-in'),
+              title: const Text('Patient Check-in'),
               content: SizedBox(
                 width: 520,
                 child: Column(
@@ -473,7 +476,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 children: [
                                   Icon(FluentIcons.search, size: 12),
                                   SizedBox(width: 8),
-                                  Text('Search Patient for Check-in'),
+                                  Text('Patient Check-in'),
                                 ],
                               ),
                             ),
@@ -536,7 +539,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 children: [
                                   Icon(FluentIcons.search, size: 12),
                                   SizedBox(width: 8),
-                                  Text('Search Patient for Check-in'),
+                                  Text('Patient Check-in'),
                                 ],
                               ),
                             ),
@@ -545,7 +548,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       ),
                     const SizedBox(height: 8),
                     Align(
-                      alignment: Alignment.centerLeft,
+                      alignment: Alignment.center,
                       child: Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -1227,7 +1230,7 @@ String _waitingLabel() {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: stage == 'completed'
-            ? const Color(0xFFEAF8F1)
+          ? const Color(0xFFF4FCF7)
             : selected
                 ? const Color(0xFFEAF2FC)
                 : Colors.transparent,
@@ -1352,6 +1355,16 @@ String _waitingLabel() {
                           : 'Complete',
                 ),
               ),
+            if (stage == 'completed')
+              FilledButton(
+                onPressed: () => _openNextAppointmentPrompt(context, appointment),
+                style: ButtonStyle(
+                  backgroundColor:
+                      WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                  foregroundColor: WidgetStateProperty.all(Colors.white),
+                ),
+                child: const Text('Schedule'),
+              ),
             if (showHistoryAction) ...[
               const SizedBox(width: 8),
               Button(
@@ -1389,8 +1402,23 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
         final selected = appointment.operatorsIDs.toSet();
         return StatefulBuilder(
-          builder: (context, setStateDialog) => ContentDialog(
-            title: const Text('Change Doctors'),
+          builder: (context, setStateDialog) {
+            final selectedRows = doctorRows
+                .where((d) => selected.contains(d.id))
+                .toList(growable: false);
+            final otherRows = doctorRows
+                .where((d) => !selected.contains(d.id))
+                .toList(growable: false);
+            return ContentDialog(
+            title: Row(
+              children: [
+                const Expanded(child: Text('Change Doctors')),
+                IconButton(
+                  icon: const Icon(FluentIcons.chrome_close, size: 12),
+                  onPressed: () => Navigator.pop(dialogContext),
+                ),
+              ],
+            ),
             content: SizedBox(
               width: 420,
               child: doctorRows.isEmpty
@@ -1398,49 +1426,99 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   : ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 360),
                       child: SingleChildScrollView(
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: doctorRows.map((doctor) {
-                            final isSelected = selected.contains(doctor.id);
-                            return GestureDetector(
-                              onTap: () {
-                                setStateDialog(() {
-                                  if (isSelected) {
-                                    selected.remove(doctor.id);
-                                  } else {
-                                    selected.add(doctor.id);
-                                  }
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? const Color(0xFF2D7BD8)
-                                      : const Color(0xFFEFF4FB),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? const Color(0xFF2D7BD8)
-                                        : const Color(0xFFD2E1F2),
-                                  ),
-                                ),
-                                child: Text(
-                                  doctor.title.trim().isEmpty
-                                      ? 'Unnamed doctor'
-                                      : doctor.title,
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : const Color(0xFF355A84),
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (selectedRows.isNotEmpty) ...[
+                              const Text(
+                                'Selected Doctors',
+                                style: TextStyle(
+                                  color: Color(0xFF15803D),
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                            );
-                          }).toList(growable: false),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: selectedRows.map((doctor) {
+                                  final doctorName = doctor.title.trim().isEmpty
+                                      ? 'Unnamed doctor'
+                                      : doctor.title;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setStateDialog(() {
+                                        selected.remove(doctor.id);
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFDFF7E8),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: const Color(0xFF22C55E),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        doctorName,
+                                        style: const TextStyle(
+                                          color: Color(0xFF166534),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(growable: false),
+                              ),
+                              const SizedBox(height: 10),
+                              const Divider(size: 1),
+                              const SizedBox(height: 10),
+                            ],
+                            const Text(
+                              'Other Doctors',
+                              style: TextStyle(
+                                color: Color(0xFF355A84),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: otherRows.map((doctor) {
+                                final doctorName = doctor.title.trim().isEmpty
+                                    ? 'Unnamed doctor'
+                                    : doctor.title;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setStateDialog(() {
+                                      selected.add(doctor.id);
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEFF4FB),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: const Color(0xFFD2E1F2),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      doctorName,
+                                      style: const TextStyle(
+                                        color: Color(0xFF355A84),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(growable: false),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -1456,7 +1534,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                 child: const Text('Save'),
               ),
             ],
-          ),
+          );
+          },
         );
       },
     );
@@ -2346,12 +2425,19 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                   onTap: () {
                                     final parent = _selectedPostOpParent;
                                     if (parent == null) return;
-                                    final entry = '$parent · $child';
+                                    final parentLine = '- $parent';
+                                    final childLine = '  - $child';
                                     final current = _postOpController.text.trim();
-                                    if (current.contains(entry)) return;
-                                    _postOpController.text = current.isEmpty
-                                        ? entry
-                                        : '$current\n$entry';
+                                    if (current.contains('$parentLine\n$childLine') ||
+                                        current.contains('\n$childLine')) {
+                                      return;
+                                    }
+                                    _postOpController.text =
+                                        current.contains(parentLine)
+                                            ? '$current\n$childLine'
+                                            : (current.isEmpty
+                                                ? '$parentLine\n$childLine'
+                                                : '$current\n$parentLine\n$childLine');
                                     a.postOpNotes = _postOpController.text;
                                     appointments.set(a);
                                   },
@@ -2399,6 +2485,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 a.checkinStage = 'checkout';
                                 a.isDone = false;
                                 appointments.set(a);
+                                if (mounted) {
+                                  Navigator.of(context).maybePop();
+                                }
                               });
                             },
                             child: const Text('Billing'),
@@ -3001,6 +3090,28 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
           LayoutBuilder(
             builder: (context, constraints) {
               final narrow = constraints.maxWidth < 860;
+              final actionBar = Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      style: ButtonStyle(
+                        backgroundColor:
+                            WidgetStateProperty.all(const Color(0xFF3B9A42)),
+                      ),
+                      onPressed: widget.onComplete,
+                      child: const Text('Complete'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Button(
+                      onPressed: widget.onMoveBackToWithDoctor,
+                      child: const Text('Move Back to Treatment'),
+                    ),
+                  ),
+                ],
+              );
+
               final left = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -3326,28 +3437,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       appointments.set(a);
                     },
                   ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton(
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(
-                                const Color(0xFF3B9A42)),
-                          ),
-                          onPressed: widget.onComplete,
-                          child: const Text('Complete'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Button(
-                          onPressed: widget.onMoveBackToWithDoctor,
-                          child: const Text('Move Back to Treatment'),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               );
 
@@ -3499,21 +3588,33 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         Tooltip(
                           message: 'Download PDF',
                           child: IconButton(
-                            icon: const Icon(FluentIcons.download, size: 14),
+                            icon: const Icon(
+                              FluentIcons.download,
+                              size: 14,
+                              color: Color(0xFF1459AD),
+                            ),
                             onPressed: _downloadReceiptPdf,
                           ),
                         ),
                         Tooltip(
                           message: 'Share',
                           child: IconButton(
-                            icon: const Icon(FluentIcons.share, size: 14),
+                            icon: const Icon(
+                              FluentIcons.share,
+                              size: 14,
+                              color: Color(0xFF7C3AED),
+                            ),
                             onPressed: _openShareOptions,
                           ),
                         ),
                         Tooltip(
                           message: 'Print',
                           child: IconButton(
-                            icon: const Icon(FluentIcons.print, size: 14),
+                            icon: const Icon(
+                              FluentIcons.print,
+                              size: 14,
+                              color: Color(0xFF2BA58D),
+                            ),
                             onPressed: _printReceipt,
                           ),
                         ),
@@ -3525,14 +3626,30 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
 
               if (narrow) {
                 return Column(
-                  children: [left, const SizedBox(height: 12), right],
+                  children: [
+                    left,
+                    const SizedBox(height: 12),
+                    actionBar,
+                    const SizedBox(height: 12),
+                    right,
+                  ],
                 );
               }
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 64, child: left),
+                  Expanded(
+                    flex: 64,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        left,
+                        const SizedBox(height: 12),
+                        actionBar,
+                      ],
+                    ),
+                  ),
                   const SizedBox(width: 14),
                   Expanded(flex: 36, child: right),
                 ],

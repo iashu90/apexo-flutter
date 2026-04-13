@@ -8,7 +8,7 @@ import 'package:apexo/features/dashboard/overall_due_helper.dart';
 import 'package:apexo/features/dashboard/patient_look_up.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
-import 'package:apexo/features/labwork/open_labwork_panel.dart';
+import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -1670,7 +1670,7 @@ class _AppointmentRow extends StatelessWidget {
     );
   }
 
-  void _openLabworkForPatient() {
+  void _openLabworkForPatient(BuildContext context) {
     final patient = appointment.patient;
     final draft = Labwork.fromJson({
       'patientID': patient?.id,
@@ -1681,7 +1681,7 @@ class _AppointmentRow extends StatelessWidget {
           : appointment.selectedTreatments.first,
       'selectedTeeth': appointment.selectedTeeth,
     });
-    openLabwork(draft);
+    openLabworkV2Dialog(context, draft);
   }
 
   @override
@@ -1839,7 +1839,7 @@ class _AppointmentRow extends StatelessWidget {
                   icon: FluentIcons.manufacturing,
                   color: const Color(0xFF2BA58D),
                   hoverColor: const Color(0xFFEAF8F1),
-                  onTap: _openLabworkForPatient,
+                  onTap: () => _openLabworkForPatient(context),
                 ),
               ],
             ),
