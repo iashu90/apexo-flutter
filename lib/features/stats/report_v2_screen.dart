@@ -21,24 +21,6 @@ class ReportV2Screen extends StatelessWidget {
           builder: (context, _) {
             final allAppointments =
                 appointments.present.values.toList(growable: false);
-            final now = DateTime.now();
-            final monthStart = DateTime(now.year, now.month, 1);
-            final nextMonthStart = DateTime(now.year, now.month + 1, 1);
-
-            final thisMonthAppointments = allAppointments
-                .where((a) =>
-                    !a.date.isBefore(monthStart) &&
-                    a.date.isBefore(nextMonthStart))
-                .toList(growable: false);
-
-            final newVsReturning = (
-              newCount: thisMonthAppointments
-                  .where((a) => a.firstAppointmentForThisPatient)
-                  .length,
-              returningCount: thisMonthAppointments
-                  .where((a) => !a.firstAppointmentForThisPatient)
-                  .length,
-            );
             final screenWidth = MediaQuery.of(context).size.width;
             final horizontalPadding = screenWidth < 700 ? 32.0 : 42.0;
             final available = (screenWidth - horizontalPadding).clamp(320.0, 1800.0);
@@ -115,10 +97,7 @@ class ReportV2Screen extends StatelessWidget {
                     ),
                     SizedBox(
                       width: cardWidth,
-                      child: _NewVsReturningCard(
-                        newCount: newVsReturning.newCount,
-                        returningCount: newVsReturning.returningCount,
-                      ),
+                      child: _NewVsReturningCard(rows: allAppointments),
                     ),
                   ],
                 ),
@@ -156,7 +135,11 @@ extension _RangeFilterLabel on _RangeFilter {
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
-List<Appointment> _rangeRows(List<Appointment> rows, _RangeFilter range) {
+List<Appointment> _rangeRows(
+  List<Appointment> rows,
+  _RangeFilter range, {
+  DateTime? monthAnchor,
+}) {
   if (range == _RangeFilter.all) return rows;
 
   final now = DateTime.now();
@@ -172,7 +155,9 @@ List<Appointment> _rangeRows(List<Appointment> rows, _RangeFilter range) {
       start = today.subtract(const Duration(days: 6));
       break;
     case _RangeFilter.month:
-      start = DateTime(today.year, today.month, 1);
+      final anchor = monthAnchor ?? today;
+      start = DateTime(anchor.year, anchor.month, 1);
+      endExclusive = DateTime(anchor.year, anchor.month + 1, 1);
       break;
     case _RangeFilter.sixMonths:
       start = DateTime(today.year, today.month - 5, 1);
@@ -209,16 +194,41 @@ List<MapEntry<String, int>> _treatmentDistributionRows(
 }
 
 class _NewVsReturningCard extends StatelessWidget {
-  final int newCount;
-  final int returningCount;
+  final List<Appointment> rows;
 
   const _NewVsReturningCard({
-    required this.newCount,
-    required this.returningCount,
+    required this.rows,
   });
 
   @override
   Widget build(BuildContext context) {
+    return _NewVsReturningCardBody(rows: rows);
+  }
+}
+
+class _NewVsReturningCardBody extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _NewVsReturningCardBody({required this.rows});
+
+  @override
+  State<_NewVsReturningCardBody> createState() => _NewVsReturningCardBodyState();
+}
+
+class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
+  _RangeFilter _range = _RangeFilter.month;
+  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+  @override
+  Widget build(BuildContext context) {
+    final scoped = _rangeRows(
+      widget.rows,
+      _range,
+      monthAnchor: _monthAnchor,
+    );
+    final newCount = scoped.where((a) => a.firstAppointmentForThisPatient).length;
+    final returningCount =
+        scoped.where((a) => !a.firstAppointmentForThisPatient).length;
     final total = newCount + returningCount;
     final newPct = total == 0 ? 0.0 : (newCount / total) * 100;
     final returningPct = total == 0 ? 0.0 : (returningCount / total) * 100;
@@ -226,10 +236,18 @@ class _NewVsReturningCard extends StatelessWidget {
     return SizedBox(
       width: 560,
       child: _ReportContainer(
-        title: 'New vs Returning (Current Month)',
+        title: 'New vs Returning',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _FilterChips(
+              selected: _range,
+              onChanged: (v) => setState(() => _range = v),
+              monthAnchor: _monthAnchor,
+              monthOptions: _monthOptions(widget.rows),
+              onMonthChanged: (value) => setState(() => _monthAnchor = value),
+            ),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 10,
               runSpacing: 8,
@@ -476,11 +494,17 @@ class _FilterChips extends StatelessWidget {
   final _RangeFilter selected;
   final ValueChanged<_RangeFilter> onChanged;
   final bool includeToday;
+  final DateTime? monthAnchor;
+  final List<DateTime>? monthOptions;
+  final ValueChanged<DateTime>? onMonthChanged;
 
   const _FilterChips({
     required this.selected,
     required this.onChanged,
     this.includeToday = true,
+    this.monthAnchor,
+    this.monthOptions,
+    this.onMonthChanged,
   });
 
   @override
@@ -488,43 +512,81 @@ class _FilterChips extends StatelessWidget {
     final all = _RangeFilter.values
         .where((r) => includeToday || r != _RangeFilter.today)
         .toList(growable: false);
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: all
-          .map(
-            (range) => GestureDetector(
-              onTap: () => onChanged(range),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: selected == range
-                      ? const Color(0xFF2D7BD8)
-                      : const Color(0xFFEFF4FB),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: selected == range
-                        ? const Color(0xFF2D7BD8)
-                        : const Color(0xFFD6E2F0),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: all
+              .map(
+                (range) => GestureDetector(
+                  onTap: () => onChanged(range),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selected == range
+                          ? const Color(0xFF2D7BD8)
+                          : const Color(0xFFEFF4FB),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: selected == range
+                            ? const Color(0xFF2D7BD8)
+                            : const Color(0xFFD6E2F0),
+                      ),
+                    ),
+                    child: Text(
+                      range.label,
+                      style: TextStyle(
+                        color: selected == range
+                            ? Colors.white
+                            : const Color(0xFF355279),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ),
-                child: Text(
-                  range.label,
-                  style: TextStyle(
-                    color: selected == range
-                        ? Colors.white
-                        : const Color(0xFF355279),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
+              )
+              .toList(growable: false),
+        ),
+        if (selected == _RangeFilter.month &&
+            monthOptions != null &&
+            monthOptions!.isNotEmpty &&
+            onMonthChanged != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 180,
+            child: ComboBox<DateTime>(
+              isExpanded: true,
+              value: monthAnchor,
+              items: monthOptions!
+                  .map(
+                    (m) => ComboBoxItem<DateTime>(
+                      value: m,
+                      child: Text(DateFormat('MMMM yyyy').format(m)),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (v) {
+                if (v != null) onMonthChanged!(v);
+              },
             ),
-          )
-          .toList(growable: false),
+          ),
+        ],
+      ],
     );
   }
+}
+
+List<DateTime> _monthOptions(List<Appointment> rows) {
+  final months = rows
+      .map((a) => DateTime(a.date.year, a.date.month, 1))
+      .toSet()
+      .toList(growable: false)
+    ..sort((a, b) => b.compareTo(a));
+  return months;
 }
 
 class _DailyAppointmentsTrendWindowCard extends StatefulWidget {
@@ -908,10 +970,11 @@ class _TrafficByTimeCard extends StatefulWidget {
 
 class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
   _RangeFilter _range = _RangeFilter.today;
+  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   Widget build(BuildContext context) {
-    final scoped = _rangeRows(widget.rows, _range);
+    final scoped = _rangeRows(widget.rows, _range, monthAnchor: _monthAnchor);
     final buckets = <String, double>{
       '12-3 AM': 0,
       '3-6 AM': 0,
@@ -958,6 +1021,9 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
             _FilterChips(
               selected: _range,
               onChanged: (v) => setState(() => _range = v),
+              monthAnchor: _monthAnchor,
+              monthOptions: _monthOptions(widget.rows),
+              onMonthChanged: (value) => setState(() => _monthAnchor = value),
             ),
             const SizedBox(height: 10),
             SizedBox(
@@ -1035,10 +1101,11 @@ class _TrafficByDayCard extends StatefulWidget {
 
 class _TrafficByDayCardState extends State<_TrafficByDayCard> {
   _RangeFilter _range = _RangeFilter.week;
+  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   Widget build(BuildContext context) {
-    final scoped = _rangeRows(widget.rows, _range);
+    final scoped = _rangeRows(widget.rows, _range, monthAnchor: _monthAnchor);
     final buckets = <String, double>{
       'Mon': 0,
       'Tue': 0,
@@ -1078,6 +1145,9 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
               selected: _range,
               includeToday: false,
               onChanged: (v) => setState(() => _range = v),
+              monthAnchor: _monthAnchor,
+              monthOptions: _monthOptions(widget.rows),
+              onMonthChanged: (value) => setState(() => _monthAnchor = value),
             ),
             const SizedBox(height: 10),
             SizedBox(
@@ -1149,10 +1219,11 @@ class _AppointmentMetricsCard extends StatefulWidget {
 
 class _AppointmentMetricsCardState extends State<_AppointmentMetricsCard> {
   _RangeFilter _range = _RangeFilter.today;
+  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   Widget build(BuildContext context) {
-    final scoped = _rangeRows(widget.rows, _range);
+    final scoped = _rangeRows(widget.rows, _range, monthAnchor: _monthAnchor);
     final data = <({String doctor, int appointments, double earned})>[];
 
     for (final doctor in doctors.present.values) {
@@ -1188,6 +1259,9 @@ class _AppointmentMetricsCardState extends State<_AppointmentMetricsCard> {
             _FilterChips(
               selected: _range,
               onChanged: (v) => setState(() => _range = v),
+              monthAnchor: _monthAnchor,
+              monthOptions: _monthOptions(widget.rows),
+              onMonthChanged: (value) => setState(() => _monthAnchor = value),
             ),
             const SizedBox(height: 10),
             Wrap(
