@@ -13,6 +13,7 @@ import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/utils/uuid.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -31,9 +32,9 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   final TextEditingController _listSearchController = TextEditingController();
 
   String _listQuery = '';
-  String _topRange = '1M';
-  String _outstandingRange = '1M';
-  String _procedureRange = '1M';
+  String _topRange = 'All';
+  String _outstandingRange = 'All';
+  String _procedureRange = 'All';
   String _procedureTab = 'RCT';
   String _selectedAlphabet = 'All';
   String _listBehaviorFilter = 'all';
@@ -50,10 +51,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   static const int _pageSize = 200;
 
   static const List<String> _topRanges = [
-    '1M',
-    '3M',
-    '5M',
-    '1Y',
     'All',
   ];
 
@@ -392,6 +389,153 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     await patients.hardDelete(patient.id);
   }
 
+  Future<void> _openAddPatientPopup() async {
+    final nameController = TextEditingController();
+    final ageController = TextEditingController();
+    final phoneController = TextEditingController();
+    final addressController = TextEditingController();
+    final notesController = TextEditingController();
+    final tagsController = TextEditingController();
+
+    int gender = 0;
+    String referral = 'Google';
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateDialog) => ContentDialog(
+          title: const Text('Add Patient'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                InfoLabel(
+                  label: 'Name:',
+                  child: TextBox(
+                    controller: nameController,
+                    placeholder: 'Patient name',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Age:',
+                        child: TextBox(
+                          controller: ageController,
+                          placeholder: 'Age',
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Gender:',
+                        child: ComboBox<int>(
+                          value: gender,
+                          isExpanded: true,
+                          items: const [
+                            ComboBoxItem(value: 1, child: Text('Male')),
+                            ComboBoxItem(value: 0, child: Text('Female')),
+                          ],
+                          onChanged: (v) => setStateDialog(() => gender = v ?? 0),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                InfoLabel(
+                  label: 'Phone:',
+                  child: TextBox(
+                    controller: phoneController,
+                    placeholder: 'Phone',
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InfoLabel(
+                  label: 'Address:',
+                  child: TextBox(
+                    controller: addressController,
+                    placeholder: 'Address',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InfoLabel(
+                  label: 'Notes:',
+                  child: TextBox(
+                    controller: notesController,
+                    placeholder: 'Notes',
+                    maxLines: 3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InfoLabel(
+                  label: 'Tags (comma separated):',
+                  child: TextBox(
+                    controller: tagsController,
+                    placeholder: 'tag1, tag2',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InfoLabel(
+                  label: 'Referral:',
+                  child: ComboBox<String>(
+                    isExpanded: true,
+                    value: referral,
+                    items: const [
+                      ComboBoxItem(value: 'Google', child: Text('Google')),
+                      ComboBoxItem(value: 'Social Media', child: Text('Social Media')),
+                      ComboBoxItem(value: 'Friends', child: Text('Friends')),
+                      ComboBoxItem(value: 'Camps', child: Text('Camps')),
+                      ComboBoxItem(value: 'Name Board', child: Text('Name Board')),
+                    ],
+                    onChanged: (v) => setStateDialog(() => referral = v ?? 'Google'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                if (name.isEmpty) return;
+                final p = Patient.fromJson({
+                  'id': uuid(),
+                  'title': name,
+                  'birth': int.tryParse(ageController.text.trim()) ?? 0,
+                  'gender': gender,
+                  'phone': phoneController.text.trim(),
+                  'address': addressController.text.trim(),
+                  'notes': notesController.text.trim(),
+                  'tags': tagsController.text
+                      .split(',')
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty)
+                      .toList(growable: false),
+                  'referralSource': referral,
+                });
+                patients.set(p);
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage.scrollable(
@@ -602,7 +746,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(
-                          onPressed: () => openPatient(),
+                          onPressed: _openAddPatientPopup,
                           style: ButtonStyle(
                             backgroundColor: WidgetStateProperty.all(
                               const Color(0xFF2D7BD8),
@@ -629,7 +773,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       SizedBox(
                         width: isTablet ? 160 : 180,
                         child: FilledButton(
-                          onPressed: () => openPatient(),
+                          onPressed: _openAddPatientPopup,
                           style: ButtonStyle(
                             backgroundColor: WidgetStateProperty.all(
                               const Color(0xFF2D7BD8),
@@ -3358,7 +3502,7 @@ class _AllPatientsListCard extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SizedBox(
-              width: 1200,
+              width: math.max(1200, screenWidth - 70),
               child: Column(
                 children: [
                   Container(

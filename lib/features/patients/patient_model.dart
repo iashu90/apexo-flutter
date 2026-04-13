@@ -205,6 +205,7 @@ class Patient extends Model {
   /* 6 */ List<String> tags = [];
   /* 7 */ String notes = "";
   /* 8 */ Map<String, String> teeth = {};
+  /* 9 */ String referralSource = '';
 
   @override
   Patient.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
@@ -225,6 +226,7 @@ class Patient extends Model {
     /* 6 */ tags = List<String>.from(json['tags'] ?? tags);
     /* 7 */ notes = json['notes'] ?? notes;
     /* 8 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
+    /* 9 */ referralSource = json['referralSource'] ?? referralSource;
   }
   @override
   Map<String, dynamic> toJson() {
@@ -239,6 +241,8 @@ class Patient extends Model {
     /* 6 */ if (tags.toString() != d.tags.toString()) json['tags'] = tags;
     /* 7 */ if (notes != d.notes) json['notes'] = notes;
     /* 8 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
+    /* 9 */ if (referralSource != d.referralSource)
+      json['referralSource'] = referralSource;
     return json;
   }
 

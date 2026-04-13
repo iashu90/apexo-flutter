@@ -145,7 +145,7 @@ class _PatientAppointments extends StatefulWidget {
 }
 
 class _PatientAppointmentsState extends State<_PatientAppointments> {
- int filterType = 0; 
+ int filterType = 1; 
   @override
   Widget build(BuildContext context) {
     return MStreamBuilder(
@@ -225,7 +225,7 @@ class _PatientAppointmentsState extends State<_PatientAppointments> {
                             ),
                             const SizedBox(width: 6),
                             Txt(
-                              "${txt("appointments")}: ${allAppointments.length}",
+                              "Treatments: ${allAppointments.length}",
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: filterType == 1
@@ -263,7 +263,7 @@ class _PatientAppointmentsState extends State<_PatientAppointments> {
                             ),
                             const SizedBox(width: 6),
                             Txt(
-                              "${txt("labworks")}: ${allLabworks.length}",
+                              "Labworks: ${allLabworks.length}",
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: filterType == 2
@@ -518,6 +518,30 @@ class _PatientDetailsState extends State<_PatientDetails> {
             onChanged: (value) => widget.patient.notes = value,
             maxLines: null,
             placeholder: "${txt("notes")}...",
+          ),
+        ),
+        InfoLabel(
+          label: 'Referral:',
+          isHeader: true,
+          child: ComboBox<String>(
+            isExpanded: true,
+            value: (widget.patient.referralSource.trim().isEmpty)
+                ? null
+                : widget.patient.referralSource,
+            placeholder: const Text('Select referral source'),
+            items: const [
+              ComboBoxItem(value: 'Google', child: Text('Google')),
+              ComboBoxItem(
+                  value: 'Social Media', child: Text('Social Media')),
+              ComboBoxItem(value: 'Friends', child: Text('Friends')),
+              ComboBoxItem(value: 'Camps', child: Text('Camps')),
+              ComboBoxItem(value: 'Name Board', child: Text('Name Board')),
+            ],
+            onChanged: (value) {
+              setState(() {
+                widget.patient.referralSource = value ?? '';
+              });
+            },
           ),
         ),
         InfoLabel(
