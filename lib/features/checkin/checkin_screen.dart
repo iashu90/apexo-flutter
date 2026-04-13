@@ -145,7 +145,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         ),
                       ),
                       onChanged: (value) {
-                        setDialogState(() => query = value.trim().toLowerCase());
+                        setDialogState(
+                            () => query = value.trim().toLowerCase());
                       },
                     ),
                     const SizedBox(height: 10),
@@ -164,7 +165,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           : ListView.separated(
                               shrinkWrap: true,
                               itemCount: matches.length,
-                              separatorBuilder: (_, __) => const Divider(size: 1),
+                              separatorBuilder: (_, __) =>
+                                  const Divider(size: 1),
                               itemBuilder: (context, index) {
                                 final p = matches[index];
                                 final existing = todaysAppointments
@@ -181,7 +183,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                     children: [
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               p.title.trim().isEmpty
@@ -208,7 +211,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                         Button(
                                           onPressed: () {
                                             setState(() =>
-                                                _selectedAppointment = existing);
+                                                _selectedAppointment =
+                                                    existing);
                                             Navigator.pop(dialogContext);
                                           },
                                           child: const Text('Open'),
@@ -290,17 +294,20 @@ class _CheckinScreenState extends State<CheckinScreen> {
             }).toList(growable: false);
 
             final waiting = filtered
-              .where((a) => a.checkinStage == 'waiting' || a.checkinStage == 'pending')
-              .toList(growable: false);
+                .where((a) =>
+                    a.checkinStage == 'waiting' || a.checkinStage == 'pending')
+                .toList(growable: false);
             final withDoctor = filtered
-              .where((a) => a.checkinStage == 'with_doctor' || a.checkinStage == 'treatment')
-              .toList(growable: false);
+                .where((a) =>
+                    a.checkinStage == 'with_doctor' ||
+                    a.checkinStage == 'treatment')
+                .toList(growable: false);
             final checkout = filtered
-              .where((a) => a.checkinStage == 'checkout')
-              .toList(growable: false);
+                .where((a) => a.checkinStage == 'checkout')
+                .toList(growable: false);
             final completed = filtered
-              .where((a) => a.checkinStage == 'completed' || a.isDone)
-              .toList(growable: false);
+                .where((a) => a.checkinStage == 'completed' || a.isDone)
+                .toList(growable: false);
 
             final now = DateTime.now();
             final isToday = _selectedDate.year == now.year &&
@@ -342,8 +349,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFEAF2FC),
                                   borderRadius: BorderRadius.circular(999),
-                                  border:
-                                      Border.all(color: const Color(0xFFD5E5F7)),
+                                  border: Border.all(
+                                      color: const Color(0xFFD5E5F7)),
                                 ),
                                 child: Text(
                                   'Patients: ${todaysAppointments.length}',
@@ -447,7 +454,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFD6E2F0)),
+                              border:
+                                  Border.all(color: const Color(0xFFD6E2F0)),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -455,7 +463,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 Button(
                                   onPressed: () => _changeDate(-1),
                                   style: _dateButtonStyle,
-                                  child: const Icon(FluentIcons.chevron_left, size: 12),
+                                  child: const Icon(FluentIcons.chevron_left,
+                                      size: 12),
                                 ),
                                 Button(
                                   onPressed: () => _pickDate(context),
@@ -464,7 +473,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        DateFormat('MMMM d, yyyy').format(_selectedDate),
+                                        DateFormat('MMMM d, yyyy')
+                                            .format(_selectedDate),
                                         style: const TextStyle(
                                           color: Color(0xFF25466E),
                                           fontWeight: FontWeight.w700,
@@ -472,7 +482,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                       ),
                                       const SizedBox(height: 1),
                                       Text(
-                                        DateFormat('EEEE').format(_selectedDate),
+                                        DateFormat('EEEE')
+                                            .format(_selectedDate),
                                         style: const TextStyle(
                                           color: Color(0xFF557195),
                                           fontSize: 11,
@@ -485,7 +496,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 Button(
                                   onPressed: () => _changeDate(1),
                                   style: _dateButtonStyle,
-                                  child: const Icon(FluentIcons.chevron_right, size: 12),
+                                  child: const Icon(FluentIcons.chevron_right,
+                                      size: 12),
                                 ),
                               ],
                             ),
@@ -816,7 +828,8 @@ class _WorkflowRow extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         final doctorRows = doctors.present.values.toList(growable: false)
-          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+          ..sort(
+              (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
         return ContentDialog(
           title: const Text('Assign Doctor'),
           content: SizedBox(
@@ -877,7 +890,8 @@ class _WorkflowRow extends StatelessWidget {
         context: context,
         builder: (dialogContext) => ContentDialog(
           title: const Text('Move back to Billing?'),
-          content: const Text('This appointment will be moved back to Billing.'),
+          content:
+              const Text('This appointment will be moved back to Billing.'),
           actions: [
             Button(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -887,7 +901,7 @@ class _WorkflowRow extends StatelessWidget {
               onPressed: () => Navigator.pop(dialogContext, true),
               style: ButtonStyle(
                 backgroundColor:
-                  WidgetStateProperty.all(const Color(0xFFE56E7D)),
+                    WidgetStateProperty.all(const Color(0xFFE56E7D)),
               ),
               child: const Text('Billing'),
             ),
@@ -964,13 +978,26 @@ class _WorkflowRow extends StatelessWidget {
     appointments.set(appointment);
   }
 
-  String _waitingLabel() {
-    if (appointment.checkedInAt == null) return 'Waiting';
-    final wait = DateTime.now().difference(appointment.checkedInAt!);
-    final mins = wait.inMinutes;
-    if (mins <= 0) return 'Waiting';
-    return 'Waiting ${mins}m';
+String _waitingLabel() {
+  if (appointment.checkedInAt == null) return 'Waiting';
+  
+  final wait = DateTime.now().difference(appointment.checkedInAt!);
+  final mins = wait.inMinutes;
+
+  if (mins <= 0) return 'Waiting';
+
+  if (mins >= 60) {
+    final hours = mins ~/ 60;
+    final remainingMins = mins % 60;
+    
+    // Returns "Waiting 1h 5m" or just "Waiting 1h" if mins is 0
+    return remainingMins > 0 
+        ? 'Waiting ${hours}h ${remainingMins}m' 
+        : 'Waiting ${hours}h';
   }
+
+  return 'Waiting ${mins}m';
+}
 
   void _openPatientHistoryDialog(BuildContext context) {
     final patient = appointment.patient;
@@ -1038,7 +1065,7 @@ class _WorkflowRow extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '$age$genderLabel',
+                        '$age$genderLabel · $phone',
                         style: const TextStyle(
                           color: Color(0xFF6B7280),
                           fontSize: 13,
@@ -1046,40 +1073,11 @@ class _WorkflowRow extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: (stage == 'with_doctor' && selected)
-                            ? () async {
-                                final pickedDoctorId = await _pickDoctor(context);
-                                if (pickedDoctorId == null || pickedDoctorId.trim().isEmpty) {
-                                  return;
-                                }
-                                appointment.operatorsIDs = [pickedDoctorId];
-                                appointments.set(appointment);
-                              }
-                            : null,
-                        child: Row(
-                          children: [
-                            const Icon(
-                              FluentIcons.contact,
-                              size: 11,
-                              color: Color(0xFF6B7280),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              doctorLabel,
-                              style: const TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                       if (stage == 'waiting') ...[
                         const SizedBox(width: 10),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFE8A3),
                             borderRadius: BorderRadius.circular(999),
@@ -1096,13 +1094,37 @@ class _WorkflowRow extends StatelessWidget {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    phone,
-                    style: const TextStyle(
-                      color: Color(0xFF6B7280),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                  GestureDetector(
+                    onTap: (stage == 'with_doctor' && selected)
+                        ? () async {
+                            final pickedDoctorId = await _pickDoctor(context);
+                            if (pickedDoctorId == null ||
+                                pickedDoctorId.trim().isEmpty) {
+                              return;
+                            }
+                            appointment.operatorsIDs = [pickedDoctorId];
+                            appointments.set(appointment);
+                          }
+                        : null,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          FluentIcons.contact,
+                          size: 12,
+                          color: Color(0xFF3B82F6),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          doctorLabel,
+                          style: const TextStyle(
+                            color: Color(0xFF3B82F6), // Standard link color
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            decoration:
+                                TextDecoration.underline, // Adds the underline
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1208,7 +1230,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
       context: context,
       builder: (dialogContext) {
         final doctorRows = doctors.present.values.toList(growable: false)
-          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+          ..sort(
+              (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
         return ContentDialog(
           title: const Text('Change Doctor'),
           content: SizedBox(
@@ -1271,7 +1294,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
       context: context,
       builder: (dialogContext) => ContentDialog(
         title: const Text('Move back to Billing?'),
-        content: const Text('This appointment will be moved back to Billing stage.'),
+        content:
+            const Text('This appointment will be moved back to Billing stage.'),
         actions: [
           Button(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -1300,8 +1324,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
 
     final age = patient?.age ?? 0;
     final doctorName = appointment.operators.isEmpty
-      ? 'Unassigned'
-      : appointment.operators.first.title;
+        ? 'Unassigned'
+        : appointment.operators.first.title;
     final patientNotes = patient?.notes.trim() ?? '';
     final pid = appointment.patientID;
 
@@ -1397,7 +1421,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: _LastAppointmentInsightCard(lastAppointment: lastAppointment),
+              child:
+                  _LastAppointmentInsightCard(lastAppointment: lastAppointment),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -1420,7 +1445,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
             alignment: Alignment.centerRight,
             child: FilledButton(
               style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(const Color(0xFFE56E7D)),
+                backgroundColor:
+                    WidgetStateProperty.all(const Color(0xFFE56E7D)),
               ),
               onPressed: () => _moveCompletedToBilling(appointment),
               child: const Text('Move Back to Billing'),
@@ -1443,8 +1469,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               style: const TextStyle(color: Color(0xFF5F789B), fontSize: 12),
             ),
           ),
-        if (otherRows.isEmpty)
-          const SizedBox.shrink(),
+        if (otherRows.isEmpty) const SizedBox.shrink(),
       ],
     );
   }
@@ -1521,9 +1546,8 @@ class TodayAppointmentInsightCard extends StatelessWidget {
     final treatments = appointment.selectedTreatments
         .where((t) => t.trim().isNotEmpty)
         .join(', ');
-    final teeth = appointment.selectedTeeth
-        .where((t) => t.trim().isNotEmpty)
-        .join(', ');
+    final teeth =
+        appointment.selectedTeeth.where((t) => t.trim().isNotEmpty).join(', ');
 
     return Container(
       width: double.infinity,
@@ -1710,8 +1734,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       if (!_teethStates.containsKey(id)) {
         _teethStates[id] = ToothState(toothId: id);
       }
-        _teethStates[id]!.surfaces[ToothSurface.occlusal] =
-          TreatmentType.filling;
+      _teethStates[id]!.surfaces[ToothSurface.occlusal] = TreatmentType.filling;
     }
   }
 
@@ -1767,9 +1790,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         : a.discountType == 'percent'
             ? '${a.discount.toStringAsFixed(0)}%'
             : 'Rs ${a.discount.toStringAsFixed(0)}';
-    final treatmentLabel = a.selectedTreatments
-        .where((t) => t.trim().isNotEmpty)
-        .join(', ');
+    final treatmentLabel =
+        a.selectedTreatments.where((t) => t.trim().isNotEmpty).join(', ');
 
     final shouldComplete = await showDialog<bool>(
       context: context,
@@ -1846,7 +1868,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       context: context,
       builder: (context) => ContentDialog(
         title: const Text('Move back to With Doctor?'),
-        content: const Text('This patient will be moved back to With Doctor stage.'),
+        content:
+            const Text('This patient will be moved back to With Doctor stage.'),
         actions: [
           Button(
             onPressed: () => Navigator.pop(context, false),
@@ -1883,9 +1906,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         onCollectFullBalance: () {
           final discount = a.discount;
           final discountedTotal = (a.discountType == 'percent'
-              ? (a.price - (a.price * discount / 100)).clamp(0, double.infinity)
-            : (a.price - discount).clamp(0, double.infinity))
-            .toDouble();
+                  ? (a.price - (a.price * discount / 100))
+                      .clamp(0, double.infinity)
+                  : (a.price - discount).clamp(0, double.infinity))
+              .toDouble();
           _paidController.text = discountedTotal.toStringAsFixed(0);
           a.paid = discountedTotal;
           appointments.set(a);
@@ -1937,115 +1961,63 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
           if (isWithDoctor) const SizedBox(height: 14),
           if (isWithDoctor)
             LayoutBuilder(
-            builder: (context, constraints) {
-              final firstColumn = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  InfoLabel(
-                    label: 'Teeth:',
-                    child: TeethPicker(
-                      selectedTeeth: _selectedTeeth,
-                      isAdult: (a.patient?.age ?? 0) >= 13,
-                      onChanged: (teeth) {
-                        setState(() {
-                          _selectedTeeth = teeth;
-                          for (final id in teeth) {
-                            _teethStates.putIfAbsent(
-                              id,
-                              () => ToothState(toothId: id),
-                            );
-                          }
-                          a.selectedTeeth = teeth.toList(growable: false);
-                          appointments.set(a);
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  InfoLabel(
-                    label: 'Diagnosis:',
-                    child: _CheckinSearchableTagInput(
-                      initialValues: a.diagnosis,
-                      suggestions: allDiagnosis,
-                      placeholder: 'Add diagnosis...',
-                      onChanged: (values) {
-                        a.diagnosis = values;
-                        appointments.set(a);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: allDiagnosis
-                        .take(16)
-                        .map(
-                          (diagnosis) => _quickChip(
-                            label: diagnosis,
-                            selected: a.diagnosis.contains(diagnosis),
-                            onTap: () {
-                              setState(() {
-                                final updated =
-                                    a.diagnosis.toList(growable: true);
-                                if (updated.contains(diagnosis)) {
-                                  updated.remove(diagnosis);
-                                } else {
-                                  updated.add(diagnosis);
-                                }
-                                a.diagnosis = updated;
-                                appointments.set(a);
-                              });
-                            },
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  const SizedBox(height: 16),
-                  InfoLabel(
-                    label: 'Treatment:',
-                    child: _CheckinSearchableTagInput(
-                      initialValues: _selectedTreatments.toList(growable: false),
-                      suggestions: allTreatments.map((t) => t.name).toList(growable: false),
-                      placeholder: 'Add treatment...',
-                      onChanged: (values) {
-                        _selectedTreatments = values.toSet();
-                        a.selectedTreatments = values;
-                        appointments.set(a);
-                        setState(() {});
-                      },
-                    ),
-                  ),
-                  if (mergedTopTreatments.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      topTreatments.isNotEmpty
-                          ? 'Top 10 treatments (includes patient history):'
-                          : 'Top 10 provided treatments:',
-                      style: TextStyle(
-                        color: Color(0xFF5A7397),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+              builder: (context, constraints) {
+                final firstColumn = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InfoLabel(
+                      label: 'Teeth:',
+                      child: TeethPicker(
+                        selectedTeeth: _selectedTeeth,
+                        isAdult: (a.patient?.age ?? 0) >= 13,
+                        onChanged: (teeth) {
+                          setState(() {
+                            _selectedTeeth = teeth;
+                            for (final id in teeth) {
+                              _teethStates.putIfAbsent(
+                                id,
+                                () => ToothState(toothId: id),
+                              );
+                            }
+                            a.selectedTeeth = teeth.toList(growable: false);
+                            appointments.set(a);
+                          });
+                        },
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
+                    InfoLabel(
+                      label: 'Diagnosis:',
+                      child: _CheckinSearchableTagInput(
+                        initialValues: a.diagnosis,
+                        suggestions: allDiagnosis,
+                        placeholder: 'Add diagnosis...',
+                        onChanged: (values) {
+                          a.diagnosis = values;
+                          appointments.set(a);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
-                      children: mergedTopTreatments
+                      children: allDiagnosis
+                          .take(16)
                           .map(
-                            (t) => _quickChip(
-                              label: t,
-                              selected: _selectedTreatments.contains(t),
+                            (diagnosis) => _quickChip(
+                              label: diagnosis,
+                              selected: a.diagnosis.contains(diagnosis),
                               onTap: () {
                                 setState(() {
-                                  if (_selectedTreatments.contains(t)) {
-                                    _selectedTreatments.remove(t);
+                                  final updated =
+                                      a.diagnosis.toList(growable: true);
+                                  if (updated.contains(diagnosis)) {
+                                    updated.remove(diagnosis);
                                   } else {
-                                    _selectedTreatments.add(t);
+                                    updated.add(diagnosis);
                                   }
-                                  a.selectedTreatments =
-                                      _selectedTreatments.toList(growable: false);
+                                  a.diagnosis = updated;
                                   appointments.set(a);
                                 });
                               },
@@ -2053,116 +2025,172 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           )
                           .toList(growable: false),
                     ),
-                  ],
-                ],
-              );
-
-              final secondColumn = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  InfoLabel(
-                    label: 'Post-operative notes:',
-                    child: CupertinoTextField(
-                      controller: _postOpController,
-                      minLines: 4,
-                      maxLines: 8,
-                      onChanged: (value) {
-                        a.postOpNotes = value;
-                        appointments.set(a);
-                      },
-                      placeholder: 'Post-operative notes',
+                    const SizedBox(height: 16),
+                    InfoLabel(
+                      label: 'Treatment:',
+                      child: _CheckinSearchableTagInput(
+                        initialValues:
+                            _selectedTreatments.toList(growable: false),
+                        suggestions: allTreatments
+                            .map((t) => t.name)
+                            .toList(growable: false),
+                        placeholder: 'Add treatment...',
+                        onChanged: (values) {
+                          _selectedTreatments = values.toSet();
+                          a.selectedTreatments = values;
+                          appointments.set(a);
+                          setState(() {});
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: _postOpSuggestions.keys
-                        .map(
-                          (parent) => _quickChip(
-                            label: parent,
-                            selected: _selectedPostOpParent == parent,
-                            selectedColor: const Color(0xFFDCEBFF),
-                            selectedTextColor: const Color(0xFF134F9D),
-                            normalColor: const Color(0xFFEFF5FF),
-                            normalTextColor: const Color(0xFF355A84),
-                            onTap: () {
-                              setState(() => _selectedPostOpParent = parent);
-                              final current = _postOpController.text.trim();
-                              if (current.contains(parent)) return;
-                              _postOpController.text =
-                                  current.isEmpty ? parent : '$current\n$parent';
-                              a.postOpNotes = _postOpController.text;
-                              appointments.set(a);
-                            },
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton(
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(
-                              const Color(0xFF2BA58D),
-                            ),
-                            foregroundColor:
-                                WidgetStateProperty.all(Colors.white),
-                          ),
-                          onPressed: () {
-                            showDialog<bool>(
-                              context: context,
-                              builder: (dialogContext) => ContentDialog(
-                                title: const Text('Move to Billing?'),
-                                content: const Text(
-                                  'This appointment will be moved to Billing stage.',
-                                ),
-                                actions: [
-                                  Button(
-                                    onPressed: () =>
-                                        Navigator.pop(dialogContext, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () =>
-                                        Navigator.pop(dialogContext, true),
-                                    child: const Text('Billing'),
-                                  ),
-                                ],
-                              ),
-                            ).then((confirmed) {
-                              if (confirmed != true) return;
-                              a.checkinStage = 'checkout';
-                              a.isDone = false;
-                              appointments.set(a);
-                            });
-                          },
-                          child: const Text('Billing'),
+                    if (mergedTopTreatments.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        topTreatments.isNotEmpty
+                            ? 'Top 10 treatments (includes patient history):'
+                            : 'Top 10 provided treatments:',
+                        style: TextStyle(
+                          color: Color(0xFF5A7397),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Button(
-                          onPressed: _moveBackToWaiting,
-                          child: const Text('Move Back to Waiting'),
-                        ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: mergedTopTreatments
+                            .map(
+                              (t) => _quickChip(
+                                label: t,
+                                selected: _selectedTreatments.contains(t),
+                                onTap: () {
+                                  setState(() {
+                                    if (_selectedTreatments.contains(t)) {
+                                      _selectedTreatments.remove(t);
+                                    } else {
+                                      _selectedTreatments.add(t);
+                                    }
+                                    a.selectedTreatments = _selectedTreatments
+                                        .toList(growable: false);
+                                    appointments.set(a);
+                                  });
+                                },
+                              ),
+                            )
+                            .toList(growable: false),
                       ),
                     ],
-                  ),
-                ],
-              );
+                  ],
+                );
 
-              return Column(
-                children: [
-                  firstColumn,
-                  const SizedBox(height: 16),
-                  secondColumn,
-                ],
-              );
-            },
-          ),
+                final secondColumn = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InfoLabel(
+                      label: 'Post-operative notes:',
+                      child: CupertinoTextField(
+                        controller: _postOpController,
+                        minLines: 4,
+                        maxLines: 8,
+                        onChanged: (value) {
+                          a.postOpNotes = value;
+                          appointments.set(a);
+                        },
+                        placeholder: 'Post-operative notes',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _postOpSuggestions.keys
+                          .map(
+                            (parent) => _quickChip(
+                              label: parent,
+                              selected: _selectedPostOpParent == parent,
+                              selectedColor: const Color(0xFFDCEBFF),
+                              selectedTextColor: const Color(0xFF134F9D),
+                              normalColor: const Color(0xFFEFF5FF),
+                              normalTextColor: const Color(0xFF355A84),
+                              onTap: () {
+                                setState(() => _selectedPostOpParent = parent);
+                                final current = _postOpController.text.trim();
+                                if (current.contains(parent)) return;
+                                _postOpController.text = current.isEmpty
+                                    ? parent
+                                    : '$current\n$parent';
+                                a.postOpNotes = _postOpController.text;
+                                appointments.set(a);
+                              },
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton(
+                            style: ButtonStyle(
+                              backgroundColor: WidgetStateProperty.all(
+                                const Color(0xFF2BA58D),
+                              ),
+                              foregroundColor:
+                                  WidgetStateProperty.all(Colors.white),
+                            ),
+                            onPressed: () {
+                              showDialog<bool>(
+                                context: context,
+                                builder: (dialogContext) => ContentDialog(
+                                  title: const Text('Move to Billing?'),
+                                  content: const Text(
+                                    'This appointment will be moved to Billing stage.',
+                                  ),
+                                  actions: [
+                                    Button(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext, true),
+                                      child: const Text('Billing'),
+                                    ),
+                                  ],
+                                ),
+                              ).then((confirmed) {
+                                if (confirmed != true) return;
+                                a.checkinStage = 'checkout';
+                                a.isDone = false;
+                                appointments.set(a);
+                              });
+                            },
+                            child: const Text('Billing'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Button(
+                            onPressed: _moveBackToWaiting,
+                            child: const Text('Move Back to Waiting'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+
+                return Column(
+                  children: [
+                    firstColumn,
+                    const SizedBox(height: 16),
+                    secondColumn,
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );
@@ -2199,7 +2227,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       ),
     );
   }
-
 }
 
 class _CheckoutPaymentCard extends StatefulWidget {
@@ -2264,12 +2291,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     a.discount = discount;
     a.discountType = _discountMode;
     a.price = _basePrice;
-    widget.priceController.text = _basePrice == 0 ? '' : _basePrice.toStringAsFixed(0);
+    widget.priceController.text =
+        _basePrice == 0 ? '' : _basePrice.toStringAsFixed(0);
     appointments.set(a);
     setState(() {});
   }
 
-  ButtonStyle _pillStyle({required bool selected, Color accent = const Color(0xFF2D7BD8)}) {
+  ButtonStyle _pillStyle(
+      {required bool selected, Color accent = const Color(0xFF2D7BD8)}) {
     return ButtonStyle(
       padding: WidgetStateProperty.all(
         const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -2298,7 +2327,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     return 'receipt-${DateTime.now().millisecondsSinceEpoch}-$_receiptExportSequence';
   }
 
-  void _logReceiptExport(String tag, String message, [Object? error, StackTrace? stackTrace]) {
+  void _logReceiptExport(String tag, String message,
+      [Object? error, StackTrace? stackTrace]) {
     debugPrint('[Export][$tag] $message');
     if (error != null) {
       debugPrint('[Export][$tag] ERROR: $error');
@@ -2345,13 +2375,15 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       IOSink? sink;
       try {
-        _logReceiptExport(logTag, 'Receipt PDF write attempt $attempt started: $target (${bytes.length} bytes)');
+        _logReceiptExport(logTag,
+            'Receipt PDF write attempt $attempt started: $target (${bytes.length} bytes)');
         if (await tempFile.exists()) {
           await tempFile.delete();
         }
 
         sink = tempFile.openWrite();
-        await sink.addStream(Stream<List<int>>.fromIterable(_chunkBytes(bytes, 128 * 1024)));
+        await sink.addStream(
+            Stream<List<int>>.fromIterable(_chunkBytes(bytes, 128 * 1024)));
         await sink.flush();
         await sink.close();
         sink = null;
@@ -2363,11 +2395,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             await targetFile.delete();
           }
           await tempFile.rename(target);
-          _logReceiptExport(logTag, 'Receipt PDF write finished successfully: $target');
+          _logReceiptExport(
+              logTag, 'Receipt PDF write finished successfully: $target');
         }
         return;
       } catch (error, stackTrace) {
-        _logReceiptExport(logTag, 'Receipt PDF write attempt $attempt failed', error, stackTrace);
+        _logReceiptExport(logTag, 'Receipt PDF write attempt $attempt failed',
+            error, stackTrace);
         await sink?.close();
         if (attempt == maxAttempts) rethrow;
         await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
@@ -2389,9 +2423,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         : (a.price - discount).clamp(0, double.infinity);
     final paid = double.tryParse(widget.paidController.text.trim()) ?? a.paid;
     final balance = (discountedTotal - paid).clamp(0, double.infinity);
-    final treatmentLabel = a.selectedTreatments
-        .where((t) => t.trim().isNotEmpty)
-        .join(', ');
+    final treatmentLabel =
+        a.selectedTreatments.where((t) => t.trim().isNotEmpty).join(', ');
     final doc = pw.Document();
     doc.addPage(
       pw.MultiPage(
@@ -2436,7 +2469,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
                     pw.Text('Patient ID: ${a.patientID ?? '-'}'),
-                    pw.Text('Invoice ID: VC-${DateTime.now().millisecondsSinceEpoch % 10000}'),
+                    pw.Text(
+                        'Invoice ID: VC-${DateTime.now().millisecondsSinceEpoch % 10000}'),
                   ],
                 ),
               ],
@@ -2453,17 +2487,20 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Bill To:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.Text('Bill To:',
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 6),
                 pw.Text(a.title.trim().isEmpty ? 'Unnamed patient' : a.title),
-                pw.Text('Phone: ${patient?.phone ?? '-'} | Age: ${patient?.age ?? 0}'),
+                pw.Text(
+                    'Phone: ${patient?.phone ?? '-'} | Age: ${patient?.age ?? 0}'),
                 pw.Text('Doctor: Dr Nowfar'),
               ],
             ),
           ),
           pw.SizedBox(height: 12),
           pw.TableHelper.fromTextArray(
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            headerDecoration:
+                const pw.BoxDecoration(color: PdfColors.blueGrey50),
             cellAlignment: pw.Alignment.centerLeft,
             headers: const ['Details', 'Description', 'Cost', 'Amount'],
             data: [
@@ -2500,7 +2537,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       pw.SizedBox(height: 6),
                       pw.Text('Amount Paid: Rs ${paid.toStringAsFixed(0)}'),
                       pw.Text('Outstanding: Rs ${balance.toStringAsFixed(0)}'),
-                      pw.Text('Payment Status: ${balance <= 0 ? 'PAID' : 'DUE'}'),
+                      pw.Text(
+                          'Payment Status: ${balance <= 0 ? 'PAID' : 'DUE'}'),
                     ],
                   ),
                 ),
@@ -2516,13 +2554,16 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Treatment Cost: Rs ${a.price.toStringAsFixed(0)}'),
+                      pw.Text(
+                          'Treatment Cost: Rs ${a.price.toStringAsFixed(0)}'),
                       pw.Text(
                         'Discount: ${discount <= 0 ? '-' : (a.discountType == 'percent' ? '-${discount.toStringAsFixed(0)}%' : '-Rs ${discount.toStringAsFixed(0)}')}',
                       ),
-                      pw.Text('Net Total: Rs ${discountedTotal.toStringAsFixed(0)}'),
+                      pw.Text(
+                          'Net Total: Rs ${discountedTotal.toStringAsFixed(0)}'),
                       pw.Text('Paid: Rs ${paid.toStringAsFixed(0)}'),
-                      pw.Text('TOTAL: Rs ${discountedTotal.toStringAsFixed(0)}'),
+                      pw.Text(
+                          'TOTAL: Rs ${discountedTotal.toStringAsFixed(0)}'),
                     ],
                   ),
                 ),
@@ -2530,10 +2571,12 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             ],
           ),
           pw.SizedBox(height: 12),
-          pw.Text('Payment History', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text('Payment History',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
           pw.TableHelper.fromTextArray(
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            headerDecoration:
+                const pw.BoxDecoration(color: PdfColors.blueGrey50),
             headers: const ['Date', 'Reference', 'Mode', 'Amount'],
             data: [
               [
@@ -2545,14 +2588,18 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             ],
           ),
           pw.SizedBox(height: 12),
-          pw.Text('Notes: ${_notesController.text.trim().isEmpty ? '-' : _notesController.text.trim()}'),
+          pw.Text(
+              'Notes: ${_notesController.text.trim().isEmpty ? '-' : _notesController.text.trim()}'),
           pw.SizedBox(height: 24),
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text('Device: Reception', style: const pw.TextStyle(fontSize: 10)),
-              pw.Text('Dentice Regemens', style: const pw.TextStyle(fontSize: 10)),
-              pw.Text('Dr Nowfar Dental Clinic', style: const pw.TextStyle(fontSize: 10)),
+              pw.Text('Device: Reception',
+                  style: const pw.TextStyle(fontSize: 10)),
+              pw.Text('Dentice Regemens',
+                  style: const pw.TextStyle(fontSize: 10)),
+              pw.Text('Dr Nowfar Dental Clinic',
+                  style: const pw.TextStyle(fontSize: 10)),
             ],
           ),
         ],
@@ -2562,7 +2609,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   }
 
   Future<void> _downloadReceiptPdf() async {
-    final nowLabel = DateFormat('dd_MMM-yyyy').format(DateTime.now()).toLowerCase();
+    final nowLabel =
+        DateFormat('dd_MMM-yyyy').format(DateTime.now()).toLowerCase();
     final ageLabel = widget.appointment.patient?.age ?? 0;
     final patientName = _safeName(widget.appointment.title);
     final fileName = '${patientName}_${ageLabel}_$nowLabel.pdf';
@@ -2576,7 +2624,9 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
           progress.setProgress(0.2);
           List<int> bytes;
           try {
-            bytes = await _buildReceiptPdf().save().timeout(_receiptPdfBuildTimeout);
+            bytes = await _buildReceiptPdf()
+                .save()
+                .timeout(_receiptPdfBuildTimeout);
           } on TimeoutException {
             throw StateError('PDF generation timed out. Please try again.');
           }
@@ -2586,7 +2636,9 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             dialogTitle: 'Save payment receipt',
             fileName: fileName,
           );
-          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+          if (savePath == null ||
+              savePath.trim().isEmpty ||
+              progress.isCancelled) {
             _logReceiptExport(logTag, 'Receipt export cancelled before write');
             return;
           }
@@ -2604,7 +2656,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         },
       );
     } catch (error, stackTrace) {
-      _logReceiptExport(logTag, 'Receipt export surfaced error to user', error, stackTrace);
+      _logReceiptExport(
+          logTag, 'Receipt export surfaced error to user', error, stackTrace);
       _showReceiptExportError('$error');
     }
   }
@@ -2627,8 +2680,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final outstanding = (discountedTotal - a.paid).clamp(0, double.infinity);
     final status = outstanding <= 0 ? 'PAID' : 'DUE';
     final totalAfter =
-      (double.tryParse(widget.paidController.text.trim()) ?? a.paid)
-        .clamp(0, double.infinity);
+        (double.tryParse(widget.paidController.text.trim()) ?? a.paid)
+            .clamp(0, double.infinity);
 
     return Container(
       width: double.infinity,
@@ -2658,7 +2711,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                 children: [
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF2F2),
                       borderRadius: BorderRadius.circular(8),
@@ -2694,7 +2748,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     },
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
-                      child: Text('₹', style: TextStyle(color: Color(0xFF355279))),
+                      child:
+                          Text('₹', style: TextStyle(color: Color(0xFF355279))),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -2756,7 +2811,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                             setState(() => _discountMode = 'flat');
                             _recalculatePrice();
                           },
-                          child: Text(_discountMode == 'flat' ? '₹ Flat' : 'Flat'),
+                          child:
+                              Text(_discountMode == 'flat' ? '₹ Flat' : 'Flat'),
                         ),
                         Button(
                           style: _pillStyle(
@@ -2767,7 +2823,9 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                             setState(() => _discountMode = 'percent');
                             _recalculatePrice();
                           },
-                          child: Text(_discountMode == 'percent' ? '% Percent' : 'Percent'),
+                          child: Text(_discountMode == 'percent'
+                              ? '% Percent'
+                              : 'Percent'),
                         ),
                       ],
                     ),
@@ -2845,7 +2903,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     },
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
-                      child: Text('₹', style: TextStyle(color: Color(0xFF355279))),
+                      child:
+                          Text('₹', style: TextStyle(color: Color(0xFF355279))),
                     ),
                     suffix: Padding(
                       padding: const EdgeInsets.only(right: 10),
@@ -2977,7 +3036,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       Checkbox(
                         checked: _sendWhatsapp,
                         content: const Text('WhatsApp'),
-                        onChanged: (v) => setState(() => _sendWhatsapp = v ?? true),
+                        onChanged: (v) =>
+                            setState(() => _sendWhatsapp = v ?? true),
                       ),
                       const SizedBox(width: 10),
                       Checkbox(
@@ -2993,8 +3053,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       Expanded(
                         child: FilledButton(
                           style: ButtonStyle(
-                            backgroundColor:
-                                WidgetStateProperty.all(const Color(0xFF3B9A42)),
+                            backgroundColor: WidgetStateProperty.all(
+                                const Color(0xFF3B9A42)),
                           ),
                           onPressed: widget.onComplete,
                           child: const Text('Complete'),
@@ -3107,8 +3167,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _summaryLine('Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
-                    _summaryLine('Already Paid', '₹${a.paid.toStringAsFixed(0)}'),
+                    _summaryLine(
+                        'Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
+                    _summaryLine(
+                        'Already Paid', '₹${a.paid.toStringAsFixed(0)}'),
                     _summaryLine(
                       'Remaining Balance',
                       '₹${outstanding.toStringAsFixed(0)}',
@@ -3124,7 +3186,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _summaryLine('Total Paid', '₹${totalAfter.toStringAsFixed(0)}'),
+                    _summaryLine(
+                        'Total Paid', '₹${totalAfter.toStringAsFixed(0)}'),
                     _summaryLine(
                       'Balance',
                       '₹${(discountedTotal - totalAfter).clamp(0, double.infinity).toStringAsFixed(0)}',
@@ -3294,7 +3357,7 @@ class _CheckinSearchableTagInput extends StatelessWidget {
       initialValue: initialValues
           .where((item) => item.trim().isNotEmpty)
           .map((item) => TagInputItem(value: item.trim(), label: item.trim()))
-        .toList(growable: true),
+          .toList(growable: true),
       strict: false,
       limit: 999,
       placeholder: placeholder,
@@ -3302,7 +3365,8 @@ class _CheckinSearchableTagInput extends StatelessWidget {
       onChanged: (items) {
         onChanged(
           items
-              .where((item) => item.value != null && item.value!.trim().isNotEmpty)
+              .where(
+                  (item) => item.value != null && item.value!.trim().isNotEmpty)
               .map((item) => item.value!.trim())
               .toSet()
               .toList(growable: false),
@@ -3524,10 +3588,10 @@ class _PatientJourneyTimeline extends StatelessWidget {
               final treatments = item.selectedTreatments
                   .where((t) => t.trim().isNotEmpty)
                   .join(', ');
-                final doctorNames = item.operators.isEmpty
+              final doctorNames = item.operators.isEmpty
                   ? 'Unassigned'
                   : item.operators.map((d) => d.title).join(', ');
-                final teeth = item.selectedTeeth
+              final teeth = item.selectedTeeth
                   .where((t) => t.trim().isNotEmpty)
                   .join(', ');
               final isLast = entry.key == points.length - 1;
@@ -3561,7 +3625,8 @@ class _PatientJourneyTimeline extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            DateFormat('dd MMM yyyy • h:mm a').format(item.date),
+                            DateFormat('dd MMM yyyy • h:mm a')
+                                .format(item.date),
                             style: const TextStyle(
                               color: Color(0xFF1F446E),
                               fontSize: 11,
