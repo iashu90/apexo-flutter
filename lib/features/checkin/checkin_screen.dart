@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
@@ -2229,6 +2230,7 @@ class _CheckoutPaymentCard extends StatefulWidget {
 }
 
 class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
+  static const Duration _receiptPdfBuildTimeout = Duration(seconds: 30);
   String _paymentMode = 'Cash';
   final TextEditingController _notesController = TextEditingController();
   DateTime _paymentDate = DateTime.now();
@@ -2304,6 +2306,22 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     if (stackTrace != null) {
       debugPrint('[Export][$tag] STACK: $stackTrace');
     }
+  }
+
+  void _showReceiptExportError(String message) {
+    if (!mounted) return;
+    displayInfoBar(
+      context,
+      builder: (ctx, close) => InfoBar(
+        title: const Text('Receipt export failed'),
+        content: Text(message),
+        severity: InfoBarSeverity.error,
+        action: IconButton(
+          icon: const Icon(FluentIcons.clear),
+          onPressed: close,
+        ),
+      ),
+    );
   }
 
   Iterable<List<int>> _chunkBytes(List<int> bytes, int chunkSize) sync* {
@@ -2549,36 +2567,46 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final patientName = _safeName(widget.appointment.title);
     final fileName = '${patientName}_${ageLabel}_$nowLabel.pdf';
     final logTag = _nextReceiptLogTag();
-    await runWithExportProgressDialog<void>(
-      context: context,
-      title: 'Preparing receipt PDF',
-      task: (progress) async {
-        _logReceiptExport(logTag, 'Receipt export started');
-        progress.setProgress(0.2);
-        final bytes = await _buildReceiptPdf().save();
-        if (progress.isCancelled) return;
-        progress.setProgress(0.6);
-        final savePath = await FilePicker.platform.saveFile(
-          dialogTitle: 'Save payment receipt',
-          fileName: fileName,
-        );
-        if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
-          _logReceiptExport(logTag, 'Receipt export cancelled before write');
-          return;
-        }
-        final target = savePath.toLowerCase().endsWith('.pdf')
-            ? savePath
-            : '$savePath.pdf';
-        await _writeReceiptPdfWithRetry(
-          target: target,
-          bytes: bytes,
-          progress: progress,
-          logTag: logTag,
-        );
-        progress.setProgress(1.0);
-        _logReceiptExport(logTag, 'Receipt export completed');
-      },
-    );
+    try {
+      await runWithExportProgressDialog<void>(
+        context: context,
+        title: 'Preparing receipt PDF',
+        task: (progress) async {
+          _logReceiptExport(logTag, 'Receipt export started');
+          progress.setProgress(0.2);
+          List<int> bytes;
+          try {
+            bytes = await _buildReceiptPdf().save().timeout(_receiptPdfBuildTimeout);
+          } on TimeoutException {
+            throw StateError('PDF generation timed out. Please try again.');
+          }
+          if (progress.isCancelled) return;
+          progress.setProgress(0.6);
+          final savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save payment receipt',
+            fileName: fileName,
+          );
+          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+            _logReceiptExport(logTag, 'Receipt export cancelled before write');
+            return;
+          }
+          final target = savePath.toLowerCase().endsWith('.pdf')
+              ? savePath
+              : '$savePath.pdf';
+          await _writeReceiptPdfWithRetry(
+            target: target,
+            bytes: bytes,
+            progress: progress,
+            logTag: logTag,
+          );
+          progress.setProgress(1.0);
+          _logReceiptExport(logTag, 'Receipt export completed');
+        },
+      );
+    } catch (error, stackTrace) {
+      _logReceiptExport(logTag, 'Receipt export surfaced error to user', error, stackTrace);
+      _showReceiptExportError('$error');
+    }
   }
 
   Future<void> _printReceipt() async {

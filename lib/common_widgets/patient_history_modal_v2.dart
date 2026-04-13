@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -75,6 +76,8 @@ class PatientHistoryDialogV2 extends StatefulWidget {
 }
 
 class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
+  static const int _maxRowsPerPdfExport = 120;
+  static const Duration _pdfBuildTimeout = Duration(seconds: 45);
   final TextEditingController _searchController = TextEditingController();
   int _exportLogSequence = 0;
   String _query = '';
@@ -122,6 +125,22 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     if (stackTrace != null) {
       debugPrint('[Export][$tag] STACK: $stackTrace');
     }
+  }
+
+  void _showExportError(String title, String message) {
+    if (!mounted) return;
+    displayInfoBar(
+      context,
+      builder: (ctx, close) => InfoBar(
+        title: Text(title),
+        content: Text(message),
+        severity: InfoBarSeverity.error,
+        action: IconButton(
+          icon: const Icon(FluentIcons.clear),
+          onPressed: close,
+        ),
+      ),
+    );
   }
 
   Iterable<List<int>> _chunkBytes(List<int> bytes, int chunkSize) sync* {
@@ -271,29 +290,21 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
       : widget.patient.title;
     final date = DateFormat('dd MMM yyyy').format(target.date);
 
-    return 'Patient: $patientName\n'
-        'Date: ${DateFormat('dd MMM yyyy').format(target.date)}\n'
-        'Treatment: ${target.treatment}\n'
-        'Cost: Rs ${target.cost.toStringAsFixed(0)}\n'
-        'Paid: Rs ${target.paid.toStringAsFixed(0)}\n'
-        'Balance: Rs ${target.balance.toStringAsFixed(0)}\n'
-      'Status: ${target.status}\n\n'
+    return 
       'Hello $patientName,\n\n'
       'This is a message from Dr. Nowfar Dental Clinic. We are reaching out to provide a summary of your recent visit and confirm your next scheduled appointment.\n'
-      'Appointment Details\n\n'
-      'Status: Reminder\n'
-      'Date: $date\n'
-      'Time: ${DateFormat('hh:mm a').format(target.date)}\n'
-      'Procedure: ${target.treatment}\n\n'
-      'Treatment History Summary\n\n'
-      'Last Visit: $date\n'
-      'Treatment Completed: ${target.treatment}\n'
+      'Treatment Summary\n\n'
+      'Last Visit: $date ${DateFormat('hh:mm a').format(target.date)}\n'
+      'Treatment: ${target.treatment}\n'
       'Notes/Follow-up: ${target.notes}\n\n'
+      'Cost: Rs ${target.cost.toStringAsFixed(0)}\n'
+        'Paid: Rs ${target.paid.toStringAsFixed(0)}\n'
+        'Balance: Rs ${target.balance.toStringAsFixed(0)}\n\n'
       'Dr. Nowfar Dental Clinic\n'
       'Address: 15, Kamaraj St, Senthamarai Nagar, Muthialpet, Puducherry, 605003, India\n'
       'Phone: +91 89035 61075\n'
       'Website: drnowfardental.in\n'
-      'Google Maps: https://www.google.com/maps/dir//Dr+Nowfar+Dental+Clinic,+15,+Kamaraj+St,+Senthamarai+Nagar,+Muthialpet,+Puducherry,+605003,+India/@37.6009928,-122.072381,15z/data=!4m8!4m7!1m0!1m5!1m1!1s0x3a536380a76ba4db:0x67c7b38d3a5474cf!2m2!1d79.8307924!2d11.9504623?entry=ttu';
+      'Google Maps: https://maps.app.goo.gl/KJNqKbk3U9VujcCKA';
   }
 
   pw.Document _buildPdfDocument(List<_LedgerRowData> rows) {
@@ -631,6 +642,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
           _logExport(logTag, 'CSV export completed');
         },
       );
+    } catch (error, stackTrace) {
+      _showExportError('CSV export failed', '$error');
+      _logExport('csv-ui', 'CSV export surfaced error to user', error, stackTrace);
     } finally {
       if (mounted) {
         setState(() => _isExportingCsv = false);
@@ -652,8 +666,24 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
         task: (progress) async {
           final logTag = _nextExportTag('pdf');
           _logExport(logTag, 'PDF export started with ${rows.length} rows');
+          final pdfRows = rows.length > _maxRowsPerPdfExport
+              ? rows.take(_maxRowsPerPdfExport).toList(growable: false)
+              : rows;
+          if (rows.length > _maxRowsPerPdfExport) {
+            _logExport(
+              logTag,
+              'PDF rows limited to $_maxRowsPerPdfExport from ${rows.length} to avoid memory crash',
+            );
+          }
           progress.setProgress(0.2);
-          final bytes = await _buildPdfDocument(rows).save();
+          List<int> bytes;
+          try {
+            bytes = await _buildPdfDocument(pdfRows).save().timeout(_pdfBuildTimeout);
+          } on TimeoutException {
+            throw StateError(
+              'PDF generation timed out. Please use CSV export for large histories or narrow the date range.',
+            );
+          }
           if (progress.isCancelled) return;
           progress.setProgress(0.6);
 
@@ -680,6 +710,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
           _logExport(logTag, 'PDF export completed');
         },
       );
+    } catch (error, stackTrace) {
+      _showExportError('PDF export failed', '$error');
+      _logExport('pdf-ui', 'PDF export surfaced error to user', error, stackTrace);
     } finally {
       if (mounted) {
         setState(() => _isExportingPdf = false);
