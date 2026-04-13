@@ -391,67 +391,84 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                     ],
                   ),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _MetricCard(
-                      title: 'Total Patients (Unique IDs)',
-                      value: '$uniquePatientCount',
-                      valueColor: const Color(0xFF1D3E67),
-                    ),
-                    SizedBox(
-                      width: 280,
-                      height: 160,
-                      child: _PatientGrowthMonthlyCard(rows: monthlyGrowth),
-                    ),
-                    SizedBox(
-                      width: 280,
-                      height: 160,
-                      child: _TreatmentJourneyTimelineCard(
-                        metrics: journeyMetrics,
-                      ),
-                    ),
-                    _DonutMetricCard(
-                      title: 'Payment Mode',
-                      centerValue:
-                          '${paymentModeBuckets.values.fold<int>(0, (s, v) => s + v)}',
-                      segments: [
-                        _DonutSegment(
-                          label: 'Cash',
-                          value: paymentModeBuckets['Cash'] ?? 0,
-                          color: const Color(0xFF7D8FA7),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final metricWidth = constraints.maxWidth < 920
+                        ? constraints.maxWidth
+                        : 280.0;
+
+                    return Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        SizedBox(
+                          width: metricWidth,
+                          child: _MetricCard(
+                            title: 'Total Patients (Unique IDs)',
+                            value: '$uniquePatientCount',
+                            valueColor: const Color(0xFF1D3E67),
+                          ),
                         ),
-                        _DonutSegment(
-                          label: 'UPI',
-                          value: paymentModeBuckets['UPI'] ?? 0,
-                          color: const Color(0xFF2D7BD8),
+                        SizedBox(
+                          width: metricWidth,
+                          height: 160,
+                          child: _PatientGrowthMonthlyCard(rows: monthlyGrowth),
+                        ),
+                        SizedBox(
+                          width: metricWidth,
+                          height: 160,
+                          child: _TreatmentJourneyTimelineCard(
+                            metrics: journeyMetrics,
+                          ),
+                        ),
+                        SizedBox(
+                          width: metricWidth,
+                          child: _DonutMetricCard(
+                            title: 'Payment Mode',
+                            centerValue:
+                                '${paymentModeBuckets.values.fold<int>(0, (s, v) => s + v)}',
+                            segments: [
+                              _DonutSegment(
+                                label: 'Cash',
+                                value: paymentModeBuckets['Cash'] ?? 0,
+                                color: const Color(0xFF7D8FA7),
+                              ),
+                              _DonutSegment(
+                                label: 'UPI',
+                                value: paymentModeBuckets['UPI'] ?? 0,
+                                color: const Color(0xFF2D7BD8),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          width: metricWidth,
+                          child: _DonutMetricCard(
+                            title: 'Gender Distribution',
+                            centerValue:
+                                '${genderBuckets.values.fold<int>(0, (s, v) => s + v)}',
+                            segments: [
+                              _DonutSegment(
+                                label: 'Male',
+                                value: genderBuckets['Male'] ?? 0,
+                                color: const Color(0xFF2D7BD8),
+                              ),
+                              _DonutSegment(
+                                label: 'Female',
+                                value: genderBuckets['Female'] ?? 0,
+                                color: const Color(0xFF2BA58D),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          width: metricWidth,
+                          height: 160,
+                          child: _CompactAgeDistributionCard(buckets: ageBuckets),
                         ),
                       ],
-                    ),
-                    _DonutMetricCard(
-                      title: 'Gender Distribution',
-                      centerValue:
-                          '${genderBuckets.values.fold<int>(0, (s, v) => s + v)}',
-                      segments: [
-                        _DonutSegment(
-                          label: 'Male',
-                          value: genderBuckets['Male'] ?? 0,
-                          color: const Color(0xFF2D7BD8),
-                        ),
-                        _DonutSegment(
-                          label: 'Female',
-                          value: genderBuckets['Female'] ?? 0,
-                          color: const Color(0xFF2BA58D),
-                        ),
-                      ],
-                    ),
-                    SizedBox(
-                      width: 280,
-                      height: 160,
-                      child: _CompactAgeDistributionCard(buckets: ageBuckets),
-                    ),
-                  ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
                 LayoutBuilder(
@@ -1009,7 +1026,6 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 280,
       height: 160,
       child: _CardShell(
         child: Column(
@@ -2751,6 +2767,7 @@ class _AllPatientsListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final searchWidth = screenWidth < 900 ? 190.0 : 280.0;
+    final compactHeader = screenWidth < 980;
     final isHeaderHighlighted =
         selectedAlphabet != 'All' || behaviorFilter != 'all';
 
@@ -2831,11 +2848,33 @@ class _AllPatientsListCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
+          if (compactHeader)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: searchWidth,
+                  child: TextBox(
+                    controller: listSearchController,
+                    placeholder: 'Search by name or phone',
+                    prefix: const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Icon(
+                        FluentIcons.search,
+                        size: 12,
+                        color: Color(0xFF6D84A8),
+                      ),
+                    ),
+                    suffix: listSearchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(FluentIcons.clear),
+                            onPressed: () => listSearchController.clear(),
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: letters
@@ -2877,31 +2916,80 @@ class _AllPatientsListCard extends StatelessWidget {
                         .toList(growable: false),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: searchWidth,
-                child: TextBox(
-                  controller: listSearchController,
-                  placeholder: 'Search by name or phone',
-                  prefix: const Padding(
-                    padding: EdgeInsets.only(left: 8),
-                    child: Icon(
-                      FluentIcons.search,
-                      size: 12,
-                      color: Color(0xFF6D84A8),
+              ],
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: letters
+                          .map(
+                            (l) => Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: GestureDetector(
+                                onTap: () => onSelectAlphabet(l),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: selectedAlphabet == l
+                                        ? const Color(0xFF2D7BD8)
+                                        : const Color(0xFFEFF4FB),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: selectedAlphabet == l
+                                          ? const Color(0xFF2D7BD8)
+                                          : const Color(0xFFD2E1F2),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    l,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: selectedAlphabet == l
+                                          ? Colors.white
+                                          : const Color(0xFF355A84),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(growable: false),
                     ),
                   ),
-                  suffix: listSearchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(FluentIcons.clear),
-                          onPressed: () => listSearchController.clear(),
-                        )
-                      : null,
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: searchWidth,
+                  child: TextBox(
+                    controller: listSearchController,
+                    placeholder: 'Search by name or phone',
+                    prefix: const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Icon(
+                        FluentIcons.search,
+                        size: 12,
+                        color: Color(0xFF6D84A8),
+                      ),
+                    ),
+                    suffix: listSearchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(FluentIcons.clear),
+                            onPressed: () => listSearchController.clear(),
+                          )
+                        : null,
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
@@ -2932,127 +3020,133 @@ class _AllPatientsListCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: isHeaderHighlighted
-                  ? const Color(0xFF1A74DB)
-                  : const Color(0xFFEFF4FB),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(10)),
-            ),
-            child: Row(
-              children: [
-                _SortableHead(
-                  flex: 8,
-                  label: 'ID',
-                  keyName: 'id',
-                  current: sortBy,
-                  ascending: sortAscending,
-                  onSort: onSort,
-                  onDark: isHeaderHighlighted,
-                ),
-                _SortableHead(
-                  flex: 24,
-                  label: 'Patient',
-                  keyName: 'name',
-                  current: sortBy,
-                  ascending: sortAscending,
-                  onSort: onSort,
-                  onDark: isHeaderHighlighted,
-                ),
-                _SortableHead(
-                  flex: 18,
-                  label: 'Phone',
-                  keyName: 'phone',
-                  current: sortBy,
-                  ascending: sortAscending,
-                  onSort: onSort,
-                  onDark: isHeaderHighlighted,
-                ),
-                _SortableHead(
-                  flex: 10,
-                  label: 'Age',
-                  keyName: 'age',
-                  current: sortBy,
-                  ascending: sortAscending,
-                  onSort: onSort,
-                  onDark: isHeaderHighlighted,
-                ),
-                _SortableHead(
-                  flex: 12,
-                  label: 'Visits',
-                  keyName: 'visits',
-                  current: sortBy,
-                  ascending: sortAscending,
-                  onSort: onSort,
-                  onDark: isHeaderHighlighted,
-                ),
-                Expanded(
-                  flex: 16,
-                  child: _SortableHead(
-                    flex: 16,
-                    label: 'Last Visit',
-                    keyName: 'lastVisit',
-                    current: sortBy,
-                    ascending: sortAscending,
-                    onSort: onSort,
-                    onDark: isHeaderHighlighted,
-                  ),
-                ),
-                Expanded(
-                  flex: 16,
-                  child: _SortableHead(
-                    flex: 16,
-                    label: 'Paid So Far',
-                    keyName: 'paidSoFar',
-                    current: sortBy,
-                    ascending: sortAscending,
-                    onSort: onSort,
-                    onDark: isHeaderHighlighted,
-                  ),
-                ),
-                _SortableHead(
-                  flex: 16,
-                  label: 'Outstanding',
-                  keyName: 'outstanding',
-                  current: sortBy,
-                  ascending: sortAscending,
-                  onSort: onSort,
-                  onDark: isHeaderHighlighted,
-                ),
-                Expanded(
-                  flex: 12,
-                  child: Text(
-                    'Actions',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: 1200,
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    decoration: BoxDecoration(
                       color: isHeaderHighlighted
-                          ? Colors.white
-                          : const Color(0xFF2C4468),
+                          ? const Color(0xFF1A74DB)
+                          : const Color(0xFFEFF4FB),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(10)),
+                    ),
+                    child: Row(
+                      children: [
+                        _SortableHead(
+                          flex: 8,
+                          label: 'ID',
+                          keyName: 'id',
+                          current: sortBy,
+                          ascending: sortAscending,
+                          onSort: onSort,
+                          onDark: isHeaderHighlighted,
+                        ),
+                        _SortableHead(
+                          flex: 24,
+                          label: 'Patient',
+                          keyName: 'name',
+                          current: sortBy,
+                          ascending: sortAscending,
+                          onSort: onSort,
+                          onDark: isHeaderHighlighted,
+                        ),
+                        _SortableHead(
+                          flex: 18,
+                          label: 'Phone',
+                          keyName: 'phone',
+                          current: sortBy,
+                          ascending: sortAscending,
+                          onSort: onSort,
+                          onDark: isHeaderHighlighted,
+                        ),
+                        _SortableHead(
+                          flex: 10,
+                          label: 'Age',
+                          keyName: 'age',
+                          current: sortBy,
+                          ascending: sortAscending,
+                          onSort: onSort,
+                          onDark: isHeaderHighlighted,
+                        ),
+                        _SortableHead(
+                          flex: 12,
+                          label: 'Visits',
+                          keyName: 'visits',
+                          current: sortBy,
+                          ascending: sortAscending,
+                          onSort: onSort,
+                          onDark: isHeaderHighlighted,
+                        ),
+                        Expanded(
+                          flex: 16,
+                          child: _SortableHead(
+                            flex: 16,
+                            label: 'Last Visit',
+                            keyName: 'lastVisit',
+                            current: sortBy,
+                            ascending: sortAscending,
+                            onSort: onSort,
+                            onDark: isHeaderHighlighted,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 16,
+                          child: _SortableHead(
+                            flex: 16,
+                            label: 'Paid So Far',
+                            keyName: 'paidSoFar',
+                            current: sortBy,
+                            ascending: sortAscending,
+                            onSort: onSort,
+                            onDark: isHeaderHighlighted,
+                          ),
+                        ),
+                        _SortableHead(
+                          flex: 16,
+                          label: 'Outstanding',
+                          keyName: 'outstanding',
+                          current: sortBy,
+                          ascending: sortAscending,
+                          onSort: onSort,
+                          onDark: isHeaderHighlighted,
+                        ),
+                        Expanded(
+                          flex: 12,
+                          child: Text(
+                            'Actions',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: isHeaderHighlighted
+                                  ? Colors.white
+                                  : const Color(0xFF2C4468),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFD6E2F0)),
-              borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(10)),
-            ),
-            child: patientsList.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'No matching patients',
-                      style: TextStyle(color: Color(0xFF607B9F)),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFD6E2F0)),
+                      borderRadius:
+                          const BorderRadius.vertical(bottom: Radius.circular(10)),
                     ),
-                  )
-                : Column(
-                    children:
-                        patientsList.toList().asMap().entries.map((entry) {
+                    child: patientsList.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text(
+                              'No matching patients',
+                              style: TextStyle(color: Color(0xFF607B9F)),
+                            ),
+                          )
+                        : Column(
+                            children:
+                                patientsList.toList().asMap().entries.map((entry) {
                       final patient = entry.value;
                       final serial = serialOffset + entry.key + 1;
                         final patientVisits =
@@ -3184,8 +3278,12 @@ class _AllPatientsListCard extends StatelessWidget {
                           ],
                         ),
                       );
-                    }).toList(growable: false),
+                            }).toList(growable: false),
+                          ),
                   ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 10),
           Row(

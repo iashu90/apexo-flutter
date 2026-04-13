@@ -60,29 +60,24 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
     widget.item.lab = _labCtrl.text.trim();
     widget.item.selectedTeeth = _selectedTeeth.toList();
     labworks.set(widget.item);
-    if (mounted) {
-      Navigator.pop(context);
-      displayInfoBar(
-        context,
-        builder: (context, close) => const InfoBar(
-          title: Text('Labwork saved'),
-          severity: InfoBarSeverity.success,
-        ),
-      );
-    }
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width > 900;
+    final width = MediaQuery.sizeOf(context).width;
+    final isWide = width > 1150;
 
     return ContentDialog(
-      constraints: const BoxConstraints(maxWidth: 1040, maxHeight: 760),
+      constraints: const BoxConstraints(maxWidth: 1140, maxHeight: 760),
       title: Row(
         children: [
-          const Icon(FluentIcons.manufacturing, size: 16),
-          const SizedBox(width: 8),
           Text(labworks.get(widget.item.id) == null ? 'New Labwork' : 'Edit Labwork'),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(FluentIcons.chrome_close, size: 16),
+            onPressed: _saving ? null : () => Navigator.pop(context),
+          ),
         ],
       ),
       content: SingleChildScrollView(
@@ -90,120 +85,121 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 12,
+              runSpacing: 12,
               children: [
-                SizedBox(
-                  width: isWide ? 300 : 380,
-                  child: InfoLabel(
-                    label: '${txt('date')}:',
-                    child: DateTimePicker(
-                      initValue: widget.item.date,
-                      onChange: (d) => widget.item.date = d,
-                      buttonText: txt('changeDate'),
-                    ),
+                _fieldBox(
+                  width: isWide ? 330 : 460,
+                  label: '${txt('date')}:',
+                  child: DateTimePicker(
+                    initValue: widget.item.date,
+                    onChange: (d) => widget.item.date = d,
+                    buttonText: txt('changeDate'),
                   ),
                 ),
-                SizedBox(
-                  width: isWide ? 300 : 380,
-                  child: InfoLabel(
-                    label: '${txt('patient')}:',
-                    child: PatientPicker(
-                      value: widget.item.patientID,
-                      onChanged: (id) => widget.item.patientID = id,
-                    ),
+                _fieldBox(
+                  width: isWide ? 330 : 460,
+                  label: '${txt('patient')}:',
+                  child: PatientPicker(
+                    value: widget.item.patientID,
+                    onChanged: (id) => widget.item.patientID = id,
                   ),
                 ),
-                SizedBox(
-                  width: isWide ? 300 : 380,
-                  child: InfoLabel(
-                    label: '${txt('doctors')}:',
-                    child: OperatorsPicker(
-                      value: widget.item.operatorsIDs,
-                      onChanged: (ids) => widget.item.operatorsIDs = ids,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: isWide ? 300 : 380,
-                  child: InfoLabel(
-                    label: '${txt('laboratory')}:',
-                    child: LaboratoryPicker(
-                      value: _labCtrl.text,
-                      controller: _labCtrl,
-                      focusNode: _labFocusNode,
-                      onChanged: (lab) {
-                        setState(() {
-                          _labCtrl.text = lab ?? '';
-                          widget.item.lab = lab ?? '';
-                        });
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: isWide ? 300 : 380,
-                  child: InfoLabel(
-                    label: '${txt('typeOfWork')}:',
-                    child: ComboBox<String>(
-                      value: widget.item.typeOfWork.isEmpty ? null : widget.item.typeOfWork,
-                      items: const [
-                        'Zirconia',
-                        'PFM',
-                        'RPD',
-                        'Denture',
-                        'Implant',
-                        'ESSIX',
-                        'Other',
-                      ]
-                          .map((v) => ComboBoxItem<String>(value: v, child: Text(v)))
-                          .toList(growable: false),
-                      placeholder: const Text('Select type of work'),
-                      onChanged: (v) => setState(() => widget.item.typeOfWork = v ?? ''),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: isWide ? 300 : 380,
-                  child: InfoLabel(
-                    label: '${txt('shade')}:',
-                    child: ComboBox<String>(
-                      value: widget.item.shade.isEmpty ? null : widget.item.shade,
-                      items: const [
-                        '0M1',
-                        '0M2',
-                        '0M3',
-                        '1M1',
-                        '1M2',
-                        '2L1.5',
-                        '2L2.5',
-                        '2M1',
-                        '2M2',
-                        '2M3',
-                        '2R1.5',
-                        '2R2.5',
-                        '3L1.5',
-                        '3L2.5',
-                        '3M1',
-                        '3M2',
-                        '3M3',
-                        '3R1.5',
-                        '3R2.5',
-                      ]
-                          .map((v) => ComboBoxItem<String>(value: v, child: Text(v)))
-                          .toList(growable: false),
-                      placeholder: const Text('Select shade'),
-                      onChanged: (v) => setState(() => widget.item.shade = v ?? ''),
-                    ),
+                _fieldBox(
+                  width: isWide ? 330 : 460,
+                  label: '${txt('doctors')}:',
+                  child: OperatorsPicker(
+                    value: widget.item.operatorsIDs,
+                    onChanged: (ids) => widget.item.operatorsIDs = ids,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _fieldBox(
+                  width: isWide ? 330 : 460,
+                  label: '${txt('laboratory')}:',
+                  child: LaboratoryPicker(
+                    value: _labCtrl.text,
+                    controller: _labCtrl,
+                    focusNode: _labFocusNode,
+                    onChanged: (lab) {
+                      setState(() {
+                        _labCtrl.text = lab ?? '';
+                        widget.item.lab = lab ?? '';
+                      });
+                    },
+                  ),
+                ),
+                _fieldBox(
+                  width: isWide ? 330 : 460,
+                  label: '${txt('typeOfWork')}:',
+                  child: ComboBox<String>(
+                    value:
+                        widget.item.typeOfWork.isEmpty ? null : widget.item.typeOfWork,
+                    items: const [
+                      'Zirconia',
+                      'PFM',
+                      'RPD',
+                      'Denture',
+                      'Implant',
+                      'ESSIX',
+                      'Other',
+                    ]
+                        .map((v) => ComboBoxItem<String>(value: v, child: Text(v)))
+                        .toList(growable: false),
+                    placeholder: const Text('Select type of work'),
+                    onChanged: (v) =>
+                        setState(() => widget.item.typeOfWork = v ?? ''),
+                  ),
+                ),
+                _fieldBox(
+                  width: isWide ? 330 : 460,
+                  label: '${txt('shade')}:',
+                  child: ComboBox<String>(
+                    value: widget.item.shade.isEmpty ? null : widget.item.shade,
+                    items: const [
+                      '0M1',
+                      '0M2',
+                      '0M3',
+                      '1M1',
+                      '1M2',
+                      '2L1.5',
+                      '2L2.5',
+                      '2M1',
+                      '2M2',
+                      '2M3',
+                      '2R1.5',
+                      '2R2.5',
+                      '3L1.5',
+                      '3L2.5',
+                      '3M1',
+                      '3M2',
+                      '3M3',
+                      '3R1.5',
+                      '3R2.5',
+                    ]
+                        .map((v) => ComboBoxItem<String>(value: v, child: Text(v)))
+                        .toList(growable: false),
+                    placeholder: const Text('Select shade'),
+                    onChanged: (v) => setState(() => widget.item.shade = v ?? ''),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
             TeethPicker(
               selectedTeeth: _selectedTeeth,
               isAdult: _selectedTeeth.every(
-                (t) => t.startsWith('1') || t.startsWith('2') || t.startsWith('3') || t.startsWith('4'),
+                (t) =>
+                    t.startsWith('1') ||
+                    t.startsWith('2') ||
+                    t.startsWith('3') ||
+                    t.startsWith('4'),
               ),
               onChanged: (teeth) {
                 setState(() {
@@ -212,92 +208,99 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                 });
               },
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 12,
+              runSpacing: 12,
               children: [
-                SizedBox(
-                  width: isWide ? 220 : 380,
-                  child: InfoLabel(
-                    label: '${txt('noOfUnits')}:',
-                    child: NumberBox(
-                      clearButton: false,
-                      mode: SpinButtonPlacementMode.inline,
-                      value: widget.item.noOfUnits.toDouble(),
-                      min: 0,
-                      onChanged: (n) {
-                        setState(() {
-                          widget.item.noOfUnits = n?.toInt() ?? 0;
-                          widget.item.price = _pricePerUnit * widget.item.noOfUnits;
-                        });
-                      },
-                    ),
+                _fieldBox(
+                  width: isWide ? 220 : 460,
+                  label: '${txt('noOfUnits')}:',
+                  child: NumberBox(
+                    clearButton: false,
+                    mode: SpinButtonPlacementMode.inline,
+                    value: widget.item.noOfUnits.toDouble(),
+                    min: 0,
+                    onChanged: (n) {
+                      setState(() {
+                        widget.item.noOfUnits = n?.toInt() ?? 0;
+                        widget.item.price = _pricePerUnit * widget.item.noOfUnits;
+                      });
+                    },
                   ),
                 ),
-                SizedBox(
-                  width: isWide ? 220 : 380,
-                  child: InfoLabel(
-                    label: 'Price per Unit:',
-                    child: NumberBox(
-                      clearButton: false,
-                      value: _pricePerUnit,
-                      min: 0,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      onChanged: (n) {
-                        setState(() {
-                          _pricePerUnit = n ?? 0;
-                          widget.item.price = _pricePerUnit * widget.item.noOfUnits;
-                        });
-                      },
-                    ),
+                _fieldBox(
+                  width: isWide ? 220 : 460,
+                  label: 'Price per Unit:',
+                  child: NumberBox(
+                    clearButton: false,
+                    value: _pricePerUnit,
+                    min: 0,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    onChanged: (n) {
+                      setState(() {
+                        _pricePerUnit = n ?? 0;
+                        widget.item.price = _pricePerUnit * widget.item.noOfUnits;
+                      });
+                    },
                   ),
                 ),
-                SizedBox(
-                  width: isWide ? 260 : 380,
-                  child: InfoLabel(
-                    label: '${txt('priceIn')} ${globalSettings.get('currency_______').value}:',
-                    child: NumberBox(
-                      clearButton: false,
-                      value: widget.item.price,
-                      min: 0,
-                      onChanged: (n) {
-                        setState(() {
-                          widget.item.price = n ?? 0;
-                          if (widget.item.noOfUnits > 0) {
-                            _pricePerUnit = widget.item.price / widget.item.noOfUnits;
-                          }
-                        });
-                      },
-                    ),
+                _fieldBox(
+                  width: isWide ? 260 : 460,
+                  label:
+                      '${txt('priceIn')} ${globalSettings.get('currency_______').value}:',
+                  child: NumberBox(
+                    clearButton: false,
+                    value: widget.item.price,
+                    min: 0,
+                    onChanged: (n) {
+                      setState(() {
+                        widget.item.price = n ?? 0;
+                        if (widget.item.noOfUnits > 0) {
+                          _pricePerUnit = widget.item.price / widget.item.noOfUnits;
+                        }
+                      });
+                    },
+                  ),
+                ),
+                _fieldBox(
+                  width: isWide ? 330 : 460,
+                  label: 'Payment Status:',
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        checked: widget.item.paid,
+                        onChanged: (v) =>
+                            setState(() => widget.item.paid = v ?? false),
+                        content: Text(widget.item.paid ? txt('paid') : txt('unpaid')),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             TextBox(
               controller: _notesCtrl,
               placeholder: '${txt('orderNotes')}...',
-              maxLines: 2,
+              minLines: 1,
+              maxLines: 3,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Wrap(
-              spacing: 20,
-              runSpacing: 10,
+              spacing: 18,
+              runSpacing: 8,
               children: [
                 Checkbox(
-                  checked: widget.item.paid,
-                  onChanged: (v) => setState(() => widget.item.paid = v ?? false),
-                  content: Text(widget.item.paid ? txt('paid') : txt('unpaid')),
-                ),
-                Checkbox(
                   checked: widget.item.deliveredToDoctor,
-                  onChanged: (v) => setState(() => widget.item.deliveredToDoctor = v ?? false),
+                  onChanged: (v) =>
+                      setState(() => widget.item.deliveredToDoctor = v ?? false),
                   content: Text(txt('deliveredToDoctor')),
                 ),
                 Checkbox(
                   checked: widget.item.deliveredToPatient,
-                  onChanged: (v) => setState(() => widget.item.deliveredToPatient = v ?? false),
+                  onChanged: (v) =>
+                      setState(() => widget.item.deliveredToPatient = v ?? false),
                   content: Text(txt('deliveredToPatient')),
                 ),
               ],
@@ -311,10 +314,27 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
+          style: ButtonStyle(
+            backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+          ),
           onPressed: _saving ? null : _save,
           child: Text(_saving ? 'Saving...' : 'Save'),
         ),
       ],
+    );
+  }
+
+  Widget _fieldBox({
+    required double width,
+    required String label,
+    required Widget child,
+  }) {
+    return SizedBox(
+      width: width,
+      child: InfoLabel(
+        label: label,
+        child: child,
+      ),
     );
   }
 }

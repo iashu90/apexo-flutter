@@ -21,9 +21,12 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   String _query = '';
   String _statusFilter = 'all';
   String _paymentFilter = 'all';
-  String _rangeFilter = 'today';
+  String _rangeFilter = 'all';
+  String _handoverFilter = 'all';
+  String _labFilter = 'all';
   DateTime? _fromDate;
   DateTime? _toDate;
+  final Map<String, bool> _collapsedSection = {};
 
   @override
   void initState() {
@@ -62,8 +65,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               _buildStatStrip(all),
               const SizedBox(height: 10),
               _buildSearchAndDateFilters(),
-              const SizedBox(height: 8),
-              _buildStatusFilters(),
               const SizedBox(height: 10),
               Expanded(
                 child: grouped.isEmpty
@@ -72,8 +73,19 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                         itemCount: grouped.length,
                         itemBuilder: (context, index) {
                           final entry = grouped[index];
+                          final section = entry.$1;
+                          final collapsed = _collapsedSection[section] ?? false;
+
                           return _DateSection(
-                            title: entry.$1,
+                            title: section,
+                            count: entry.$2.length,
+                            collapsible: _isMonthSection(section),
+                            collapsed: collapsed,
+                            onToggle: () {
+                              setState(() {
+                                _collapsedSection[section] = !collapsed;
+                              });
+                            },
                             items: entry.$2,
                             onOpen: (item) => openLabworkV2Dialog(context, item),
                             onHistory: (item) {
@@ -99,8 +111,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(FluentIcons.manufacturing, color: Color(0xFF2D4B78), size: 16),
-        const SizedBox(width: 8),
         const Text(
           'Labworks',
           style: TextStyle(
@@ -112,7 +122,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
         const Spacer(),
         FilledButton(
           style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.all(const Color(0xFF2AB673)),
+            backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
             foregroundColor: WidgetStateProperty.all(Colors.white),
           ),
           onPressed: () => openLabworkV2Dialog(context),
@@ -131,30 +141,36 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
 
   Widget _buildStatStrip(List<Labwork> all) {
     final today = DateTime.now();
-    final todayItems = all.where((l) => _isSameDay(l.date, today)).toList(growable: false);
+    final todayItems =
+        all.where((l) => _isSameDay(l.date, today)).toList(growable: false);
     final inLab = all.where((l) => !l.deliveredToDoctor).length;
-    final ready = all.where((l) => l.deliveredToDoctor && !l.deliveredToPatient).length;
+    final ready =
+        all.where((l) => l.deliveredToDoctor && !l.deliveredToPatient).length;
     final delivered = all.where((l) => l.deliveredToPatient).length;
     final dues = all.where((l) => !l.paid).toList(growable: false);
     final paymentDue = dues.fold<double>(0, (sum, l) => sum + l.price);
 
     final cards = [
-      _StatCardData('TODAY', '${todayItems.length}', 'orders', const Color(0xFFF8FBFF), FluentIcons.calendar),
-      _StatCardData('IN LAB', '$inLab', 'cases', const Color(0xFFF0F8FF), FluentIcons.test_beaker),
-      _StatCardData('READY', '$ready', 'ready', const Color(0xFFEFF6FF), FluentIcons.status_circle_checkmark),
-      _StatCardData('DELIVERED', '$delivered', 'done', const Color(0xFFF3F8FF), FluentIcons.cube_shape),
+      _StatCardData('TODAY', '${todayItems.length}', 'orders'),
+      _StatCardData('IN LAB', '$inLab', 'cases'),
+      _StatCardData('READY', '$ready', 'ready'),
+      _StatCardData('DELIVERED', '$delivered', 'done'),
       _StatCardData(
         'PAYMENT DUE',
         paymentDue <= 0 ? '' : '₹${NumberFormat('#,##0').format(paymentDue)}',
         paymentDue <= 0 ? '' : 'dues',
-        const Color(0xFFF4FCF7),
-        FluentIcons.money,
+        valueColor: const Color(0xFFD6455D),
       ),
-      _StatCardData('DUES', dues.isEmpty ? '' : '${dues.length} dues', '', const Color(0xFFFFF2F2), FluentIcons.warning),
+      _StatCardData(
+        'DUES',
+        dues.isEmpty ? '' : '${dues.length} dues',
+        '',
+        valueColor: const Color(0xFFD6455D),
+      ),
     ];
 
     return SizedBox(
-      height: 92,
+      height: 112,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemBuilder: (context, i) => _StatCard(data: cards[i]),
@@ -165,151 +181,182 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   }
 
   Widget _buildSearchAndDateFilters() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        SizedBox(
-          width: 420,
-          child: TextBox(
-            controller: _searchCtrl,
-            placeholder: 'Search patient / phone / teeth / doctor',
-            prefix: const Padding(
-              padding: EdgeInsets.only(left: 10),
-              child: Icon(FluentIcons.search, size: 12, color: Color(0xFF6B778C)),
+    final labs = ['all', ...labworks.allLabs.toSet()]
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 360,
+            child: TextBox(
+              textAlign: TextAlign.left,
+              controller: _searchCtrl,
+              placeholder: 'Search patient / phone / teeth / doctor',
+              prefix: const Padding(
+                padding: EdgeInsets.only(left: 10),
+                child: Icon(
+                  FluentIcons.search,
+                  size: 12,
+                  color: Color(0xFF6B778C),
+                ),
+              ),
             ),
           ),
-        ),
-        _dateQuickFilter('Today', 'today'),
-        _dateQuickFilter('This Week', 'week'),
-        _dateQuickFilter('This Month', 'month'),
-        _dateQuickFilter('Custom Date', 'custom'),
-        SizedBox(
-          width: 132,
-          child: Button(
-            onPressed: () => _pickDate(true),
-            child: Text(_fromDate == null ? 'From' : DateFormat('dd MMM').format(_fromDate!)),
-          ),
-        ),
-        SizedBox(
-          width: 132,
-          child: Button(
-            onPressed: () => _pickDate(false),
-            child: Text(_toDate == null ? 'To' : DateFormat('dd MMM').format(_toDate!)),
-          ),
-        ),
-        if (_fromDate != null || _toDate != null)
-          IconButton(
-            icon: const Icon(FluentIcons.clear),
-            onPressed: () {
+          const SizedBox(width: 8),
+          _dropFilter(
+            width: 150,
+            value: _rangeFilter,
+            items: const {
+              'all': 'All Dates',
+              'today': 'Today',
+              'week': 'This Week',
+              'month': 'This Month',
+              'custom': 'Custom Date',
+            },
+            onChanged: (v) {
+              if (v == 'custom') {
+                _openDateRangePicker();
+                return;
+              }
               setState(() {
-                _fromDate = null;
-                _toDate = null;
-                if (_rangeFilter == 'custom') _rangeFilter = 'today';
+                _rangeFilter = v;
+                if (v != 'custom') {
+                  _fromDate = null;
+                  _toDate = null;
+                }
               });
             },
           ),
-      ],
-    );
-  }
-
-  Widget _dateQuickFilter(String label, String value) {
-    final selected = _rangeFilter == value;
-    return GestureDetector(
-      onTap: () => setState(() => _rangeFilter = value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2563B5) : const Color(0xFFF5F8FD),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? const Color(0xFF2563B5) : const Color(0xFFDCE4F1)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF5C6A84),
-            fontWeight: FontWeight.w600,
+          const SizedBox(width: 8),
+          _dropFilter(
+            width: 130,
+            value: _paymentFilter,
+            items: const {
+              'all': 'All Payment',
+              'paid': 'Paid',
+              'due': 'Due',
+            },
+            onChanged: (v) => setState(() => _paymentFilter = v),
           ),
-        ),
+          const SizedBox(width: 8),
+          _dropFilter(
+            width: 140,
+            value: _statusFilter,
+            items: const {
+              'all': 'All Status',
+              'in_lab': 'In Lab',
+              'ready': 'Doctors',
+              'done': 'Completed',
+            },
+            onChanged: (v) => setState(() => _statusFilter = v),
+          ),
+          const SizedBox(width: 8),
+          _dropFilter(
+            width: 170,
+            value: _handoverFilter,
+            items: const {
+              'all': 'All Handovers',
+              'pending_doctor': 'Pending Doctor',
+              'pending_patient': 'Pending Patient',
+            },
+            onChanged: (v) => setState(() => _handoverFilter = v),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 200,
+            child: ComboBox<String>(
+              value: _labFilter,
+              items: labs
+                  .map(
+                    (v) => ComboBoxItem<String>(
+                      value: v,
+                      child: Text(v == 'all' ? 'All Labs' : v),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (v) {
+                if (v == null) return;
+                setState(() => _labFilter = v);
+              },
+            ),
+          ),
+          if (_rangeFilter == 'custom' && (_fromDate != null || _toDate != null))
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                '${DateFormat('dd MMM').format(_fromDate ?? _toDate!)} - ${DateFormat('dd MMM').format(_toDate ?? _fromDate!)}',
+                style: const TextStyle(
+                  color: Color(0xFF2D4A70),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatusFilters() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        _FilterChip(
-          label: 'All',
-          selected: _statusFilter == 'all',
-          onTap: () => setState(() => _statusFilter = 'all'),
-        ),
-        _FilterChip(
-          label: 'In Lab',
-          selected: _statusFilter == 'in_lab',
-          onTap: () => setState(() => _statusFilter = 'in_lab'),
-        ),
-        _FilterChip(
-          label: 'Doctors',
-          selected: _statusFilter == 'ready',
-          onTap: () => setState(() => _statusFilter = 'ready'),
-        ),
-        _FilterChip(
-          label: 'Completed',
-          selected: _statusFilter == 'done',
-          onTap: () => setState(() => _statusFilter = 'done'),
-        ),
-        const SizedBox(width: 12),
-        _FilterChip(
-          label: 'All Payment',
-          selected: _paymentFilter == 'all',
-          onTap: () => setState(() => _paymentFilter = 'all'),
-        ),
-        _FilterChip(
-          label: 'Paid',
-          selected: _paymentFilter == 'paid',
-          onTap: () => setState(() => _paymentFilter = 'paid'),
-        ),
-        _FilterChip(
-          label: 'Due',
-          selected: _paymentFilter == 'due',
-          onTap: () => setState(() => _paymentFilter = 'due'),
-        ),
-      ],
+  Widget _dropFilter({
+    required double width,
+    required String value,
+    required Map<String, String> items,
+    required void Function(String) onChanged,
+  }) {
+    return SizedBox(
+      width: width,
+      child: ComboBox<String>(
+        value: value,
+        items: items.entries
+            .map(
+              (entry) => ComboBoxItem<String>(
+                value: entry.key,
+                child: Text(entry.value),
+              ),
+            )
+            .toList(growable: false),
+        onChanged: (v) {
+          if (v == null) return;
+          onChanged(v);
+        },
+      ),
     );
   }
 
-  Future<void> _pickDate(bool from) async {
+  Future<void> _openDateRangePicker() async {
     final now = DateTime.now();
-    final initial = from
-        ? (_fromDate ?? now)
-        : (_toDate ?? _fromDate ?? now);
-
-    final picked = await showDatePicker(
+    final first = await showDatePicker(
       context: context,
-      initialDate: initial,
+      initialDate: _fromDate ?? now,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       builder: apexoDatePickerBuilder(context),
     );
-    if (picked == null) return;
+    if (first == null) return;
+    if (!mounted) return;
+
+    final second = await showDatePicker(
+      context: context,
+      initialDate: _toDate ?? first,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      builder: apexoDatePickerBuilder(context),
+    );
+    if (!mounted) return;
 
     setState(() {
       _rangeFilter = 'custom';
-      if (from) {
-        _fromDate = DateTime(picked.year, picked.month, picked.day);
-        if (_toDate != null && _fromDate!.isAfter(_toDate!)) {
-          _toDate = null;
+      _fromDate = DateTime(first.year, first.month, first.day);
+      if (second != null) {
+        _toDate = DateTime(second.year, second.month, second.day);
+        if (_toDate!.isBefore(_fromDate!)) {
+          final temp = _fromDate;
+          _fromDate = _toDate;
+          _toDate = temp;
         }
       } else {
-        _toDate = DateTime(picked.year, picked.month, picked.day);
-        if (_fromDate != null && _toDate!.isBefore(_fromDate!)) {
-          _fromDate = null;
-        }
+        _toDate = _fromDate;
       }
     });
   }
@@ -350,14 +397,24 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
         if (!haystack.contains(_query)) return false;
       }
 
+      if (_labFilter != 'all' && l.lab.trim() != _labFilter) return false;
+
       if (_statusFilter == 'in_lab' && l.deliveredToDoctor) return false;
-      if (_statusFilter == 'ready' && (!l.deliveredToDoctor || l.deliveredToPatient)) {
+      if (_statusFilter == 'ready' &&
+          (!l.deliveredToDoctor || l.deliveredToPatient)) {
         return false;
       }
       if (_statusFilter == 'done' && !l.deliveredToPatient) return false;
 
       if (_paymentFilter == 'paid' && !l.paid) return false;
       if (_paymentFilter == 'due' && l.paid) return false;
+
+      if (_handoverFilter == 'pending_doctor' && l.deliveredToDoctor) {
+        return false;
+      }
+      if (_handoverFilter == 'pending_patient' && l.deliveredToPatient) {
+        return false;
+      }
 
       if (from != null || to != null) {
         final d = DateTime(l.date.year, l.date.month, l.date.day);
@@ -385,7 +442,13 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       grouped.putIfAbsent(label, () => []).add(labwork);
     }
 
-    return grouped.entries.map((e) => (e.key, e.value)).toList(growable: false);
+    return grouped.entries
+        .map((e) => (e.key, e.value))
+        .toList(growable: false);
+  }
+
+  bool _isMonthSection(String title) {
+    return title != 'TODAY' && title != 'YESTERDAY';
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
@@ -398,7 +461,9 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       _searchCtrl.text = '';
       _statusFilter = 'all';
       _paymentFilter = 'all';
-      _rangeFilter = 'today';
+      _handoverFilter = 'all';
+      _rangeFilter = 'all';
+      _labFilter = 'all';
       _fromDate = null;
       _toDate = null;
     });
@@ -409,10 +474,14 @@ class _StatCardData {
   final String title;
   final String value;
   final String subtitle;
-  final Color color;
-  final IconData icon;
+  final Color valueColor;
 
-  const _StatCardData(this.title, this.value, this.subtitle, this.color, this.icon);
+  const _StatCardData(
+    this.title,
+    this.value,
+    this.subtitle, {
+    this.valueColor = const Color(0xFF1D3E67),
+  });
 }
 
 class _StatCard extends StatelessWidget {
@@ -422,92 +491,54 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 176,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: data.color,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFDCE3EF)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(data.icon, size: 13, color: const Color(0xFF5F6E85)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  data.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF6B778C),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
           ),
-          const SizedBox(height: 8),
-          Text(
-            data.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 26,
-              height: 1,
-              color: Color(0xFF172B4D),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (data.subtitle.isNotEmpty)
-            Text(
-              data.subtitle,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF6B778C),
-              ),
-            ),
         ],
       ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE7F0FD) : const Color(0xFFF5F8FD),
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(
-            color: selected ? const Color(0xFF86AEEA) : const Color(0xFFDCE4F1),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? const Color(0xFF2059B5) : const Color(0xFF5C6A84),
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+      child: SizedBox(
+        width: 176,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                data.title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF3C5E87),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                data.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: data.value.length > 12 ? 22 : 28,
+                  fontWeight: FontWeight.w700,
+                  color: data.valueColor,
+                ),
+              ),
+              if (data.subtitle.isNotEmpty)
+                Text(
+                  data.subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF6B778C),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -517,12 +548,20 @@ class _FilterChip extends StatelessWidget {
 
 class _DateSection extends StatelessWidget {
   final String title;
+  final int count;
+  final bool collapsible;
+  final bool collapsed;
+  final VoidCallback onToggle;
   final List<Labwork> items;
   final void Function(Labwork?) onOpen;
   final void Function(Labwork) onHistory;
 
   const _DateSection({
     required this.title,
+    required this.count,
+    required this.collapsible,
+    required this.collapsed,
+    required this.onToggle,
     required this.items,
     required this.onOpen,
     required this.onHistory,
@@ -535,19 +574,40 @@ class _DateSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 20,
-                letterSpacing: 0.5,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF4A5A74),
+          GestureDetector(
+            onTap: collapsible ? onToggle : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+              child: Row(
+                children: [
+                  Text(
+                    '$title ($count)',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      letterSpacing: 0.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4A5A74),
+                    ),
+                  ),
+                  if (collapsible) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      collapsed
+                          ? FluentIcons.chevron_right
+                          : FluentIcons.chevron_down,
+                      size: 12,
+                      color: const Color(0xFF4A5A74),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
-          ...items.map((item) => _LabworkRow(item: item, onOpen: onOpen, onHistory: onHistory)),
+          if (!collapsed)
+            ...items.map(
+              (item) =>
+                  _LabworkRow(item: item, onOpen: onOpen, onHistory: onHistory),
+            ),
         ],
       ),
     );
@@ -567,9 +627,14 @@ class _LabworkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dueColor = item.paid ? const Color(0xFF2A8AD9) : const Color(0xFFD54A4A);
+    final dueColor =
+        item.paid ? const Color(0xFF2A8AD9) : const Color(0xFFD54A4A);
     final dueBg = item.paid ? const Color(0xFFE7F2FC) : const Color(0xFFFDECEC);
     final hasDueLabel = item.paid || item.price > 0;
+    final doctorNames = item.operators
+        .map((d) => d.title)
+        .where((n) => n.trim().isNotEmpty)
+        .join(', ');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -584,6 +649,7 @@ class _LabworkRow extends StatelessWidget {
           final compact = constraints.maxWidth < 980;
 
           final head = Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(
                 width: compact ? 62 : 68,
@@ -598,8 +664,8 @@ class _LabworkRow extends StatelessWidget {
               Container(width: 1, height: 34, color: const Color(0xFFE7ECF5)),
               const SizedBox(width: 10),
               Container(
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
                 alignment: Alignment.center,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
@@ -618,6 +684,7 @@ class _LabworkRow extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       item.patient?.title.trim().isNotEmpty == true
@@ -640,13 +707,25 @@ class _LabworkRow extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
+                    if (doctorNames.isNotEmpty)
+                      Text(
+                        'Dr: $doctorNames',
+                        style: const TextStyle(
+                          color: Color(0xFF5C7090),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                   ],
                 ),
               ),
               if (hasDueLabel)
                 Container(
                   constraints: const BoxConstraints(minWidth: 108),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
                     color: dueBg,
                     borderRadius: BorderRadius.circular(8),
@@ -695,22 +774,23 @@ class _LabworkRow extends StatelessWidget {
                 bg: const Color(0xFFF0EDF9),
               ),
               _Tag(
-                text: item.deliveredToDoctor ? 'Delivered to Doctor' : 'Pending Doctor',
-                bg: item.deliveredToDoctor ? const Color(0xFFE7F6EC) : const Color(0xFFFAF1E7),
+                text: item.deliveredToDoctor
+                    ? 'Delivered to Doctor'
+                    : 'Pending Doctor',
+                bg: item.deliveredToDoctor
+                    ? const Color(0xFFE7F6EC)
+                    : const Color(0xFFFAF1E7),
               ),
               _Tag(
-                text: item.deliveredToPatient ? 'Delivered to Patient' : 'Pending Patient',
-                bg: item.deliveredToPatient ? const Color(0xFFE7F6EC) : const Color(0xFFFAF1E7),
+                text: item.deliveredToPatient
+                    ? 'Delivered to Patient'
+                    : 'Pending Patient',
+                bg: item.deliveredToPatient
+                    ? const Color(0xFFE7F6EC)
+                    : const Color(0xFFFAF1E7),
               ),
             ],
           );
-
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [head, const SizedBox(height: 8), meta],
-            );
-          }
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,7 +804,10 @@ class _LabworkRow extends StatelessWidget {
   String _initials(String name) {
     final t = name.trim();
     if (t.isEmpty) return 'U';
-    final parts = t.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList(growable: false);
+    final parts = t
+        .split(RegExp(r'\s+'))
+        .where((e) => e.isNotEmpty)
+        .toList(growable: false);
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
   }
@@ -778,7 +861,11 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(FluentIcons.search_issue, size: 28, color: Color(0xFF5E7396)),
+            const Icon(
+              FluentIcons.search_issue,
+              size: 28,
+              color: Color(0xFF5E7396),
+            ),
             const SizedBox(height: 10),
             const Text(
               'No labworks match your filters',

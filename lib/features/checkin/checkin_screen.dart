@@ -541,10 +541,13 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         ...doctorOptions
                             .where((id) => id != '__unassigned__')
                             .map((id) {
+                          final isSelected = _selectedDoctor == id;
                           return _DoctorFilterChip(
                             label: doctors.get(id)?.title ?? 'Unknown',
-                            selected: _selectedDoctor == id,
-                            onTap: () => setState(() => _selectedDoctor = id),
+                            selected: isSelected,
+                            onTap: () => setState(
+                              () => _selectedDoctor = isSelected ? '__all__' : id,
+                            ),
                           );
                         }),
                       ],
@@ -564,7 +567,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           child: Column(
                             children: [
                               _WorkflowColumn(
-                                title: 'Waiting',
+                                title: 'Waiting (${waiting.length})',
                                 stage: 'waiting',
                                 color: const Color(0xFFE4A11B),
                                 rows: waiting,
@@ -580,7 +583,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                               const SizedBox(height: 10),
                               _WorkflowColumn(
-                                title: 'With Doctor',
+                                title: 'With Doctor (${withDoctor.length})',
                                 stage: 'with_doctor',
                                 color: const Color(0xFF2D7BD8),
                                 rows: withDoctor,
@@ -597,7 +600,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                               const SizedBox(height: 10),
                               _WorkflowColumn(
-                                title: 'Billing',
+                                title: 'Billing (${checkout.length})',
                                 stage: 'checkout',
                                 color: const Color(0xFF2BA58D),
                                 rows: checkout,
@@ -612,7 +615,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                               const SizedBox(height: 10),
                               _WorkflowColumn(
-                                title: 'Completed',
+                                title: 'Completed (${completed.length})',
                                 stage: 'completed',
                                 color: const Color(0xFF3B9A42),
                                 rows: completed,
@@ -683,7 +686,7 @@ class _DoctorFilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFF4F8FD),
           borderRadius: BorderRadius.circular(999),
@@ -753,14 +756,6 @@ class _WorkflowColumn extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: color,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${rows.length}',
-                  style: const TextStyle(
-                    color: Color(0xFF355279),
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const Spacer(),
@@ -1094,37 +1089,46 @@ String _waitingLabel() {
                       ],
                     ],
                   ),
-                  GestureDetector(
-                    onTap: (stage == 'with_doctor' && selected)
-                        ? () async {
-                            final pickedDoctorId = await _pickDoctor(context);
-                            if (pickedDoctorId == null ||
-                                pickedDoctorId.trim().isEmpty) {
-                              return;
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: (stage == 'with_doctor' && selected)
+                          ? () async {
+                              final pickedDoctorId = await _pickDoctor(context);
+                              if (pickedDoctorId == null ||
+                                  pickedDoctorId.trim().isEmpty) {
+                                return;
+                              }
+                              appointment.operatorsIDs = [pickedDoctorId];
+                              appointments.set(appointment);
                             }
-                            appointment.operatorsIDs = [pickedDoctorId];
-                            appointments.set(appointment);
-                          }
-                        : null,
-                    child: Row(
-                      children: [
-                        const Icon(
-                          FluentIcons.contact,
-                          size: 12,
-                          color: Color(0xFF3B82F6),
+                          : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          doctorLabel,
-                          style: const TextStyle(
-                            color: Color(0xFF3B82F6), // Standard link color
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            decoration:
-                                TextDecoration.underline, // Adds the underline
-                          ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              FluentIcons.contact,
+                              size: 12,
+                              color: Color(0xFF3B82F6),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              doctorLabel,
+                              style: const TextStyle(
+                                color: Color(0xFF3B82F6),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
@@ -1391,29 +1395,32 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         GestureDetector(
           onTap: () => _changeDoctor(appointment),
           behavior: HitTestBehavior.opaque,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Doctor:',
-                style: TextStyle(
-                  color: Color(0xFF6D84A8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Doctor:',
+                  style: TextStyle(
+                    color: Color(0xFF6D84A8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                doctorName.trim().isEmpty ? 'Unnamed doctor' : doctorName,
-                style: const TextStyle(
-                  color: Color(0xFF1459AD),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                const SizedBox(width: 6),
+                Text(
+                  doctorName.trim().isEmpty ? 'Unnamed doctor' : doctorName,
+                  style: const TextStyle(
+                    color: Color(0xFF1459AD),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              const Icon(FluentIcons.chevron_down, size: 10),
-            ],
+                const SizedBox(width: 4),
+                const Icon(FluentIcons.chevron_down, size: 10),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -2115,18 +2122,51 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               normalTextColor: const Color(0xFF355A84),
                               onTap: () {
                                 setState(() => _selectedPostOpParent = parent);
-                                final current = _postOpController.text.trim();
-                                if (current.contains(parent)) return;
-                                _postOpController.text = current.isEmpty
-                                    ? parent
-                                    : '$current\n$parent';
-                                a.postOpNotes = _postOpController.text;
-                                appointments.set(a);
                               },
                             ),
                           )
                           .toList(growable: false),
                     ),
+                    if (_selectedPostOpParent != null &&
+                        _postOpSuggestions[_selectedPostOpParent!] != null) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6FAFF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFDCE8F8)),
+                        ),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _postOpSuggestions[_selectedPostOpParent!]!
+                              .map(
+                                (child) => _quickChip(
+                                  label: child,
+                                  selectedColor: const Color(0xFFE8F6EF),
+                                  selectedTextColor: const Color(0xFF1E7C58),
+                                  normalColor: const Color(0xFFEAF4FF),
+                                  normalTextColor: const Color(0xFF365B84),
+                                  onTap: () {
+                                    final parent = _selectedPostOpParent;
+                                    if (parent == null) return;
+                                    final entry = '$parent · $child';
+                                    final current = _postOpController.text.trim();
+                                    if (current.contains(entry)) return;
+                                    _postOpController.text = current.isEmpty
+                                        ? entry
+                                        : '$current\n$entry';
+                                    a.postOpNotes = _postOpController.text;
+                                    appointments.set(a);
+                                  },
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 18),
                     Row(
                       children: [
