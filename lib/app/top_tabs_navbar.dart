@@ -10,6 +10,10 @@ class TopTabsNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 980;
+    final veryCompact = width < 760;
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -21,15 +25,15 @@ class TopTabsNavBar extends StatelessWidget {
           ],
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: veryCompact ? 8 : 14),
       child: SafeArea(
         bottom: false,
         child: SizedBox(
-          height: 64,
+          height: compact ? 56 : 64,
           child: Row(
             children: [
-              const _LogoCluster(),
-              const SizedBox(width: 18),
+              _LogoCluster(compact: compact),
+              SizedBox(width: veryCompact ? 8 : 14),
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -47,10 +51,12 @@ class TopTabsNavBar extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               const NetworkActions(),
-              const SizedBox(width: 8),
-              const _UserChip(),
+              if (!veryCompact) ...[
+                const SizedBox(width: 6),
+                const _UserChip(),
+              ],
             ],
           ),
         ),
@@ -85,7 +91,9 @@ class TopTabsNavBar extends StatelessWidget {
 }
 
 class _LogoCluster extends StatelessWidget {
-  const _LogoCluster();
+  final bool compact;
+
+  const _LogoCluster({required this.compact});
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +102,7 @@ class _LogoCluster extends StatelessWidget {
       children: [
         Image.asset(
           'assets/drnowdentallogo.png',
-          height: 75,
+          height: compact ? 46 : 58,
           fit: BoxFit.contain,
         ),
       ],
@@ -119,7 +127,7 @@ class _TabButton extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             color: active ? ApexoThemeColors.navActiveTab : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
@@ -143,7 +151,7 @@ class _TabButton extends StatelessWidget {
               Text(
                 _displayTitle(route),
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                   color: active
                       ? ApexoThemeColors.navText
