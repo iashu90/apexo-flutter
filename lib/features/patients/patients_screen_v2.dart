@@ -215,6 +215,16 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       return;
     }
 
+    final savePath = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save CSV',
+      fileName: '${_patientsFileStem()}.csv',
+    );
+    if (savePath == null || savePath.trim().isEmpty) {
+      return;
+    }
+    final target =
+        savePath.toLowerCase().endsWith('.csv') ? savePath : '$savePath.csv';
+
     setState(() => _isExportingPatientsCsv = true);
     try {
       await runWithExportProgressDialog<void>(
@@ -222,20 +232,9 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         title: 'Exporting CSV',
         task: (progress) async {
           progress.setProgress(0.15);
-          final savePath = await FilePicker.platform.saveFile(
-            dialogTitle: 'Save CSV',
-            fileName: '${_patientsFileStem()}.csv',
-          );
-
-          if (savePath == null ||
-              savePath.trim().isEmpty ||
-              progress.isCancelled) {
+          if (progress.isCancelled) {
             return;
           }
-
-          final target = savePath.toLowerCase().endsWith('.csv')
-              ? savePath
-              : '$savePath.csv';
 
           final buffer = StringBuffer();
           buffer.writeln(
@@ -279,6 +278,21 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
           progress.setProgress(1);
         },
       );
+    } catch (error) {
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (ctx, close) => InfoBar(
+            title: const Text('CSV export failed'),
+            content: Text('$error'),
+            severity: InfoBarSeverity.error,
+            action: IconButton(
+              icon: const Icon(FluentIcons.clear),
+              onPressed: close,
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isExportingPatientsCsv = false);
@@ -293,6 +307,16 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     if (_isExportingPatientsCsv || _isExportingPatientsPdf || rows.isEmpty) {
       return;
     }
+
+    final savePath = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save PDF',
+      fileName: '${_patientsFileStem()}.pdf',
+    );
+    if (savePath == null || savePath.trim().isEmpty) {
+      return;
+    }
+    final target =
+        savePath.toLowerCase().endsWith('.pdf') ? savePath : '$savePath.pdf';
 
     setState(() => _isExportingPatientsPdf = true);
     try {
@@ -364,25 +388,25 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
           progress.setProgress(0.75);
           final bytes = await doc.save().timeout(const Duration(seconds: 45));
           if (progress.isCancelled) return;
-
-          final savePath = await FilePicker.platform.saveFile(
-            dialogTitle: 'Save PDF',
-            fileName: '${_patientsFileStem()}.pdf',
-          );
-
-          if (savePath == null ||
-              savePath.trim().isEmpty ||
-              progress.isCancelled) {
-            return;
-          }
-
-          final target = savePath.toLowerCase().endsWith('.pdf')
-              ? savePath
-              : '$savePath.pdf';
           await File(target).writeAsBytes(bytes, flush: true);
           progress.setProgress(1);
         },
       );
+    } catch (error) {
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (ctx, close) => InfoBar(
+            title: const Text('PDF export failed'),
+            content: Text('$error'),
+            severity: InfoBarSeverity.error,
+            action: IconButton(
+              icon: const Icon(FluentIcons.clear),
+              onPressed: close,
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isExportingPatientsPdf = false);
