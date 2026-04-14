@@ -11,7 +11,7 @@ import 'package:apexo/features/expenses/expenses_screen_v2.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
 import 'package:apexo/features/labwork/labworks_v2_screen.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
-import 'package:apexo/features/doctors/doctors_screen.dart';
+import 'package:apexo/features/doctors/doctors_screen_v2.dart';
 import 'package:apexo/features/patients/patients_screen.dart';
 import 'package:apexo/features/patients/patients_screen_v2.dart';
 import 'package:apexo/features/stats/screen_stats.dart';

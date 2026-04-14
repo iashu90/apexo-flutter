@@ -57,7 +57,7 @@ Future<void> openCheckinAppointmentModal(
               : 'Check-in';
   final popupTitle = appointment.title.trim().isEmpty
       ? 'Patient Details'
-      : '${_toTitleCase(appointment.title)} • $stageLabel';
+      : '${_toTitleCase(appointment.title)} • ${appointment.patient?.age ?? 0}y • ${appointment.patient?.phone.trim().isNotEmpty == true ? appointment.patient!.phone : '-'} • $stageLabel';
 
   await showDialog<void>(
     context: context,
@@ -93,7 +93,7 @@ Future<void> openCheckinAppointmentModal(
                     colors: appointment.checkinStage == 'completed'
                         ? const [Color(0xFF2BA58D), Color(0xFF1D8D77)]
                         : appointment.checkinStage == 'checkout'
-                            ? const [Color(0xFF2D7BD8), Color(0xFF1D61B8)]
+                        ? const [Color(0xFF8B5CF6), Color(0xFF6D3FD2)]
                         : (appointment.checkinStage == 'with_doctor' ||
                             appointment.checkinStage == 'treatment')
                                 ? const [Color(0xFF5A84E6), Color(0xFF3F68CC)]
@@ -127,7 +127,10 @@ Future<void> openCheckinAppointmentModal(
                 ),
               ),
               Expanded(
-                child: _CheckinHistoryDetails(appointment: appointment),
+                child: _CheckinHistoryDetails(
+                  appointment: appointment,
+                  rootContext: context,
+                ),
               ),
             ],
           ),
@@ -955,90 +958,90 @@ class _WorkflowRow extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: selected.isEmpty
-                              ? const [
-                                  Text(
-                                    'No doctors selected',
-                                    style: TextStyle(color: Color(0xFF6D84A8)),
+                        if (selected.isEmpty)
+                          const Text(
+                            'No doctors selected',
+                            style: TextStyle(color: Color(0xFF6D84A8)),
+                          )
+                        else
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: doctorRows
+                                .where((doctor) => selected.contains(doctor.id))
+                                .map((doctor) {
+                              final doctorName = doctor.title.trim().isEmpty
+                                  ? 'Unnamed doctor'
+                                  : doctor.title;
+                              return GestureDetector(
+                                onTap: () {
+                                  setStateDialog(() {
+                                    selected.remove(doctor.id);
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
                                   ),
-                                ]
-                              : selected
-                                  .map(
-                                    (id) => doctors.get(id)?.title ?? 'Unknown',
-                                  )
-                                  .map(
-                                    (name) => Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFEAF2FC),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                        border: Border.all(
-                                          color: const Color(0xFFD5E5F7),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        name,
-                                        style: const TextStyle(
-                                          color: Color(0xFF1459AD),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                        ),
-                                      ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE9F9EF),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: const Color(0xFF22C55E),
                                     ),
-                                  )
-                                  .toList(growable: false),
-                        ),
+                                  ),
+                                  child: Text(
+                                    doctorName,
+                                    style: const TextStyle(
+                                      color: Color(0xFF15803D),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(growable: false),
+                          ),
                         const SizedBox(height: 10),
+                        if (selected.isNotEmpty) ...[
+                          const Divider(size: 1),
+                          const SizedBox(height: 10),
+                        ],
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxHeight: 320),
                           child: SingleChildScrollView(
                             child: Wrap(
                               spacing: 8,
                               runSpacing: 8,
-                              children: doctorRows.map((doctor) {
+                              children: doctorRows
+                                  .where((doctor) => !selected.contains(doctor.id))
+                                  .map((doctor) {
                                 final doctorName = doctor.title.trim().isEmpty
                                     ? 'Unnamed doctor'
                                     : doctor.title;
-                                final isSelected = selected.contains(doctor.id);
                                 return GestureDetector(
                                   onTap: () {
                                     setStateDialog(() {
-                                      if (isSelected) {
-                                        selected.remove(doctor.id);
-                                      } else {
-                                        selected.add(doctor.id);
-                                      }
+                                      selected.add(doctor.id);
                                     });
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 10,
-                                      vertical: 8,
+                                      vertical: 6,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? const Color(0xFF2D7BD8)
-                                          : const Color(0xFFEFF4FB),
-                                      borderRadius: BorderRadius.circular(10),
+                                      color: const Color(0xFFEFF4FB),
+                                      borderRadius: BorderRadius.circular(999),
                                       border: Border.all(
-                                        color: isSelected
-                                            ? const Color(0xFF2D7BD8)
-                                            : const Color(0xFFD2E1F2),
+                                        color: const Color(0xFFD2E1F2),
                                       ),
                                     ),
                                     child: Text(
                                       doctorName,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : const Color(0xFF355A84),
+                                      style: const TextStyle(
+                                        color: Color(0xFF355A84),
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -1091,17 +1094,15 @@ class _WorkflowRow extends StatelessWidget {
                 a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
           return ContentDialog(
-            title: const Text('Schedule Next Appointment'),
+            title: Text(
+              'Schedule • ${_toTitleCase(p.title)} • ${p.age}y • ${p.phone.trim().isEmpty ? '-' : p.phone}',
+            ),
             content: SizedBox(
               width: 560,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Patient: ${_toTitleCase(p.title)}'),
-                  Text('Phone: ${p.phone.trim().isEmpty ? '-' : p.phone}'),
-                  Text('Age: ${p.age}'),
-                  const SizedBox(height: 12),
                   Row(
                     children: [
                       const Text('Date:',
@@ -1244,9 +1245,9 @@ class _WorkflowRow extends StatelessWidget {
                     'date': scheduledDate.millisecondsSinceEpoch,
                     'checkinStage': 'pending',
                   });
-                  openAppointment(nextAppointment);
+                  appointments.set(nextAppointment);
                 },
-                child: const Text('Schedule Next'),
+                child: const Text('Schedule'),
               ),
             ],
           );
@@ -1287,13 +1288,7 @@ class _WorkflowRow extends StatelessWidget {
     }
 
     if (stage == 'waiting') {
-      final pickedDoctorIds =
-          await _pickDoctor(context, initialSelected: appointment.operatorsIDs);
-      if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
-      appointment.operatorsIDs = pickedDoctorIds;
-      appointment.checkinStage = 'with_doctor';
-      appointment.isDone = false;
-      appointments.set(appointment);
+      await openCheckinAppointmentModal(context, appointment);
       onSelect?.call(appointment);
       return;
     }
@@ -1679,8 +1674,12 @@ class _WorkflowRow extends StatelessWidget {
 
 class _CheckinHistoryDetails extends StatefulWidget {
   final Appointment appointment;
+  final BuildContext rootContext;
 
-  const _CheckinHistoryDetails({required this.appointment});
+  const _CheckinHistoryDetails({
+    required this.appointment,
+    required this.rootContext,
+  });
 
   @override
   State<_CheckinHistoryDetails> createState() => _CheckinHistoryDetailsState();
@@ -1752,11 +1751,11 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                                       },
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 8),
+                                            horizontal: 10, vertical: 6),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFDFF7E8),
                                           borderRadius:
-                                              BorderRadius.circular(10),
+                                              BorderRadius.circular(999),
                                           border: Border.all(
                                             color: const Color(0xFF22C55E),
                                           ),
@@ -1799,10 +1798,11 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 8),
+                                          horizontal: 10, vertical: 6),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFEFF4FB),
-                                        borderRadius: BorderRadius.circular(10),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
                                         border: Border.all(
                                           color: const Color(0xFFD2E1F2),
                                         ),
@@ -1878,11 +1878,11 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
     final appointment = widget.appointment;
     final patient = appointment.patient;
 
-    final age = patient?.age ?? 0;
     final doctorName = appointment.operators.isEmpty
         ? 'Unassigned'
         : appointment.operators.map((d) => d.title).join(', ');
     final patientNotes = patient?.notes.trim() ?? '';
+    final isCheckout = appointment.checkinStage == 'checkout';
     final pid = appointment.patientID;
 
     final all = appointments.present.values
@@ -1906,9 +1906,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  patient?.title.trim().isNotEmpty == true
-                      ? _toTitleCase(patient!.title)
-                      : appointment.title,
+                  isCheckout
+                      ? 'Today\'s Appointment Details'
+                      : 'Current Appointment Details',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -1916,83 +1916,62 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      patient?.phone ?? '-',
-                      style:
-                          const TextStyle(fontSize: 12, color: Color(0xFF6D84A8)),
-                    ),
-                    const SizedBox(width: 10),
-                    Container(
+                if (!isCheckout)
+                  GestureDetector(
+                    onTap: () => _changeDoctor(appointment),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
                       padding:
-                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAF2FC),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFD5E5F7)),
-                      ),
-                      child: Text(
-                        '${age}y',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Color(0xFF1459AD),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => _changeDoctor(appointment),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Doctor:',
-                          style: TextStyle(
-                            color: Color(0xFF6D84A8),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                          const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Doctor:',
+                            style: TextStyle(
+                              color: Color(0xFF6D84A8),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          doctorName.trim().isEmpty ? 'Unnamed doctor' : doctorName,
-                          style: const TextStyle(
-                            color: Color(0xFF1459AD),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                          const SizedBox(width: 6),
+                          Text(
+                            doctorName.trim().isEmpty
+                                ? 'Unnamed doctor'
+                                : doctorName,
+                            style: const TextStyle(
+                              color: Color(0xFF1459AD),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(FluentIcons.chevron_down, size: 10),
-                      ],
+                          const SizedBox(width: 4),
+                          const Icon(FluentIcons.chevron_down, size: 10),
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _LastAppointmentInsightCard(
-                        lastAppointment: lastAppointment,
+                if (isCheckout)
+                  TodayAppointmentInsightCard(appointment: appointment)
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _LastAppointmentInsightCard(
+                          lastAppointment: lastAppointment,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _PatientJourneyTimeline(
-                        appointments: all,
-                        excludeDate: appointment.date,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _PatientJourneyTimeline(
+                          appointments: all,
+                          excludeDate: appointment.date,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: 10),
                 if (appointment.checkinStage == 'with_doctor' ||
                     appointment.checkinStage == 'checkout')
@@ -2051,8 +2030,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
             ),
             onPressed: () async {
+              Navigator.of(context).pop();
               final pickedDoctorIds = await showDialog<List<String>>(
-                context: context,
+                context: widget.rootContext,
                 builder: (dialogContext) {
                   String? selectedDoctorId = appointment.operatorsIDs.isEmpty
                       ? null
@@ -2079,15 +2059,59 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                           children: [
                             if (doctorEntries.isEmpty)
                               const Text('No doctors available to assign.')
-                            else
+                            else ...[
+                              if (selectedDoctorId != null) ...[
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: doctorEntries
+                                      .where((entry) =>
+                                          selectedDoctorId == entry.key)
+                                      .map((entry) {
+                                    return GestureDetector(
+                                      onTap: () {
+                                        setDialogState(() {
+                                          selectedDoctorId = null;
+                                          validationError = null;
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE9F9EF),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                          border: Border.all(
+                                            color: const Color(0xFF22C55E),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          entry.value,
+                                          style: const TextStyle(
+                                            color: Color(0xFF15803D),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(growable: false),
+                                ),
+                                const SizedBox(height: 10),
+                                const Divider(size: 1),
+                                const SizedBox(height: 10),
+                              ],
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: doctorEntries
+                                    .where((entry) =>
+                                        selectedDoctorId != entry.key)
                                     .map(
                                       (entry) {
-                                        final selected =
-                                            selectedDoctorId == entry.key;
                                         return GestureDetector(
                                           onTap: () {
                                             setDialogState(() {
@@ -2101,23 +2125,17 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                                               vertical: 6,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: selected
-                                                  ? const Color(0xFF2D7BD8)
-                                                  : const Color(0xFFEFF4FB),
+                                              color: const Color(0xFFEFF4FB),
                                               borderRadius:
                                                   BorderRadius.circular(999),
                                               border: Border.all(
-                                                color: selected
-                                                    ? const Color(0xFF2D7BD8)
-                                                    : const Color(0xFFD4E2F3),
+                                                color: const Color(0xFFD4E2F3),
                                               ),
                                             ),
                                             child: Text(
                                               entry.value,
-                                              style: TextStyle(
-                                                color: selected
-                                                    ? Colors.white
-                                                    : const Color(0xFF355A84),
+                                              style: const TextStyle(
+                                                color: Color(0xFF355A84),
                                                 fontWeight: FontWeight.w700,
                                                 fontSize: 12,
                                               ),
@@ -2128,6 +2146,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                                     )
                                     .toList(growable: false),
                               ),
+                            ],
                             if (validationError != null) ...[
                               const SizedBox(height: 8),
                               Text(
@@ -2736,18 +2755,15 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
           return ContentDialog(
-            title: const Text('Schedule Next Appointment'),
+            title: Text(
+              'Schedule • ${_toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+            ),
             content: SizedBox(
               width: 560,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Patient: ${_toTitleCase(patient.title)}'),
-                  Text(
-                      'Phone: ${patient.phone.trim().isEmpty ? '-' : patient.phone}'),
-                  Text('Age: ${patient.age}'),
-                  const SizedBox(height: 12),
                   Row(
                     children: [
                       const Text('Date:',
@@ -2890,9 +2906,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     'date': scheduledDate.millisecondsSinceEpoch,
                     'checkinStage': 'pending',
                   });
-                  openAppointment(nextAppointment);
+                  appointments.set(nextAppointment);
                 },
-                child: const Text('Schedule Next'),
+                child: const Text('Schedule'),
               ),
             ],
           );
@@ -2981,8 +2997,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
           appointments.set(a);
           setState(() {});
         },
-        onComplete: _confirmDoneToggle,
-        onMoveBackToWithDoctor: _moveBackToWithDoctor,
       );
     }
 
@@ -3394,8 +3408,6 @@ class _CheckoutPaymentCard extends StatefulWidget {
   final bool discountEnabled;
   final ValueChanged<bool> onToggleDiscount;
   final VoidCallback onCollectFullBalance;
-  final VoidCallback onComplete;
-  final VoidCallback onMoveBackToWithDoctor;
 
   const _CheckoutPaymentCard({
     required this.appointment,
@@ -3405,8 +3417,6 @@ class _CheckoutPaymentCard extends StatefulWidget {
     required this.discountEnabled,
     required this.onToggleDiscount,
     required this.onCollectFullBalance,
-    required this.onComplete,
-    required this.onMoveBackToWithDoctor,
   });
 
   @override
@@ -4255,22 +4265,33 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                                   .any((d) => d.id == _selectedConsultantDoctorId)
                               ? _selectedConsultantDoctorId
                               : null,
-                          items: consultantDoctors
-                              .map(
-                                (doctor) => ComboBoxItem<String>(
-                                  value: doctor.id,
-                                  child: Text(
-                                    doctor.title.trim().isEmpty
-                                        ? 'Unnamed doctor'
-                                        : doctor.title,
+                          items: [
+                            const ComboBoxItem<String>(
+                              value: '__none__',
+                              child: Text('None'),
+                            ),
+                            ...consultantDoctors
+                                .map(
+                                  (doctor) => ComboBoxItem<String>(
+                                    value: doctor.id,
+                                    child: Text(
+                                      doctor.title.trim().isEmpty
+                                          ? 'Unnamed doctor'
+                                          : doctor.title,
+                                    ),
                                   ),
-                                ),
-                              )
-                              .toList(growable: false),
+                                )
+                                .toList(growable: false),
+                          ],
                           onChanged: (value) {
                             setState(() {
-                              _selectedConsultantDoctorId = value;
-                              a.consultantDoctorID = value;
+                              if (value == '__none__' || value == null) {
+                                _selectedConsultantDoctorId = null;
+                                a.consultantDoctorID = null;
+                              } else {
+                                _selectedConsultantDoctorId = value;
+                                a.consultantDoctorID = value;
+                              }
                             });
                             appointments.set(a);
                           },
@@ -4299,14 +4320,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Consultant: ${_selectedConsultantDoctorId == null ? 'Unassigned' : (doctors.get(_selectedConsultantDoctorId!)?.title.trim().isEmpty ?? true ? 'Unnamed doctor' : doctors.get(_selectedConsultantDoctorId!)!.title)}',
-                    style: const TextStyle(
-                      color: Color(0xFF7C93B1),
-                      fontSize: 11,
-                    ),
                   ),
                 ],
               );
@@ -4491,29 +4504,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Button(
-                            onPressed: widget.onMoveBackToWithDoctor,
-                            child: const Text('Move Back to Treatment'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: FilledButton(
-                            style: ButtonStyle(
-                              backgroundColor: WidgetStateProperty.all(
-                                const Color(0xFF3B9A42),
-                              ),
-                            ),
-                            onPressed: widget.onComplete,
-                            child: const Text('Complete'),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),

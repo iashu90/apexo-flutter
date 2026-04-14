@@ -199,6 +199,10 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
           rows: List.generate(sortedRows.length, (index) {
             final row = sortedRows[index];
             final isEven = index % 2 == 0;
+            final showPatientColumn = !widget.hiddenColumns.contains('Patient') &&
+                sortedRows.any((r) =>
+                    r.patient?.title != null &&
+                    r.patient?.title.isNotEmpty == true);
             return DataRow(
               color: WidgetStateProperty.all(
                 isEven ? Colors.grey.shade50 : Colors.white,
@@ -242,8 +246,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                       ],
                     ),
                   ),
-                if (!widget.hiddenColumns.contains('Patient') &&
-                    row.patient != null)
+                if (showPatientColumn)
                   _plainCell(
                     Align(
                       alignment: Alignment.centerLeft,
@@ -252,7 +255,11 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            toTitleCase(row.patient?.title ?? 'Unknown'),
+                            toTitleCase(
+                              (row.patient?.title.trim().isNotEmpty == true)
+                                  ? row.patient!.title
+                                  : 'Unknown',
+                            ),
                             style: _cellTextStyle.copyWith(
                               fontWeight: FontWeight.w500,
                               color: Colors.blueGrey.shade700,
@@ -260,8 +267,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                             softWrap: true,
                             overflow: TextOverflow.visible,
                           ),
-                          if (row.patient != null &&
-                              row.patient?.phone.isNotEmpty == true)
+                          if (row.patient?.phone.isNotEmpty == true)
                             Text(
                               row.patient?.phone ?? "",
                               textAlign: TextAlign.start,

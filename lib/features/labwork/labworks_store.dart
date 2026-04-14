@@ -4,6 +4,7 @@ import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/demo_generator.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 
 import '../../core/save_local.dart';
 import '../../core/save_remote.dart';
@@ -75,6 +76,11 @@ class Labworks extends Store<Labwork> {
       'Denco',
       'cs-lab',
     };
+    labs.addAll(
+      localSettings.savedLabs.keys
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty),
+    );
     for (final doc in docs.values) {
       final lab = doc.lab.trim();
       if (lab.isNotEmpty) {
@@ -93,6 +99,10 @@ class Labworks extends Store<Labwork> {
   }
 
   String? getPhoneNumber(String lab) {
+    final savedPhone = localSettings.savedLabs[lab];
+    if (savedPhone != null && savedPhone.trim().isNotEmpty) {
+      return savedPhone.trim();
+    }
     for (var doc in docs.values) {
       if (doc.lab == lab) {
         return doc.phoneNumber;
