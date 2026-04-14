@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/dashboard/overall_due_helper.dart';
 import 'package:apexo/features/dashboard/patient_look_up.dart';
@@ -171,7 +172,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
   String _paymentMode(Appointment a) {
     final digital = a.treatmentGpayPaid || a.prescriptionGpayPaid;
-    return digital ? 'digital' : 'cash';
+    return digital ? 'upi' : 'cash';
   }
 
   static DateTime _dateOnly(DateTime input) {
@@ -267,6 +268,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           color: Colors.white,
           child: PatientDetailsDialog(
             rows: result.rows,
+            fromWhere: PatientDetailsSource.dashboard,
             hiddenColumns: const [
               'Treatment',
               'Teeth',
@@ -430,6 +432,172 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
     );
   }
 
+  DateTime _withCurrentTime(DateTime date) {
+    final now = DateTime.now();
+    return DateTime(date.year, date.month, date.day, now.hour, now.minute);
+  }
+
+  Future<void> _openAddAppointmentFromDashboard() async {
+    final queryController = TextEditingController();
+    String query = '';
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final allPatients = patients.present.values.toList(growable: false);
+        final todaysAppointments = appointments.forDate(selectedDate);
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final matches = allPatients
+                .where((p) {
+                  if (query.isEmpty) return true;
+                  final name = p.title.toLowerCase();
+                  final phone = p.phone.toLowerCase();
+                  return name.contains(query) || phone.contains(query);
+                })
+                .take(40)
+                .toList(growable: false);
+
+            return ContentDialog(
+              title: const Text('Add Appointment (Dashboard)'),
+              content: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextBox(
+                      controller: queryController,
+                      placeholder: 'Search by patient name or phone',
+                      autofocus: true,
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 10),
+                        child: Icon(
+                          FluentIcons.search,
+                          size: 12,
+                          color: Color(0xFF6D84A8),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setDialogState(
+                            () => query = value.trim().toLowerCase());
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 420),
+                      child: matches.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 30),
+                                child: Text(
+                                  'No matching patients.',
+                                  style: TextStyle(color: Color(0xFF6D84A8)),
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: matches.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(size: 1),
+                              itemBuilder: (context, index) {
+                                final patient = matches[index];
+                                final existing = todaysAppointments
+                                    .where((a) => a.patientID == patient.id)
+                                    .toList(growable: false)
+                                    .lastOrNull;
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                    vertical: 6,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              patient.title.trim().isEmpty
+                                                  ? 'Unnamed patient'
+                                                  : patient.title,
+                                              style: const TextStyle(
+                                                color: Color(0xFF1F446E),
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${patient.phone} • ${patient.age}y',
+                                              style: const TextStyle(
+                                                color: Color(0xFF6D84A8),
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (existing != null)
+                                        Button(
+                                          onPressed: () async {
+                                            Navigator.pop(dialogContext);
+                                            await openCheckinAppointmentModal(
+                                              context,
+                                              existing,
+                                            );
+                                          },
+                                          child: const Text('Open'),
+                                        )
+                                      else
+                                        FilledButton(
+                                          onPressed: () async {
+                                            final appointment =
+                                                Appointment.fromJson({
+                                              'patientID': patient.id,
+                                              'date': _withCurrentTime(
+                                                selectedDate,
+                                              ).millisecondsSinceEpoch,
+                                              'isCheckedIn': true,
+                                              'checkinStage': 'waiting',
+                                              'checkedInAt': DateTime.now()
+                                                  .millisecondsSinceEpoch,
+                                            });
+                                            appointments.set(appointment);
+                                            Navigator.pop(dialogContext);
+                                            await openCheckinAppointmentModal(
+                                              context,
+                                              appointment,
+                                            );
+                                          },
+                                          child: const Text('Check-in'),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Button(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
@@ -471,7 +639,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final treatmentFilterChip = _treatmentFilterChipLabel();
 
         final doctorRevenueSplit = <String, double>{};
-        final paymentModeCounts = <String, int>{'Cash': 0, 'GPay': 0};
+        final paymentModeCounts = <String, int>{'Cash': 0, 'UPI': 0};
 
         for (final a in todaysAppointments) {
           final totalPayment = a.paid + a.prescriptionPaid;
@@ -489,7 +657,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
           final isDigital = a.treatmentGpayPaid || a.prescriptionGpayPaid;
           if (isDigital) {
-            paymentModeCounts['GPay'] = (paymentModeCounts['GPay'] ?? 0) + 1;
+            paymentModeCounts['UPI'] = (paymentModeCounts['UPI'] ?? 0) + 1;
           } else {
             paymentModeCounts['Cash'] = (paymentModeCounts['Cash'] ?? 0) + 1;
           }
@@ -561,8 +729,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             color: const Color(0xFF7D8FA7),
                           ),
                           _TopDonutSegment(
-                            label: 'GPay',
-                            value: paymentModeCounts['GPay'] ?? 0,
+                            label: 'UPI',
+                            value: paymentModeCounts['UPI'] ?? 0,
                             color: const Color(0xFF2D7BD8),
                           ),
                         ],
@@ -734,6 +902,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                   ? _DashboardScreenV2State._filterAll
                                   : v;
                             }),
+                            onAddAppointment: _openAddAppointmentFromDashboard,
                           ),
                           const SizedBox(height: 10),
                           _TreatmentStatsCard(
@@ -760,9 +929,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             doctorFilterChip: doctorFilterChip,
                             treatmentFilterChip: treatmentFilterChip,
                             searchController: _searchController,
+                            selectedDate: selectedDate,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
                             onSort: _onSort,
+                            onPreviousDate: () => _changeDate(-1),
+                            onNextDate: () => _changeDate(1),
+                            onPickDate: () => _pickDate(context),
+                            onGoToday: _goToday,
+                            onAddAppointment: _openAddAppointmentFromDashboard,
                             onClearDoctorFilter: () => setState(() {
                               _selectedDoctorFilter =
                                   _DashboardScreenV2State._filterAll;
@@ -800,6 +975,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                           ? _DashboardScreenV2State._filterAll
                                           : v;
                                 }),
+                                onAddAppointment:
+                                    _openAddAppointmentFromDashboard,
                               ),
                               const SizedBox(height: 10),
                               _TreatmentStatsCard(
@@ -830,9 +1007,15 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             doctorFilterChip: doctorFilterChip,
                             treatmentFilterChip: treatmentFilterChip,
                             searchController: _searchController,
+                            selectedDate: selectedDate,
                             sortBy: _sortBy,
                             sortAscending: _sortAscending,
                             onSort: _onSort,
+                            onPreviousDate: () => _changeDate(-1),
+                            onNextDate: () => _changeDate(1),
+                            onPickDate: () => _pickDate(context),
+                            onGoToday: _goToday,
+                            onAddAppointment: _openAddAppointmentFromDashboard,
                             onClearDoctorFilter: () => setState(() {
                               _selectedDoctorFilter =
                                   _DashboardScreenV2State._filterAll;
@@ -1025,9 +1208,15 @@ class _RightDashboardColumn extends StatelessWidget {
   final String? doctorFilterChip;
   final String? treatmentFilterChip;
   final TextEditingController searchController;
+  final DateTime selectedDate;
   final String sortBy;
   final bool sortAscending;
   final ValueChanged<String> onSort;
+  final VoidCallback onPreviousDate;
+  final VoidCallback onNextDate;
+  final VoidCallback onPickDate;
+  final VoidCallback onGoToday;
+  final VoidCallback onAddAppointment;
   final VoidCallback onClearDoctorFilter;
   final VoidCallback onClearTreatmentFilter;
   final VoidCallback onClearFilters;
@@ -1039,9 +1228,15 @@ class _RightDashboardColumn extends StatelessWidget {
     required this.doctorFilterChip,
     required this.treatmentFilterChip,
     required this.searchController,
+    required this.selectedDate,
     required this.sortBy,
     required this.sortAscending,
     required this.onSort,
+    required this.onPreviousDate,
+    required this.onNextDate,
+    required this.onPickDate,
+    required this.onGoToday,
+    required this.onAddAppointment,
     required this.onClearDoctorFilter,
     required this.onClearTreatmentFilter,
     required this.onClearFilters,
@@ -1058,9 +1253,15 @@ class _RightDashboardColumn extends StatelessWidget {
           doctorFilterChip: doctorFilterChip,
           treatmentFilterChip: treatmentFilterChip,
           searchController: searchController,
+          selectedDate: selectedDate,
           sortBy: sortBy,
           sortAscending: sortAscending,
           onSort: onSort,
+          onPreviousDate: onPreviousDate,
+          onNextDate: onNextDate,
+          onPickDate: onPickDate,
+          onGoToday: onGoToday,
+          onAddAppointment: onAddAppointment,
           onClearDoctorFilter: onClearDoctorFilter,
           onClearTreatmentFilter: onClearTreatmentFilter,
           onClearFilters: onClearFilters,
@@ -1075,12 +1276,14 @@ class _DoctorScheduleCard extends StatelessWidget {
   final Map<String, double> doctorRevenueSplit;
   final String selectedFilter;
   final ValueChanged<String> onFilterChanged;
+  final VoidCallback onAddAppointment;
 
   const _DoctorScheduleCard({
     required this.todaysAppointments,
     required this.doctorRevenueSplit,
     required this.selectedFilter,
     required this.onFilterChanged,
+    required this.onAddAppointment,
   });
 
   @override
@@ -1172,7 +1375,7 @@ class _DoctorScheduleCard extends StatelessWidget {
               ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: () => openAppointment(Appointment.fromJson({})),
+            onPressed: onAddAppointment,
             style: ButtonStyle(
               backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
               shape: WidgetStateProperty.all(
@@ -1305,9 +1508,15 @@ class _AppointmentsTableCard extends StatelessWidget {
   final String? doctorFilterChip;
   final String? treatmentFilterChip;
   final TextEditingController searchController;
+  final DateTime selectedDate;
   final String sortBy;
   final bool sortAscending;
   final ValueChanged<String> onSort;
+  final VoidCallback onPreviousDate;
+  final VoidCallback onNextDate;
+  final VoidCallback onPickDate;
+  final VoidCallback onGoToday;
+  final VoidCallback onAddAppointment;
   final VoidCallback onClearDoctorFilter;
   final VoidCallback onClearTreatmentFilter;
   final VoidCallback onClearFilters;
@@ -1319,9 +1528,15 @@ class _AppointmentsTableCard extends StatelessWidget {
     required this.doctorFilterChip,
     required this.treatmentFilterChip,
     required this.searchController,
+    required this.selectedDate,
     required this.sortBy,
     required this.sortAscending,
     required this.onSort,
+    required this.onPreviousDate,
+    required this.onNextDate,
+    required this.onPickDate,
+    required this.onGoToday,
+    required this.onAddAppointment,
     required this.onClearDoctorFilter,
     required this.onClearTreatmentFilter,
     required this.onClearFilters,
@@ -1340,116 +1555,128 @@ class _AppointmentsTableCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Today\'s Appointments',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF183A67)),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    duplicateText,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF637EA3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Today\'s Appointments',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF183A67)),
                     ),
-                  ),
-                  if (doctorFilterChip != null ||
-                      treatmentFilterChip != null) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (doctorFilterChip != null)
-                          _FilterChipTag(
-                            label: doctorFilterChip!,
-                            onRemove: onClearDoctorFilter,
-                          ),
-                        if (treatmentFilterChip != null)
-                          _FilterChipTag(
-                            label: treatmentFilterChip!,
-                            onRemove: onClearTreatmentFilter,
-                          ),
-                        Text(
-                          '${rows.length} results',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF5A7397),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: onClearFilters,
-                          child: const Text(
-                            'Clear all',
-                            style: TextStyle(
-                              color: Color(0xFF2D7BD8),
-                              fontWeight: FontWeight.w700,
+                    const SizedBox(height: 2),
+                    Text(
+                      duplicateText,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF637EA3),
+                      ),
+                    ),
+                    if (doctorFilterChip != null ||
+                        treatmentFilterChip != null) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (doctorFilterChip != null)
+                            _FilterChipTag(
+                              label: doctorFilterChip!,
+                              onRemove: onClearDoctorFilter,
+                            ),
+                          if (treatmentFilterChip != null)
+                            _FilterChipTag(
+                              label: treatmentFilterChip!,
+                              onRemove: onClearTreatmentFilter,
+                            ),
+                          Text(
+                            '${rows.length} results',
+                            style: const TextStyle(
                               fontSize: 12,
+                              color: Color(0xFF5A7397),
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
+                          GestureDetector(
+                            onTap: onClearFilters,
+                            child: const Text(
+                              'Clear all',
+                              style: TextStyle(
+                                color: Color(0xFF2D7BD8),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _DateNavigator(
+                selectedDate: selectedDate,
+                onPrevious: onPreviousDate,
+                onNext: onNextDate,
+                onPick: onPickDate,
+                onToday: onGoToday,
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 370,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextBox(
+                        placeholder: 'Search patient name or phone',
+                        controller: searchController,
+                        prefix: const Padding(
+                          padding: EdgeInsets.only(left: 8),
+                          child: Icon(
+                            FluentIcons.search,
+                            size: 12,
+                            color: Color(0xFF6D84A8),
+                          ),
                         ),
-                      ],
+                        suffix: searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(FluentIcons.clear),
+                                onPressed: () => searchController.clear(),
+                              )
+                            : null,
+                        placeholderStyle:
+                            const TextStyle(color: Color(0xFF6D84A8)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton(
+                      onPressed: onAddAppointment,
+                      style: ButtonStyle(
+                        backgroundColor:
+                            WidgetStateProperty.all(const Color(0xFF1A74DB)),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(FluentIcons.add, size: 13, color: Colors.white),
+                          SizedBox(width: 6),
+                          Text(
+                            'Add Appointment',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ],
-              ),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 280,
-                    child: TextBox(
-                      placeholder: 'Search patient name or phone',
-                      controller: searchController,
-                      prefix: const Padding(
-                        padding: EdgeInsets.only(left: 8),
-                        child: Icon(
-                          FluentIcons.search,
-                          size: 12,
-                          color: Color(0xFF6D84A8),
-                        ),
-                      ),
-                      suffix: searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(FluentIcons.clear),
-                              onPressed: () => searchController.clear(),
-                            )
-                          : null,
-                      placeholderStyle:
-                          const TextStyle(color: Color(0xFF6D84A8)),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  FilledButton(
-                    onPressed: () => openAppointment(Appointment.fromJson({})),
-                    style: ButtonStyle(
-                      backgroundColor:
-                          WidgetStateProperty.all(const Color(0xFF1A74DB)),
-                      shape: WidgetStateProperty.all(
-                        RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(FluentIcons.add, size: 13, color: Colors.white),
-                        SizedBox(width: 6),
-                        Text(
-                          'Add Appointment',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
@@ -1699,6 +1926,10 @@ class _AppointmentRow extends StatelessWidget {
     openLabworkV2Dialog(context, draft);
   }
 
+  Future<void> _openEditTreatmentModal(BuildContext context) async {
+    await openCheckinAppointmentModal(context, appointment);
+  }
+
   @override
   Widget build(BuildContext context) {
     final doctorName = appointment.operators.isEmpty
@@ -1793,9 +2024,9 @@ class _AppointmentRow extends StatelessWidget {
               children: [
                 isDigital
                     ? Image.asset(
-                        'assets/gpay.jpg',
-                        width: 14,
-                        height: 14,
+                        'assets/gpay.png',
+                        width: 16,
+                        height: 16,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const Icon(
                           FluentIcons.receipt_processing,
@@ -1810,7 +2041,7 @@ class _AppointmentRow extends StatelessWidget {
                       ),
                 const SizedBox(width: 4),
                 Text(
-                  isDigital ? 'GPay' : 'Cash',
+                  isDigital ? 'UPI' : 'Cash',
                   style: const TextStyle(
                     color: Color(0xFF2D476D),
                     fontWeight: FontWeight.w600,
@@ -1833,6 +2064,14 @@ class _AppointmentRow extends StatelessWidget {
             flex: 10,
             child: Row(
               children: [
+                _ActionIconButton(
+                  tooltip: 'Edit Treatment',
+                  icon: FluentIcons.edit,
+                  color: const Color(0xFF8267D6),
+                  hoverColor: const Color(0xFFF1EDFB),
+                  onTap: () => _openEditTreatmentModal(context),
+                ),
+                const SizedBox(width: 10),
                 _ActionIconButton(
                   tooltip: 'History',
                   icon: FluentIcons.history,
@@ -1915,14 +2154,14 @@ class _ActionIconButtonState extends State<_ActionIconButton> {
           onTap: widget.onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: _hovered ? widget.hoverColor : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Icon(
               widget.icon,
-              size: 13,
+              size: 16,
               color: widget.color,
             ),
           ),

@@ -40,6 +40,96 @@ String _toTitleCase(String input) {
   }).join(' ');
 }
 
+Future<void> openCheckinAppointmentModal(
+  BuildContext context,
+  Appointment appointment,
+) async {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final popupWidth = screenWidth < 760 ? screenWidth - 20 : 540.0;
+  final popupTitle = appointment.title.trim().isEmpty
+      ? 'Patient Details'
+      : '${_toTitleCase(appointment.title)} • ${appointment.checkinStage == 'with_doctor' ? 'Treatment' : appointment.checkinStage == 'checkout' ? 'Billing' : appointment.checkinStage == 'completed' ? 'Completed' : 'Check-in'}';
+
+  await showDialog<void>(
+    context: context,
+    barrierColor: const Color(0x660A1B33),
+    builder: (dialogContext) => SafeArea(
+      child: Align(
+        alignment: Alignment.center,
+        child: Container(
+          width: popupWidth,
+          height: screenWidth < 760
+              ? null
+              : MediaQuery.of(context).size.height * 0.9,
+          margin: const EdgeInsets.fromLTRB(10, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x2A0D2F5B),
+                blurRadius: 24,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: appointment.checkinStage == 'completed'
+                        ? const [Color(0xFF2BA58D), Color(0xFF1D8D77)]
+                        : appointment.checkinStage == 'checkout'
+                            ? const [Color(0xFF2D7BD8), Color(0xFF1D61B8)]
+                            : appointment.checkinStage == 'with_doctor'
+                                ? const [Color(0xFF5A84E6), Color(0xFF3F68CC)]
+                                : const [Color(0xFFE4A11B), Color(0xFFD28C02)],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(14),
+                    topRight: Radius.circular(14),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        popupTitle,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(FluentIcons.cancel, size: 12),
+                      style: ButtonStyle(
+                        foregroundColor: WidgetStateProperty.all(Colors.white),
+                      ),
+                      onPressed: () => Navigator.pop(dialogContext),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(12),
+                  child: _CheckinHistoryDetails(appointment: appointment),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class CheckinScreen extends StatefulWidget {
   const CheckinScreen({super.key});
 
@@ -127,94 +217,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   }
 
   Future<void> _openAppointmentPopup(Appointment appointment) async {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final popupWidth = screenWidth < 760 ? screenWidth - 20 : 540.0;
-    final popupTitle = appointment.title.trim().isEmpty
-        ? 'Patient Details'
-        : '${_toTitleCase(appointment.title)} • ${appointment.checkinStage == 'with_doctor' ? 'Treatment' : appointment.checkinStage == 'checkout' ? 'Billing' : appointment.checkinStage == 'completed' ? 'Completed' : 'Check-in'}';
-
-    await showDialog<void>(
-      context: context,
-      barrierColor: const Color(0x660A1B33),
-      builder: (dialogContext) => SafeArea(
-        child: Align(
-          alignment: Alignment.center,
-          child: Container(
-            width: popupWidth,
-            height: screenWidth < 760
-                ? null
-                : MediaQuery.of(context).size.height * 0.9,
-            margin: const EdgeInsets.fromLTRB(10, 12, 12, 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x2A0D2F5B),
-                  blurRadius: 24,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: appointment.checkinStage == 'completed'
-                          ? const [Color(0xFF2BA58D), Color(0xFF1D8D77)]
-                          : appointment.checkinStage == 'checkout'
-                              ? const [Color(0xFF2D7BD8), Color(0xFF1D61B8)]
-                              : appointment.checkinStage == 'with_doctor'
-                                  ? const [Color(0xFF5A84E6), Color(0xFF3F68CC)]
-                                  : const [
-                                      Color(0xFFE4A11B),
-                                      Color(0xFFD28C02)
-                                    ],
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      topRight: Radius.circular(14),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          popupTitle,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(FluentIcons.cancel, size: 12),
-                        style: ButtonStyle(
-                          foregroundColor:
-                              WidgetStateProperty.all(Colors.white),
-                        ),
-                        onPressed: () => Navigator.pop(dialogContext),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(12),
-                    child: _CheckinHistoryDetails(appointment: appointment),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    await openCheckinAppointmentModal(context, appointment);
   }
 
   void _selectAndOpenAppointment(Appointment appointment) {
@@ -1575,8 +1578,7 @@ class _WorkflowRow extends StatelessWidget {
                   Tooltip(
                     message: 'Schedule Appointment',
                     child: IconButton(
-                      icon: const Icon(material.Icons.calendar_month,
-                          size: 22),
+                      icon: const Icon(material.Icons.calendar_month, size: 22),
                       style: ButtonStyle(
                         backgroundColor:
                             WidgetStateProperty.all(const Color(0xFFEAF2FF)),

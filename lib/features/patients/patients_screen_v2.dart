@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
+import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -157,202 +158,43 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     required String metricLabel,
     required Map<String, List<Appointment>> visitsByPatient,
   }) {
+    final extraPatients =
+        rows.skip(10).map((entry) => entry.key).toSet().toList(growable: false);
+    final detailRows = extraPatients
+        .expand((patient) => patient.patientDetails)
+        .toList(growable: false)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
     showDialog<void>(
       context: context,
-      builder: (dialogContext) {
-        final extraRows = rows.skip(10).toList(growable: false);
-
-        return ContentDialog(
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '$title (${rows.length})',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(FluentIcons.chrome_close, size: 12),
-                onPressed: () => Navigator.of(dialogContext).pop(),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: 920,
-            height: 560,
-            child: extraRows.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No additional patients to show.',
-                      style: TextStyle(color: Color(0xFF5B789F)),
-                    ),
-                  )
-                : Scrollbar(
-                    child: ListView.separated(
-                      itemCount: extraRows.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final entry = extraRows[index];
-                        final patient = entry.key;
-                        final visits = visitsByPatient[patient.id] ??
-                            const <Appointment>[];
-
-                        final topTreatments = <String, int>{};
-                        for (final visit in visits) {
-                          for (final treatment in visit.selectedTreatments) {
-                            final normalized = treatment.trim();
-                            if (normalized.isEmpty) continue;
-                            topTreatments[normalized] =
-                                (topTreatments[normalized] ?? 0) + 1;
-                          }
-                        }
-                        final sortedTreatments = topTreatments.entries.toList()
-                          ..sort((a, b) => b.value.compareTo(a.value));
-
-                        final totalPaid = visits.fold<double>(
-                          0,
-                          (sum, v) => sum + v.paid + v.prescriptionPaid,
-                        );
-                        final lastVisit = visits.isEmpty
-                            ? '-'
-                            : DateFormat('dd MMM yyyy')
-                                .format(visits.last.date);
-
-                        return DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFD8E5F4)),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        patient.title.trim().isEmpty
-                                            ? 'Unnamed patient'
-                                            : patient.title,
-                                        style: const TextStyle(
-                                          color: Color(0xFF1E3E67),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFEAF2FF),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        '${entry.value} $metricLabel',
-                                        style: const TextStyle(
-                                          color: Color(0xFF1459AD),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Phone: ${patient.phone.isEmpty ? '-' : patient.phone}  |  Age: ${patient.age}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF5F7DA1),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Visits: ${visits.length}  |  Last Visit: $lastVisit',
-                                  style: const TextStyle(
-                                    color: Color(0xFF5F7DA1),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Paid So Far: ₹${totalPaid.toStringAsFixed(0)}  |  Outstanding: ₹${patient.outstandingPayments.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    color: patient.outstandingPayments > 0
-                                        ? const Color(0xFFD6455D)
-                                        : const Color(0xFF2BA58D),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: sortedTreatments.take(6).map((t) {
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F6FD),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                        border: Border.all(
-                                            color: const Color(0xFFD7E4F5)),
-                                      ),
-                                      child: Text(
-                                        '${t.key} (${t.value})',
-                                        style: const TextStyle(
-                                          color: Color(0xFF2F5B88),
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(growable: false),
-                                ),
-                                const SizedBox(height: 8),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: FilledButton(
-                                    style: ButtonStyle(
-                                      backgroundColor: WidgetStateProperty.all(
-                                          const Color(0xFF2D7BD8)),
-                                    ),
-                                    onPressed: () {
-                                      Navigator.of(dialogContext).pop();
-                                      _openPatientHistoryDialog(patient);
-                                    },
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(FluentIcons.history, size: 12),
-                                        SizedBox(width: 6),
-                                        Text('Open History'),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+      builder: (_) => Align(
+        alignment: Alignment.center,
+        child: Container(
+          color: Colors.white,
+          child: detailRows.isEmpty
+              ? ContentDialog(
+                  title: Text('$title (${rows.length})'),
+                  content: Text(
+                    'No additional $metricLabel rows to show.',
+                    style: const TextStyle(color: Color(0xFF5B789F)),
                   ),
-          ),
-          actions: [
-            Button(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
+                  actions: [
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                )
+              : PatientDetailsDialog(
+                  rows: detailRows,
+                  fromWhere: PatientDetailsSource.dashboard,
+                  hiddenColumns: const [
+                    'Doc Paid',
+                    'TotalDocPay',
+                  ],
+                ),
+        ),
+      ),
     );
   }
 
@@ -623,7 +465,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     String? ageError;
     String? phoneError;
 
-    void savePatient({required bool allowInvalidNameOrPhone}) {
+    void savePatient() {
       final rawName = nameController.text.trim();
       final parsedAge = int.tryParse(ageController.text.trim()) ?? 0;
       final rawPhone = phoneController.text.trim();
@@ -639,8 +481,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       phoneError = computedPhoneError;
 
       if (computedAgeError != null) return;
-      if (!allowInvalidNameOrPhone &&
-          (computedNameError != null || computedPhoneError != null)) {
+      if (computedNameError != null || computedPhoneError != null) {
         return;
       }
 
@@ -890,19 +731,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Close'),
             ),
-            if (nameError != null || phoneError != null)
-              Button(
-                onPressed: () {
-                  setStateDialog(() {
-                    savePatient(allowInvalidNameOrPhone: true);
-                  });
-                },
-                child: const Text('Save Anyway'),
-              ),
             FilledButton(
               onPressed: () {
                 setStateDialog(() {
-                  savePatient(allowInvalidNameOrPhone: false);
+                  savePatient();
                 });
               },
               child: const Text('Save'),
