@@ -119,6 +119,18 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
           ),
         ),
         const Spacer(),
+        Button(
+          onPressed: _openAddLabDialog,
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(FluentIcons.add_friend, size: 14),
+              SizedBox(width: 6),
+              Text('Add Lab'),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
         FilledButton(
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
@@ -183,12 +195,21 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     final labs = ['all', ...labworks.allLabs.toSet()]
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FBFF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD6E2F0)),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           SizedBox(
-            width: 360,
+            width: 320,
             child: TextBox(
               textAlign: TextAlign.left,
               controller: _searchCtrl,
@@ -203,9 +224,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
           SizedBox(
-            width: 200,
+            width: 210,
             child: ComboBox<String>(
               value: _labFilter,
               items: labs
@@ -222,7 +242,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               },
             ),
           ),
-          const SizedBox(width: 8),
           _dropFilter(
             width: 150,
             value: _rangeFilter,
@@ -247,7 +266,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               });
             },
           ),
-          const SizedBox(width: 8),
           _dropFilter(
             width: 130,
             value: _paymentFilter,
@@ -258,7 +276,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
             },
             onChanged: (v) => setState(() => _paymentFilter = v),
           ),
-          const SizedBox(width: 8),
           _dropFilter(
             width: 140,
             value: _statusFilter,
@@ -271,16 +288,71 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
             onChanged: (v) => setState(() => _statusFilter = v),
           ),
           if (_rangeFilter == 'custom' && (_fromDate != null || _toDate != null))
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF2FF),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0xFFD2E1F6)),
+              ),
               child: Text(
                 '${DateFormat('dd MMM').format(_fromDate ?? _toDate!)} - ${DateFormat('dd MMM').format(_toDate ?? _fromDate!)}',
                 style: const TextStyle(
                   color: Color(0xFF2D4A70),
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openAddLabDialog() async {
+    final labController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: const Text('Add New Lab'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextBox(
+                controller: labController,
+                placeholder: 'Lab name',
+              ),
+              const SizedBox(height: 10),
+              TextBox(
+                controller: phoneController,
+                placeholder: 'Phone (optional)',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = labController.text.trim();
+              if (name.isEmpty) return;
+              Navigator.pop(dialogContext);
+              final draft = Labwork.fromJson({
+                'lab': name,
+                'phoneNumber': phoneController.text.trim(),
+                'date': DateTime.now().millisecondsSinceEpoch,
+              });
+              openLabworkV2Dialog(context, draft);
+            },
+            child: const Text('Continue'),
+          ),
         ],
       ),
     );

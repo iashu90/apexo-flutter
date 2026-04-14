@@ -16,6 +16,7 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
+import 'package:apexo/common_widgets/report_table_modal_v2.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
@@ -260,28 +261,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
       patientsById: patients.present,
     );
 
-    showDialog(
+    showReportTableModalV2(
       context: context,
-      builder: (_) => Align(
-        alignment: Alignment.center,
-        child: Container(
-          color: Colors.white,
-          child: PatientDetailsDialog(
-            rows: result.rows,
-            fromWhere: PatientDetailsSource.dashboard,
-            hiddenColumns: const [
-              'Treatment',
-              'Teeth',
-              'Prescription',
-              'Date',
-              'T.Mode',
-              'P.Mode',
-              'Doc Paid',
-              'TotalDocPay',
-            ],
-          ),
-        ),
-      ),
+      title: 'Outstanding Balance',
+      rows: result.rows,
+      hiddenColumns: const [
+        'Prescription',
+        'Teeth',
+        'Doc Paid',
+        'TotalDocPay',
+      ],
     );
   }
 
@@ -1555,6 +1544,7 @@ class _AppointmentsTableCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -1618,64 +1608,77 @@ class _AppointmentsTableCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              _DateNavigator(
-                selectedDate: selectedDate,
-                onPrevious: onPreviousDate,
-                onNext: onNextDate,
-                onPick: onPickDate,
-                onToday: onGoToday,
+              Expanded(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: _DateNavigator(
+                    selectedDate: selectedDate,
+                    onPrevious: onPreviousDate,
+                    onNext: onNextDate,
+                    onPick: onPickDate,
+                    onToday: onGoToday,
+                    showBorder: false,
+                  ),
+                ),
               ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 370,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextBox(
-                        placeholder: 'Search patient name or phone',
-                        controller: searchController,
-                        prefix: const Padding(
-                          padding: EdgeInsets.only(left: 8),
-                          child: Icon(
-                            FluentIcons.search,
-                            size: 12,
-                            color: Color(0xFF6D84A8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: SizedBox(
+                    width: 370,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextBox(
+                            placeholder: 'Search patient name or phone',
+                            controller: searchController,
+                            prefix: const Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Icon(
+                                FluentIcons.search,
+                                size: 12,
+                                color: Color(0xFF6D84A8),
+                              ),
+                            ),
+                            suffix: searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(FluentIcons.clear),
+                                    onPressed: () => searchController.clear(),
+                                  )
+                                : null,
+                            placeholderStyle:
+                                const TextStyle(color: Color(0xFF6D84A8)),
                           ),
                         ),
-                        suffix: searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(FluentIcons.clear),
-                                onPressed: () => searchController.clear(),
-                              )
-                            : null,
-                        placeholderStyle:
-                            const TextStyle(color: Color(0xFF6D84A8)),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    FilledButton(
-                      onPressed: onAddAppointment,
-                      style: ButtonStyle(
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFF1A74DB)),
-                        shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(FluentIcons.add, size: 13, color: Colors.white),
-                          SizedBox(width: 6),
-                          Text(
-                            'Add Appointment',
-                            style: TextStyle(color: Colors.white),
+                        const SizedBox(width: 10),
+                        FilledButton(
+                          onPressed: onAddAppointment,
+                          style: ButtonStyle(
+                            backgroundColor:
+                                WidgetStateProperty.all(const Color(0xFF1A74DB)),
+                            shape: WidgetStateProperty.all(
+                              RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
                           ),
-                        ],
-                      ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                FluentIcons.add,
+                                size: 13,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Add Appointment',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -2016,7 +2019,10 @@ class _AppointmentRow extends StatelessWidget {
           ),
           Expanded(
             flex: 12,
-            child: _StatusBadge(done: appointment.isDone),
+            child: _StatusBadge(
+              done: appointment.isDone,
+              stage: appointment.checkinStage,
+            ),
           ),
           Expanded(
             flex: 12,
@@ -2173,12 +2179,27 @@ class _ActionIconButtonState extends State<_ActionIconButton> {
 
 class _StatusBadge extends StatelessWidget {
   final bool done;
+  final String? stage;
 
-  const _StatusBadge({required this.done});
+  const _StatusBadge({required this.done, this.stage});
 
   @override
   Widget build(BuildContext context) {
+    String? pendingSubtext() {
+      if (done) return null;
+      final normalized = (stage ?? '').trim().toLowerCase();
+      if (normalized == 'waiting' || normalized == 'pending') return 'Waiting';
+      if (normalized == 'with_doctor' || normalized == 'treatment') {
+        return 'Treatment';
+      }
+      if (normalized == 'checkout') return 'Billing';
+      return null;
+    }
+
+    final subtext = pendingSubtext();
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
           done ? material.Icons.check_circle : material.Icons.circle,
@@ -2186,13 +2207,27 @@ class _StatusBadge extends StatelessWidget {
           color: done ? const Color(0xFF3B9A42) : const Color(0xFFE4A11B),
         ),
         const SizedBox(width: 4),
-        Text(
-          done ? 'Completed' : 'Pending',
-          style: TextStyle(
-            fontSize: 12,
-            color: done ? const Color(0xFF3B9A42) : const Color(0xFFE4A11B),
-            fontWeight: FontWeight.w600,
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              done ? 'Completed' : 'Pending',
+              style: TextStyle(
+                fontSize: 12,
+                color: done ? const Color(0xFF3B9A42) : const Color(0xFFE4A11B),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (subtext != null)
+              Text(
+                subtext,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF7C93B1),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
         ),
       ],
     );
@@ -2386,6 +2421,7 @@ class _DateNavigator extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onPick;
   final VoidCallback onToday;
+  final bool showBorder;
 
   const _DateNavigator({
     required this.selectedDate,
@@ -2393,6 +2429,7 @@ class _DateNavigator extends StatelessWidget {
     required this.onNext,
     required this.onPick,
     required this.onToday,
+    this.showBorder = true,
   });
 
   ButtonStyle get _dateButtonStyle {
@@ -2430,7 +2467,9 @@ class _DateNavigator extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFD6E2F0)),
+            border: showBorder
+                ? Border.all(color: const Color(0xFFD6E2F0))
+                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

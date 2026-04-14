@@ -46,9 +46,18 @@ Future<void> openCheckinAppointmentModal(
 ) async {
   final screenWidth = MediaQuery.of(context).size.width;
   final popupWidth = screenWidth < 760 ? screenWidth - 20 : 540.0;
+  final normalizedStage = appointment.checkinStage.trim().toLowerCase();
+  final stageLabel = normalizedStage == 'with_doctor' ||
+          normalizedStage == 'treatment'
+      ? 'Treatment'
+      : normalizedStage == 'checkout'
+          ? 'Billing'
+          : normalizedStage == 'completed'
+              ? 'Completed'
+              : 'Check-in';
   final popupTitle = appointment.title.trim().isEmpty
       ? 'Patient Details'
-      : '${_toTitleCase(appointment.title)} • ${appointment.checkinStage == 'with_doctor' ? 'Treatment' : appointment.checkinStage == 'checkout' ? 'Billing' : appointment.checkinStage == 'completed' ? 'Completed' : 'Check-in'}';
+      : '${_toTitleCase(appointment.title)} • $stageLabel';
 
   await showDialog<void>(
     context: context,
@@ -85,7 +94,8 @@ Future<void> openCheckinAppointmentModal(
                         ? const [Color(0xFF2BA58D), Color(0xFF1D8D77)]
                         : appointment.checkinStage == 'checkout'
                             ? const [Color(0xFF2D7BD8), Color(0xFF1D61B8)]
-                            : appointment.checkinStage == 'with_doctor'
+                        : (appointment.checkinStage == 'with_doctor' ||
+                            appointment.checkinStage == 'treatment')
                                 ? const [Color(0xFF5A84E6), Color(0xFF3F68CC)]
                                 : const [Color(0xFFE4A11B), Color(0xFFD28C02)],
                   ),
@@ -117,10 +127,7 @@ Future<void> openCheckinAppointmentModal(
                 ),
               ),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
-                  child: _CheckinHistoryDetails(appointment: appointment),
-                ),
+                child: _CheckinHistoryDetails(appointment: appointment),
               ),
             ],
           ),
@@ -1069,6 +1076,10 @@ class _WorkflowRow extends StatelessWidget {
     if (p == null) return;
 
     DateTime nextDate = DateTime.now().add(const Duration(days: 7));
+    material.TimeOfDay nextTime = material.TimeOfDay(
+      hour: nextDate.hour,
+      minute: nextDate.minute,
+    );
     final selectedDoctors = appointment.operatorsIDs.toSet();
 
     await showDialog<void>(
@@ -1111,12 +1122,42 @@ class _WorkflowRow extends StatelessWidget {
                               picked.year,
                               picked.month,
                               picked.day,
-                              10,
-                              0,
+                              nextTime.hour,
+                              nextTime.minute,
                             );
                           });
                         },
                         child: Text(DateFormat('dd MMM yyyy').format(nextDate)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text(
+                        'Time:',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () async {
+                          final picked = await material.showTimePicker(
+                            context: context,
+                            initialTime: nextTime,
+                          );
+                          if (picked == null) return;
+                          setStateDialog(() {
+                            nextTime = picked;
+                            nextDate = DateTime(
+                              nextDate.year,
+                              nextDate.month,
+                              nextDate.day,
+                              picked.hour,
+                              picked.minute,
+                            );
+                          });
+                        },
+                        child: Text(nextTime.format(context)),
                       ),
                     ],
                   ),
@@ -1189,11 +1230,18 @@ class _WorkflowRow extends StatelessWidget {
               ),
               FilledButton(
                 onPressed: () {
+                  final scheduledDate = DateTime(
+                    nextDate.year,
+                    nextDate.month,
+                    nextDate.day,
+                    nextTime.hour,
+                    nextTime.minute,
+                  );
                   Navigator.pop(dialogContext);
                   final nextAppointment = Appointment.fromJson({
                     'patientID': p.id,
                     'operatorsIDs': selectedDoctors.toList(growable: false),
-                    'date': nextDate.millisecondsSinceEpoch,
+                    'date': scheduledDate.millisecondsSinceEpoch,
                     'checkinStage': 'pending',
                   });
                   openAppointment(nextAppointment);
@@ -1528,8 +1576,16 @@ class _WorkflowRow extends StatelessWidget {
                   Tooltip(
                     message: 'Undo',
                     child: IconButton(
-                      icon: const Icon(material.Icons.undo_rounded, size: 20),
+                      icon: const Icon(material.Icons.undo_rounded, size: 16),
                       style: ButtonStyle(
+                        padding: WidgetStateProperty.all(
+                          const EdgeInsets.all(6),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
                         backgroundColor:
                             WidgetStateProperty.all(const Color(0xFFFFF4E8)),
                         foregroundColor:
@@ -1553,9 +1609,17 @@ class _WorkflowRow extends StatelessWidget {
                             : stage == 'with_doctor'
                                 ? material.Icons.receipt_long_rounded
                                 : material.Icons.task_alt_rounded,
-                        size: 22,
+                        size: 16,
                       ),
                       style: ButtonStyle(
+                        padding: WidgetStateProperty.all(
+                          const EdgeInsets.all(6),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
                         backgroundColor: WidgetStateProperty.all(
                           stage == 'waiting'
                               ? const Color(0xFFEAF2FF)
@@ -1578,8 +1642,16 @@ class _WorkflowRow extends StatelessWidget {
                   Tooltip(
                     message: 'Schedule Appointment',
                     child: IconButton(
-                      icon: const Icon(material.Icons.calendar_month, size: 22),
+                      icon: const Icon(material.Icons.calendar_month, size: 16),
                       style: ButtonStyle(
+                        padding: WidgetStateProperty.all(
+                          const EdgeInsets.all(6),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
                         backgroundColor:
                             WidgetStateProperty.all(const Color(0xFFEAF2FF)),
                         foregroundColor:
@@ -1823,246 +1895,461 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         .take(20)
         .toList(growable: false);
 
-    if (appointment.checkinStage == 'checkout') {
-      return _CheckinOperativeForm(
-        appointment: appointment,
-        allAppointmentsForPatient: all,
-      );
-    }
-
     final lastAppointment = otherRows.isNotEmpty ? otherRows.first : null;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          patient?.title.trim().isNotEmpty == true
-              ? _toTitleCase(patient!.title)
-              : appointment.title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF183A67),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Text(
-              patient?.phone ?? '-',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF6D84A8)),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAF2FC),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0xFFD5E5F7)),
-              ),
-              child: Text(
-                '${age}y',
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFF1459AD),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: () => _changeDoctor(appointment),
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Doctor:',
-                  style: TextStyle(
-                    color: Color(0xFF6D84A8),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: 6),
                 Text(
-                  doctorName.trim().isEmpty ? 'Unnamed doctor' : doctorName,
+                  patient?.title.trim().isNotEmpty == true
+                      ? _toTitleCase(patient!.title)
+                      : appointment.title,
                   style: const TextStyle(
-                    color: Color(0xFF1459AD),
-                    fontSize: 12,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
+                    color: Color(0xFF183A67),
                   ),
                 ),
-                const SizedBox(width: 4),
-                const Icon(FluentIcons.chevron_down, size: 10),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      patient?.phone ?? '-',
+                      style:
+                          const TextStyle(fontSize: 12, color: Color(0xFF6D84A8)),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF2FC),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFD5E5F7)),
+                      ),
+                      child: Text(
+                        '${age}y',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Color(0xFF1459AD),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => _changeDoctor(appointment),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Doctor:',
+                          style: TextStyle(
+                            color: Color(0xFF6D84A8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          doctorName.trim().isEmpty ? 'Unnamed doctor' : doctorName,
+                          style: const TextStyle(
+                            color: Color(0xFF1459AD),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(FluentIcons.chevron_down, size: 10),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _LastAppointmentInsightCard(
+                        lastAppointment: lastAppointment,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _PatientJourneyTimeline(
+                        appointments: all,
+                        excludeDate: appointment.date,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (appointment.checkinStage == 'with_doctor' ||
+                    appointment.checkinStage == 'checkout')
+                  _CheckinOperativeForm(
+                    appointment: appointment,
+                    allAppointmentsForPatient: all,
+                    showInlineBottomActions: false,
+                  )
+                else
+                  const SizedBox.shrink(),
+                if (appointment.checkinStage == 'completed') ...[
+                  const SizedBox(height: 8),
+                  TodayAppointmentInsightCard(appointment: appointment),
+                ],
+                const SizedBox(height: 10),
+                if (patientNotes.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7FBFF),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2ECF8)),
+                    ),
+                    child: Text(
+                      'Patient Notes: $patientNotes',
+                      style:
+                          const TextStyle(color: Color(0xFF5F789B), fontSize: 12),
+                    ),
+                  ),
+                if (otherRows.isEmpty) const SizedBox.shrink(),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        _buildFixedFooterActions(appointment),
+      ],
+    );
+  }
+
+  Widget _buildFixedFooterActions(Appointment appointment) {
+    final stage = appointment.checkinStage.trim().toLowerCase();
+    if (stage == 'waiting') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+            ),
+            onPressed: () async {
+              final pickedDoctorIds = await showDialog<List<String>>(
+                context: context,
+                builder: (dialogContext) {
+                  String? selectedDoctorId = appointment.operatorsIDs.isEmpty
+                      ? null
+                      : appointment.operatorsIDs.first;
+                  String? validationError;
+                  final doctorEntries = doctors.present.values
+                      .map(
+                        (d) => MapEntry(
+                          d.id,
+                          d.title.trim().isEmpty ? 'Unnamed doctor' : d.title,
+                        ),
+                      )
+                      .toList(growable: false)
+                    ..sort((a, b) =>
+                        a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+                  return StatefulBuilder(
+                    builder: (context, setDialogState) => ContentDialog(
+                      title: const Text('Assign doctor to check-in'),
+                      content: SizedBox(
+                        width: 360,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (doctorEntries.isEmpty)
+                              const Text('No doctors available to assign.')
+                            else
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: doctorEntries
+                                    .map(
+                                      (entry) {
+                                        final selected =
+                                            selectedDoctorId == entry.key;
+                                        return GestureDetector(
+                                          onTap: () {
+                                            setDialogState(() {
+                                              selectedDoctorId = entry.key;
+                                              validationError = null;
+                                            });
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: selected
+                                                  ? const Color(0xFF2D7BD8)
+                                                  : const Color(0xFFEFF4FB),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              border: Border.all(
+                                                color: selected
+                                                    ? const Color(0xFF2D7BD8)
+                                                    : const Color(0xFFD4E2F3),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              entry.value,
+                                              style: TextStyle(
+                                                color: selected
+                                                    ? Colors.white
+                                                    : const Color(0xFF355A84),
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    )
+                                    .toList(growable: false),
+                              ),
+                            if (validationError != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                validationError!,
+                                style: const TextStyle(
+                                  color: Color(0xFFD6455D),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      actions: [
+                        Button(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () {
+                            if (selectedDoctorId == null ||
+                                selectedDoctorId!.trim().isEmpty) {
+                              setDialogState(() {
+                                validationError =
+                                    'Please select a doctor to continue.';
+                              });
+                              return;
+                            }
+                            Navigator.pop(dialogContext, [selectedDoctorId!]);
+                          },
+                          child: const Text('Check-in'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+              if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
+              appointment.operatorsIDs = pickedDoctorIds;
+              appointment.checkinStage = 'with_doctor';
+              appointment.isDone = false;
+              appointments.set(appointment);
+              if (mounted) setState(() {});
+            },
+            child: const Text('Check-in'),
+          ),
+        ),
+      );
+    }
+
+    if (stage == 'with_doctor') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+        ),
+        child: Row(
           children: [
             Expanded(
-              child:
-                  _LastAppointmentInsightCard(lastAppointment: lastAppointment),
+              child: FilledButton(
+                style: ButtonStyle(
+                  backgroundColor:
+                      WidgetStateProperty.all(const Color(0xFF2BA58D)),
+                  foregroundColor: WidgetStateProperty.all(Colors.white),
+                ),
+                onPressed: () {
+                  appointment.checkinStage = 'checkout';
+                  appointment.isDone = false;
+                  appointments.set(appointment);
+                  if (mounted) setState(() {});
+                },
+                child: const Text('Billing'),
+              ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _PatientJourneyTimeline(
-                appointments: all,
-                excludeDate: appointment.date,
+              child: Button(
+                onPressed: () async {
+                  final shouldMove = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => ContentDialog(
+                      title: const Text('Move back to Waiting?'),
+                      content: const Text(
+                        'This patient will be moved back to Waiting and doctor assignment will be removed.',
+                      ),
+                      actions: [
+                        Button(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('Move'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (shouldMove != true) return;
+                  appointment.checkinStage = 'waiting';
+                  appointment.operatorsIDs = [];
+                  appointment.isDone = false;
+                  appointments.set(appointment);
+                  if (mounted) setState(() {});
+                },
+                child: const Text('Move Back to Waiting'),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        if (appointment.checkinStage == 'with_doctor')
-          _CheckinOperativeForm(
-              appointment: appointment, allAppointmentsForPatient: all)
-        else
-          const SizedBox.shrink(),
-        if (appointment.checkinStage == 'waiting') ...[
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: ButtonStyle(
-                backgroundColor:
-                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+      );
+    }
+
+    if (stage == 'checkout') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Button(
+                onPressed: () {
+                  appointment.checkinStage = 'with_doctor';
+                  appointment.isDone = false;
+                  appointments.set(appointment);
+                  if (mounted) setState(() {});
+                },
+                child: const Text('Move Back to Treatment'),
               ),
-              onPressed: () async {
-                final pickedDoctorIds = await showDialog<List<String>>(
-                  context: context,
-                  builder: (dialogContext) {
-                    final selected = {...appointment.operatorsIDs};
-                    final doctorEntries = doctors.present.values
-                        .map((d) => MapEntry(
-                            d.id,
-                            d.title.trim().isEmpty
-                                ? 'Unnamed doctor'
-                                : d.title))
-                        .toList(growable: false)
-                      ..sort((a, b) => a.value
-                          .toLowerCase()
-                          .compareTo(b.value.toLowerCase()));
-                    return StatefulBuilder(
-                      builder: (context, setDialogState) => ContentDialog(
-                        title: const Text('Assign doctor to check-in'),
-                        content: SizedBox(
-                          width: 360,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: doctorEntries
-                                  .map(
-                                    (entry) => Checkbox(
-                                      checked: selected.contains(entry.key),
-                                      content: Text(entry.value),
-                                      onChanged: (value) {
-                                        setDialogState(() {
-                                          if (value == true) {
-                                            selected.add(entry.key);
-                                          } else {
-                                            selected.remove(entry.key);
-                                          }
-                                        });
-                                      },
-                                    ),
-                                  )
-                                  .toList(growable: false),
-                            ),
-                          ),
-                        ),
-                        actions: [
-                          Button(
-                            onPressed: () => Navigator.pop(dialogContext),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(dialogContext,
-                                selected.toList(growable: false)),
-                            child: const Text('Check-in'),
-                          ),
-                        ],
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton(
+                style: ButtonStyle(
+                  backgroundColor:
+                      WidgetStateProperty.all(const Color(0xFF3B9A42)),
+                ),
+                onPressed: () async {
+                  final shouldComplete = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => ContentDialog(
+                      title: const Text('Complete appointment?'),
+                      content: const Text(
+                        'This appointment will be moved to Completed.',
                       ),
-                    );
-                  },
-                );
-                if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
-                appointment.operatorsIDs = pickedDoctorIds;
-                appointment.checkinStage = 'with_doctor';
-                appointment.isDone = false;
-                appointments.set(appointment);
-                if (mounted) setState(() {});
-              },
-              child: const Text('Check-in'),
-            ),
-          ),
-        ],
-        if (appointment.checkinStage == 'completed') ...[
-          const SizedBox(height: 8),
-          TodayAppointmentInsightCard(appointment: appointment),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  style: ButtonStyle(
-                    backgroundColor:
-                        WidgetStateProperty.all(const Color(0xFFE56E7D)),
-                  ),
-                  onPressed: () => _moveCompletedToBilling(appointment),
-                  child: const Text('Move Back to Billing'),
-                ),
+                      actions: [
+                        Button(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('Complete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (shouldComplete != true) return;
+                  appointment.checkinStage = 'completed';
+                  appointment.isDone = true;
+                  appointments.set(appointment);
+                  if (mounted) setState(() {});
+                },
+                child: const Text('Complete'),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton(
-                  style: ButtonStyle(
-                    backgroundColor:
-                        WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                  ),
-                  onPressed: () {
-                    final patient = appointment.patient;
-                    if (patient == null) return;
-                    final nextAppointment = Appointment.fromJson({
-                      'patientID': patient.id,
-                      'operatorsIDs': appointment.operatorsIDs,
-                      'date': DateTime.now()
-                          .add(const Duration(days: 7))
-                          .millisecondsSinceEpoch,
-                    });
-                    openAppointment(nextAppointment);
-                  },
-                  child: const Text('New Appointment'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (stage == 'completed') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: FilledButton(
+                style: ButtonStyle(
+                  backgroundColor:
+                      WidgetStateProperty.all(const Color(0xFFE56E7D)),
                 ),
+                onPressed: () => _moveCompletedToBilling(appointment),
+                child: const Text('Move Back to Billing'),
               ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 10),
-        if (patientNotes.isNotEmpty)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7FBFF),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE2ECF8)),
             ),
-            child: Text(
-              'Patient Notes: $patientNotes',
-              style: const TextStyle(color: Color(0xFF5F789B), fontSize: 12),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton(
+                style: ButtonStyle(
+                  backgroundColor:
+                      WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                ),
+                onPressed: () {
+                  final patient = appointment.patient;
+                  if (patient == null) return;
+                  final nextAppointment = Appointment.fromJson({
+                    'patientID': patient.id,
+                    'operatorsIDs': appointment.operatorsIDs,
+                    'date': DateTime.now()
+                        .add(const Duration(days: 7))
+                        .millisecondsSinceEpoch,
+                  });
+                  openAppointment(nextAppointment);
+                },
+                child: const Text('New Appointment'),
+              ),
             ),
-          ),
-        if (otherRows.isEmpty) const SizedBox.shrink(),
-      ],
-    );
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }
 
@@ -2187,10 +2474,12 @@ class TodayAppointmentInsightCard extends StatelessWidget {
 class _CheckinOperativeForm extends StatefulWidget {
   final Appointment appointment;
   final List<Appointment> allAppointmentsForPatient;
+  final bool showInlineBottomActions;
 
   const _CheckinOperativeForm({
     required this.appointment,
     required this.allAppointmentsForPatient,
+    this.showInlineBottomActions = true,
   });
 
   @override
@@ -2432,6 +2721,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     if (patient == null) return;
 
     DateTime nextDate = DateTime.now().add(const Duration(days: 7));
+    material.TimeOfDay nextTime = material.TimeOfDay(
+      hour: nextDate.hour,
+      minute: nextDate.minute,
+    );
     final selectedDoctors = appointment.operatorsIDs.toSet();
 
     await showDialog<void>(
@@ -2475,12 +2768,42 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               picked.year,
                               picked.month,
                               picked.day,
-                              10,
-                              0,
+                              nextTime.hour,
+                              nextTime.minute,
                             );
                           });
                         },
                         child: Text(DateFormat('dd MMM yyyy').format(nextDate)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text(
+                        'Time:',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () async {
+                          final picked = await material.showTimePicker(
+                            context: context,
+                            initialTime: nextTime,
+                          );
+                          if (picked == null) return;
+                          setStateDialog(() {
+                            nextTime = picked;
+                            nextDate = DateTime(
+                              nextDate.year,
+                              nextDate.month,
+                              nextDate.day,
+                              picked.hour,
+                              picked.minute,
+                            );
+                          });
+                        },
+                        child: Text(nextTime.format(context)),
                       ),
                     ],
                   ),
@@ -2553,11 +2876,18 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               ),
               FilledButton(
                 onPressed: () {
+                  final scheduledDate = DateTime(
+                    nextDate.year,
+                    nextDate.month,
+                    nextDate.day,
+                    nextTime.hour,
+                    nextTime.minute,
+                  );
                   Navigator.pop(dialogContext);
                   final nextAppointment = Appointment.fromJson({
                     'patientID': patient.id,
                     'operatorsIDs': selectedDoctors.toList(growable: false),
-                    'date': nextDate.millisecondsSinceEpoch,
+                    'date': scheduledDate.millisecondsSinceEpoch,
                     'checkinStage': 'pending',
                   });
                   openAppointment(nextAppointment);
@@ -2949,61 +3279,63 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton(
-                            style: ButtonStyle(
-                              backgroundColor: WidgetStateProperty.all(
-                                const Color(0xFF2BA58D),
-                              ),
-                              foregroundColor:
-                                  WidgetStateProperty.all(Colors.white),
-                            ),
-                            onPressed: () {
-                              showDialog<bool>(
-                                context: context,
-                                builder: (dialogContext) => ContentDialog(
-                                  title: const Text('Move to Billing?'),
-                                  content: const Text(
-                                    'This appointment will be moved to Billing stage.',
-                                  ),
-                                  actions: [
-                                    Button(
-                                      onPressed: () =>
-                                          Navigator.pop(dialogContext, false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    FilledButton(
-                                      onPressed: () =>
-                                          Navigator.pop(dialogContext, true),
-                                      child: const Text('Billing'),
-                                    ),
-                                  ],
+                    if (widget.showInlineBottomActions) ...[
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton(
+                              style: ButtonStyle(
+                                backgroundColor: WidgetStateProperty.all(
+                                  const Color(0xFF2BA58D),
                                 ),
-                              ).then((confirmed) {
-                                if (confirmed != true) return;
-                                a.checkinStage = 'checkout';
-                                a.isDone = false;
-                                appointments.set(a);
-                                if (mounted) {
-                                  Navigator.of(context).maybePop();
-                                }
-                              });
-                            },
-                            child: const Text('Billing'),
+                                foregroundColor:
+                                    WidgetStateProperty.all(Colors.white),
+                              ),
+                              onPressed: () {
+                                showDialog<bool>(
+                                  context: context,
+                                  builder: (dialogContext) => ContentDialog(
+                                    title: const Text('Move to Billing?'),
+                                    content: const Text(
+                                      'This appointment will be moved to Billing stage.',
+                                    ),
+                                    actions: [
+                                      Button(
+                                        onPressed: () =>
+                                            Navigator.pop(dialogContext, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () =>
+                                            Navigator.pop(dialogContext, true),
+                                        child: const Text('Billing'),
+                                      ),
+                                    ],
+                                  ),
+                                ).then((confirmed) {
+                                  if (confirmed != true) return;
+                                  a.checkinStage = 'checkout';
+                                  a.isDone = false;
+                                  appointments.set(a);
+                                  if (mounted) {
+                                    Navigator.of(context).maybePop();
+                                  }
+                                });
+                              },
+                              child: const Text('Billing'),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Button(
-                            onPressed: _moveBackToWaiting,
-                            child: const Text('Move Back to Waiting'),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Button(
+                              onPressed: _moveBackToWaiting,
+                              child: const Text('Move Back to Waiting'),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
                 );
 
@@ -3583,6 +3915,19 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final totalAfter =
         (double.tryParse(widget.paidController.text.trim()) ?? a.paid)
             .clamp(0, double.infinity);
+    final visitDay = DateTime(a.date.year, a.date.month, a.date.day);
+    final seenDoctorIds = appointments.present.values
+        .where((row) {
+          if (row.patientID != a.patientID) return false;
+          final rowDay = DateTime(row.date.year, row.date.month, row.date.day);
+          return rowDay == visitDay;
+        })
+        .expand((row) => row.operatorsIDs)
+        .toSet();
+    final consultantDoctors = doctors.present.values
+        .where((doctor) => seenDoctorIds.contains(doctor.id))
+        .toList(growable: false)
+      ..sort((x, y) => x.title.toLowerCase().compareTo(y.title.toLowerCase()));
 
     return Container(
       width: double.infinity,
@@ -3906,11 +4251,11 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         child: ComboBox<String>(
                           isExpanded: true,
                           placeholder: const Text('Select consultant'),
-                          value: _selectedConsultantDoctorId,
-                          items: (doctors.present.values.toList(growable: false)
-                                ..sort((x, y) => x.title
-                                    .toLowerCase()
-                                    .compareTo(y.title.toLowerCase())))
+                          value: consultantDoctors
+                                  .any((d) => d.id == _selectedConsultantDoctorId)
+                              ? _selectedConsultantDoctorId
+                              : null,
+                          items: consultantDoctors
                               .map(
                                 (doctor) => ComboBoxItem<String>(
                                   value: doctor.id,
