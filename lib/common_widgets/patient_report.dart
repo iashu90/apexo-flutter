@@ -192,9 +192,10 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                 sorted: _lastSortColumn == 'balance',
                 ascending: _balanceSortAscending ?? false,
               ),
-            if (!widget.hiddenColumns.contains('T.Mode') ||
-                !widget.hiddenColumns.contains('P.Mode'))
-              _plainColumn('Mode'),
+            if (!widget.hiddenColumns.contains('T.Mode'))
+              _plainColumn('T.Mode'),
+            if (!widget.hiddenColumns.contains('P.Mode'))
+              _plainColumn('P.Mode'),
           ],
           rows: List.generate(sortedRows.length, (index) {
             final row = sortedRows[index];
