@@ -2,6 +2,7 @@ import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -343,6 +344,11 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
             onPressed: () {
               final name = labController.text.trim();
               if (name.isEmpty) return;
+              localSettings.savedLabs = {
+                ...localSettings.savedLabs,
+                name: phoneController.text.trim(),
+              };
+              localSettings.notifyAndPersist();
               Navigator.pop(dialogContext);
               final draft = Labwork.fromJson({
                 'lab': name,
