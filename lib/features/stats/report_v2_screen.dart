@@ -6,6 +6,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -22,6 +23,7 @@ class ReportV2Screen extends StatelessWidget {
           streams: [
             appointments.observableMap.stream,
             expenses.observableMap.stream,
+            patients.observableMap.stream,
           ],
           builder: (context, _) {
             final allAppointments =
@@ -89,6 +91,17 @@ class ReportV2Screen extends StatelessWidget {
                     SizedBox(
                       width: cardWidth,
                       child: _MonthlyExpensesTrendWindowCard(rows: allExpenses),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _MonthlyNetRevenueTrendWindowCard(
+                        appointmentsRows: allAppointments,
+                        expenseRows: allExpenses,
+                      ),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _ReferralSourceDistributionCard(),
                     ),
                     SizedBox(
                       width: cardWidth,
@@ -763,7 +776,7 @@ class _DailyRevenueTrendWindowCardState
     return SizedBox(
       width: 560,
       child: _SimpleBarsCard(
-        title: 'Revenue Trend (Daily)',
+        title: 'Gross Revenue Trend (Daily)',
         subtitle: DateFormat('MMMM yyyy').format(monthStart),
         rows: points,
         barColor: const Color(0xFF1468CC),
@@ -817,7 +830,7 @@ class _MonthlyRevenueTrendWindowCardState
     return SizedBox(
       width: 560,
       child: _SimpleBarsCard(
-        title: 'Revenue Trend (Monthly)',
+        title: 'Gross Revenue Trend (Monthly)',
         subtitle:
             '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
         rows: points,
@@ -843,6 +856,175 @@ class _MonthlyExpensesTrendWindowCard extends StatefulWidget {
   @override
   State<_MonthlyExpensesTrendWindowCard> createState() =>
       _MonthlyExpensesTrendWindowCardState();
+}
+
+class _MonthlyNetRevenueTrendWindowCard extends StatefulWidget {
+  final List<Appointment> appointmentsRows;
+  final List<Expense> expenseRows;
+
+  const _MonthlyNetRevenueTrendWindowCard({
+    required this.appointmentsRows,
+    required this.expenseRows,
+  });
+
+  @override
+  State<_MonthlyNetRevenueTrendWindowCard> createState() =>
+      _MonthlyNetRevenueTrendWindowCardState();
+}
+
+class _MonthlyNetRevenueTrendWindowCardState
+    extends State<_MonthlyNetRevenueTrendWindowCard> {
+  int _windowOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final windowEnd = DateTime(now.year, now.month - _windowOffset + 1, 1);
+    final windowStart = DateTime(windowEnd.year, windowEnd.month - 12, 1);
+    final starts = List<DateTime>.generate(
+      12,
+      (i) => DateTime(windowStart.year, windowStart.month + i, 1),
+      growable: false,
+    );
+
+    final points = starts.map((start) {
+      final end = DateTime(start.year, start.month + 1, 1);
+      final gross = widget.appointmentsRows
+          .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
+          .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
+      final expensesSum = widget.expenseRows
+          .where((e) => !e.date.isBefore(start) && e.date.isBefore(end))
+          .fold<double>(0, (sum, e) => sum + e.amount);
+      final net = gross - expensesSum;
+      return (label: DateFormat('MMM').format(start), value: net);
+    }).toList(growable: false);
+
+    return SizedBox(
+      width: 560,
+      child: _SimpleBarsCard(
+        title: 'Net Revenue Trend (Monthly)',
+        subtitle:
+            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
+        rows: points,
+        barColor: const Color(0xFF2D7BD8),
+        valueFormatter: formatIndianShortCurrency,
+        trailing: _TrendNavButtons(
+          canGoForward: _windowOffset > 0,
+          onBack: () => setState(() => _windowOffset += 1),
+          onForward: _windowOffset > 0
+              ? () => setState(() => _windowOffset -= 1)
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
+class _ReferralSourceDistributionCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final counts = <String, int>{};
+    for (final patient in patients.present.values) {
+      final source = patient.referralSource.trim().isEmpty
+          ? 'None'
+          : patient.referralSource.trim();
+      counts[source] = (counts[source] ?? 0) + 1;
+    }
+
+    final rows = counts.entries.toList(growable: false)
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final total = rows.fold<int>(0, (sum, e) => sum + e.value);
+    final colors = const [
+      Color(0xFF2D7BD8),
+      Color(0xFF2BA58D),
+      Color(0xFFE09C31),
+      Color(0xFFD6455D),
+      Color(0xFF7D8FA7),
+      Color(0xFF8D5CF6),
+    ];
+
+    return SizedBox(
+      width: 560,
+      child: _ReportContainer(
+        title: 'Referral Source Report',
+        subtitle: 'Patient acquisition channels',
+        child: SizedBox(
+          height: 250,
+          child: rows.isEmpty
+              ? const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'No referral source data found.',
+                    style: TextStyle(color: Color(0xFF6D84A8)),
+                  ),
+                )
+              : Row(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8, right: 2),
+                      child: SizedBox(
+                        width: 112,
+                        height: 112,
+                        child: CustomPaint(
+                          painter: _DonutPainter(rows: rows, colors: colors),
+                          child: Center(
+                            child: Text(
+                              '$total',
+                              style: const TextStyle(
+                                color: Color(0xFF1D3E67),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: rows.asMap().entries.map((entry) {
+                            final row = entry.value;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 9,
+                                    height: 9,
+                                    decoration: BoxDecoration(
+                                      color: colors[entry.key % colors.length],
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      '${row.key} (${row.value})',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF36557C),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(growable: false),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
 }
 
 class _MonthlyExpensesTrendWindowCardState

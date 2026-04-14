@@ -18,47 +18,68 @@ class Patient extends Model {
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
-  List<ReportDetailRow> get patientDetails =>
-      allAppointments.map((appointment) {
-        final dateStr = appointment.date;
+  List<ReportDetailRow> get patientDetails => [
+        ...allAppointments.map((appointment) {
+          final dateStr = appointment.date;
 
-        final costStr = '₹${(appointment.price ?? 0).toStringAsFixed(2)}';
-        final paidStr = '₹${(appointment.paid ?? 0).toStringAsFixed(2)}';
+          final costStr = '₹${(appointment.price ?? 0).toStringAsFixed(2)}';
+          final paidStr = '₹${(appointment.paid ?? 0).toStringAsFixed(2)}';
 
-        final prescriptionStr = (appointment.prescriptions != null &&
-                appointment.prescriptions.isNotEmpty)
-            ? appointment.prescriptions.join(', ')
-            : '';
-        final treatmentStr = (appointment.selectedTreatments != null &&
-                appointment.selectedTreatments.isNotEmpty)
-            ? appointment.subTreatments != null &&
-                    appointment.subTreatments.isNotEmpty
-                ? "${appointment.selectedTreatments.join(', ')} - ${appointment.subTreatments.join(', ')}"
-                : appointment.selectedTreatments.join(', ')
-            : '';
+          final prescriptionStr = (appointment.prescriptions != null &&
+                  appointment.prescriptions.isNotEmpty)
+              ? appointment.prescriptions.join(', ')
+              : '';
+          final treatmentStr = (appointment.selectedTreatments != null &&
+                  appointment.selectedTreatments.isNotEmpty)
+              ? appointment.subTreatments != null &&
+                      appointment.subTreatments.isNotEmpty
+                  ? "${appointment.selectedTreatments.join(', ')} - ${appointment.subTreatments.join(', ')}"
+                  : appointment.selectedTreatments.join(', ')
+              : '';
 
-        final teethStr = (appointment.selectedTeeth != null &&
-                appointment.selectedTeeth.isNotEmpty)
-            ? appointment.selectedTeeth.join(', ')
-            : '';
+          final teethStr = (appointment.selectedTeeth != null &&
+                  appointment.selectedTeeth.isNotEmpty)
+              ? appointment.selectedTeeth.join(', ')
+              : '';
 
-        final treatmentPaymentMode =
-            appointment.treatmentGpayPaid == true ? 'GPay' : 'Cash';
-        final preceptionPaymentMode =
-            appointment.prescriptionGpayPaid == true ? 'GPay' : 'Cash';
+          final treatmentPaymentMode =
+              appointment.treatmentGpayPaid == true ? 'GPay' : 'Cash';
+          final preceptionPaymentMode =
+              appointment.prescriptionGpayPaid == true ? 'GPay' : 'Cash';
 
-        return ReportDetailRow(
-          date: dateStr,
-          cost: costStr,
-          paid: paidStr,
-          prescription: prescriptionStr,
-          treatment: treatmentStr,
-          teeth: teethStr,
-          isDone: appointment.isDone,
-          treatmentPaymentMode: treatmentPaymentMode,
-          preceptionPaymentMode: preceptionPaymentMode,
-        );
-      }).toList();
+          return ReportDetailRow(
+            date: dateStr,
+            cost: costStr,
+            paid: paidStr,
+            prescription: prescriptionStr,
+            treatment: treatmentStr,
+            teeth: teethStr,
+            isDone: appointment.isDone,
+            treatmentPaymentMode: treatmentPaymentMode,
+            preceptionPaymentMode: preceptionPaymentMode,
+          );
+        }),
+        ...labworks.present.values.where((lw) => lw.patientID == id).map((lw) {
+          final costStr = '₹${lw.price.toStringAsFixed(2)}';
+          final paidStr = lw.paid ? costStr : '₹0.00';
+          final workType =
+              lw.typeOfWork.trim().isEmpty ? 'Labwork' : lw.typeOfWork;
+          final labName = lw.lab.trim().isEmpty ? '-' : lw.lab;
+          final teeth = lw.selectedTeeth.join(', ');
+
+          return ReportDetailRow(
+            date: lw.date,
+            cost: costStr,
+            paid: paidStr,
+            prescription: '',
+            treatment: 'Labwork: $workType • $labName',
+            teeth: teeth,
+            isDone: lw.deliveredToPatient,
+            treatmentPaymentMode: lw.paid ? 'Paid' : 'Due',
+            preceptionPaymentMode: '',
+          );
+        }),
+      ]..sort((a, b) => a.date.compareTo(b.date));
 
   List<Appointment>? _doneAppointmentsCached;
   List<Appointment> get doneAppointments {

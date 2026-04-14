@@ -26,13 +26,8 @@ class Appointment extends Model {
   }
 
   Patient? get patient {
-    if (patientID != null &&
-        patientID!.isNotEmpty &&
-        patients.get(patientID!) == null &&
-        patientID!.length == 15) {
-      patients.set(Patient.fromJson({"id": patientID}));
-    }
-    return patients.get(patientID ?? "return null when null");
+    if (patientID == null || patientID!.isEmpty) return null;
+    return patients.get(patientID!);
   }
 
   @override
@@ -101,6 +96,7 @@ class Appointment extends Model {
 
   /* 1 */ List<String> operatorsIDs = [];
   /* 2 */ String? patientID;
+  String? consultantDoctorID;
   /* 3 */ String preOpNotes = "";
   /* 4 */ String postOpNotes = "";
   /* 5 */ List<String> prescriptions = [];
@@ -133,6 +129,7 @@ class Appointment extends Model {
     /* 2 */ prescriptions =
         List<String>.from(json["prescriptions"] ?? prescriptions);
     /* 3 */ patientID = json["patientID"] ?? patientID;
+    consultantDoctorID = json['consultantDoctorID'] ?? consultantDoctorID;
     /* 4 */ preOpNotes = json["preOpNotes"] ?? preOpNotes;
     /* 5 */ postOpNotes = json["postOpNotes"] ?? postOpNotes;
     /* 6 */ price = double.parse((json["price"] ?? price).toString());
@@ -189,6 +186,9 @@ class Appointment extends Model {
     /* 1 */ if (operatorsIDs.isNotEmpty) json['operatorsIDs'] = operatorsIDs;
     /* 2 */ if (prescriptions.isNotEmpty) json['prescriptions'] = prescriptions;
     /* 3 */ if (patientID != d.patientID) json['patientID'] = patientID;
+    if (consultantDoctorID != d.consultantDoctorID) {
+      json['consultantDoctorID'] = consultantDoctorID;
+    }
     /* 4 */ if (preOpNotes != d.preOpNotes) json['preOpNotes'] = preOpNotes;
     /* 5 */ if (postOpNotes != d.postOpNotes) json['postOpNotes'] = postOpNotes;
     /* 6 */ if (price != d.price) json['price'] = price;

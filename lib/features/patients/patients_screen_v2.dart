@@ -586,7 +586,26 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     );
 
     if (confirmed != true) return;
-    await patients.hardDelete(patient.id);
+    try {
+      await patients.hardDelete(patient.id);
+    } catch (e) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: const Text('Cannot delete patient'),
+          content: Text(
+            '$e\n\nDelete or reassign linked appointments/labworks first.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Future<void> _openAddPatientPopup() async {
@@ -603,6 +622,42 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     String? nameError;
     String? ageError;
     String? phoneError;
+
+    void savePatient({required bool allowInvalidNameOrPhone}) {
+      final rawName = nameController.text.trim();
+      final parsedAge = int.tryParse(ageController.text.trim()) ?? 0;
+      final rawPhone = phoneController.text.trim();
+
+      final computedNameError =
+          rawName.isEmpty ? 'Patient name is required.' : null;
+      final computedAgeError = parsedAge <= 0 ? 'Age is required.' : null;
+      final computedPhoneError =
+          rawPhone.isEmpty ? 'Phone number is required.' : null;
+
+      nameError = computedNameError;
+      ageError = computedAgeError;
+      phoneError = computedPhoneError;
+
+      if (computedAgeError != null) return;
+      if (!allowInvalidNameOrPhone &&
+          (computedNameError != null || computedPhoneError != null)) {
+        return;
+      }
+
+      final patient = Patient.fromJson({
+        'id': uuid(),
+        'title': rawName,
+        'birth': parsedAge,
+        'gender': gender,
+        'phone': rawPhone,
+        'address': addressController.text.trim(),
+        'notes': notesController.text.trim(),
+        'tags': selectedMedicalHistory.toList(growable: false),
+        'referralSource': referral,
+      });
+      patients.set(patient);
+      Navigator.pop(context);
+    }
 
     await showDialog<void>(
       context: context,
@@ -835,38 +890,20 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Close'),
             ),
+            if (nameError != null || phoneError != null)
+              Button(
+                onPressed: () {
+                  setStateDialog(() {
+                    savePatient(allowInvalidNameOrPhone: true);
+                  });
+                },
+                child: const Text('Save Anyway'),
+              ),
             FilledButton(
               onPressed: () {
-                final name = nameController.text.trim();
-                final age = int.tryParse(ageController.text.trim()) ?? 0;
-                final phone = phoneController.text.trim();
-
                 setStateDialog(() {
-                  nameError = name.isEmpty ? 'Patient name is required.' : null;
-                  ageError = age <= 0 ? 'Age is required.' : null;
-                  phoneError =
-                      phone.isEmpty ? 'Phone number is required.' : null;
+                  savePatient(allowInvalidNameOrPhone: false);
                 });
-
-                if (nameError != null ||
-                    ageError != null ||
-                    phoneError != null) {
-                  return;
-                }
-
-                final p = Patient.fromJson({
-                  'id': uuid(),
-                  'title': name,
-                  'birth': age,
-                  'gender': gender,
-                  'phone': phone,
-                  'address': addressController.text.trim(),
-                  'notes': notesController.text.trim(),
-                  'tags': selectedMedicalHistory.toList(growable: false),
-                  'referralSource': referral,
-                });
-                patients.set(p);
-                Navigator.pop(dialogContext);
               },
               child: const Text('Save'),
             ),
@@ -1027,45 +1064,68 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               }
             }).toList(growable: false);
 
-            filteredPatients.sort((a, b) {
-              switch (_sortBy) {
-                case 'id':
-                  return a.id.toLowerCase().compareTo(b.id.toLowerCase());
-                case 'phone':
-                  return a.phone.toLowerCase().compareTo(b.phone.toLowerCase());
-                case 'age':
-                  return a.age.compareTo(b.age);
-                case 'lastVisit':
-                  final aRows = visitsByPatient[a.id] ?? const <Appointment>[];
-                  final bRows = visitsByPatient[b.id] ?? const <Appointment>[];
-                  final aLast = aRows.isEmpty
-                      ? DateTime.fromMillisecondsSinceEpoch(0)
-                      : aRows.last.date;
-                  final bLast = bRows.isEmpty
-                      ? DateTime.fromMillisecondsSinceEpoch(0)
-                      : bRows.last.date;
-                  return aLast.compareTo(bLast);
-                case 'paidSoFar':
-                  final aPaid = spentByPatient[a.id] ?? 0;
-                  final bPaid = spentByPatient[b.id] ?? 0;
-                  return aPaid.compareTo(bPaid);
-                case 'visits':
-                  final aVisits =
-                      (visitsByPatient[a.id] ?? const <Appointment>[]).length;
-                  final bVisits =
-                      (visitsByPatient[b.id] ?? const <Appointment>[]).length;
-                  return aVisits.compareTo(bVisits);
-                case 'outstanding':
-                  return a.outstandingPayments.compareTo(b.outstandingPayments);
-                case 'name':
-                default:
-                  return a.title.toLowerCase().compareTo(b.title.toLowerCase());
-              }
-            });
+            if (_listBehaviorFilter == 'focused') {
+              filteredPatients.sort((a, b) {
+                final aRows = visitsByPatient[a.id] ?? const <Appointment>[];
+                final bRows = visitsByPatient[b.id] ?? const <Appointment>[];
+                final aLast = aRows.isEmpty
+                    ? DateTime.fromMillisecondsSinceEpoch(0)
+                    : aRows.last.date;
+                final bLast = bRows.isEmpty
+                    ? DateTime.fromMillisecondsSinceEpoch(0)
+                    : bRows.last.date;
+                return bLast.compareTo(aLast);
+              });
+            } else {
+              filteredPatients.sort((a, b) {
+                switch (_sortBy) {
+                  case 'id':
+                    return a.id.toLowerCase().compareTo(b.id.toLowerCase());
+                  case 'phone':
+                    return a.phone
+                        .toLowerCase()
+                        .compareTo(b.phone.toLowerCase());
+                  case 'age':
+                    return a.age.compareTo(b.age);
+                  case 'lastVisit':
+                    final aRows =
+                        visitsByPatient[a.id] ?? const <Appointment>[];
+                    final bRows =
+                        visitsByPatient[b.id] ?? const <Appointment>[];
+                    final aLast = aRows.isEmpty
+                        ? DateTime.fromMillisecondsSinceEpoch(0)
+                        : aRows.last.date;
+                    final bLast = bRows.isEmpty
+                        ? DateTime.fromMillisecondsSinceEpoch(0)
+                        : bRows.last.date;
+                    return aLast.compareTo(bLast);
+                  case 'paidSoFar':
+                    final aPaid = spentByPatient[a.id] ?? 0;
+                    final bPaid = spentByPatient[b.id] ?? 0;
+                    return aPaid.compareTo(bPaid);
+                  case 'visits':
+                    final aVisits =
+                        (visitsByPatient[a.id] ?? const <Appointment>[]).length;
+                    final bVisits =
+                        (visitsByPatient[b.id] ?? const <Appointment>[]).length;
+                    return aVisits.compareTo(bVisits);
+                  case 'outstanding':
+                    return a.outstandingPayments
+                        .compareTo(b.outstandingPayments);
+                  case 'name':
+                  default:
+                    return a.title
+                        .toLowerCase()
+                        .compareTo(b.title.toLowerCase());
+                }
+              });
+            }
 
-            final sortedPatients = _sortAscending
+            final sortedPatients = _listBehaviorFilter == 'focused'
                 ? filteredPatients
-                : filteredPatients.reversed.toList(growable: false);
+                : (_sortAscending
+                    ? filteredPatients
+                    : filteredPatients.reversed.toList(growable: false));
 
             final totalPages =
                 math.max(1, (sortedPatients.length / _pageSize).ceil());
