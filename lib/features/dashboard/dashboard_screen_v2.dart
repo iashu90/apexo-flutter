@@ -1929,7 +1929,166 @@ class _AppointmentRow extends StatelessWidget {
     openLabworkV2Dialog(context, draft);
   }
 
+  Future<String?> _pickDoctorForCheckIn(BuildContext context) async {
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        String? selectedDoctorId =
+            appointment.operatorsIDs.isEmpty ? null : appointment.operatorsIDs.first;
+        String? validationError;
+        final doctorEntries = doctors.present.values
+            .map(
+              (d) => MapEntry(
+                d.id,
+                d.title.trim().isEmpty ? 'Unnamed doctor' : d.title,
+              ),
+            )
+            .toList(growable: false)
+          ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+        return StatefulBuilder(
+          builder: (context, setDialogState) => ContentDialog(
+            title: const Text('Assign doctor to check-in'),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (doctorEntries.isEmpty)
+                    const Text('No doctors available to assign.')
+                  else ...[
+                    if (selectedDoctorId != null) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: doctorEntries
+                            .where((entry) => selectedDoctorId == entry.key)
+                            .map((entry) {
+                          return GestureDetector(
+                            onTap: () {
+                              setDialogState(() {
+                                selectedDoctorId = null;
+                                validationError = null;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE9F9EF),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: const Color(0xFF22C55E),
+                                ),
+                              ),
+                              child: Text(
+                                entry.value,
+                                style: const TextStyle(
+                                  color: Color(0xFF15803D),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(growable: false),
+                      ),
+                      const SizedBox(height: 10),
+                      const Divider(size: 1),
+                      const SizedBox(height: 10),
+                    ],
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: doctorEntries
+                          .where((entry) => selectedDoctorId != entry.key)
+                          .map(
+                            (entry) {
+                              return GestureDetector(
+                                onTap: () {
+                                  setDialogState(() {
+                                    selectedDoctorId = entry.key;
+                                    validationError = null;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF4FB),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: const Color(0xFFD4E2F3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    entry.value,
+                                    style: const TextStyle(
+                                      color: Color(0xFF355A84),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                          .toList(growable: false),
+                    ),
+                  ],
+                  if (validationError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      validationError!,
+                      style: const TextStyle(
+                        color: Color(0xFFD6455D),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              Button(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (selectedDoctorId == null || selectedDoctorId!.isEmpty) {
+                    setDialogState(() {
+                      validationError = 'Please select a doctor to continue.';
+                    });
+                    return;
+                  }
+                  Navigator.pop(dialogContext, selectedDoctorId);
+                },
+                child: const Text('Check-in'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _openEditTreatmentModal(BuildContext context) async {
+    final stage = appointment.checkinStage.trim().toLowerCase();
+    if (stage == 'waiting' || stage == 'pending') {
+      final pickedDoctorId = await _pickDoctorForCheckIn(context);
+      if (pickedDoctorId == null || pickedDoctorId.isEmpty) return;
+      appointment.operatorsIDs = [pickedDoctorId];
+      appointment.checkinStage = 'with_doctor';
+      appointment.isDone = false;
+      appointments.set(appointment);
+      return;
+    }
     await openCheckinAppointmentModal(context, appointment);
   }
 
