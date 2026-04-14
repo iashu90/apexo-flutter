@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
+import 'package:apexo/common_widgets/report_table_modal_v2.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -165,36 +166,34 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         .toList(growable: false)
       ..sort((a, b) => b.date.compareTo(a.date));
 
-    showDialog<void>(
-      context: context,
-      builder: (_) => Align(
-        alignment: Alignment.center,
-        child: Container(
-          color: Colors.white,
-          child: detailRows.isEmpty
-              ? ContentDialog(
-                  title: Text('$title (${rows.length})'),
-                  content: Text(
-                    'No additional $metricLabel rows to show.',
-                    style: const TextStyle(color: Color(0xFF5B789F)),
-                  ),
-                  actions: [
-                    FilledButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Close'),
-                    ),
-                  ],
-                )
-              : PatientDetailsDialog(
-                  rows: detailRows,
-                  fromWhere: PatientDetailsSource.dashboard,
-                  hiddenColumns: const [
-                    'Doc Paid',
-                    'TotalDocPay',
-                  ],
-                ),
+    if (detailRows.isEmpty) {
+      showDialog<void>(
+        context: context,
+        builder: (_) => ContentDialog(
+          title: Text('$title (${rows.length})'),
+          content: Text(
+            'No additional $metricLabel rows to show.',
+            style: const TextStyle(color: Color(0xFF5B789F)),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
         ),
-      ),
+      );
+      return;
+    }
+
+    showReportTableModalV2(
+      context: context,
+      title: '$title (${rows.length})',
+      rows: detailRows,
+      hiddenColumns: const [
+        'Doc Paid',
+        'TotalDocPay',
+      ],
     );
   }
 
@@ -4007,35 +4006,56 @@ class _AllPatientsListCard extends StatelessWidget {
                                     ),
                                     Expanded(
                                       flex: 12,
-                                      child: Wrap(
-                                        spacing: 6,
-                                        runSpacing: 6,
-                                        children: [
-                                          _HoverActionItem(
-                                            icon: FluentIcons.history,
-                                            label: 'History',
-                                            onTap: () => onOpenHistory(patient),
-                                          ),
-                                          _HoverActionItem(
-                                            icon: FluentIcons.test_beaker,
-                                            label: 'Lab',
-                                            iconColor: const Color(0xFF2BA58D),
-                                            hoverColor: const Color(0xFFEAF8F1),
-                                            hoverBorderColor:
-                                                const Color(0xFFBFEAD8),
-                                            onTap: () => onOpenLabwork(patient),
-                                          ),
-                                          _HoverActionItem(
-                                            icon: FluentIcons.delete,
-                                            label: 'Delete',
-                                            iconColor: const Color(0xFFD6455D),
-                                            hoverColor: const Color(0xFFFFECEF),
-                                            hoverBorderColor:
-                                                const Color(0xFFF6C8CF),
-                                            onTap: () =>
-                                                onDeletePatient(patient),
-                                          ),
-                                        ],
+                                      child: Align(
+                                        alignment: Alignment.center,
+                                        child: Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          alignment: WrapAlignment.center,
+                                          children: [
+                                            _HoverActionItem(
+                                              icon: FluentIcons.edit,
+                                              label: 'Edit',
+                                              iconColor:
+                                                  const Color(0xFF8267D6),
+                                              hoverColor:
+                                                  const Color(0xFFF1EDFB),
+                                              hoverBorderColor:
+                                                  const Color(0xFFD8CDF8),
+                                              onTap: () =>
+                                                  openPatient(patient, 1),
+                                            ),
+                                            _HoverActionItem(
+                                              icon: FluentIcons.history,
+                                              label: 'History',
+                                              onTap: () =>
+                                                  onOpenHistory(patient),
+                                            ),
+                                            _HoverActionItem(
+                                              icon: FluentIcons.test_beaker,
+                                              label: 'Lab',
+                                              iconColor:
+                                                  const Color(0xFF2BA58D),
+                                              hoverColor:
+                                                  const Color(0xFFEAF8F1),
+                                              hoverBorderColor:
+                                                  const Color(0xFFBFEAD8),
+                                              onTap: () => onOpenLabwork(patient),
+                                            ),
+                                            _HoverActionItem(
+                                              icon: FluentIcons.delete,
+                                              label: 'Delete',
+                                              iconColor:
+                                                  const Color(0xFFD6455D),
+                                              hoverColor:
+                                                  const Color(0xFFFFECEF),
+                                              hoverBorderColor:
+                                                  const Color(0xFFF6C8CF),
+                                              onTap: () =>
+                                                  onDeletePatient(patient),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -4199,8 +4219,8 @@ class _HoverActionItemState extends State<_HoverActionItem> {
           onTap: widget.onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 140),
-            width: 28,
-            height: 28,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: _hovered ? widget.hoverColor : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
@@ -4210,7 +4230,7 @@ class _HoverActionItemState extends State<_HoverActionItem> {
             ),
             child: Icon(
               widget.icon,
-              size: 14,
+              size: 16,
               color: widget.iconColor,
             ),
           ),

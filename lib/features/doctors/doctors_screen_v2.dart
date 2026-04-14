@@ -5,7 +5,6 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
-import 'package:apexo/features/doctors/open_doctor_panel.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -113,147 +112,7 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
   }
 
   Future<void> _openAddDoctorModal() async {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final selectedDutyDays = List<String>.from(allDays, growable: true);
-    String? nameError;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setStateDialog) => ContentDialog(
-          title: Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Add Doctor',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              IconButton(
-                icon: const Icon(FluentIcons.chrome_close, size: 12),
-                onPressed: () => Navigator.pop(dialogContext),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  InfoLabel(
-                    label: 'Doctor Name:',
-                    child: TextBox(
-                      controller: nameController,
-                      placeholder: 'Enter doctor name',
-                      onChanged: (_) {
-                        if (nameError != null) {
-                          setStateDialog(() => nameError = null);
-                        }
-                      },
-                    ),
-                  ),
-                  if (nameError != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        nameError!,
-                        style: const TextStyle(
-                          color: Color(0xFFD6455D),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 10),
-                  InfoLabel(
-                    label: 'Email (optional):',
-                    child: TextBox(
-                      controller: emailController,
-                      placeholder: 'doctor@email.com',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  InfoLabel(
-                    label: 'Duty Days:',
-                    child: SizedBox.shrink(),
-                  ),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: allDays.map((day) {
-                      final selected = selectedDutyDays.contains(day);
-                      return GestureDetector(
-                        onTap: () {
-                          setStateDialog(() {
-                            if (selected) {
-                              selectedDutyDays.remove(day);
-                            } else {
-                              selectedDutyDays.add(day);
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? const Color(0xFF2D7BD8)
-                                : const Color(0xFFEFF4FB),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: selected
-                                  ? const Color(0xFF2D7BD8)
-                                  : const Color(0xFFD4E2F3),
-                            ),
-                          ),
-                          child: Text(
-                            day,
-                            style: TextStyle(
-                              color: selected
-                                  ? Colors.white
-                                  : const Color(0xFF345982),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(growable: false),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            Button(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                if (name.isEmpty) {
-                  setStateDialog(() => nameError = 'Doctor name is required.');
-                  return;
-                }
-
-                final doctor = Doctor.fromJson({
-                  'id': uuid(),
-                  'title': name,
-                  'email': emailController.text.trim(),
-                  'dutyDays': selectedDutyDays,
-                });
-                doctors.set(doctor);
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Save Doctor'),
-            ),
-          ],
-        ),
-      ),
-    );
+    await _openDoctorEntryModalV2(context);
   }
 
   ButtonStyle get _dateButtonStyle {
@@ -527,6 +386,158 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
       ],
     );
   }
+}
+
+Future<void> _openDoctorEntryModalV2(
+  BuildContext context, {
+  Doctor? existingDoctor,
+}) async {
+  final isEdit = existingDoctor != null;
+  final nameController =
+      TextEditingController(text: existingDoctor?.title ?? '');
+  final emailController =
+      TextEditingController(text: existingDoctor?.email ?? '');
+  final selectedDutyDays = isEdit
+      ? List<String>.from(existingDoctor!.dutyDays, growable: true)
+      : List<String>.from(allDays, growable: true);
+  String? nameError;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setStateDialog) => ContentDialog(
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                isEdit ? 'Edit Doctor' : 'Add Doctor',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(FluentIcons.chrome_close, size: 12),
+              onPressed: () => Navigator.pop(dialogContext),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                InfoLabel(
+                  label: 'Doctor Name:',
+                  child: TextBox(
+                    controller: nameController,
+                    placeholder: 'Enter doctor name',
+                    onChanged: (_) {
+                      if (nameError != null) {
+                        setStateDialog(() => nameError = null);
+                      }
+                    },
+                  ),
+                ),
+                if (nameError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      nameError!,
+                      style: const TextStyle(
+                        color: Color(0xFFD6455D),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 10),
+                InfoLabel(
+                  label: 'Email (optional):',
+                  child: TextBox(
+                    controller: emailController,
+                    placeholder: 'doctor@email.com',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                InfoLabel(
+                  label: 'Duty Days:',
+                  child: SizedBox.shrink(),
+                ),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: allDays.map((day) {
+                    final selected = selectedDutyDays.contains(day);
+                    return GestureDetector(
+                      onTap: () {
+                        setStateDialog(() {
+                          if (selected) {
+                            selectedDutyDays.remove(day);
+                          } else {
+                            selectedDutyDays.add(day);
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? const Color(0xFF2D7BD8)
+                              : const Color(0xFFEFF4FB),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: selected
+                                ? const Color(0xFF2D7BD8)
+                                : const Color(0xFFD4E2F3),
+                          ),
+                        ),
+                        child: Text(
+                          day,
+                          style: TextStyle(
+                            color: selected
+                                ? Colors.white
+                                : const Color(0xFF345982),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(growable: false),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) {
+                setStateDialog(() => nameError = 'Doctor name is required.');
+                return;
+              }
+
+              final doctor = Doctor.fromJson({
+                'id': existingDoctor?.id ?? uuid(),
+                'title': name,
+                'email': emailController.text.trim(),
+                'dutyDays': selectedDutyDays,
+              });
+              doctors.set(doctor);
+              Navigator.pop(dialogContext);
+            },
+            child: Text(isEdit ? 'Save Changes' : 'Save Doctor'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 List<
@@ -953,7 +964,10 @@ class _DoctorHandledRangeCard extends StatelessWidget {
 
                         return GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onTap: () => openDoctor(row.doctor),
+                          onTap: () => _openDoctorEntryModalV2(
+                            context,
+                            existingDoctor: row.doctor,
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Row(
@@ -1216,7 +1230,10 @@ class _DoctorsActivityCard extends StatelessWidget {
               ...rows.take(12).map(
                     (row) => GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => openDoctor(row.doctor),
+                      onTap: () => _openDoctorEntryModalV2(
+                        context,
+                        existingDoctor: row.doctor,
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Row(

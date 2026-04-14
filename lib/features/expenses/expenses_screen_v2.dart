@@ -487,18 +487,42 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                                 alignment: Alignment.centerLeft,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 3),
+                                      horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: modeBg,
                                     borderRadius: BorderRadius.circular(999),
                                   ),
-                                  child: Text(
-                                    paymentMode,
-                                    style: TextStyle(
-                                      color: modeFg,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 11,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      paymentMode == 'UPI'
+                                          ? Image.asset(
+                                              'assets/gpay.png',
+                                              width: 14,
+                                              height: 14,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) =>
+                                                  const Icon(
+                                                FluentIcons.receipt_processing,
+                                                size: 12,
+                                                color: Color(0xFF2D7BD8),
+                                              ),
+                                            )
+                                          : const Icon(
+                                              FluentIcons.money,
+                                              size: 12,
+                                              color: Color(0xFF3B9A42),
+                                            ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        paymentMode,
+                                        style: TextStyle(
+                                          color: modeFg,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -506,20 +530,20 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                             Expanded(
                               flex: 8,
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  IconButton(
-                                    icon:
-                                        const Icon(FluentIcons.edit, size: 14),
-                                    onPressed: () => _openExpenseModal(e),
+                                  _ExpenseActionIconButton(
+                                    icon: FluentIcons.edit,
+                                    color: const Color(0xFF8267D6),
+                                    hoverColor: const Color(0xFFF1EDFB),
+                                    onTap: () => _openExpenseModal(e),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      FluentIcons.delete,
-                                      size: 14,
-                                      color: Color(0xFFD6455D),
-                                    ),
-                                    onPressed: () => _deleteExpense(e),
+                                  const SizedBox(width: 8),
+                                  _ExpenseActionIconButton(
+                                    icon: FluentIcons.delete,
+                                    color: const Color(0xFFD6455D),
+                                    hoverColor: const Color(0xFFFFECEF),
+                                    onTap: () => _deleteExpense(e),
                                   ),
                                 ],
                               ),
@@ -1241,6 +1265,53 @@ class _ModeTab extends StatelessWidget {
               color: selected ? Colors.white : const Color(0xFF355A82),
               fontWeight: FontWeight.w700,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpenseActionIconButton extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final Color hoverColor;
+  final VoidCallback onTap;
+
+  const _ExpenseActionIconButton({
+    required this.icon,
+    required this.color,
+    required this.hoverColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_ExpenseActionIconButton> createState() =>
+      _ExpenseActionIconButtonState();
+}
+
+class _ExpenseActionIconButtonState extends State<_ExpenseActionIconButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: _hovered ? widget.hoverColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            widget.icon,
+            size: 16,
+            color: widget.color,
           ),
         ),
       ),

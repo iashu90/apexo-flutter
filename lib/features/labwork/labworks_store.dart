@@ -75,6 +75,12 @@ class Labworks extends Store<Labwork> {
       'Denco',
       'cs-lab',
     };
+    for (final doc in docs.values) {
+      final lab = doc.lab.trim();
+      if (lab.isNotEmpty) {
+        labs.add(lab);
+      }
+    }
     return labs.toList();
   }
 

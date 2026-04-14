@@ -834,7 +834,7 @@ class _MonthlyRevenueTrendWindowCardState
         subtitle:
             '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
         rows: points,
-        barColor: const Color(0xFF2BA58D),
+        barColor: const Color(0xFF2D7BD8),
         valueFormatter: formatIndianShortCurrency,
         trailing: _TrendNavButtons(
           canGoForward: _windowOffset > 0,
@@ -906,7 +906,7 @@ class _MonthlyNetRevenueTrendWindowCardState
         subtitle:
             '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
         rows: points,
-        barColor: const Color(0xFF2D7BD8),
+        barColor: const Color(0xFF2BA58D),
         valueFormatter: formatIndianShortCurrency,
         trailing: _TrendNavButtons(
           canGoForward: _windowOffset > 0,
