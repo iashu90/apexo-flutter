@@ -22,7 +22,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   String _statusFilter = 'all';
   String _paymentFilter = 'all';
   String _rangeFilter = 'all';
-  String _handoverFilter = 'all';
   String _labFilter = 'all';
   DateTime? _fromDate;
   DateTime? _toDate;
@@ -205,6 +204,25 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
             ),
           ),
           const SizedBox(width: 8),
+          SizedBox(
+            width: 200,
+            child: ComboBox<String>(
+              value: _labFilter,
+              items: labs
+                  .map(
+                    (v) => ComboBoxItem<String>(
+                      value: v,
+                      child: Text(v == 'all' ? 'All Labs' : v),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (v) {
+                if (v == null) return;
+                setState(() => _labFilter = v);
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
           _dropFilter(
             width: 150,
             value: _rangeFilter,
@@ -251,36 +269,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               'done': 'Completed',
             },
             onChanged: (v) => setState(() => _statusFilter = v),
-          ),
-          const SizedBox(width: 8),
-          _dropFilter(
-            width: 170,
-            value: _handoverFilter,
-            items: const {
-              'all': 'All Handovers',
-              'pending_doctor': 'Pending Doctor',
-              'pending_patient': 'Pending Patient',
-            },
-            onChanged: (v) => setState(() => _handoverFilter = v),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 200,
-            child: ComboBox<String>(
-              value: _labFilter,
-              items: labs
-                  .map(
-                    (v) => ComboBoxItem<String>(
-                      value: v,
-                      child: Text(v == 'all' ? 'All Labs' : v),
-                    ),
-                  )
-                  .toList(growable: false),
-              onChanged: (v) {
-                if (v == null) return;
-                setState(() => _labFilter = v);
-              },
-            ),
           ),
           if (_rangeFilter == 'custom' && (_fromDate != null || _toDate != null))
             Padding(
@@ -409,13 +397,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       if (_paymentFilter == 'paid' && !l.paid) return false;
       if (_paymentFilter == 'due' && l.paid) return false;
 
-      if (_handoverFilter == 'pending_doctor' && l.deliveredToDoctor) {
-        return false;
-      }
-      if (_handoverFilter == 'pending_patient' && l.deliveredToPatient) {
-        return false;
-      }
-
       if (from != null || to != null) {
         final d = DateTime(l.date.year, l.date.month, l.date.day);
         if (from != null && d.isBefore(from)) return false;
@@ -461,7 +442,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       _searchCtrl.text = '';
       _statusFilter = 'all';
       _paymentFilter = 'all';
-      _handoverFilter = 'all';
       _rangeFilter = 'all';
       _labFilter = 'all';
       _fromDate = null;

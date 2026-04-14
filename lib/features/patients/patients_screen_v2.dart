@@ -50,9 +50,16 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 
   static const int _pageSize = 200;
 
-  static const List<String> _topRanges = [
+  static const List<String> _focusRanges = [
+    '1W',
+    '1M',
+    '3M',
+    '6M',
+    'YTD',
+    'Year',
     'All',
   ];
+  static const List<String> _procedureRanges = ['All'];
 
   @override
   void initState() {
@@ -73,18 +80,18 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 
   DateTime? _rangeStart(String range, DateTime now) {
     switch (range) {
-      case '1Week':
+      case '1W':
         return now.subtract(const Duration(days: 7));
       case '1M':
         return now.subtract(const Duration(days: 30));
       case '3M':
         return now.subtract(const Duration(days: 90));
-      case '5M':
-        return now.subtract(const Duration(days: 150));
-      case '1Y':
-        return now.subtract(const Duration(days: 365));
-      case '6Months':
+      case '6M':
         return now.subtract(const Duration(days: 182));
+      case 'YTD':
+        return DateTime(now.year, 1, 1);
+      case 'Year':
+        return now.subtract(const Duration(days: 365));
       case 'All':
       default:
         return null;
@@ -887,7 +894,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                             rows: topPatientsByVisits,
                             visitsByPatient: visitsByPatient,
                             selectedRange: _topRange,
-                            ranges: _topRanges,
+                            ranges: _focusRanges,
                             onSelectRange: (v) => setState(() {
                               _topRange = v;
                             }),
@@ -906,7 +913,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                             rows: topOutstanding,
                             visitsByPatient: visitsByPatient,
                             selectedRange: _outstandingRange,
-                            ranges: _topRanges,
+                            ranges: _focusRanges,
                             onSelectRange: (v) => setState(() {
                               _outstandingRange = v;
                             }),
@@ -928,7 +935,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                             rows: topProcedurePatients.toList(growable: false),
                             visitsByPatient: visitsByPatient,
                             selectedRange: _procedureRange,
-                            ranges: _topRanges,
+                            ranges: _procedureRanges,
                             onSelectRange: (v) => setState(() {
                               _procedureRange = v;
                             }),
@@ -2681,7 +2688,7 @@ class _TopOutstandingCard extends StatelessWidget {
                       padding: WidgetStateProperty.all(
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
-                      backgroundColor: WidgetStateProperty.all(const Color(0xFFFFEEF0)),
+                      backgroundColor: WidgetStateProperty.all(const Color(0xFFEAF2FF)),
                     ),
                     child: const Text('Show More'),
                   ),
