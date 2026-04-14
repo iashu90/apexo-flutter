@@ -173,7 +173,7 @@ class _Routes {
           title: txt("labworks"),
           identifier: "labworks",
           navbarTitle: txt("labworks"),
-          icon: FluentIcons.manufacturing,
+          icon: FluentIcons.test_beaker,
           screen: LabworksScreen.new,
           accessible:
               permissions.list[3] || permissions.list[0] || login.isAdmin,
@@ -187,7 +187,7 @@ class _Routes {
           title: 'Labworks V2',
           identifier: 'labworks_v2',
           navbarTitle: 'Labworks V2',
-          icon: FluentIcons.manufacturing,
+          icon: FluentIcons.test_beaker,
           screen: LabworksV2Screen.new,
           accessible:
               permissions.list[3] || permissions.list[0] || login.isAdmin,

@@ -4,6 +4,8 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/expenses/expense_model.dart';
+import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -17,22 +19,27 @@ class ReportV2Screen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       children: [
         MStreamBuilder(
-          streams: [appointments.observableMap.stream],
+          streams: [
+            appointments.observableMap.stream,
+            expenses.observableMap.stream,
+          ],
           builder: (context, _) {
             final allAppointments =
                 appointments.present.values.toList(growable: false);
+            final allExpenses = expenses.present.values.toList(growable: false);
             final screenWidth = MediaQuery.of(context).size.width;
             final horizontalPadding = screenWidth < 700 ? 32.0 : 42.0;
-            final available = (screenWidth - horizontalPadding).clamp(320.0, 1800.0);
+            final available =
+                (screenWidth - horizontalPadding).clamp(320.0, 1800.0);
             final cardsPerRow = available >= 1600
-              ? 3
-              : available >= 980
-                ? 2
-                : 1;
+                ? 3
+                : available >= 980
+                    ? 2
+                    : 1;
             final cardWidth = cardsPerRow == 1
-              ? available
-              : ((available - ((cardsPerRow - 1) * 10)) / cardsPerRow)
-                .clamp(320.0, 820.0);
+                ? available
+                : ((available - ((cardsPerRow - 1) * 10)) / cardsPerRow)
+                    .clamp(320.0, 820.0);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -60,8 +67,8 @@ class ReportV2Screen extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: cardWidth,
-                      child:
-                          _DailyAppointmentsTrendWindowCard(rows: allAppointments),
+                      child: _DailyAppointmentsTrendWindowCard(
+                          rows: allAppointments),
                     ),
                     SizedBox(
                       width: cardWidth,
@@ -71,11 +78,17 @@ class ReportV2Screen extends StatelessWidget {
                     ),
                     SizedBox(
                       width: cardWidth,
-                      child: _DailyRevenueTrendWindowCard(rows: allAppointments),
+                      child:
+                          _DailyRevenueTrendWindowCard(rows: allAppointments),
                     ),
                     SizedBox(
                       width: cardWidth,
-                      child: _MonthlyRevenueTrendWindowCard(rows: allAppointments),
+                      child:
+                          _MonthlyRevenueTrendWindowCard(rows: allAppointments),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _MonthlyExpensesTrendWindowCard(rows: allExpenses),
                     ),
                     SizedBox(
                       width: cardWidth,
@@ -212,12 +225,14 @@ class _NewVsReturningCardBody extends StatefulWidget {
   const _NewVsReturningCardBody({required this.rows});
 
   @override
-  State<_NewVsReturningCardBody> createState() => _NewVsReturningCardBodyState();
+  State<_NewVsReturningCardBody> createState() =>
+      _NewVsReturningCardBodyState();
 }
 
 class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
   _RangeFilter _range = _RangeFilter.month;
-  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _monthAnchor =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   Widget build(BuildContext context) {
@@ -384,9 +399,8 @@ class _MonthlyTreatmentDistributionCardState
         trailing: _TrendNavButtons(
           canGoForward: _monthOffset > 0,
           onBack: () => setState(() => _monthOffset += 1),
-          onForward: _monthOffset > 0
-              ? () => setState(() => _monthOffset -= 1)
-              : null,
+          onForward:
+              _monthOffset > 0 ? () => setState(() => _monthOffset -= 1) : null,
         ),
         child: SizedBox(
           height: 250,
@@ -821,6 +835,60 @@ class _MonthlyRevenueTrendWindowCardState
   }
 }
 
+class _MonthlyExpensesTrendWindowCard extends StatefulWidget {
+  final List<Expense> rows;
+
+  const _MonthlyExpensesTrendWindowCard({required this.rows});
+
+  @override
+  State<_MonthlyExpensesTrendWindowCard> createState() =>
+      _MonthlyExpensesTrendWindowCardState();
+}
+
+class _MonthlyExpensesTrendWindowCardState
+    extends State<_MonthlyExpensesTrendWindowCard> {
+  int _windowOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final windowEnd = DateTime(now.year, now.month - _windowOffset + 1, 1);
+    final windowStart = DateTime(windowEnd.year, windowEnd.month - 12, 1);
+    final starts = List<DateTime>.generate(
+      12,
+      (i) => DateTime(windowStart.year, windowStart.month + i, 1),
+      growable: false,
+    );
+
+    final points = starts.map((start) {
+      final end = DateTime(start.year, start.month + 1, 1);
+      final value = widget.rows
+          .where((e) => !e.date.isBefore(start) && e.date.isBefore(end))
+          .fold<double>(0, (sum, e) => sum + e.amount);
+      return (label: DateFormat('MMM').format(start), value: value);
+    }).toList(growable: false);
+
+    return SizedBox(
+      width: 560,
+      child: _SimpleBarsCard(
+        title: 'Expenses Trend (Monthly)',
+        subtitle:
+            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
+        rows: points,
+        barColor: const Color(0xFFD6455D),
+        valueFormatter: formatIndianShortCurrency,
+        trailing: _TrendNavButtons(
+          canGoForward: _windowOffset > 0,
+          onBack: () => setState(() => _windowOffset += 1),
+          onForward: _windowOffset > 0
+              ? () => setState(() => _windowOffset -= 1)
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
 class _TrendNavButtons extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback? onForward;
@@ -896,74 +964,74 @@ class _SimpleBarsCard extends StatelessWidget {
               .entries
               .map(
                 (entry) => Expanded(
-                        child: Tooltip(
-                          message:
-                              '${entry.value.label}: ${valueFormatter == null ? entry.value.value.toStringAsFixed(0) : valueFormatter!(entry.value.value)}',
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                if (!verticalValueLabels)
-                                  Text(
-                                    valueFormatter == null
-                                        ? entry.value.value.toStringAsFixed(0)
-                                        : valueFormatter!(entry.value.value),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0xFF36557C),
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 10,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                if (verticalValueLabels)
-                                  RotatedBox(
-                                    quarterTurns: 3,
-                                    child: SizedBox(
-                                      width: 44,
-                                      child: Text(
-                                        entry.value.value == 0
-                                            ? ''
-                                            : (valueFormatter == null
-                                                ? entry.value.value.toStringAsFixed(0)
-                                                : valueFormatter!(entry.value.value)),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF36557C),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 9,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                const SizedBox(height: 3),
-                                Container(
-                                  height: (145 * (entry.value.value / max))
-                                      .clamp(0, 145)
-                                      .toDouble(),
-                                  decoration: BoxDecoration(
-                                    color: barColor,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  entry.key % showEveryNthXLabel == 0
-                                      ? entry.value.label
-                                      : '',
+                  child: Tooltip(
+                    message:
+                        '${entry.value.label}: ${valueFormatter == null ? entry.value.value.toStringAsFixed(0) : valueFormatter!(entry.value.value)}',
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (!verticalValueLabels)
+                            Text(
+                              valueFormatter == null
+                                  ? entry.value.value.toStringAsFixed(0)
+                                  : valueFormatter!(entry.value.value),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF36557C),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          if (verticalValueLabels)
+                            RotatedBox(
+                              quarterTurns: 3,
+                              child: SizedBox(
+                                width: 44,
+                                child: Text(
+                                  entry.value.value == 0
+                                      ? ''
+                                      : (valueFormatter == null
+                                          ? entry.value.value.toStringAsFixed(0)
+                                          : valueFormatter!(entry.value.value)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    color: Color(0xFF5A7397),
+                                    color: Color(0xFF36557C),
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 10,
+                                    fontSize: 9,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-                              ],
+                              ),
+                            ),
+                          const SizedBox(height: 3),
+                          Container(
+                            height: (145 * (entry.value.value / max))
+                                .clamp(0, 145)
+                                .toDouble(),
+                            decoration: BoxDecoration(
+                              color: barColor,
+                              borderRadius: BorderRadius.circular(4),
                             ),
                           ),
+                          const SizedBox(height: 5),
+                          Text(
+                            entry.key % showEveryNthXLabel == 0
+                                ? entry.value.label
+                                : '',
+                            style: const TextStyle(
+                              color: Color(0xFF5A7397),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               )
@@ -985,7 +1053,8 @@ class _TrafficByTimeCard extends StatefulWidget {
 
 class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
   _RangeFilter _range = _RangeFilter.today;
-  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _monthAnchor =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   Widget build(BuildContext context) {
@@ -1049,7 +1118,8 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
                     .map(
                       (point) => Expanded(
                         child: Tooltip(
-                          message: '${point.label}: ${point.value.toStringAsFixed(0)}',
+                          message:
+                              '${point.label}: ${point.value.toStringAsFixed(0)}',
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 2),
                             child: Column(
@@ -1116,7 +1186,8 @@ class _TrafficByDayCard extends StatefulWidget {
 
 class _TrafficByDayCardState extends State<_TrafficByDayCard> {
   _RangeFilter _range = _RangeFilter.week;
-  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _monthAnchor =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   Widget build(BuildContext context) {
@@ -1173,7 +1244,8 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
                     .map(
                       (point) => Expanded(
                         child: Tooltip(
-                          message: '${point.label}: ${point.value.toStringAsFixed(0)}',
+                          message:
+                              '${point.label}: ${point.value.toStringAsFixed(0)}',
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 3),
                             child: Column(
@@ -1234,7 +1306,8 @@ class _AppointmentMetricsCard extends StatefulWidget {
 
 class _AppointmentMetricsCardState extends State<_AppointmentMetricsCard> {
   _RangeFilter _range = _RangeFilter.today;
-  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _monthAnchor =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   @override
   Widget build(BuildContext context) {

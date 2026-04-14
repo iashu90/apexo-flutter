@@ -145,7 +145,7 @@ class _PatientAppointments extends StatefulWidget {
 }
 
 class _PatientAppointmentsState extends State<_PatientAppointments> {
- int filterType = 1; 
+  int filterType = 1;
   @override
   Widget build(BuildContext context) {
     return MStreamBuilder(
@@ -155,7 +155,7 @@ class _PatientAppointmentsState extends State<_PatientAppointments> {
         labworks.observableMap.stream
       ],
       builder: (context, snapshot) {
-         final patient = widget.patient;
+        final patient = widget.patient;
         // Gather all appointments and labworks, sort by date descending
         final allAppointments = patient.allAppointments;
         final allLabworks = labworks.present.values
@@ -405,6 +405,29 @@ class _PatientDetails extends StatefulWidget {
 }
 
 class _PatientDetailsState extends State<_PatientDetails> {
+  static const List<String> _medicalHistorySuggestions = [
+    'Antibiotics (Penicillin)',
+    'Latex Allergy',
+    'Local Anesthetics',
+    'Hypertension (High BP)',
+    'Heart Attack / Stroke',
+    'Artificial Heart Valves',
+    'Blood Thinners (Anticoagulants)',
+    'Diabetes (HbA1c levels)',
+    'GLP-1 Agonists (Ozempic/Wegovy)',
+    'Osteoporosis (Bisphosphonates)',
+    'Joint Replacement',
+    'Asthma',
+    'Sleep Apnea / Snoring',
+    'Hepatitis (B or C)',
+    'HIV / AIDS',
+    'Epilepsy / Seizures',
+    'Anxiety / Dental Phobia',
+    'Tobacco / Vaping',
+    'Alcohol Consumption',
+    'Pregnancy',
+  ];
+
   bool showSuccessInfoBar = false;
 
   bool get _isNameValid => widget.patient.title.trim().isNotEmpty;
@@ -569,8 +592,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
             items: const [
               ComboBoxItem(value: 'None', child: Text('None')),
               ComboBoxItem(value: 'Google', child: Text('Google')),
-              ComboBoxItem(
-                  value: 'Social Media', child: Text('Social Media')),
+              ComboBoxItem(value: 'Social Media', child: Text('Social Media')),
               ComboBoxItem(value: 'Friends', child: Text('Friends')),
               ComboBoxItem(value: 'Camps', child: Text('Camps')),
               ComboBoxItem(value: 'Name Board', child: Text('Name Board')),
@@ -583,13 +605,16 @@ class _PatientDetailsState extends State<_PatientDetails> {
           ),
         ),
         InfoLabel(
-          label: "${txt("patientTags")}:",
+          label: "Medical History:",
           isHeader: true,
           child: TagInputWidget(
             key: WK.fieldPatientTags,
-            suggestions: patients.allTags
+            suggestions: {
+              ..._medicalHistorySuggestions,
+              ...patients.allTags,
+            }
                 .map((t) => TagInputItem(value: t, label: t))
-                .toList(),
+                .toList(growable: false),
             onChanged: (tags) {
               widget.patient.tags = List<String>.from(
                   tags.map((e) => e.value).where((e) => e != null));
@@ -599,7 +624,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
                 .toList(),
             strict: false,
             limit: 9999,
-            placeholder: "${txt("patientTags")}...",
+            placeholder: 'Add medical history...',
           ),
         ),
         const SizedBox(height: 30),
