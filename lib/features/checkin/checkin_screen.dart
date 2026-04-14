@@ -53,11 +53,13 @@ Future<void> openCheckinAppointmentModal(
       : normalizedStage == 'checkout'
           ? 'Billing'
           : normalizedStage == 'completed'
-              ? 'Completed'
+          ? 'Complete'
               : 'Check-in';
-  final popupTitle = appointment.title.trim().isEmpty
-      ? 'Patient Details'
-      : '${_toTitleCase(appointment.title)} • ${appointment.patient?.age ?? 0}y • ${appointment.patient?.phone.trim().isNotEmpty == true ? appointment.patient!.phone : '-'} • $stageLabel';
+    final patientName = appointment.title.trim().isEmpty
+      ? 'Unnamed patient'
+      : _toTitleCase(appointment.title);
+    final patientAge = appointment.patient?.age ?? 0;
+    final patientGender = appointment.patient?.gender == 1 ? 'M' : 'F';
 
   await showDialog<void>(
     context: context,
@@ -107,13 +109,28 @@ Future<void> openCheckinAppointmentModal(
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        popupTitle,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            stageLabel,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$patientName • ${patientAge}y • $patientGender',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFEAF2FF),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     IconButton(
@@ -1288,7 +1305,13 @@ class _WorkflowRow extends StatelessWidget {
     }
 
     if (stage == 'waiting') {
-      await openCheckinAppointmentModal(context, appointment);
+      final pickedDoctorIds =
+          await _pickDoctor(context, initialSelected: appointment.operatorsIDs);
+      if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
+      appointment.operatorsIDs = pickedDoctorIds;
+      appointment.checkinStage = 'with_doctor';
+      appointment.isDone = false;
+      appointments.set(appointment);
       onSelect?.call(appointment);
       return;
     }
@@ -1468,7 +1491,9 @@ class _WorkflowRow extends StatelessWidget {
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: onSelect == null ? null : () => onSelect!(appointment),
+        onTap: stage == 'waiting'
+            ? () => _moveStage(context)
+            : (onSelect == null ? null : () => onSelect!(appointment)),
         child: Row(
           children: [
             Expanded(
@@ -1534,30 +1559,24 @@ class _WorkflowRow extends StatelessWidget {
                               appointments.set(appointment);
                             }
                           : null,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              FluentIcons.contact,
-                              size: 12,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            FluentIcons.contact,
+                            size: 12,
+                            color: Color(0xFF3B82F6),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            doctorLabel,
+                            style: const TextStyle(
                               color: Color(0xFF3B82F6),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              decoration: TextDecoration.underline,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              doctorLabel,
-                              style: const TextStyle(
-                                color: Color(0xFF3B82F6),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -1571,14 +1590,14 @@ class _WorkflowRow extends StatelessWidget {
                   Tooltip(
                     message: 'Undo',
                     child: IconButton(
-                      icon: const Icon(material.Icons.undo_rounded, size: 16),
+                      icon: const Icon(material.Icons.undo_rounded, size: 18),
                       style: ButtonStyle(
                         padding: WidgetStateProperty.all(
-                          const EdgeInsets.all(6),
+                          const EdgeInsets.all(8),
                         ),
                         shape: WidgetStateProperty.all(
                           RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         backgroundColor:
@@ -1604,15 +1623,15 @@ class _WorkflowRow extends StatelessWidget {
                             : stage == 'with_doctor'
                                 ? material.Icons.receipt_long_rounded
                                 : material.Icons.task_alt_rounded,
-                        size: 16,
+                        size: 18,
                       ),
                       style: ButtonStyle(
                         padding: WidgetStateProperty.all(
-                          const EdgeInsets.all(6),
+                          const EdgeInsets.all(8),
                         ),
                         shape: WidgetStateProperty.all(
                           RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         backgroundColor: WidgetStateProperty.all(
@@ -1637,14 +1656,14 @@ class _WorkflowRow extends StatelessWidget {
                   Tooltip(
                     message: 'Schedule Appointment',
                     child: IconButton(
-                      icon: const Icon(material.Icons.calendar_month, size: 16),
+                      icon: const Icon(material.Icons.calendar_month, size: 18),
                       style: ButtonStyle(
                         padding: WidgetStateProperty.all(
-                          const EdgeInsets.all(6),
+                          const EdgeInsets.all(8),
                         ),
                         shape: WidgetStateProperty.all(
                           RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         backgroundColor:
@@ -2211,21 +2230,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               child: FilledButton(
                 style: ButtonStyle(
                   backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFF2BA58D)),
+                      WidgetStateProperty.all(const Color(0xFFD6455D)),
                   foregroundColor: WidgetStateProperty.all(Colors.white),
                 ),
-                onPressed: () {
-                  appointment.checkinStage = 'checkout';
-                  appointment.isDone = false;
-                  appointments.set(appointment);
-                  if (mounted) setState(() {});
-                },
-                child: const Text('Billing'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Button(
                 onPressed: () async {
                   final shouldMove = await showDialog<bool>(
                     context: context,
@@ -2254,6 +2261,23 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   if (mounted) setState(() {});
                 },
                 child: const Text('Move Back to Waiting'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton(
+                style: ButtonStyle(
+                  backgroundColor:
+                      WidgetStateProperty.all(const Color(0xFF7C3AED)),
+                  foregroundColor: WidgetStateProperty.all(Colors.white),
+                ),
+                onPressed: () {
+                  appointment.checkinStage = 'checkout';
+                  appointment.isDone = false;
+                  appointments.set(appointment);
+                  if (mounted) setState(() {});
+                },
+                child: const Text('Billing'),
               ),
             ),
           ],
@@ -2292,7 +2316,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   final shouldComplete = await showDialog<bool>(
                     context: context,
                     builder: (dialogContext) => ContentDialog(
-                      title: const Text('Complete appointment?'),
+                      title: const Text('Move to Completed?'),
                       content: const Text(
                         'This appointment will be moved to Completed.',
                       ),

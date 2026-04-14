@@ -414,12 +414,6 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                       final e = rows[index];
                       final category = e.items.isEmpty ? '-' : e.items.first;
                       final paymentMode = _paymentMode(e);
-                      final modeBg = paymentMode == 'UPI'
-                          ? const Color(0xFFDCFCE7)
-                          : const Color(0xFFFFF3CD);
-                      final modeFg = paymentMode == 'UPI'
-                          ? const Color(0xFF1E7C58)
-                          : const Color(0xFF9A6B00);
 
                       return Container(
                         padding: const EdgeInsets.symmetric(
@@ -485,45 +479,37 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                               flex: 10,
                               child: Align(
                                 alignment: Alignment.centerLeft,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: modeBg,
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      paymentMode == 'UPI'
-                                          ? Image.asset(
-                                              'assets/gpay.png',
-                                              width: 14,
-                                              height: 14,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) =>
-                                                  const Icon(
-                                                FluentIcons.receipt_processing,
-                                                size: 12,
-                                                color: Color(0xFF2D7BD8),
-                                              ),
-                                            )
-                                          : const Icon(
-                                              FluentIcons.money,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    paymentMode == 'UPI'
+                                        ? Image.asset(
+                                            'assets/gpay.png',
+                                            width: 14,
+                                            height: 14,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                const Icon(
+                                              FluentIcons.receipt_processing,
                                               size: 12,
-                                              color: Color(0xFF3B9A42),
+                                              color: Color(0xFF2D7BD8),
                                             ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        paymentMode,
-                                        style: TextStyle(
-                                          color: modeFg,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 11,
-                                        ),
+                                          )
+                                        : const Icon(
+                                            FluentIcons.money,
+                                            size: 12,
+                                            color: Color(0xFF3B9A42),
+                                          ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      paymentMode,
+                                      style: const TextStyle(
+                                        color: Color(0xFF2D476D),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -781,12 +767,12 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
       _ExpenseSummaryCardData(
         title: 'WEEKLY SPENT',
         value: weeklySpent,
-        valueColor: const Color(0xFF2D476D),
+        valueColor: const Color(0xFFD6455D),
       ),
       _ExpenseSummaryCardData(
         title: 'MONTHLY SPENT',
         value: monthlySpent,
-        valueColor: const Color(0xFF2D476D),
+        valueColor: const Color(0xFFD6455D),
       ),
     ];
   }
@@ -1255,14 +1241,19 @@ class _ModeTab extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2D7BD8) : Colors.transparent,
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color:
+                selected ? const Color(0xFF2D7BD8) : const Color(0xFFD4E2F3),
+          ),
         ),
         child: Center(
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF355A82),
+              color:
+                  selected ? const Color(0xFF1459AD) : const Color(0xFF355A82),
               fontWeight: FontWeight.w700,
             ),
           ),

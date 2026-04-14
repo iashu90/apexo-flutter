@@ -449,6 +449,300 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     }
   }
 
+  Future<void> _openEditPatientPopup(Patient patient) async {
+    final nameController = TextEditingController(text: patient.title);
+    final ageController = TextEditingController(text: '${patient.age}');
+    final phoneController = TextEditingController(text: patient.phone);
+    final addressController = TextEditingController(text: patient.address);
+    final notesController = TextEditingController(text: patient.notes);
+    final customHistoryController = TextEditingController();
+
+    int gender = patient.gender;
+    String referral = patient.referralSource.trim().isEmpty
+        ? 'None'
+        : patient.referralSource;
+    final selectedMedicalHistory = patient.tags.toSet();
+    String? nameError;
+    String? ageError;
+    String? phoneError;
+
+    void savePatientEdits() {
+      final rawName = nameController.text.trim();
+      final parsedAge = int.tryParse(ageController.text.trim()) ?? 0;
+      final rawPhone = phoneController.text.trim();
+
+      final computedNameError =
+          rawName.isEmpty ? 'Patient name is required.' : null;
+      final computedAgeError = parsedAge <= 0 ? 'Age is required.' : null;
+      final computedPhoneError =
+          rawPhone.isEmpty ? 'Phone number is required.' : null;
+
+      nameError = computedNameError;
+      ageError = computedAgeError;
+      phoneError = computedPhoneError;
+
+      if (computedAgeError != null) return;
+      if (computedNameError != null || computedPhoneError != null) {
+        return;
+      }
+
+      patient.title = rawName;
+      patient.birth = parsedAge;
+      patient.gender = gender;
+      patient.phone = rawPhone;
+      patient.address = addressController.text.trim();
+      patient.notes = notesController.text.trim();
+      patient.tags = selectedMedicalHistory.toList(growable: false);
+      patient.referralSource = referral;
+      patients.set(patient);
+      Navigator.pop(context);
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateDialog) => ContentDialog(
+          title: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Edit Patient',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(FluentIcons.chrome_close, size: 12),
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  InfoLabel(
+                    label: 'Name:',
+                    child: TextBox(
+                      controller: nameController,
+                      placeholder: 'Patient name',
+                      onChanged: (_) {
+                        if (nameError != null) {
+                          setStateDialog(() => nameError = null);
+                        }
+                      },
+                    ),
+                  ),
+                  if (nameError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        nameError!,
+                        style: const TextStyle(
+                            color: Color(0xFFD6455D), fontSize: 11),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InfoLabel(
+                          label: 'Age:',
+                          child: TextBox(
+                            controller: ageController,
+                            placeholder: 'Age',
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) {
+                              if (ageError != null) {
+                                setStateDialog(() => ageError = null);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: InfoLabel(
+                          label: 'Gender:',
+                          child: ComboBox<int>(
+                            value: gender,
+                            isExpanded: true,
+                            items: const [
+                              ComboBoxItem(value: 1, child: Text('Male')),
+                              ComboBoxItem(value: 0, child: Text('Female')),
+                            ],
+                            onChanged: (v) =>
+                                setStateDialog(() => gender = v ?? 0),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (ageError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        ageError!,
+                        style: const TextStyle(
+                            color: Color(0xFFD6455D), fontSize: 11),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  InfoLabel(
+                    label: 'Phone:',
+                    child: TextBox(
+                      controller: phoneController,
+                      placeholder: 'Phone',
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) {
+                        if (phoneError != null) {
+                          setStateDialog(() => phoneError = null);
+                        }
+                      },
+                    ),
+                  ),
+                  if (phoneError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        phoneError!,
+                        style: const TextStyle(
+                            color: Color(0xFFD6455D), fontSize: 11),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  InfoLabel(
+                    label: 'Address:',
+                    child: TextBox(
+                      controller: addressController,
+                      placeholder: 'Address',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  InfoLabel(
+                    label: 'Notes:',
+                    child: TextBox(
+                      controller: notesController,
+                      placeholder: 'Notes',
+                      maxLines: 3,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  InfoLabel(
+                    label: 'Medical History:',
+                    child: SizedBox.shrink(),
+                  ),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _medicalHistorySuggestions.map((item) {
+                      final selected = selectedMedicalHistory.contains(item);
+                      return GestureDetector(
+                        onTap: () {
+                          setStateDialog(() {
+                            if (selected) {
+                              selectedMedicalHistory.remove(item);
+                            } else {
+                              selectedMedicalHistory.add(item);
+                            }
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? const Color(0xFF2D7BD8)
+                                : const Color(0xFFEFF4FB),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: selected
+                                  ? const Color(0xFF2D7BD8)
+                                  : const Color(0xFFD4E2F3),
+                            ),
+                          ),
+                          child: Text(
+                            item,
+                            style: TextStyle(
+                              color: selected
+                                  ? Colors.white
+                                  : const Color(0xFF345982),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(growable: false),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextBox(
+                          controller: customHistoryController,
+                          placeholder: 'Add custom medical history item',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () {
+                          final custom = customHistoryController.text.trim();
+                          if (custom.isEmpty) return;
+                          setStateDialog(() {
+                            selectedMedicalHistory.add(custom);
+                            customHistoryController.clear();
+                          });
+                        },
+                        child: const Text('Add'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  InfoLabel(
+                    label: 'Referral:',
+                    child: ComboBox<String>(
+                      isExpanded: true,
+                      value: referral,
+                      items: const [
+                        ComboBoxItem(value: 'None', child: Text('None')),
+                        ComboBoxItem(value: 'Google', child: Text('Google')),
+                        ComboBoxItem(
+                            value: 'Social Media', child: Text('Social Media')),
+                        ComboBoxItem(value: 'Friends', child: Text('Friends')),
+                        ComboBoxItem(value: 'Camps', child: Text('Camps')),
+                        ComboBoxItem(
+                            value: 'Name Board', child: Text('Name Board')),
+                      ],
+                      onChanged: (v) =>
+                          setStateDialog(() => referral = v ?? 'None'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: () {
+                setStateDialog(() {
+                  savePatientEdits();
+                });
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _openAddPatientPopup() async {
     final nameController = TextEditingController();
     final ageController = TextEditingController();
@@ -1249,6 +1543,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   totalPages: totalPages,
                   onPageChanged: (page) => setState(() => _currentPage = page),
                   serialOffset: start,
+                  onEditPatient: _openEditPatientPopup,
                   onOpenLabwork: _openLabworkForPatient,
                   onExportCsv: () => _exportPatientsCsv(
                     rows: sortedPatients,
@@ -3444,6 +3739,7 @@ class _AllPatientsListCard extends StatelessWidget {
   final bool sortAscending;
   final ValueChanged<String> onSort;
   final TextEditingController listSearchController;
+  final ValueChanged<Patient> onEditPatient;
   final ValueChanged<Patient> onOpenHistory;
   final ValueChanged<Patient> onOpenLabwork;
   final ValueChanged<Patient> onDeletePatient;
@@ -3470,6 +3766,7 @@ class _AllPatientsListCard extends StatelessWidget {
     required this.sortAscending,
     required this.onSort,
     required this.listSearchController,
+    required this.onEditPatient,
     required this.onOpenHistory,
     required this.onOpenLabwork,
     required this.onDeletePatient,
@@ -3933,7 +4230,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                     Expanded(
                                       flex: 24,
                                       child: GestureDetector(
-                                        onTap: () => openPatient(patient, 1),
+                                        onTap: () => onEditPatient(patient),
                                         child: Text(
                                           patient.title.trim().isEmpty
                                               ? 'Unnamed patient'
@@ -4022,8 +4319,8 @@ class _AllPatientsListCard extends StatelessWidget {
                                                   const Color(0xFFF1EDFB),
                                               hoverBorderColor:
                                                   const Color(0xFFD8CDF8),
-                                              onTap: () =>
-                                                  openPatient(patient, 1),
+                                                onTap: () =>
+                                                  onEditPatient(patient),
                                             ),
                                             _HoverActionItem(
                                               icon: FluentIcons.history,
