@@ -108,15 +108,34 @@ class _PatientsScreenState extends State<PatientsScreen> {
                             }
                           }
 
-                          // Delete all patients in parallel
-                          final patientDeleteFutures =
-                              ids.map((id) => patients.hardDelete(id)).toList();
+                          // First ensure linked appointments are fully deleted.
+                          await Future.wait(appointmentDeleteFutures);
 
-                          // Wait for all deletes (appointments and patients) in parallel
-                          await Future.wait([
-                            ...appointmentDeleteFutures,
-                            ...patientDeleteFutures,
-                          ]);
+                          // Then delete patients one-by-one so reference guards are respected.
+                          for (final id in ids) {
+                            try {
+                              await patients.hardDelete(id);
+                            } catch (e) {
+                              if (context.mounted) {
+                                await showDialog<void>(
+                                  context: context,
+                                  builder: (dialogContext) => ContentDialog(
+                                    title: const Text('Cannot delete patient'),
+                                    content: Text(
+                                      '$e\n\nDelete or reassign linked appointments/labworks first.',
+                                    ),
+                                    actions: [
+                                      FilledButton(
+                                        onPressed: () =>
+                                            Navigator.pop(dialogContext),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                            }
+                          }
                         }
                       },
                       icon: FluentIcons.delete,

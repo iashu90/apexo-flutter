@@ -787,10 +787,14 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
   }
 
   Future<void> _deleteExpense(Expense expense) async {
+    final category = expense.items.isEmpty ? '-' : expense.items.join(', ');
+    final note = expense.note.trim().isEmpty ? '-' : expense.note.trim();
+    final date = DateFormat('dd MMM yyyy').format(expense.date);
     final confirmed = await showConfirmDeleteDialog(
       context,
       message: 'Delete this expense?',
-      customDetails: '${expense.title} (${_doctorDetails(expense)})',
+      customDetails:
+          'Date: $date\nAmount: Rs ${expense.amount.toStringAsFixed(0)}\nCategory: $category\nDoctor: ${_doctorDetails(expense)}\nNote: $note',
     );
     if (confirmed != true) return;
     await expenses.hardDelete(expense.id);

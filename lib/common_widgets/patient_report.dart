@@ -226,7 +226,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                               ),
                             ),
                             child: row.isDone!
-                                ? const Icon(Icons.check,
+                                ? const Icon(Icons.calendar_month_outlined,
                                     size: 14, color: Colors.white)
                                 : null,
                           ),
@@ -484,8 +484,10 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                                 : row.treatmentPaymentMode),
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w500,
-                          color: (row.treatmentPaymentMode.toLowerCase() == 'gpay' ||
-                                  row.treatmentPaymentMode.toLowerCase() == 'upi')
+                          color: (row.treatmentPaymentMode.toLowerCase() ==
+                                      'gpay' ||
+                                  row.treatmentPaymentMode.toLowerCase() ==
+                                      'upi')
                               ? Colors.green
                               : Colors.brown,
                         ),
@@ -510,8 +512,10 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                                 : row.preceptionPaymentMode),
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w500,
-                          color: (row.preceptionPaymentMode.toLowerCase() == 'gpay' ||
-                                  row.preceptionPaymentMode.toLowerCase() == 'upi')
+                          color: (row.preceptionPaymentMode.toLowerCase() ==
+                                      'gpay' ||
+                                  row.preceptionPaymentMode.toLowerCase() ==
+                                      'upi')
                               ? Colors.green
                               : Colors.brown,
                         ),
