@@ -152,28 +152,47 @@ class _CheckinScreenState extends State<CheckinScreen> {
             ),
             child: Column(
               children: [
-                Padding(
+                Container(
+                  width: double.infinity,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: appointment.checkinStage == 'completed'
+                          ? const [Color(0xFF2BA58D), Color(0xFF1D8D77)]
+                          : appointment.checkinStage == 'checkout'
+                              ? const [Color(0xFF2D7BD8), Color(0xFF1D61B8)]
+                              : appointment.checkinStage == 'with_doctor'
+                                  ? const [Color(0xFF5A84E6), Color(0xFF3F68CC)]
+                                  : const [Color(0xFFE4A11B), Color(0xFFD28C02)],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(14),
+                      topRight: Radius.circular(14),
+                    ),
+                  ),
                   child: Row(
                     children: [
-                      Text(
-                        popupTitle,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF183A67),
+                      Expanded(
+                        child: Text(
+                          popupTitle,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                      const Spacer(),
                       IconButton(
                         icon: const Icon(FluentIcons.cancel, size: 12),
+                        style: ButtonStyle(
+                          foregroundColor: WidgetStateProperty.all(Colors.white),
+                        ),
                         onPressed: () => Navigator.pop(dialogContext),
                       ),
                     ],
                   ),
                 ),
-                const Divider(size: 1),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(12),
@@ -661,7 +680,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         final stacked = constraints.maxWidth < 1120;
 
                         final waitingColumn = _WorkflowColumn(
-                          title: 'Waiting Room (${waiting.length})',
+                          title: 'Waiting (${waiting.length})',
                           stage: 'waiting',
                           color: const Color(0xFFE4A11B),
                           rows: waiting,
@@ -1166,26 +1185,66 @@ class _WorkflowRow extends StatelessWidget {
     await _openNextAppointmentPrompt(context, appointment);
   }
 
-String _waitingLabel() {
-  if (appointment.checkedInAt == null) return 'Waiting';
-  
-  final wait = DateTime.now().difference(appointment.checkedInAt!);
-  final mins = wait.inMinutes;
+  Future<void> _undoStage(BuildContext context) async {
+    if (stage == 'with_doctor') {
+      final shouldMove = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: const Text('Move back to Waiting?'),
+          content: const Text('Doctor assignment will be removed.'),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Move to Waiting'),
+            ),
+          ],
+        ),
+      );
+      if (shouldMove != true) return;
+      appointment.operatorsIDs = [];
+      appointment.checkinStage = 'waiting';
+      appointment.isDone = false;
+      appointments.set(appointment);
+      return;
+    }
 
-  if (mins <= 0) return 'Waiting';
+    if (stage == 'checkout') {
+      appointment.checkinStage = 'with_doctor';
+      appointment.isDone = false;
+      appointments.set(appointment);
+      return;
+    }
 
-  if (mins >= 60) {
-    final hours = mins ~/ 60;
-    final remainingMins = mins % 60;
-    
-    // Returns "Waiting 1h 5m" or just "Waiting 1h" if mins is 0
-    return remainingMins > 0 
-        ? 'Waiting ${hours}h ${remainingMins}m' 
-        : 'Waiting ${hours}h';
+    if (stage == 'completed') {
+      final shouldMove = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: const Text('Move back to Billing?'),
+          content: const Text('This appointment will be moved back to Billing.'),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Move to Billing'),
+            ),
+          ],
+        ),
+      );
+      if (shouldMove != true) return;
+      appointment.checkinStage = 'checkout';
+      appointment.isDone = false;
+      appointments.set(appointment);
+    }
   }
 
-  return 'Waiting ${mins}m';
-}
+String _waitingLabel() => 'Waiting';
 
   void _openPatientHistoryDialog(BuildContext context) {
     final patient = appointment.patient;
@@ -1334,37 +1393,77 @@ String _waitingLabel() {
                 ],
               ),
             ),
-            if (stage != 'completed')
-              FilledButton(
-                onPressed: () => _moveStage(context),
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(
-                    stage == 'waiting'
-                        ? const Color(0xFF2D7BD8)
-                        : stage == 'with_doctor'
-                            ? const Color(0xFF2BA58D)
-                            : const Color(0xFF3B9A42),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (stage != 'waiting')
+                  Tooltip(
+                    message: 'Undo',
+                    child: IconButton(
+                      icon: const Icon(material.Icons.undo_rounded, size: 20),
+                      style: ButtonStyle(
+                        backgroundColor:
+                            WidgetStateProperty.all(const Color(0xFFFFF4E8)),
+                        foregroundColor:
+                            WidgetStateProperty.all(const Color(0xFFC97A11)),
+                      ),
+                      onPressed: () => _undoStage(context),
+                    ),
                   ),
-                  foregroundColor: WidgetStateProperty.all(Colors.white),
-                ),
-                child: Text(
-                  stage == 'waiting'
-                      ? 'Checkin'
-                      : stage == 'with_doctor'
-                          ? 'Billing'
-                          : 'Complete',
-                ),
-              ),
-            if (stage == 'completed')
-              FilledButton(
-                onPressed: () => _openNextAppointmentPrompt(context, appointment),
-                style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                  foregroundColor: WidgetStateProperty.all(Colors.white),
-                ),
-                child: const Text('Schedule'),
-              ),
+                if (stage != 'waiting') const SizedBox(width: 8),
+                if (stage != 'completed')
+                  Tooltip(
+                    message: stage == 'waiting'
+                        ? 'Check-in'
+                        : stage == 'with_doctor'
+                            ? 'Move to Billing'
+                            : 'Complete',
+                    child: IconButton(
+                      icon: Icon(
+                        stage == 'waiting'
+                            ? material.Icons.login_rounded
+                            : stage == 'with_doctor'
+                                ? material.Icons.receipt_long_rounded
+                                : material.Icons.task_alt_rounded,
+                        size: 22,
+                      ),
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.all(
+                          stage == 'waiting'
+                              ? const Color(0xFFEAF2FF)
+                              : stage == 'with_doctor'
+                                  ? const Color(0xFFE7FBF6)
+                                  : const Color(0xFFE8F8ED),
+                        ),
+                        foregroundColor: WidgetStateProperty.all(
+                          stage == 'waiting'
+                              ? const Color(0xFF2D7BD8)
+                              : stage == 'with_doctor'
+                                  ? const Color(0xFF2BA58D)
+                                  : const Color(0xFF2A8D3F),
+                        ),
+                      ),
+                      onPressed: () => _moveStage(context),
+                    ),
+                  ),
+                if (stage == 'completed')
+                  Tooltip(
+                    message: 'Schedule Appointment',
+                    child: IconButton(
+                      icon: const Icon(material.Icons.event_available_rounded,
+                          size: 22),
+                      style: ButtonStyle(
+                        backgroundColor:
+                            WidgetStateProperty.all(const Color(0xFFEAF2FF)),
+                        foregroundColor:
+                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                      ),
+                      onPressed: () =>
+                          _openNextAppointmentPrompt(context, appointment),
+                    ),
+                  ),
+              ],
+            ),
             if (showHistoryAction) ...[
               const SizedBox(width: 8),
               Button(
@@ -1698,18 +1797,115 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               appointment: appointment, allAppointmentsForPatient: all)
         else
           const SizedBox.shrink(),
-        if (appointment.checkinStage == 'completed') ...[
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
+        if (appointment.checkinStage == 'waiting') ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
             child: FilledButton(
               style: ButtonStyle(
-                backgroundColor:
-                    WidgetStateProperty.all(const Color(0xFFE56E7D)),
+                backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
               ),
-              onPressed: () => _moveCompletedToBilling(appointment),
-              child: const Text('Move Back to Billing'),
+              onPressed: () async {
+                final pickedDoctorIds = await showDialog<List<String>>(
+                  context: context,
+                  builder: (dialogContext) {
+                    final selected = {...appointment.operatorsIDs};
+                    final doctorEntries = doctors.present.values
+                        .map((d) => MapEntry(d.id, d.title.trim().isEmpty ? 'Unnamed doctor' : d.title))
+                        .toList(growable: false)
+                      ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+                    return StatefulBuilder(
+                      builder: (context, setDialogState) => ContentDialog(
+                        title: const Text('Assign doctor to check-in'),
+                        content: SizedBox(
+                          width: 360,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: doctorEntries
+                                  .map(
+                                    (entry) => Checkbox(
+                                      checked: selected.contains(entry.key),
+                                      content: Text(entry.value),
+                                      onChanged: (value) {
+                                        setDialogState(() {
+                                          if (value == true) {
+                                            selected.add(entry.key);
+                                          } else {
+                                            selected.remove(entry.key);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                  )
+                                  .toList(growable: false),
+                            ),
+                          ),
+                        ),
+                        actions: [
+                          Button(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(
+                                dialogContext, selected.toList(growable: false)),
+                            child: const Text('Check-in'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+                if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
+                appointment.operatorsIDs = pickedDoctorIds;
+                appointment.checkinStage = 'with_doctor';
+                appointment.isDone = false;
+                appointments.set(appointment);
+                if (mounted) setState(() {});
+              },
+              child: const Text('Check-in'),
             ),
+          ),
+        ],
+        if (appointment.checkinStage == 'completed') ...[
+          const SizedBox(height: 8),
+          TodayAppointmentInsightCard(appointment: appointment),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  style: ButtonStyle(
+                    backgroundColor:
+                        WidgetStateProperty.all(const Color(0xFFE56E7D)),
+                  ),
+                  onPressed: () => _moveCompletedToBilling(appointment),
+                  child: const Text('Move Back to Billing'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  style: ButtonStyle(
+                    backgroundColor:
+                        WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                  ),
+                  onPressed: () {
+                    final patient = appointment.patient;
+                    if (patient == null) return;
+                    final nextAppointment = Appointment.fromJson({
+                      'patientID': patient.id,
+                      'operatorsIDs': appointment.operatorsIDs,
+                      'date': DateTime.now()
+                          .add(const Duration(days: 7))
+                          .millisecondsSinceEpoch,
+                    });
+                    openAppointment(nextAppointment);
+                  },
+                  child: const Text('New Appointment'),
+                ),
+              ),
+            ],
           ),
         ],
         const SizedBox(height: 10),
@@ -2302,27 +2498,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         },
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    InfoLabel(
-                      label: 'Treatment Price:',
-                      child: CupertinoTextField(
-                        controller: _priceController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
-                        prefix: const Padding(
-                          padding: EdgeInsets.only(left: 10),
-                          child: Text('₹',
-                              style: TextStyle(color: Color(0xFF355279))),
-                        ),
-                        placeholder: 'Treatment price',
-                        onChanged: (value) {
-                          a.price = double.tryParse(value) ?? 0;
-                          appointments.set(a);
-                        },
-                      ),
-                    ),
                     if (mergedTopTreatments.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       Text(
@@ -2361,6 +2536,50 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             .toList(growable: false),
                       ),
                     ],
+                    const SizedBox(height: 10),
+                    InfoLabel(
+                      label: 'Treatment Price:',
+                      child: CupertinoTextField(
+                        controller: _priceController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                        ],
+                        prefix: const Padding(
+                          padding: EdgeInsets.only(left: 10),
+                          child: Text('₹',
+                              style: TextStyle(color: Color(0xFF355279))),
+                        ),
+                        placeholder: 'Treatment price',
+                        onChanged: (value) {
+                          a.price = double.tryParse(value) ?? 0;
+                          appointments.set(a);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [500, 1000, 1500, 2000, 3000, 5000]
+                          .map(
+                            (v) => Button(
+                              style: ButtonStyle(
+                                backgroundColor: WidgetStateProperty.all(
+                                  const Color(0xFFEAF2FC),
+                                ),
+                              ),
+                              onPressed: () {
+                                _priceController.text = '$v';
+                                a.price = v.toDouble();
+                                appointments.set(a);
+                                setState(() {});
+                              },
+                              child: Text('₹$v'),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
                   ],
                 );
 
@@ -2418,10 +2637,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               .map(
                                 (child) => _quickChip(
                                   label: child,
-                                  selectedColor: const Color(0xFFE8F6EF),
-                                  selectedTextColor: const Color(0xFF1E7C58),
-                                  normalColor: const Color(0xFFEAF4FF),
-                                  normalTextColor: const Color(0xFF365B84),
+                                  selectedColor: const Color(0xFFFFEAD8),
+                                  selectedTextColor: const Color(0xFF9A4A00),
+                                  normalColor: const Color(0xFFFFF4E8),
+                                  normalTextColor: const Color(0xFF8A5B2F),
                                   onTap: () {
                                     final parent = _selectedPostOpParent;
                                     if (parent == null) return;
@@ -3078,64 +3297,16 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Collect Payment',
-            style: TextStyle(
-              color: Color(0xFF183A67),
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           LayoutBuilder(
             builder: (context, constraints) {
               final narrow = constraints.maxWidth < 860;
-              final actionBar = Row(
-                children: [
-                  Expanded(
-                    child: FilledButton(
-                      style: ButtonStyle(
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFF3B9A42)),
-                      ),
-                      onPressed: widget.onComplete,
-                      child: const Text('Complete'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Button(
-                      onPressed: widget.onMoveBackToWithDoctor,
-                      child: const Text('Move Back to Treatment'),
-                    ),
-                  ),
-                ],
-              );
 
               final left = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF2F2),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFF2D3D3)),
-                    ),
-                    child: Text(
-                      'Outstanding Balance: ₹${outstanding.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        color: Color(0xFFD6455D),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
                   const Text(
-                    'Price',
+                    'Treatment Cost',
                     style: TextStyle(
                       color: Color(0xFF355279),
                       fontWeight: FontWeight.w700,
@@ -3246,51 +3417,50 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       placeholder: 'Discount',
                     ),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [5, 10, 20, 25, 50]
-                          .map(
-                            (v) => Button(
-                              style: _pillStyle(
-                                selected: _discountMode == 'percent',
-                                accent: const Color(0xFF2D7BD8),
+                    if (_discountMode == 'percent')
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [5, 10, 20, 25, 50]
+                            .map(
+                              (v) => Button(
+                                style: _pillStyle(
+                                  selected: true,
+                                  accent: const Color(0xFF2D7BD8),
+                                ),
+                                onPressed: () {
+                                  widget.discountController.text = '$v';
+                                  _recalculatePrice();
+                                },
+                                child: Text('$v%'),
                               ),
-                              onPressed: () {
-                                setState(() => _discountMode = 'percent');
-                                widget.discountController.text = '$v';
-                                _recalculatePrice();
-                              },
-                              child: Text('$v%'),
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [100, 200, 500, 1000]
-                          .map(
-                            (v) => Button(
-                              style: _pillStyle(
-                                selected: _discountMode == 'flat',
-                                accent: const Color(0xFF2D7BD8),
+                            )
+                            .toList(growable: false),
+                      ),
+                    if (_discountMode == 'flat')
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [100, 200, 500, 1000]
+                            .map(
+                              (v) => Button(
+                                style: _pillStyle(
+                                  selected: true,
+                                  accent: const Color(0xFF2D7BD8),
+                                ),
+                                onPressed: () {
+                                  widget.discountController.text = '$v';
+                                  _recalculatePrice();
+                                },
+                                child: Text('₹$v'),
                               ),
-                              onPressed: () {
-                                setState(() => _discountMode = 'flat');
-                                widget.discountController.text = '$v';
-                                _recalculatePrice();
-                              },
-                              child: Text('₹$v'),
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
+                            )
+                            .toList(growable: false),
+                      ),
                   ],
                   const SizedBox(height: 14),
                   const Text(
-                    'Amount to Collect',
+                    'Amount Collected',
                     style: TextStyle(
                       color: Color(0xFF355279),
                       fontWeight: FontWeight.w700,
@@ -3437,6 +3607,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       appointments.set(a);
                     },
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'This charge goes to Dr. ${a.operators.isEmpty ? 'Unassigned' : a.operators.map((d) => d.title).join(', ')} who did the treatment.',
+                    style: const TextStyle(
+                      color: Color(0xFF7C93B1),
+                      fontSize: 11,
+                    ),
+                  ),
                 ],
               );
 
@@ -3459,13 +3637,52 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      a.title.trim().isEmpty ? 'Unnamed patient' : a.title,
-                      style: const TextStyle(
-                        color: Color(0xFF2D476D),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            a.title.trim().isEmpty ? 'Unnamed patient' : a.title,
+                            style: const TextStyle(
+                              color: Color(0xFF2D476D),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                        Tooltip(
+                          message: 'Download PDF',
+                          child: IconButton(
+                            icon: const Icon(
+                              FluentIcons.download,
+                              size: 18,
+                              color: Color(0xFF1459AD),
+                            ),
+                            onPressed: _downloadReceiptPdf,
+                          ),
+                        ),
+                        Tooltip(
+                          message: 'Share',
+                          child: IconButton(
+                            icon: const Icon(
+                              FluentIcons.share,
+                              size: 18,
+                              color: Color(0xFF7C3AED),
+                            ),
+                            onPressed: _openShareOptions,
+                          ),
+                        ),
+                        Tooltip(
+                          message: 'Print',
+                          child: IconButton(
+                            icon: const Icon(
+                              FluentIcons.print,
+                              size: 18,
+                              color: Color(0xFF2BA58D),
+                            ),
+                            onPressed: _printReceipt,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -3581,41 +3798,24 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    Row(
                       children: [
-                        Tooltip(
-                          message: 'Download PDF',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.download,
-                              size: 14,
-                              color: Color(0xFF1459AD),
-                            ),
-                            onPressed: _downloadReceiptPdf,
+                        Expanded(
+                          child: Button(
+                            onPressed: widget.onMoveBackToWithDoctor,
+                            child: const Text('Move Back to Treatment'),
                           ),
                         ),
-                        Tooltip(
-                          message: 'Share',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.share,
-                              size: 14,
-                              color: Color(0xFF7C3AED),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton(
+                            style: ButtonStyle(
+                              backgroundColor: WidgetStateProperty.all(
+                                const Color(0xFF3B9A42),
+                              ),
                             ),
-                            onPressed: _openShareOptions,
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Print',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.print,
-                              size: 14,
-                              color: Color(0xFF2BA58D),
-                            ),
-                            onPressed: _printReceipt,
+                            onPressed: widget.onComplete,
+                            child: const Text('Complete'),
                           ),
                         ),
                       ],
@@ -3628,8 +3828,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                 return Column(
                   children: [
                     left,
-                    const SizedBox(height: 12),
-                    actionBar,
                     const SizedBox(height: 12),
                     right,
                   ],
@@ -3645,8 +3843,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         left,
-                        const SizedBox(height: 12),
-                        actionBar,
                       ],
                     ),
                   ),

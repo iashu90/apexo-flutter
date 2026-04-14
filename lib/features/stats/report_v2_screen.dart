@@ -221,14 +221,29 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
 
   @override
   Widget build(BuildContext context) {
+    final firstVisitByPatient = <String, DateTime>{};
+    for (final row in widget.rows) {
+      final pid = row.patientID;
+      if (pid == null || pid.isEmpty) continue;
+      final existing = firstVisitByPatient[pid];
+      if (existing == null || row.date.isBefore(existing)) {
+        firstVisitByPatient[pid] = row.date;
+      }
+    }
+
     final scoped = _rangeRows(
       widget.rows,
       _range,
       monthAnchor: _monthAnchor,
     );
-    final newCount = scoped.where((a) => a.firstAppointmentForThisPatient).length;
-    final returningCount =
-        scoped.where((a) => !a.firstAppointmentForThisPatient).length;
+    final newCount = scoped.where((a) {
+      final pid = a.patientID;
+      if (pid == null || pid.isEmpty) return false;
+      final first = firstVisitByPatient[pid];
+      if (first == null) return false;
+      return _dateOnly(first) == _dateOnly(a.date);
+    }).length;
+    final returningCount = math.max(0, scoped.length - newCount);
     final total = newCount + returningCount;
     final newPct = total == 0 ? 0.0 : (newCount / total) * 100;
     final returningPct = total == 0 ? 0.0 : (returningCount / total) * 100;

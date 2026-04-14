@@ -124,13 +124,14 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                   width: isWide ? 330 : 460,
                   label: '${txt('laboratory')}:',
                   child: LaboratoryPicker(
-                    value: _labCtrl.text,
+                    value: widget.item.lab,
                     controller: _labCtrl,
                     focusNode: _labFocusNode,
                     onChanged: (lab) {
+                      if (lab == null) return;
                       setState(() {
-                        _labCtrl.text = lab ?? '';
-                        widget.item.lab = lab ?? '';
+                        _labCtrl.text = lab;
+                        widget.item.lab = lab;
                       });
                     },
                   ),

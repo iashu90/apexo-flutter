@@ -407,6 +407,23 @@ class _PatientDetails extends StatefulWidget {
 class _PatientDetailsState extends State<_PatientDetails> {
   bool showSuccessInfoBar = false;
 
+  bool get _isNameValid => widget.patient.title.trim().isNotEmpty;
+  bool get _isAgeValid => (widget.patient.birth ?? 0) > 0;
+  bool get _isPhoneValid => widget.patient.phone.trim().isNotEmpty;
+
+  void _refreshValidation() {
+    widget.panel.hasValidTitle(_isNameValid && _isAgeValid && _isPhoneValid);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.patient.referralSource.trim().isEmpty) {
+      widget.patient.referralSource = 'None';
+    }
+    _refreshValidation();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -421,10 +438,15 @@ class _PatientDetailsState extends State<_PatientDetails> {
             controller: TextEditingController(text: widget.patient.title),
             onChanged: (value) {
               widget.patient.title = value;
-              widget.panel.hasValidTitle(value.isNotEmpty);
+              _refreshValidation();
             },
           ),
         ),
+        if (!_isNameValid)
+          const Text(
+            'Patient name is required.',
+            style: TextStyle(color: Color(0xFFD6455D), fontSize: 11),
+          ),
         Row(mainAxisSize: MainAxisSize.min, children: [
           Expanded(
             child: InfoLabel(
@@ -445,8 +467,10 @@ class _PatientDetailsState extends State<_PatientDetails> {
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(3),
                 ],
-                onChanged: (value) => widget.patient.birth =
-                    int.tryParse(value) ?? widget.patient.birth,
+                onChanged: (value) {
+                  widget.patient.birth = int.tryParse(value) ?? 0;
+                  _refreshValidation();
+                },
               ),
             ),
           ),
@@ -478,6 +502,11 @@ class _PatientDetailsState extends State<_PatientDetails> {
             ),
           ),
         ]),
+        if (!_isAgeValid)
+          const Text(
+            'Age is required.',
+            style: TextStyle(color: Color(0xFFD6455D), fontSize: 11),
+          ),
         Row(children: [
           Expanded(
             child: InfoLabel(
@@ -492,13 +521,21 @@ class _PatientDetailsState extends State<_PatientDetails> {
                 ],
                 placeholder: "${txt("phone")}...",
                 controller: TextEditingController(text: widget.patient.phone),
-                onChanged: (value) => widget.patient.phone = value,
+                onChanged: (value) {
+                  widget.patient.phone = value;
+                  _refreshValidation();
+                },
                 prefix: CallIconButton(phoneNumber: widget.patient.phone),
               ),
             ),
           ),
           const SizedBox(width: 10),
         ]),
+        if (!_isPhoneValid)
+          const Text(
+            'Phone number is required.',
+            style: TextStyle(color: Color(0xFFD6455D), fontSize: 11),
+          ),
         InfoLabel(
           label: "${txt("address")}:",
           isHeader: true,
@@ -530,6 +567,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
                 : widget.patient.referralSource,
             placeholder: const Text('Select referral source'),
             items: const [
+              ComboBoxItem(value: 'None', child: Text('None')),
               ComboBoxItem(value: 'Google', child: Text('Google')),
               ComboBoxItem(
                   value: 'Social Media', child: Text('Social Media')),
