@@ -7,6 +7,7 @@ import 'package:apexo/features/dashboard/dashboard_screen.dart';
 import 'package:apexo/features/dashboard/dashboard_screen_v2.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
+import 'package:apexo/features/expenses/expenses_screen_v2.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
 import 'package:apexo/features/labwork/labworks_v2_screen.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
@@ -252,6 +253,19 @@ class _Routes {
           title: txt("expenses"),
           identifier: "expenses",
           navbarTitle: txt("expenses"),
+          icon: FluentIcons.receipt_processing,
+          screen: ExpensesScreenV2.new,
+          accessible: permissions.list[4] || login.isAdmin,
+          onSelect: () async {
+            await doctors.synchronize();
+            await patients.synchronize();
+            expenses.synchronize();
+          },
+        ),
+        Route(
+          title: 'Expenses (Old)',
+          identifier: 'expenses_old',
+          navbarTitle: '',
           icon: FluentIcons.receipt_processing,
           screen: ExpensesScreen.new,
           accessible: permissions.list[4] || login.isAdmin,
