@@ -1,15 +1,20 @@
 import 'package:apexo/app/routes.dart' as app_routes;
+import 'package:apexo/common_widgets/daily_reminder_modal.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/theme/apexo_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart';
 
 class TopTabsNavBar extends StatelessWidget {
   const TopTabsNavBar({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Auto-show reminder once per session
+    showDailyReminderIfNeeded(context);
+
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 980;
     final veryCompact = width < 760;
@@ -51,7 +56,18 @@ class TopTabsNavBar extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
+              Tooltip(
+                message: "Today's Briefing",
+                child: IconButton(
+                  icon: const Icon(
+                    CupertinoIcons.bell_fill,
+                    color: Colors.black,
+                    size: 28.0,
+                  ),
+                  onPressed: () => showDailyReminderModal(context),
+                ),
+              ),
+              const SizedBox(width: 4),
               const NetworkActions(),
               if (!veryCompact) ...[
                 const SizedBox(width: 6),

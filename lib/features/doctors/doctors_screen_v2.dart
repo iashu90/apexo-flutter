@@ -665,8 +665,8 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 270,
-      height: 140,
+      width: 200,
+      height: 100,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -681,23 +681,23 @@ class _MetricCard extends StatelessWidget {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: Color(0xFF3C5E87),
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 30,
+                  fontSize: 24,
                   color: color,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1060,6 +1060,54 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
+  Widget _buildDoctorItem(Doctor doctor) {
+    final displayName = doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title;
+    final phone = doctor.phone.trim();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FBFF),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFE2ECF8)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    color: Color(0xFF1F446E),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  phone.isEmpty ? '-' : phone,
+                  style: const TextStyle(
+                    color: Color(0xFF5B789F),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Button(
+            style: ButtonStyle(
+              padding: WidgetStateProperty.all(
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              ),
+            ),
+            onPressed: () => widget.onEdit(doctor),
+            child: const Text('Edit', style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1145,51 +1193,39 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                 style: TextStyle(color: Color(0xFF6D84A8)),
               )
             else
-              ...filtered.map((doctor) {
-                final displayName =
-                    doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title;
-                final phone = doctor.phone.trim();
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 3),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final twoCol = constraints.maxWidth >= 560;
+                  if (twoCol) {
+                    final rows = <Widget>[];
+                    for (var i = 0; i < filtered.length; i += 2) {
+                      rows.add(
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              displayName,
-                              style: const TextStyle(
-                                color: Color(0xFF1F446E),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              phone.isEmpty ? 'Phone: -' : 'Phone: $phone',
-                              style: const TextStyle(
-                                color: Color(0xFF5B789F),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            Expanded(child: _buildDoctorItem(filtered[i])),
+                            const SizedBox(width: 8),
+                            if (i + 1 < filtered.length)
+                              Expanded(child: _buildDoctorItem(filtered[i + 1]))
+                            else
+                              const Expanded(child: SizedBox.shrink()),
                           ],
                         ),
-                      ),
-                      Button(
-                        style: ButtonStyle(
-                          padding: WidgetStateProperty.all(
-                            const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                          ),
-                        ),
-                        onPressed: () => widget.onEdit(doctor),
-                        child: const Text('Edit'),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+                      );
+                      rows.add(const SizedBox(height: 3));
+                    }
+                    return Column(children: rows);
+                  }
+                  return Column(
+                    children: filtered
+                        .map((doctor) => Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: _buildDoctorItem(doctor),
+                            ))
+                        .toList(growable: false),
+                  );
+                },
+              ),
           ],
         ),
       ),

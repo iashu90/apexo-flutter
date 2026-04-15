@@ -6,8 +6,17 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' show showDatePicker;
+import 'package:flutter/material.dart' as material show showDateRangePicker, DateTimeRange;
 import 'package:intl/intl.dart';
+
+String _lwTitleCase(String input) {
+  final cleaned = input.trim();
+  if (cleaned.isEmpty) return cleaned;
+  return cleaned.split(RegExp(r'\s+')).map((w) {
+    if (w.isEmpty) return w;
+    return w[0].toUpperCase() + (w.length > 1 ? w.substring(1).toLowerCase() : '');
+  }).join(' ');
+}
 
 class LabworksV2Screen extends StatefulWidget {
   const LabworksV2Screen({super.key});
@@ -391,39 +400,21 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   }
 
   Future<void> _openDateRangePicker() async {
-    final now = DateTime.now();
-    final first = await showDatePicker(
+    final range = await material.showDateRangePicker(
       context: context,
-      initialDate: _fromDate ?? now,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      initialDateRange: (_fromDate != null && _toDate != null)
+          ? material.DateTimeRange(start: _fromDate!, end: _toDate!)
+          : null,
       builder: apexoDatePickerBuilder(context),
     );
-    if (first == null) return;
-    if (!mounted) return;
-
-    final second = await showDatePicker(
-      context: context,
-      initialDate: _toDate ?? first,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      builder: apexoDatePickerBuilder(context),
-    );
-    if (!mounted) return;
+    if (range == null || !mounted) return;
 
     setState(() {
       _rangeFilter = 'custom';
-      _fromDate = DateTime(first.year, first.month, first.day);
-      if (second != null) {
-        _toDate = DateTime(second.year, second.month, second.day);
-        if (_toDate!.isBefore(_fromDate!)) {
-          final temp = _fromDate;
-          _fromDate = _toDate;
-          _toDate = temp;
-        }
-      } else {
-        _toDate = _fromDate;
-      }
+      _fromDate = DateTime(range.start.year, range.start.month, range.start.day);
+      _toDate = DateTime(range.end.year, range.end.month, range.end.day);
     });
   }
 
@@ -746,7 +737,7 @@ class _LabworkRow extends StatelessWidget {
                   children: [
                     Text(
                       item.patient?.title.trim().isNotEmpty == true
-                          ? item.patient!.title
+                          ? _lwTitleCase(item.patient!.title)
                           : 'Unknown patient',
                       style: const TextStyle(
                         fontSize: 18,

@@ -468,12 +468,31 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                             ),
                             Expanded(
                               flex: 12,
-                              child: Text(
-                                '₹${NumberFormat('#,##0').format(e.amount)}',
-                                style: const TextStyle(
-                                  color: Color(0xFFD6455D),
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '₹${NumberFormat('#,##0').format(e.amount)}',
+                                    style: const TextStyle(
+                                      color: Color(0xFFD6455D),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  if (category == 'Consultant' && e.operators.isNotEmpty)
+                                    Builder(builder: (_) {
+                                      final outstanding = _doctorOutstanding(e);
+                                      if (outstanding <= 0) return const SizedBox.shrink();
+                                      return Text(
+                                        'To Pay: ₹${NumberFormat('#,##0').format(outstanding)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFFE09C31),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      );
+                                    }),
+                                ],
                               ),
                             ),
                             Expanded(
@@ -637,38 +656,21 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
   }
 
   Future<void> _pickCustomRange() async {
-    final now = DateTime.now();
-    final from = await material.showDatePicker(
+    final range = await material.showDateRangePicker(
       context: context,
-      initialDate: _fromDate ?? now,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      initialDateRange: (_fromDate != null && _toDate != null)
+          ? material.DateTimeRange(start: _fromDate!, end: _toDate!)
+          : null,
       builder: apexoDatePickerBuilder(context),
     );
-    if (from == null || !mounted) return;
-
-    final to = await material.showDatePicker(
-      context: context,
-      initialDate: _toDate ?? from,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      builder: apexoDatePickerBuilder(context),
-    );
-    if (!mounted) return;
+    if (range == null || !mounted) return;
 
     setState(() {
       _rangeFilter = 'custom';
-      _fromDate = DateTime(from.year, from.month, from.day);
-      if (to == null) {
-        _toDate = _fromDate;
-      } else {
-        _toDate = DateTime(to.year, to.month, to.day);
-        if (_toDate!.isBefore(_fromDate!)) {
-          final temp = _fromDate;
-          _fromDate = _toDate;
-          _toDate = temp;
-        }
-      }
+      _fromDate = DateTime(range.start.year, range.start.month, range.start.day);
+      _toDate = DateTime(range.end.year, range.end.month, range.end.day);
       _page = 1;
     });
   }
@@ -795,6 +797,21 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
         .toList(growable: false);
     if (names.isEmpty) return '-';
     return names.join(', ');
+  }
+
+  /// Outstanding amount owed to doctors linked to this expense (from appointments).
+  double _doctorOutstanding(Expense expense) {
+    if (expense.operators.isEmpty) return 0;
+    final allAppts = appointments.present.values;
+    double total = 0;
+    for (final doctor in expense.operators) {
+      for (final appt in allAppts) {
+        if (appt.operatorsIDs.contains(doctor.id)) {
+          total += (appt.priceToPayDoctor - appt.paidToDoctor).clamp(0, double.infinity);
+        }
+      }
+    }
+    return total;
   }
 
   Future<void> _deleteExpense(Expense expense) async {
