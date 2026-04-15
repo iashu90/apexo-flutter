@@ -73,8 +73,9 @@ class Labworks extends Store<Labwork> {
 
   List<String> get allLabs {
     final Set<String> labs = {
-      'Denco',
-      'cs-lab',
+      'Denco Lab',
+      'CS Lab',
+      'Deivamani Lab',
     };
     labs.addAll(
       localSettings.savedLabs.keys
