@@ -10,11 +10,9 @@ import 'package:apexo/features/dashboard/patient_look_up.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
-import 'package:apexo/features/patients/open_patient_panel.dart';
-import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/indian_money.dart';
-import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/common_widgets/report_table_modal_v2.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
@@ -200,44 +198,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           ),
         )
         .toList();
-  }
-
-  List<({DateTime day, double value})> _dailyRevenueRows(
-    List<Appointment> source,
-    DateTime anchor,
-    int days,
-  ) {
-    final start = _dateOnly(anchor).subtract(Duration(days: days - 1));
-    final map = <DateTime, double>{
-      for (int i = 0; i < days; i++) start.add(Duration(days: i)): 0,
-    };
-    for (final a in source) {
-      final d = _dateOnly(a.date);
-      if (d.isBefore(start) || d.isAfter(_dateOnly(anchor))) continue;
-      map[d] = (map[d] ?? 0) + a.paid + a.prescriptionPaid;
-    }
-    return map.entries
-        .map((e) => (day: e.key, value: e.value))
-        .toList(growable: false);
-  }
-
-  List<({DateTime day, int count})> _appointmentTrendRows(
-    List<Appointment> source,
-    DateTime anchor,
-    int days,
-  ) {
-    final start = _dateOnly(anchor).subtract(Duration(days: days - 1));
-    final map = <DateTime, int>{
-      for (int i = 0; i < days; i++) start.add(Duration(days: i)): 0,
-    };
-    for (final a in source) {
-      final d = _dateOnly(a.date);
-      if (d.isBefore(start) || d.isAfter(_dateOnly(anchor))) continue;
-      map[d] = (map[d] ?? 0) + 1;
-    }
-    return map.entries
-        .map((e) => (day: e.key, count: e.value))
-        .toList(growable: false);
   }
 
   List<MapEntry<String, int>> _treatmentDistributionRows(
@@ -665,10 +625,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
           }
         }
 
-        final dailyRevenueRows =
-            _dailyRevenueRows(allAppointments, selectedDate, 30);
-        final appointmentTrendRows =
-            _appointmentTrendRows(allAppointments, selectedDate, 30);
         final dailyTreatmentDistribution =
             _treatmentDistributionRows(todaysAppointments);
 
@@ -711,10 +667,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       ),
                       _TopDonutMetricCard(
                         title: 'Payment Mode',
-                        centerValue: _money(
-                          paymentModeAmounts.values
-                              .fold<double>(0, (s, v) => s + v),
-                        ),
+                        centerValue: '',
                         valueFormatter: (value) => _money(value.toDouble()),
                         segments: [
                           _TopDonutSegment(
@@ -768,34 +721,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             ),
                           )
                           .toList(growable: false),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                const _SectionTitle('Trends & Mix'),
-                const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 920;
-                    final chartWidth = isNarrow
-                        ? constraints.maxWidth
-                        : ((constraints.maxWidth - 10) / 2).clamp(360.0, 620.0);
-
-                    return Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        SizedBox(
-                          width: chartWidth,
-                          child: _DailyRevenueChartCard(rows: dailyRevenueRows),
-                        ),
-                        SizedBox(
-                          width: chartWidth,
-                          child: _AppointmentTrendChartCard(
-                            rows: appointmentTrendRows,
-                          ),
-                        ),
-                      ],
                     );
                   },
                 ),
@@ -2755,17 +2680,19 @@ class _QuickCheckInCard extends StatelessWidget {
             }));
           },
           onCreateNew: (searchQuery) {
-            final isDigitsOnly = searchQuery.isNotEmpty &&
-                searchQuery.runes.every((c) => c >= 48 && c <= 57);
-            openPatient(
-              Patient.fromJson({
-                if (isDigitsOnly)
-                  'phone': searchQuery
-                else
-                  'title': searchQuery,
-              }),
-              0,
-            );
+            openAddPatientPopup(
+              context: context,
+              initialInput: searchQuery,
+            ).then((createdPatient) {
+              if (createdPatient == null) return;
+              final dt = _withCurrentTime(selectedDate);
+              appointments.set(Appointment.fromJson({
+                'patientID': createdPatient.id,
+                'date': dt.millisecondsSinceEpoch,
+                'isCheckedIn': true,
+                'checkedInAt': DateTime.now().millisecondsSinceEpoch,
+              }));
+            });
           },
         ),
       ),

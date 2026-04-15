@@ -1,7 +1,6 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/date_selector_row.dart';
-import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -11,7 +10,7 @@ import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/dashboard/doctor_patients_list.dart';
 import 'package:apexo/features/dashboard/patient_look_up.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
-import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -29,7 +28,6 @@ import 'package:intl/intl.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/dashboard/overall_due_helper.dart';
 
 DateTime globalSelectedDate = DateTime.now();
@@ -631,17 +629,29 @@ class _DoctorAppointmentsSummaryWithDateState
                             }),
                           ),
                           onCreateNew: (searchQuery) {
-                            final isDigitsOnly =
-                                RegExp(r'^\d+$').hasMatch(searchQuery);
-                            openPatient(
-                              Patient.fromJson({
-                                if (isDigitsOnly)
-                                  "phone": searchQuery
-                                else
-                                  "title": searchQuery,
-                              }),
-                              0,
-                            );
+                            openAddPatientPopup(
+                              context: context,
+                              initialInput: searchQuery,
+                            ).then((createdPatient) {
+                              if (createdPatient == null) return;
+                              final now = DateTime.now();
+                              final newAppointment = Appointment.fromJson({
+                                'patientID': createdPatient.id,
+                                'date': DateTime(
+                                  selectedDate.year,
+                                  selectedDate.month,
+                                  selectedDate.day,
+                                  now.hour,
+                                  now.minute,
+                                ).millisecondsSinceEpoch,
+                                'isCheckedIn': true,
+                                'checkedInAt': now.millisecondsSinceEpoch,
+                              });
+                              setState(() {
+                                appointments.set(newAppointment);
+                                showSuccessInfoBar = true;
+                              });
+                            });
                           },
                         ),
                       ),
