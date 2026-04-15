@@ -140,7 +140,7 @@ Future<void> openCheckinAppointmentModal(
                           Text(
                             stageLabel,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 22,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
                             ),
@@ -149,7 +149,7 @@ Future<void> openCheckinAppointmentModal(
                           Text(
                             '$patientName • ${patientAge}y • $patientGender',
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFFEAF2FF),
                             ),
@@ -1902,6 +1902,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
     appointment.checkinStage = 'checkout';
     appointment.isDone = false;
     appointments.set(appointment);
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _openNextAppointmentPrompt(Appointment appointment) async {
@@ -2452,6 +2455,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   appointment.operatorsIDs = [];
                   appointment.isDone = false;
                   appointments.set(appointment);
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                  }
                   if (mounted) setState(() {});
                 },
                 child: const Text('Move Back to Waiting'),
@@ -2469,6 +2475,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   appointment.checkinStage = 'checkout';
                   appointment.isDone = false;
                   appointments.set(appointment);
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                  }
                   if (mounted) setState(() {});
                 },
                 child: const Text('Billing'),
@@ -2494,6 +2503,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   appointment.checkinStage = 'with_doctor';
                   appointment.isDone = false;
                   appointments.set(appointment);
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                  }
                   if (mounted) setState(() {});
                 },
                 child: const Text('Move Back to Treatment'),
@@ -2512,6 +2524,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   appointment.checkinStage = 'completed';
                   appointment.isDone = true;
                   appointments.set(appointment);
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                  }
                   await _openNextAppointmentPrompt(appointment);
                   if (mounted) setState(() {});
                 },

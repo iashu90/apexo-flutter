@@ -207,6 +207,16 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     return 'patients_filtered_$stamp';
   }
 
+  String _normalizeSavePath(String rawPath, String extension) {
+    final trimmed = rawPath.trim();
+    final normalized = trimmed.startsWith('file://')
+        ? Uri.parse(trimmed).toFilePath(windows: Platform.isWindows)
+        : trimmed;
+    return normalized.toLowerCase().endsWith(extension)
+        ? normalized
+        : '$normalized$extension';
+  }
+
   Future<void> _exportPatientsCsv({
     required List<Patient> rows,
     required Map<String, List<Appointment>> visitsByPatient,
@@ -215,23 +225,13 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       return;
     }
 
-    final savePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save CSV',
-      fileName: '${_patientsFileStem()}.csv',
-    );
-    if (savePath == null || savePath.trim().isEmpty) {
-      return;
-    }
-    final target =
-        savePath.toLowerCase().endsWith('.csv') ? savePath : '$savePath.csv';
-
     setState(() => _isExportingPatientsCsv = true);
     try {
       await runWithExportProgressDialog<void>(
         context: context,
         title: 'Exporting CSV',
         task: (progress) async {
-          progress.setProgress(0.15);
+          progress.setProgress(0.1);
           if (progress.isCancelled) {
             return;
           }
@@ -266,9 +266,22 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               ].join(','),
             );
             if (i % 20 == 0) {
-              progress.setProgress(0.15 + (0.8 * ((i + 1) / rows.length)));
+              progress.setProgress(0.1 + (0.55 * ((i + 1) / rows.length)));
             }
           }
+
+          progress.setProgress(0.7);
+          final savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save CSV',
+            fileName: '${_patientsFileStem()}.csv',
+          );
+          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+            return;
+          }
+
+          final target = _normalizeSavePath(savePath, '.csv');
+          await File(target).parent.create(recursive: true);
+          progress.setProgress(0.85);
 
           await File(target).writeAsString(
             buffer.toString(),
@@ -307,16 +320,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     if (_isExportingPatientsCsv || _isExportingPatientsPdf || rows.isEmpty) {
       return;
     }
-
-    final savePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save PDF',
-      fileName: '${_patientsFileStem()}.pdf',
-    );
-    if (savePath == null || savePath.trim().isEmpty) {
-      return;
-    }
-    final target =
-        savePath.toLowerCase().endsWith('.pdf') ? savePath : '$savePath.pdf';
 
     setState(() => _isExportingPatientsPdf = true);
     try {
@@ -388,6 +391,18 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
           progress.setProgress(0.75);
           final bytes = await doc.save().timeout(const Duration(seconds: 45));
           if (progress.isCancelled) return;
+
+          final savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save PDF',
+            fileName: '${_patientsFileStem()}.pdf',
+          );
+          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+            return;
+          }
+
+          final target = _normalizeSavePath(savePath, '.pdf');
+          await File(target).parent.create(recursive: true);
+          progress.setProgress(0.9);
           await File(target).writeAsBytes(bytes, flush: true);
           progress.setProgress(1);
         },
