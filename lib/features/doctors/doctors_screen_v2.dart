@@ -1043,7 +1043,7 @@ class _DoctorHandledRangeCard extends StatelessWidget {
   }
 }
 
-class _DoctorDirectoryCard extends StatelessWidget {
+class _DoctorDirectoryCard extends StatefulWidget {
   final List<Doctor> doctors;
   final ValueChanged<Doctor> onEdit;
 
@@ -1053,7 +1053,38 @@ class _DoctorDirectoryCard extends StatelessWidget {
   });
 
   @override
+  State<_DoctorDirectoryCard> createState() => _DoctorDirectoryCardState();
+}
+
+class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _query = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filtered = widget.doctors.where((doctor) {
+      if (_query.isEmpty) return false;
+      final name = doctor.title.toLowerCase();
+      final phone = doctor.phone.toLowerCase();
+      return name.contains(_query) || phone.contains(_query);
+    }).take(6).toList(growable: false);
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1082,7 +1113,7 @@ class _DoctorDirectoryCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Edit doctor details from here.',
+              'Search by name or phone and edit.',
               style: TextStyle(
                 color: Color(0xFF6D84A8),
                 fontSize: 12,
@@ -1090,13 +1121,36 @@ class _DoctorDirectoryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            if (doctors.isEmpty)
+            TextBox(
+              controller: _searchController,
+              placeholder: 'Search doctor name / phone',
+              prefix: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(
+                  FluentIcons.search,
+                  size: 12,
+                  color: Color(0xFF6D84A8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (widget.doctors.isEmpty)
               const Text(
                 'No doctors added yet.',
                 style: TextStyle(color: Color(0xFF6D84A8)),
               )
+            else if (_query.isEmpty)
+              const Text(
+                'Type to find a doctor to edit.',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              )
+            else if (filtered.isEmpty)
+              const Text(
+                'No matching doctors.',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              )
             else
-              ...doctors.map((doctor) {
+              ...filtered.map((doctor) {
                 final displayName =
                     doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title;
                 final phone = doctor.phone.trim();
@@ -1128,7 +1182,7 @@ class _DoctorDirectoryCard extends StatelessWidget {
                         ),
                       ),
                       Button(
-                        onPressed: () => onEdit(doctor),
+                        onPressed: () => widget.onEdit(doctor),
                         child: const Text('Edit'),
                       ),
                     ],

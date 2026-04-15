@@ -11,6 +11,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
 import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
@@ -277,110 +278,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
     _openAppointmentPopup(appointment);
   }
 
-  Future<Patient?> _openAddNewPatientDialog(String query) async {
-    final trimmedQuery = query.trim();
-    final looksLikePhone = RegExp(r'^[+0-9\s()-]+$').hasMatch(trimmedQuery);
-    final nameController = TextEditingController(
-      text: looksLikePhone ? '' : _toTitleCase(trimmedQuery),
-    );
-    final phoneController = TextEditingController(
-      text: looksLikePhone ? trimmedQuery : '',
-    );
-    String? nameError;
-    String? phoneError;
-
-    return showDialog<Patient>(
+  Future<Patient?> _openAddPatientPopup(String query) {
+    return openAddPatientPopup(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => ContentDialog(
-          title: const Text('Add New Patient'),
-          content: SizedBox(
-            width: 430,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                InfoLabel(
-                  label: 'Patient Name:',
-                  child: TextBox(
-                    controller: nameController,
-                    placeholder: 'Enter patient name',
-                    onChanged: (_) {
-                      if (nameError != null) {
-                        setDialogState(() => nameError = null);
-                      }
-                    },
-                  ),
-                ),
-                if (nameError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      nameError!,
-                      style: const TextStyle(
-                        color: Color(0xFFD6455D),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 10),
-                InfoLabel(
-                  label: 'Phone Number:',
-                  child: TextBox(
-                    controller: phoneController,
-                    placeholder: 'Enter phone number',
-                    onChanged: (_) {
-                      if (phoneError != null) {
-                        setDialogState(() => phoneError = null);
-                      }
-                    },
-                  ),
-                ),
-                if (phoneError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      phoneError!,
-                      style: const TextStyle(
-                        color: Color(0xFFD6455D),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            Button(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final phone = phoneController.text.trim();
-                if (name.isEmpty) {
-                  setDialogState(() => nameError = 'Patient name is required.');
-                  return;
-                }
-                if (phone.isEmpty) {
-                  setDialogState(() => phoneError = 'Phone number is required.');
-                  return;
-                }
-
-                final patient = Patient.fromJson({
-                  'id': uuid(),
-                  'title': _toTitleCase(name),
-                  'phone': phone,
-                });
-                patients.set(patient);
-                Navigator.pop(dialogContext, patient);
-              },
-              child: const Text('Add Patient'),
-            ),
-          ],
-        ),
-      ),
+      initialInput: query,
     );
   }
 
@@ -415,7 +316,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 });
 
             return ContentDialog(
-              title: const Text('Patient Check-in'),
+              title: Row(
+                children: [
+                  const Expanded(child: Text('Patient Check-in')),
+                  IconButton(
+                    icon: const Icon(FluentIcons.chrome_close, size: 12),
+                    onPressed: () => Navigator.pop(dialogContext),
+                  ),
+                ],
+              ),
               content: SizedBox(
                 width: 520,
                 child: Column(
@@ -445,7 +354,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         onPressed: () async {
                           final navigator = Navigator.of(dialogContext);
                           final created =
-                              await _openAddNewPatientDialog(queryController.text);
+                              await _openAddPatientPopup(queryController.text);
                           if (created == null) return;
                           _checkInPatient(created);
                           if (navigator.mounted) {
@@ -1095,6 +1004,140 @@ class _WorkflowColumn extends StatelessWidget {
   }
 }
 
+Future<List<String>?> _pickDoctor(
+  BuildContext context, {
+  List<String> initialSelected = const <String>[],
+}) async {
+  return showDialog<List<String>>(
+    context: context,
+    builder: (dialogContext) {
+      final doctorRows = doctors.present.values.toList(growable: false)
+        ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+      final selected = initialSelected.toSet();
+      return StatefulBuilder(
+        builder: (context, setStateDialog) => ContentDialog(
+          title: const Text('Assign Doctor(s)'),
+          content: SizedBox(
+            width: 420,
+            child: doctorRows.isEmpty
+                ? const Text('No doctors available to assign.')
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (selected.isEmpty)
+                        const Text(
+                          'No doctors selected',
+                          style: TextStyle(color: Color(0xFF6D84A8)),
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: doctorRows
+                              .where((doctor) => selected.contains(doctor.id))
+                              .map((doctor) {
+                            final doctorName = doctor.title.trim().isEmpty
+                                ? 'Unnamed doctor'
+                                : doctor.title;
+                            return GestureDetector(
+                              onTap: () {
+                                setStateDialog(() {
+                                  selected.remove(doctor.id);
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE9F9EF),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: const Color(0xFF22C55E),
+                                  ),
+                                ),
+                                child: Text(
+                                  doctorName,
+                                  style: const TextStyle(
+                                    color: Color(0xFF15803D),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(growable: false),
+                        ),
+                      const SizedBox(height: 10),
+                      if (selected.isNotEmpty) ...[
+                        const Divider(size: 1),
+                        const SizedBox(height: 10),
+                      ],
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 320),
+                        child: SingleChildScrollView(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: doctorRows
+                                .where((doctor) => !selected.contains(doctor.id))
+                                .map((doctor) {
+                              final doctorName = doctor.title.trim().isEmpty
+                                  ? 'Unnamed doctor'
+                                  : doctor.title;
+                              return GestureDetector(
+                                onTap: () {
+                                  setStateDialog(() {
+                                    selected.add(doctor.id);
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF4FB),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: const Color(0xFFD2E1F2),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    doctorName,
+                                    style: const TextStyle(
+                                      color: Color(0xFF355A84),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(growable: false),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, selected.toList(growable: false)),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class _WorkflowRow extends StatelessWidget {
   final Appointment appointment;
   final String stage;
@@ -1109,141 +1152,6 @@ class _WorkflowRow extends StatelessWidget {
     this.selected = false,
     this.onSelect,
   });
-
-  Future<List<String>?> _pickDoctor(
-    BuildContext context, {
-    List<String> initialSelected = const <String>[],
-  }) async {
-    return showDialog<List<String>>(
-      context: context,
-      builder: (dialogContext) {
-        final doctorRows = doctors.present.values.toList(growable: false)
-          ..sort(
-              (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-        final selected = initialSelected.toSet();
-        return StatefulBuilder(
-          builder: (context, setStateDialog) => ContentDialog(
-            title: const Text('Assign Doctor(s)'),
-            content: SizedBox(
-              width: 420,
-              child: doctorRows.isEmpty
-                  ? const Text('No doctors available to assign.')
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (selected.isEmpty)
-                          const Text(
-                            'No doctors selected',
-                            style: TextStyle(color: Color(0xFF6D84A8)),
-                          )
-                        else
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: doctorRows
-                                .where((doctor) => selected.contains(doctor.id))
-                                .map((doctor) {
-                              final doctorName = doctor.title.trim().isEmpty
-                                  ? 'Unnamed doctor'
-                                  : doctor.title;
-                              return GestureDetector(
-                                onTap: () {
-                                  setStateDialog(() {
-                                    selected.remove(doctor.id);
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE9F9EF),
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: const Color(0xFF22C55E),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    doctorName,
-                                    style: const TextStyle(
-                                      color: Color(0xFF15803D),
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(growable: false),
-                          ),
-                        const SizedBox(height: 10),
-                        if (selected.isNotEmpty) ...[
-                          const Divider(size: 1),
-                          const SizedBox(height: 10),
-                        ],
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 320),
-                          child: SingleChildScrollView(
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: doctorRows
-                                  .where((doctor) => !selected.contains(doctor.id))
-                                  .map((doctor) {
-                                final doctorName = doctor.title.trim().isEmpty
-                                    ? 'Unnamed doctor'
-                                    : doctor.title;
-                                return GestureDetector(
-                                  onTap: () {
-                                    setStateDialog(() {
-                                      selected.add(doctor.id);
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEFF4FB),
-                                      borderRadius: BorderRadius.circular(999),
-                                      border: Border.all(
-                                        color: const Color(0xFFD2E1F2),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      doctorName,
-                                      style: const TextStyle(
-                                        color: Color(0xFF355A84),
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(growable: false),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-            actions: [
-              Button(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(
-                    dialogContext, selected.toList(growable: false)),
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   Future<void> _openNextAppointmentPrompt(
     BuildContext context,
@@ -2380,159 +2288,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
             ),
             onPressed: () async {
               Navigator.of(context).pop();
-              final pickedDoctorIds = await showDialog<List<String>>(
-                context: widget.rootContext,
-                builder: (dialogContext) {
-                  String? selectedDoctorId = appointment.operatorsIDs.isEmpty
-                      ? null
-                      : appointment.operatorsIDs.first;
-                  String? validationError;
-                  final doctorEntries = doctors.present.values
-                      .map(
-                        (d) => MapEntry(
-                          d.id,
-                          d.title.trim().isEmpty ? 'Unnamed doctor' : d.title,
-                        ),
-                      )
-                      .toList(growable: false)
-                    ..sort((a, b) =>
-                        a.value.toLowerCase().compareTo(b.value.toLowerCase()));
-                  return StatefulBuilder(
-                    builder: (context, setDialogState) => ContentDialog(
-                      title: const Text('Assign doctor to check-in'),
-                      content: SizedBox(
-                        width: 360,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (doctorEntries.isEmpty)
-                              const Text('No doctors available to assign.')
-                            else ...[
-                              if (selectedDoctorId != null) ...[
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: doctorEntries
-                                      .where((entry) =>
-                                          selectedDoctorId == entry.key)
-                                      .map((entry) {
-                                    return GestureDetector(
-                                      onTap: () {
-                                        setDialogState(() {
-                                          selectedDoctorId = null;
-                                          validationError = null;
-                                        });
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFE9F9EF),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                          border: Border.all(
-                                            color: const Color(0xFF22C55E),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          entry.value,
-                                          style: const TextStyle(
-                                            color: Color(0xFF15803D),
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(growable: false),
-                                ),
-                                const SizedBox(height: 10),
-                                const Divider(size: 1),
-                                const SizedBox(height: 10),
-                              ],
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: doctorEntries
-                                    .where((entry) =>
-                                        selectedDoctorId != entry.key)
-                                    .map(
-                                      (entry) {
-                                        return GestureDetector(
-                                          onTap: () {
-                                            setDialogState(() {
-                                              selectedDoctorId = entry.key;
-                                              validationError = null;
-                                            });
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 6,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFEFF4FB),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                              border: Border.all(
-                                                color: const Color(0xFFD4E2F3),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              entry.value,
-                                              style: const TextStyle(
-                                                color: Color(0xFF355A84),
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    )
-                                    .toList(growable: false),
-                              ),
-                            ],
-                            if (validationError != null) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                validationError!,
-                                style: const TextStyle(
-                                  color: Color(0xFFD6455D),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      actions: [
-                        Button(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          onPressed: () {
-                            if (selectedDoctorId == null ||
-                                selectedDoctorId!.trim().isEmpty) {
-                              setDialogState(() {
-                                validationError =
-                                    'Please select a doctor to continue.';
-                              });
-                              return;
-                            }
-                            Navigator.pop(dialogContext, [selectedDoctorId!]);
-                          },
-                          child: const Text('Check-in'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+              final pickedDoctorIds = await _pickDoctor(
+                widget.rootContext,
+                initialSelected: appointment.operatorsIDs,
               );
               if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
               appointment.operatorsIDs = pickedDoctorIds;
@@ -4288,14 +4046,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         .toList(growable: false)
       ..sort((x, y) => x.title.toLowerCase().compareTo(y.title.toLowerCase()));
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDDE7F3)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.all(4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -4673,13 +4425,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                 ],
               );
 
-              final right = Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F7FC),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFD6E2F0)),
-                ),
+              final right = Padding(
+                padding: const EdgeInsets.all(4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -4793,14 +4540,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     const SizedBox(height: 8),
                     _summaryLine(
                         'Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
-                    _summaryLine(
-                        'Already Paid', '₹${a.paid.toStringAsFixed(0)}'),
-                    _summaryLine(
-                      'Remaining Balance',
-                      '₹${outstanding.toStringAsFixed(0)}',
-                      valueColor: const Color(0xFFD6455D),
-                    ),
-                              const SizedBox(height: 6),
+                   const SizedBox(height: 6),
                     if (widget.discountEnabled) ...[
                       _summaryLine(
                         'Discount Applied',
@@ -4818,6 +4558,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ),
                       const SizedBox(height: 10),
                     ],
+                     _summaryLine(
+                        'Already Paid', '₹${a.paid.toStringAsFixed(0)}'),
+                    _summaryLine(
+                      'Remaining Balance',
+                      '₹${outstanding.toStringAsFixed(0)}',
+                      valueColor: const Color(0xFFD6455D),
+                    ),
                     const SizedBox(height: 12),
                     const Text(
                       'After Payment',
