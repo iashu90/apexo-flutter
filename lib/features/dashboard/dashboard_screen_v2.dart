@@ -1859,88 +1859,47 @@ class _AppointmentRow extends StatelessWidget {
     openLabworkV2Dialog(context, draft);
   }
 
-  Future<String?> _pickDoctorForCheckIn(BuildContext context) async {
-    return showDialog<String>(
+  Future<List<String>?> _pickDoctor(
+    BuildContext context, {
+    List<String> initialSelected = const <String>[],
+  }) async {
+    return showDialog<List<String>>(
       context: context,
       builder: (dialogContext) {
-        String? selectedDoctorId =
-            appointment.operatorsIDs.isEmpty ? null : appointment.operatorsIDs.first;
-        String? validationError;
-        final doctorEntries = doctors.present.values
-            .map(
-              (d) => MapEntry(
-                d.id,
-                d.title.trim().isEmpty ? 'Unnamed doctor' : d.title,
-              ),
-            )
-            .toList(growable: false)
-          ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+        final doctorRows = doctors.present.values.toList(growable: false)
+          ..sort(
+              (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        final selected = initialSelected.toSet();
         return StatefulBuilder(
           builder: (context, setDialogState) => ContentDialog(
-            title: const Text('Assign doctor to check-in'),
+            title: const Text('Assign Doctor(s)'),
             content: SizedBox(
-              width: 360,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (doctorEntries.isEmpty)
-                    const Text('No doctors available to assign.')
-                  else ...[
-                    if (selectedDoctorId != null) ...[
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: doctorEntries
-                            .where((entry) => selectedDoctorId == entry.key)
-                            .map((entry) {
-                          return GestureDetector(
-                            onTap: () {
-                              setDialogState(() {
-                                selectedDoctorId = null;
-                                validationError = null;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE9F9EF),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: const Color(0xFF22C55E),
-                                ),
-                              ),
-                              child: Text(
-                                entry.value,
-                                style: const TextStyle(
-                                  color: Color(0xFF15803D),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(growable: false),
-                      ),
-                      const SizedBox(height: 10),
-                      const Divider(size: 1),
-                      const SizedBox(height: 10),
-                    ],
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: doctorEntries
-                          .where((entry) => selectedDoctorId != entry.key)
-                          .map(
-                            (entry) {
+              width: 420,
+              child: doctorRows.isEmpty
+                  ? const Text('No doctors available to assign.')
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (selected.isEmpty)
+                          const Text(
+                            'No doctors selected',
+                            style: TextStyle(color: Color(0xFF6D84A8)),
+                          )
+                        else
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: doctorRows
+                                .where((doctor) => selected.contains(doctor.id))
+                                .map((doctor) {
+                              final doctorName = doctor.title.trim().isEmpty
+                                  ? 'Unnamed doctor'
+                                  : doctor.title;
                               return GestureDetector(
                                 onTap: () {
                                   setDialogState(() {
-                                    selectedDoctorId = entry.key;
-                                    validationError = null;
+                                    selected.remove(doctor.id);
                                   });
                                 },
                                 child: Container(
@@ -1949,40 +1908,74 @@ class _AppointmentRow extends StatelessWidget {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFEFF4FB),
+                                    color: const Color(0xFFE9F9EF),
                                     borderRadius: BorderRadius.circular(999),
                                     border: Border.all(
-                                      color: const Color(0xFFD4E2F3),
+                                      color: const Color(0xFF22C55E),
                                     ),
                                   ),
                                   child: Text(
-                                    entry.value,
+                                    doctorName,
                                     style: const TextStyle(
-                                      color: Color(0xFF355A84),
+                                      color: Color(0xFF15803D),
                                       fontWeight: FontWeight.w700,
                                       fontSize: 12,
                                     ),
                                   ),
                                 ),
                               );
-                            },
-                          )
-                          .toList(growable: false),
+                            }).toList(growable: false),
+                          ),
+                        const SizedBox(height: 10),
+                        if (selected.isNotEmpty) ...[
+                          const Divider(size: 1),
+                          const SizedBox(height: 10),
+                        ],
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 320),
+                          child: SingleChildScrollView(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: doctorRows
+                                  .where((doctor) => !selected.contains(doctor.id))
+                                  .map((doctor) {
+                                final doctorName = doctor.title.trim().isEmpty
+                                    ? 'Unnamed doctor'
+                                    : doctor.title;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setDialogState(() {
+                                      selected.add(doctor.id);
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEFF4FB),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: const Color(0xFFD2E1F2),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      doctorName,
+                                      style: const TextStyle(
+                                        color: Color(0xFF355A84),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(growable: false),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                  if (validationError != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      validationError!,
-                      style: const TextStyle(
-                        color: Color(0xFFD6455D),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
             ),
             actions: [
               Button(
@@ -1990,16 +1983,9 @@ class _AppointmentRow extends StatelessWidget {
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                onPressed: () {
-                  if (selectedDoctorId == null || selectedDoctorId!.isEmpty) {
-                    setDialogState(() {
-                      validationError = 'Please select a doctor to continue.';
-                    });
-                    return;
-                  }
-                  Navigator.pop(dialogContext, selectedDoctorId);
-                },
-                child: const Text('Check-in'),
+                onPressed: () =>
+                    Navigator.pop(dialogContext, selected.toList(growable: false)),
+                child: const Text('Save'),
               ),
             ],
           ),
@@ -2011,9 +1997,10 @@ class _AppointmentRow extends StatelessWidget {
   Future<void> _openEditTreatmentModal(BuildContext context) async {
     final stage = appointment.checkinStage.trim().toLowerCase();
     if (stage == 'waiting' || stage == 'pending') {
-      final pickedDoctorId = await _pickDoctorForCheckIn(context);
-      if (pickedDoctorId == null || pickedDoctorId.isEmpty) return;
-      appointment.operatorsIDs = [pickedDoctorId];
+      final pickedDoctorIds =
+          await _pickDoctor(context, initialSelected: appointment.operatorsIDs);
+      if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
+      appointment.operatorsIDs = pickedDoctorIds;
       appointment.checkinStage = 'with_doctor';
       appointment.isDone = false;
       appointments.set(appointment);

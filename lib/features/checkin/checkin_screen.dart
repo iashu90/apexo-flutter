@@ -2625,6 +2625,16 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   Map<String, ToothState> _teethStates = {};
 
   static const Map<String, List<String>> _postOpSuggestions = {
+    'Post Tooth Extraction': [
+      'Bite on the gauze for 30-45 minutes.',
+      'Do not spit, rinse, or use a straw for 24 hours.',
+      'Eat soft foods and drink cool liquids.',
+      'Avoid hot food, smoking, and alcohol.',
+      'Take medicines as prescribed.',
+      'Apply ice pack outside cheek for swelling (10 minutes on, 10 minutes off).',
+      'Rest today and avoid heavy work.',
+      'Brush gently, avoid extraction area.',
+    ],
     'Bleeding Control': [
       'Bite on gauze for 30-45 mins',
       'Minor oozing is normal for 24h',

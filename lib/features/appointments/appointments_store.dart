@@ -226,6 +226,15 @@ final List<String> allDiagnosis = [
   'Gingivitis',
   'Fracture',
   'Malocclusion',
+  'GD-Grossly Decayed',
+  'DC-Dental Caries',
+  'Partially Erupted',
+  'Impacted',
+  'Chronic Pulpitis',
+  'Ortho',
+  'Calculus',
+  'Stains',
+  'Abscess',
 ];
 final List<String> rctSittings = ["Access opening", "BMP", "Obturation", "PCS"];
 final List<String> crownSittings = ["Tooth preparation", "Crown luting"];

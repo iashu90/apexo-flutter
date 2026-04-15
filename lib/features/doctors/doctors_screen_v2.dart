@@ -372,7 +372,7 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                     existingDoctor: doctor,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 _DoctorTodayEarningsCompactCard(rows: doneRows),
                 const SizedBox(height: 10),
                 Align(
@@ -1088,42 +1088,37 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFD7E3F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x160D2F5B),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Doctor Directory',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF183A67),
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             const Text(
               'Search by name or phone and edit.',
               style: TextStyle(
                 color: Color(0xFF6D84A8),
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             TextBox(
               controller: _searchController,
               placeholder: 'Search doctor name / phone',
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               prefix: const Padding(
                 padding: EdgeInsets.only(left: 8),
                 child: Icon(
@@ -1133,7 +1128,7 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             if (widget.doctors.isEmpty)
               const Text(
                 'No doctors added yet.',
@@ -1155,7 +1150,7 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                     doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title;
                 final phone = doctor.phone.trim();
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 5),
                   child: Row(
                     children: [
                       Expanded(
@@ -1167,14 +1162,15 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                               style: const TextStyle(
                                 color: Color(0xFF1F446E),
                                 fontWeight: FontWeight.w700,
+                                fontSize: 12,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 1),
                             Text(
                               phone.isEmpty ? 'Phone: -' : 'Phone: $phone',
                               style: const TextStyle(
                                 color: Color(0xFF5B789F),
-                                fontSize: 12,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1182,6 +1178,12 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                         ),
                       ),
                       Button(
+                        style: ButtonStyle(
+                          padding: WidgetStateProperty.all(
+                            const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                          ),
+                        ),
                         onPressed: () => widget.onEdit(doctor),
                         child: const Text('Edit'),
                       ),
