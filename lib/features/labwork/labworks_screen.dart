@@ -11,8 +11,16 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import "../../common_widgets/datatable.dart";
-import 'package:flutter/material.dart' show showDatePicker;
 import 'package:flutter/material.dart' as material;
+
+String _lwTitleCase(String text) {
+  return text
+      .split(' ')
+      .map((word) => word.isEmpty
+          ? ''
+          : word[0].toUpperCase() + word.substring(1).toLowerCase())
+      .join(' ');
+}
 
 class LabworksScreen extends StatefulWidget {
   const LabworksScreen({super.key});
@@ -112,6 +120,13 @@ class _LabworksScreenState extends State<LabworksScreen> {
                     });
                   },
                   columnBuilders: {
+                    "Patient": (labwork) => Text(
+                          labwork.patient != null
+                              ? '${_lwTitleCase(labwork.patient!.title)}\n${labwork.patient!.phone}'
+                              : 'Unknown',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                     "Price": (labwork) => Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
@@ -146,90 +161,32 @@ class _LabworksScreenState extends State<LabworksScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        SizedBox(
-                          width: 110,
-                          child: Button(
-                            child: Text(
-                              _fromDate == null
-                                  ? "From"
-                                  : DateFormat(localSettings.dateFormat)
-                                      .format(_fromDate!),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onPressed: () async {
-                              ActivityLogger.logAction(
-                                "Labworks From Date Picker Opened",
-                                screen: "LabworksScreen",
-                                data: {
-                                  "currentFromDate":
-                                      _fromDate?.toIso8601String()
-                                },
-                              );
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: _fromDate ?? DateTime.now(),
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2100),
-                                builder: apexoDatePickerBuilder(context),
-                              );
-                              if (picked != null) {
-                                setState(() {
-                                  _fromDate = picked;
-                                  if (_toDate != null &&
-                                      _fromDate!.isAfter(_toDate!)) {
-                                    _toDate = null;
-                                  }
-                                });
-                                ActivityLogger.logAction(
-                                  "Labworks From Date Selected",
-                                  screen: "LabworksScreen",
-                                  data: {"fromDate": picked.toIso8601String()},
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        SizedBox(
-                          width: 110,
-                          child: Button(
-                            child: Text(
-                              _toDate == null
-                                  ? "To"
-                                  : DateFormat(localSettings.dateFormat)
-                                      .format(_toDate!),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onPressed: () async {
-                              ActivityLogger.logAction(
-                                "Labworks To Date Picker Opened",
-                                screen: "LabworksScreen",
-                                data: {
-                                  "currentToDate": _toDate?.toIso8601String()
-                                },
-                              );
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: _toDate ?? DateTime.now(),
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2100),
-                                builder: apexoDatePickerBuilder(context),
-                              );
-                              if (picked != null) {
-                                setState(() {
-                                  _toDate = picked;
-                                  if (_fromDate != null &&
-                                      _toDate!.isBefore(_fromDate!)) {
-                                    _fromDate = null;
-                                  }
-                                });
-                                ActivityLogger.logAction(
-                                  "Labworks To Date Selected",
-                                  screen: "LabworksScreen",
-                                  data: {"toDate": picked.toIso8601String()},
-                                );
-                              }
-                            },
+                        Button(
+                          onPressed: () async {
+                            final range =
+                                await material.showDateRangePicker(
+                              context: context,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                              initialDateRange: (_fromDate != null &&
+                                      _toDate != null)
+                                  ? material.DateTimeRange(
+                                      start: _fromDate!, end: _toDate!)
+                                  : null,
+                              builder: apexoDatePickerBuilder(context),
+                            );
+                            if (range != null) {
+                              setState(() {
+                                _fromDate = range.start;
+                                _toDate = range.end;
+                              });
+                            }
+                          },
+                          child: Text(
+                            (_fromDate == null && _toDate == null)
+                                ? 'Select date range'
+                                : '${_fromDate != null ? DateFormat(localSettings.dateFormat).format(_fromDate!) : '?'} – ${_toDate != null ? DateFormat(localSettings.dateFormat).format(_toDate!) : '?'}',
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         // Place the clear icon here, in its own SizedBox
@@ -388,8 +345,15 @@ class _LabworksScreenState extends State<LabworksScreen> {
                         ),
                         const Spacer(),
                         Expanded(
-                          child: Center(
-                            child: _buildTotalOwed(_totalOwed),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _buildTotalOwed(_totalOwed),
+                              if (_fromDate != null || _toDate != null) ...[  
+                                const SizedBox(width: 20),
+                                _buildFilterDue(filteredLabworks),
+                              ],
+                            ],
                           ),
                         ),
                       ],
@@ -465,6 +429,28 @@ class _LabworksScreenState extends State<LabworksScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFilterDue(List<Labwork> filteredList) {
+    final due = filteredList
+        .where((lw) => !lw.paid)
+        .fold<double>(0.0, (sum, lw) => sum + lw.price);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(material.Icons.calendar_today,
+            color: Color(0xFF1459AD), size: 18),
+        const SizedBox(width: 6),
+        Text(
+          'Filter Due: ₹${due.toStringAsFixed(2)}',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1459AD),
+            fontSize: 15,
+          ),
+        ),
+      ],
     );
   }
 

@@ -30,7 +30,7 @@ class Labwork extends Model {
       "Price": (paid ? "" : "-") + price.toStringAsFixed(2),
       "doctors": operators.map((e) => e.title).join(", "),
       "Delivered":
-          (deliveredToDoctor ? "✅" : "❌") + (deliveredToPatient ? "✅" : "❌"),
+          "${deliveredToDoctor ? "Ready" : "Not ready"} / ${deliveredToPatient ? "Delivered" : "Not delivered"}",
     };
     return map;
   }
