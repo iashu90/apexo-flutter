@@ -114,6 +114,13 @@ class _CustomDateRangePickerDialogState
           DateTime(today.year, today.month + 1, 1),
           DateTime(today.year, today.month + 2, 0),
         );
+      case 'YTD':
+        _setRange(DateTime(today.year, 1, 1), today);
+      case 'Last 1 Year':
+        _setRange(
+          DateTime(today.year - 1, today.month, today.day),
+          today,
+        );
     }
   }
 
@@ -126,18 +133,17 @@ class _CustomDateRangePickerDialogState
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('MM-dd-yyyy');
     final selectedText = _start == null
         ? 'No dates selected'
-        : _end == null
-            ? 'From: ${fmt.format(_start!)}'
-            : 'SELECTED:  ${fmt.format(_start!)}  →  ${fmt.format(_end!)}';
+        : _end == null || _same(_start!, _end!)
+            ? _formatDate(_start!)
+            : '${_formatDate(_start!)}  \u2192  ${_formatDate(_end!)}';
 
     return ContentDialog(
-      constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
+      constraints: const BoxConstraints(maxWidth: 820, maxHeight: 640),
       title: null,
       content: SizedBox(
-        height: 490,
+        height: 540,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -170,6 +176,8 @@ class _CustomDateRangePickerDialogState
                     'This Month',
                     'Last Month',
                     'Next Month',
+                    'YTD',
+                    'Last 1 Year',
                   ].map(
                     (label) => _QuickItem(
                       label: label,
@@ -186,7 +194,15 @@ class _CustomDateRangePickerDialogState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 4),
+                  // Close button row
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.chrome_close, size: 13),
+                      onPressed: () => Navigator.pop(context, null),
+                    ),
+                  ),
+
                   // Two calendars side by side
                   Expanded(
                     child: Row(
@@ -234,9 +250,10 @@ class _CustomDateRangePickerDialogState
                     child: Text(
                       selectedText,
                       style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF2D476D),
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Color(0xFF1B3A5C),
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ),
@@ -312,6 +329,17 @@ class _CustomDateRangePickerDialogState
       ),
     );
   }
+
+  String _formatDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}-${_monthNames[d.month - 1]}-${d.year}';
+
+  static const _monthNames = [
+    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+  ];
+
+  bool _same(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

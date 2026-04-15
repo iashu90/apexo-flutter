@@ -663,7 +663,6 @@ class _DailyAppointmentsTrendWindowCardState
         subtitle: DateFormat('MMMM yyyy').format(monthStart),
         rows: points,
         barColor: const Color(0xFF2D7BD8),
-        showEveryNthXLabel: 5,
         trailing: _TrendNavButtons(
           canGoForward: _monthOffset > 0,
           onBack: () => setState(() => _monthOffset += 1),
@@ -770,7 +769,6 @@ class _DailyRevenueTrendWindowCardState
         subtitle: DateFormat('MMMM yyyy').format(monthStart),
         rows: points,
         barColor: const Color(0xFF1468CC),
-        showEveryNthXLabel: 5,
         valueFormatter: formatIndianShortCurrency,
         verticalValueLabels: true,
         trailing: _TrendNavButtons(
@@ -1144,7 +1142,7 @@ class _SimpleBarsCard extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          if (!verticalValueLabels)
+                          if (!verticalValueLabels && entry.value.value > 0)
                             Text(
                               valueFormatter == null
                                   ? entry.value.value.toStringAsFixed(0)
@@ -1158,26 +1156,20 @@ class _SimpleBarsCard extends StatelessWidget {
                               ),
                               textAlign: TextAlign.center,
                             ),
-                          if (verticalValueLabels)
-                            RotatedBox(
-                              quarterTurns: 3,
-                              child: SizedBox(
-                                width: 44,
-                                child: Text(
-                                  entry.value.value == 0
-                                      ? ''
-                                      : (valueFormatter == null
-                                          ? entry.value.value.toStringAsFixed(0)
-                                          : valueFormatter!(entry.value.value)),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF36557C),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 9,
-                                  ),
-                                  textAlign: TextAlign.center,
+                          if (verticalValueLabels && entry.value.value > 0)
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                valueFormatter == null
+                                    ? entry.value.value.toStringAsFixed(0)
+                                    : valueFormatter!(entry.value.value),
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  color: Color(0xFF36557C),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 9,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           const SizedBox(height: 3),
@@ -1192,9 +1184,7 @@ class _SimpleBarsCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            entry.key % showEveryNthXLabel == 0
-                                ? entry.value.label
-                                : '',
+                            entry.value.label,
                             style: const TextStyle(
                               color: Color(0xFF5A7397),
                               fontWeight: FontWeight.w700,
@@ -1298,7 +1288,9 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 Text(
-                                  point.value.toStringAsFixed(0),
+                                  point.value > 0
+                                      ? point.value.toStringAsFixed(0)
+                                      : '',
                                   style: const TextStyle(
                                     fontSize: 10,
                                     color: Color(0xFF36557C),
@@ -1424,7 +1416,9 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 Text(
-                                  point.value.toStringAsFixed(0),
+                                  point.value > 0
+                                      ? point.value.toStringAsFixed(0)
+                                      : '',
                                   style: const TextStyle(
                                     color: Color(0xFF36557C),
                                     fontWeight: FontWeight.w700,

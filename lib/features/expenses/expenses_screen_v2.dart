@@ -1,5 +1,5 @@
+import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
-import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -661,14 +661,10 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
   }
 
   Future<void> _pickCustomRange() async {
-    final range = await material.showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: (_fromDate != null && _toDate != null)
-          ? material.DateTimeRange(start: _fromDate!, end: _toDate!)
-          : null,
-      builder: apexoDatePickerBuilder(context),
+    final range = await showCustomDateRangePicker(
+      context,
+      initialStart: _fromDate,
+      initialEnd: _toDate,
     );
     if (range == null || !mounted) return;
 
@@ -804,17 +800,19 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
     return names.join(', ');
   }
 
-  /// Outstanding amount owed to doctors linked to this expense (from appointments).
+  /// Sum of ALL Consultant category expenses for the doctors on this expense.
   double _doctorOutstanding(Expense expense) {
     if (expense.operators.isEmpty) return 0;
-    final allAppts = appointments.present.values;
+    final doctorIds = expense.operators.map((d) => d.id).toSet();
     double total = 0;
-    for (final doctor in expense.operators) {
-      for (final appt in allAppts) {
-        if (appt.operatorsIDs.contains(doctor.id)) {
-          total += (appt.priceToPayDoctor - appt.paidToDoctor).clamp(0, double.infinity);
-        }
-      }
+    for (final e in expenses.present.values) {
+      final isConsultant = e.items.any(
+          (item) => item.trim().toLowerCase() == 'consultant');
+      if (!isConsultant) continue;
+      final hasCommonDoctor =
+          e.operatorsIDs.any((id) => doctorIds.contains(id));
+      if (!hasCommonDoctor) continue;
+      total += e.amount;
     }
     return total;
   }
