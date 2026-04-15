@@ -16,12 +16,11 @@ import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 
 class PatientsScreenV2 extends StatefulWidget {
   const PatientsScreenV2({super.key});
@@ -328,7 +327,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
         title: 'Exporting PDF',
         task: (progress) async {
           progress.setProgress(0.2);
-          final doc = pw.Document();
           final tableRows = <List<String>>[
             const [
               'ID',
@@ -367,29 +365,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             }
           }
 
-          doc.addPage(
-            pw.MultiPage(
-              pageFormat: PdfPageFormat.a4,
-              build: (context) => [
-                pw.Text(
-                  'Filtered Patients Export',
-                  style: pw.TextStyle(
-                      fontSize: 18, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 8),
-                pw.TableHelper.fromTextArray(
-                  cellAlignment: pw.Alignment.centerLeft,
-                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                  headers: tableRows.first,
-                  data: tableRows.skip(1).toList(growable: false),
-                  cellStyle: const pw.TextStyle(fontSize: 9),
-                ),
-              ],
-            ),
-          );
-
           progress.setProgress(0.75);
-          final bytes = await doc.save().timeout(const Duration(seconds: 45));
+          final bytes = await generateTablePdf(
+            title: 'Filtered Patients Export',
+            rows: tableRows,
+          );
           if (progress.isCancelled) return;
 
           final savePath = await FilePicker.platform.saveFile(

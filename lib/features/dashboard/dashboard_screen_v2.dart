@@ -20,6 +20,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 import 'package:apexo/common_widgets/pick_doctor_dialog.dart';
+import 'package:apexo/features/dashboard/outstanding_balance_modal.dart';
 
 DateTime dashboardV2PersistedDate = DateTime.now();
 
@@ -217,22 +218,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   }
 
   void _openOutstandingDialog() {
-    final result = OverallDueHelper.compute(
-      appointments: appointments.present.values,
-      patientsById: patients.present,
-    );
-
-    showReportTableModalV2(
-      context: context,
-      title: 'Outstanding Balance',
-      rows: result.rows,
-      hiddenColumns: const [
-        'Prescription',
-        'Teeth',
-        'Doc Paid',
-        'TotalDocPay',
-      ],
-    );
+    showOutstandingBalanceModal(context);
   }
 
   void _openNewPatientsDialog(List<Appointment> todaysAppointments) {
