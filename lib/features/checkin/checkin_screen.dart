@@ -3402,7 +3402,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: [500, 1000, 1500, 2000, 3000, 5000]
+                      children: [100, 200, 500, 1000, 2000, 2500]
                           .map(
                             (v) => Button(
                               style: ButtonStyle(
@@ -4213,7 +4213,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: [100, 200, 500, 1000, 2000]
+                    children: [100, 200, 500, 1000, 2000, 2500]
                         .map(
                           (v) => Button(
                             style: _pillStyle(
@@ -4378,7 +4378,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      ...[100, 200, 500, 1000, 2000].map(
+                      ...[100, 200, 500, 1000, 2000, 2500].map(
                         (v) => Button(
                           style: _pillStyle(
                             selected: false,
@@ -4622,24 +4622,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    if (widget.discountEnabled) ...[
-                      _summaryLine(
-                        'Discount Applied',
-                        a.discount <= 0
-                            ? '-'
-                            : a.discountType == 'percent'
-                                ? '-${a.discount.toStringAsFixed(0)}%'
-                                : '-₹${a.discount.toStringAsFixed(0)}',
-                        valueColor: const Color(0xFFD6455D),
-                      ),
-                      _summaryLine(
-                        'Discounted Total',
-                        '₹${discountedTotal.toStringAsFixed(0)}',
-                        valueColor: const Color(0xFF1459AD),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
                     const Text(
                       'Treatment',
                       style: TextStyle(
@@ -4685,6 +4667,24 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       '₹${outstanding.toStringAsFixed(0)}',
                       valueColor: const Color(0xFFD6455D),
                     ),
+                              const SizedBox(height: 6),
+                    if (widget.discountEnabled) ...[
+                      _summaryLine(
+                        'Discount Applied',
+                        a.discount <= 0
+                            ? '-'
+                            : a.discountType == 'percent'
+                                ? '-${a.discount.toStringAsFixed(0)}%'
+                                : '-₹${a.discount.toStringAsFixed(0)}',
+                        valueColor: const Color(0xFFD6455D),
+                      ),
+                      _summaryLine(
+                        'Discounted Total',
+                        '₹${discountedTotal.toStringAsFixed(0)}',
+                        valueColor: const Color(0xFF1459AD),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     const SizedBox(height: 12),
                     const Text(
                       'After Payment',
