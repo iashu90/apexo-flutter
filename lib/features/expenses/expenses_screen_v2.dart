@@ -470,7 +470,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                               child: Text(
                                 '₹${NumberFormat('#,##0').format(e.amount)}',
                                 style: const TextStyle(
-                                  color: Color(0xFF2D476D),
+                                  color: Color(0xFFD6455D),
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -506,7 +506,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                                       style: const TextStyle(
                                         color: Color(0xFF2D476D),
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 11,
+                                        fontSize: 13,
                                       ),
                                     ),
                                   ],
@@ -1241,7 +1241,7 @@ class _ModeTab extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.transparent,
+          color: selected ? const Color(0xFF2D7BD8) : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color:
@@ -1253,7 +1253,7 @@ class _ModeTab extends StatelessWidget {
             label,
             style: TextStyle(
               color:
-                  selected ? const Color(0xFF1459AD) : const Color(0xFF355A82),
+                  selected ? Colors.white : const Color(0xFF355A82),
               fontWeight: FontWeight.w700,
             ),
           ),

@@ -1092,19 +1092,19 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
         border: Border.all(color: const Color(0xFFD7E3F0)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Doctor Directory',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF183A67),
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 1),
             const Text(
               'Search by name or phone and edit.',
               style: TextStyle(
@@ -1113,14 +1113,14 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
             TextBox(
               controller: _searchController,
               placeholder: 'Search doctor name / phone',
               padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               prefix: const Padding(
-                padding: EdgeInsets.only(left: 8),
+                padding: EdgeInsets.only(left: 6),
                 child: Icon(
                   FluentIcons.search,
                   size: 12,
@@ -1128,7 +1128,7 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
             if (widget.doctors.isEmpty)
               const Text(
                 'No doctors added yet.',
@@ -1150,7 +1150,7 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                     doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title;
                 final phone = doctor.phone.trim();
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 5),
+                  padding: const EdgeInsets.only(bottom: 3),
                   child: Row(
                     children: [
                       Expanded(
@@ -1165,7 +1165,6 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                                 fontSize: 12,
                               ),
                             ),
-                            const SizedBox(height: 1),
                             Text(
                               phone.isEmpty ? 'Phone: -' : 'Phone: $phone',
                               style: const TextStyle(
@@ -1181,7 +1180,7 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                         style: ButtonStyle(
                           padding: WidgetStateProperty.all(
                             const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
+                                horizontal: 8, vertical: 4),
                           ),
                         ),
                         onPressed: () => widget.onEdit(doctor),

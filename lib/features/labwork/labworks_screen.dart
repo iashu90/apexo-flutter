@@ -397,17 +397,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
                   ),
                   actions: [
                     DataTableAction(
-                      callback: (_) {
-                        ActivityLogger.logAction(
-                          "Add Labwork Clicked",
-                          screen: "LabworksScreen",
-                        );
-                        openLabwork();
-                      },
-                      icon: FluentIcons.manufacturing,
-                      title: txt("add"),
-                    ),
-                    DataTableAction(
                       icon: FluentIcons.delete,
                       title: txt("delete"),
                       enabled: (ids) => ids.isNotEmpty,
