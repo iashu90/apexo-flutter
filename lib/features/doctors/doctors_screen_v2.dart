@@ -364,6 +364,14 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                _DoctorDirectoryCard(
+                  doctors: allDoctors,
+                  onEdit: (doctor) => _openDoctorEntryModalV2(
+                    context,
+                    existingDoctor: doctor,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 _DoctorTodayEarningsCompactCard(rows: doneRows),
                 const SizedBox(height: 10),
@@ -395,11 +403,13 @@ Future<void> _openDoctorEntryModalV2(
   final isEdit = existingDoctor != null;
   final nameController =
       TextEditingController(text: existingDoctor?.title ?? '');
-  final emailController =
-      TextEditingController(text: existingDoctor?.email ?? '');
-  final selectedDutyDays = isEdit
-      ? List<String>.from(existingDoctor!.dutyDays, growable: true)
-      : List<String>.from(allDays, growable: true);
+  final phoneController = TextEditingController(
+    text: (existingDoctor?.phone ?? existingDoctor?.email ?? '').trim(),
+  );
+  final selectedDutyDays = List<String>.from(
+    existingDoctor?.dutyDays ?? allDays,
+    growable: true,
+  );
   String? nameError;
 
   await showDialog<void>(
@@ -452,10 +462,10 @@ Future<void> _openDoctorEntryModalV2(
                   ),
                 const SizedBox(height: 10),
                 InfoLabel(
-                  label: 'Email (optional):',
+                  label: 'Phone Number (optional):',
                   child: TextBox(
-                    controller: emailController,
-                    placeholder: 'doctor@email.com',
+                    controller: phoneController,
+                    placeholder: 'Enter phone number',
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -526,7 +536,8 @@ Future<void> _openDoctorEntryModalV2(
               final doctor = Doctor.fromJson({
                 'id': existingDoctor?.id ?? uuid(),
                 'title': name,
-                'email': emailController.text.trim(),
+                'email': existingDoctor?.email ?? '',
+                'phone': phoneController.text.trim(),
                 'dutyDays': selectedDutyDays,
               });
               doctors.set(doctor);
@@ -1025,6 +1036,105 @@ class _DoctorHandledRangeCard extends StatelessWidget {
                 },
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DoctorDirectoryCard extends StatelessWidget {
+  final List<Doctor> doctors;
+  final ValueChanged<Doctor> onEdit;
+
+  const _DoctorDirectoryCard({
+    required this.doctors,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Doctor Directory',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Edit doctor details from here.',
+              style: TextStyle(
+                color: Color(0xFF6D84A8),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (doctors.isEmpty)
+              const Text(
+                'No doctors added yet.',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              )
+            else
+              ...doctors.map((doctor) {
+                final displayName =
+                    doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title;
+                final phone = doctor.phone.trim();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              style: const TextStyle(
+                                color: Color(0xFF1F446E),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              phone.isEmpty ? 'Phone: -' : 'Phone: $phone',
+                              style: const TextStyle(
+                                color: Color(0xFF5B789F),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Button(
+                        onPressed: () => onEdit(doctor),
+                        child: const Text('Edit'),
+                      ),
+                    ],
+                  ),
+                );
+              }),
           ],
         ),
       ),
