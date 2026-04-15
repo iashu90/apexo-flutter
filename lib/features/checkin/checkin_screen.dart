@@ -71,7 +71,12 @@ Future<void> openCheckinAppointmentModal(
   Appointment appointment,
 ) async {
   final screenWidth = MediaQuery.of(context).size.width;
-  final popupWidth = screenWidth < 760 ? screenWidth - 20 : 540.0;
+  final isCheckoutStage = appointment.checkinStage.trim().toLowerCase() == 'checkout';
+  final popupWidth = screenWidth < 760
+      ? screenWidth - 20
+      : isCheckoutStage
+          ? (screenWidth * 0.75).clamp(760.0, 1000.0)
+          : 540.0;
   final normalizedStage = appointment.checkinStage.trim().toLowerCase();
   final stageLabel = normalizedStage == 'with_doctor' ||
           normalizedStage == 'treatment'
@@ -787,7 +792,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         final stacked = constraints.maxWidth < 1120;
 
                         final waitingColumn = _WorkflowColumn(
-                          title: 'Waiting (${waiting.length})',
+                          title: 'Scheduled / Waiting (${waiting.length})',
                           stage: 'waiting',
                           color: const Color(0xFFE4A11B),
                           rows: waiting,
@@ -799,6 +804,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             _expandedStages['waiting'] =
                                 !(_expandedStages['waiting'] ?? true);
                           }),
+                          rowStageBuilder: (a) => a.checkinStage == 'pending' ? 'scheduled' : 'waiting',
                         );
 
                         final withDoctorColumn = _WorkflowColumn(
@@ -1204,6 +1210,13 @@ class _WorkflowRow extends StatelessWidget {
   }
 
   Future<void> _moveStage(BuildContext context) async {
+    if (stage == 'scheduled') {
+      appointment.checkinStage = 'waiting';
+      appointment.checkedInAt = DateTime.now();
+      appointments.set(appointment);
+      return;
+    }
+
     if (stage == 'completed') {
       final shouldUndo = await showDialog<bool>(
         context: context,
@@ -1465,6 +1478,25 @@ class _WorkflowRow extends StatelessWidget {
                           ),
                         ),
                       ],
+                      if (stage == 'scheduled') ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE0EEFF),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'Scheduled · ${DateFormat('h:mm a').format(appointment.date)}',
+                            style: const TextStyle(
+                              color: Color(0xFF1459AD),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   Padding(
@@ -1512,7 +1544,7 @@ class _WorkflowRow extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (stage != 'waiting')
+                if (stage != 'waiting' && stage != 'scheduled')
                   Tooltip(
                     message: 'Undo',
                     child: IconButton(
@@ -1534,7 +1566,29 @@ class _WorkflowRow extends StatelessWidget {
                       onPressed: () => _undoStage(context),
                     ),
                   ),
-                if (stage != 'waiting') const SizedBox(width: 8),
+                if (stage != 'waiting' && stage != 'scheduled') const SizedBox(width: 8),
+                if (stage == 'scheduled')
+                  Tooltip(
+                    message: 'Check In',
+                    child: IconButton(
+                      icon: const Icon(material.Icons.login_rounded, size: 18),
+                      style: ButtonStyle(
+                        padding: WidgetStateProperty.all(
+                          const EdgeInsets.all(8),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        backgroundColor:
+                            WidgetStateProperty.all(const Color(0xFFE8F4FF)),
+                        foregroundColor:
+                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                      ),
+                      onPressed: () => _moveStage(context),
+                    ),
+                  ),
                 if (stage == 'waiting' || stage == 'checkout')
                   Tooltip(
                     message: stage == 'waiting'
@@ -2138,7 +2192,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
 
   Widget _buildFixedFooterActions(Appointment appointment) {
     final stage = appointment.checkinStage.trim().toLowerCase();
-    if (stage == 'waiting') {
+    if (stage == 'waiting' || stage == 'pending') {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -2161,6 +2215,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               appointment.operatorsIDs = pickedDoctorIds;
               appointment.checkinStage = 'with_doctor';
               appointment.isDone = false;
+              appointment.checkedInAt = DateTime.now();
               appointments.set(appointment);
               if (mounted) setState(() {});
             },
@@ -2286,7 +2341,15 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   await _openNextAppointmentPrompt(appointment);
                   if (mounted) setState(() {});
                 },
-                child: const Text('Complete'),
+                child: StreamBuilder(
+                  stream: appointments.observableMap.stream,
+                  builder: (context, _) {
+                    final latest = appointments.present.values
+                        .firstWhere((a) => a.id == appointment.id, orElse: () => appointment);
+                    final paid = latest.paid;
+                    return Text('Collect (₹${paid.toStringAsFixed(0)})');
+                  },
+                ),
               ),
             ),
           ],
@@ -4164,62 +4227,79 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  const Text(
-                    'Payment Mode',
-                    style: TextStyle(
-                      color: Color(0xFF355279),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: ['Cash', 'UPI'].map((mode) {
-                      final selected = _paymentMode == mode;
-                      return Button(
-                        style: _pillStyle(selected: selected),
-                        onPressed: () {
-                          setState(() => _paymentMode = mode);
-                          final isDigital = mode == 'UPI';
-                          a.treatmentGpayPaid = isDigital;
-                          a.prescriptionGpayPaid = isDigital;
-                          appointments.set(a);
-                        },
-                        child: Text(
-                          mode,
-                          style: TextStyle(
-                            color: selected
-                                ? const Color(0xFF1459AD)
-                                : const Color(0xFF5A7397),
-                            fontWeight: FontWeight.w700,
-                          ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Payment Mode',
+                              style: TextStyle(
+                                color: Color(0xFF355279),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: ['Cash', 'UPI'].map((mode) {
+                                final selected = _paymentMode == mode;
+                                return Button(
+                                  style: _pillStyle(selected: selected),
+                                  onPressed: () {
+                                    setState(() => _paymentMode = mode);
+                                    final isDigital = mode == 'UPI';
+                                    a.treatmentGpayPaid = isDigital;
+                                    a.prescriptionGpayPaid = isDigital;
+                                    appointments.set(a);
+                                  },
+                                  child: Text(
+                                    mode,
+                                    style: TextStyle(
+                                      color: selected
+                                          ? const Color(0xFF1459AD)
+                                          : const Color(0xFF5A7397),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                );
+                              }).toList(growable: false),
+                            ),
+                          ],
                         ),
-                      );
-                    }).toList(growable: false),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Date',
-                    style: TextStyle(
-                      color: Color(0xFF355279),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Button(
-                    onPressed: () async {
-                      final picked = await material.showDatePicker(
-                        context: context,
-                        initialDate: _paymentDate,
-                        firstDate: DateTime(2000, 1, 1),
-                        lastDate: DateTime(2100, 12, 31),
-                        builder: apexoDatePickerBuilder(context),
-                      );
-                      if (picked == null) return;
-                      setState(() => _paymentDate = picked);
-                    },
-                    child: Text(DateFormat('dd MMM yyyy').format(_paymentDate)),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Date',
+                            style: TextStyle(
+                              color: Color(0xFF355279),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Button(
+                            onPressed: () async {
+                              final picked = await material.showDatePicker(
+                                context: context,
+                                initialDate: _paymentDate,
+                                firstDate: DateTime(2000, 1, 1),
+                                lastDate: DateTime(2100, 12, 31),
+                                builder: apexoDatePickerBuilder(context),
+                              );
+                              if (picked == null) return;
+                              setState(() => _paymentDate = picked);
+                            },
+                            child: Text(DateFormat('dd MMM yyyy').format(_paymentDate)),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   const Text(
