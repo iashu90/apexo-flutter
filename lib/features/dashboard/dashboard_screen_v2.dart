@@ -628,7 +628,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final treatmentFilterChip = _treatmentFilterChipLabel();
 
         final doctorRevenueSplit = <String, double>{};
-        final paymentModeCounts = <String, int>{'Cash': 0, 'UPI': 0};
+        final paymentModeAmounts = <String, double>{'Cash': 0, 'UPI': 0};
 
         for (final a in todaysAppointments) {
           final totalPayment = a.paid + a.prescriptionPaid;
@@ -646,9 +646,11 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
           final isDigital = a.treatmentGpayPaid || a.prescriptionGpayPaid;
           if (isDigital) {
-            paymentModeCounts['UPI'] = (paymentModeCounts['UPI'] ?? 0) + 1;
+            paymentModeAmounts['UPI'] =
+                (paymentModeAmounts['UPI'] ?? 0) + totalPayment;
           } else {
-            paymentModeCounts['Cash'] = (paymentModeCounts['Cash'] ?? 0) + 1;
+            paymentModeAmounts['Cash'] =
+                (paymentModeAmounts['Cash'] ?? 0) + totalPayment;
           }
         }
 
@@ -709,17 +711,20 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       ),
                       _TopDonutMetricCard(
                         title: 'Payment Mode',
-                        centerValue:
-                            '${paymentModeCounts.values.fold<int>(0, (s, v) => s + v)}',
+                        centerValue: _money(
+                          paymentModeAmounts.values
+                              .fold<double>(0, (s, v) => s + v),
+                        ),
+                        valueFormatter: (value) => _money(value.toDouble()),
                         segments: [
                           _TopDonutSegment(
                             label: 'Cash',
-                            value: paymentModeCounts['Cash'] ?? 0,
+                            value: (paymentModeAmounts['Cash'] ?? 0).round(),
                             color: const Color(0xFF7D8FA7),
                           ),
                           _TopDonutSegment(
                             label: 'UPI',
-                            value: paymentModeCounts['UPI'] ?? 0,
+                            value: (paymentModeAmounts['UPI'] ?? 0).round(),
                             color: const Color(0xFF2D7BD8),
                           ),
                         ],
@@ -4395,11 +4400,13 @@ class _TopDonutMetricCard extends StatelessWidget {
   final String title;
   final String centerValue;
   final List<_TopDonutSegment> segments;
+  final String Function(int value)? valueFormatter;
 
   const _TopDonutMetricCard({
     required this.title,
     required this.centerValue,
     required this.segments,
+    this.valueFormatter,
   });
 
   @override
@@ -4463,7 +4470,7 @@ class _TopDonutMetricCard extends StatelessWidget {
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      '${s.label} (${s.value})',
+                                      '${s.label} (${valueFormatter == null ? s.value.toString() : valueFormatter!(s.value)})',
                                       style: const TextStyle(
                                         color: Color(0xFF36557C),
                                         fontWeight: FontWeight.w600,

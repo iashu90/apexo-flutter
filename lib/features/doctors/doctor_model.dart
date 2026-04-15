@@ -130,13 +130,15 @@ class Doctor extends Model {
   // title: name of the member (inherited from Model)
   /* 1 */ List<String> dutyDays = allDays;
   /* 2 */ String email = "";
-  /* 3 */ List<String> lockToUserIDs = [];
+  /* 3 */ String phone = "";
+  /* 4 */ List<String> lockToUserIDs = [];
 
   @override
   Doctor.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     /* 1 */ dutyDays = List<String>.from(json['dutyDays'] ?? dutyDays);
     /* 2 */ email = json["email"] ?? email;
-    /* 3 */ lockToUserIDs =
+    /* 3 */ phone = json["phone"] ?? phone;
+    /* 4 */ lockToUserIDs =
         List<String>.from(json['lockToUserIDs'] ?? lockToUserIDs);
   }
   @override
@@ -146,7 +148,8 @@ class Doctor extends Model {
     /* 1 */ if (dutyDays.toString() != d.dutyDays.toString())
       json['dutyDays'] = dutyDays;
     /* 2 */ if (email != d.email) json["email"] = email;
-    /* 3 */ if (lockToUserIDs.toString() != d.lockToUserIDs.toString())
+    /* 3 */ if (phone != d.phone) json["phone"] = phone;
+    /* 4 */ if (lockToUserIDs.toString() != d.lockToUserIDs.toString())
       json["lockToUserIDs"] = lockToUserIDs;
     return json;
   }

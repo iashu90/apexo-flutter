@@ -84,6 +84,7 @@ Future<void> openCheckinAppointmentModal(
       : _toTitleCase(appointment.title);
     final patientAge = appointment.patient?.age ?? 0;
     final patientGender = appointment.patient?.gender == 1 ? 'M' : 'F';
+    final patientPhone = (appointment.patient?.phone ?? '').trim();
 
   await showDialog<void>(
     context: context,
@@ -147,7 +148,7 @@ Future<void> openCheckinAppointmentModal(
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '$patientName • ${patientAge}y • $patientGender',
+                            '$patientName • ${patientAge}y • $patientGender • ${patientPhone.isEmpty ? '-' : patientPhone}',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -276,6 +277,113 @@ class _CheckinScreenState extends State<CheckinScreen> {
     _openAppointmentPopup(appointment);
   }
 
+  Future<Patient?> _openAddNewPatientDialog(String query) async {
+    final trimmedQuery = query.trim();
+    final looksLikePhone = RegExp(r'^[+0-9\s()-]+$').hasMatch(trimmedQuery);
+    final nameController = TextEditingController(
+      text: looksLikePhone ? '' : _toTitleCase(trimmedQuery),
+    );
+    final phoneController = TextEditingController(
+      text: looksLikePhone ? trimmedQuery : '',
+    );
+    String? nameError;
+    String? phoneError;
+
+    return showDialog<Patient>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => ContentDialog(
+          title: const Text('Add New Patient'),
+          content: SizedBox(
+            width: 430,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                InfoLabel(
+                  label: 'Patient Name:',
+                  child: TextBox(
+                    controller: nameController,
+                    placeholder: 'Enter patient name',
+                    onChanged: (_) {
+                      if (nameError != null) {
+                        setDialogState(() => nameError = null);
+                      }
+                    },
+                  ),
+                ),
+                if (nameError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      nameError!,
+                      style: const TextStyle(
+                        color: Color(0xFFD6455D),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 10),
+                InfoLabel(
+                  label: 'Phone Number:',
+                  child: TextBox(
+                    controller: phoneController,
+                    placeholder: 'Enter phone number',
+                    onChanged: (_) {
+                      if (phoneError != null) {
+                        setDialogState(() => phoneError = null);
+                      }
+                    },
+                  ),
+                ),
+                if (phoneError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      phoneError!,
+                      style: const TextStyle(
+                        color: Color(0xFFD6455D),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                final phone = phoneController.text.trim();
+                if (name.isEmpty) {
+                  setDialogState(() => nameError = 'Patient name is required.');
+                  return;
+                }
+                if (phone.isEmpty) {
+                  setDialogState(() => phoneError = 'Phone number is required.');
+                  return;
+                }
+
+                final patient = Patient.fromJson({
+                  'id': uuid(),
+                  'title': _toTitleCase(name),
+                  'phone': phone,
+                });
+                patients.set(patient);
+                Navigator.pop(dialogContext, patient);
+              },
+              child: const Text('Add Patient'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _openQuickPatientSearchDialog() async {
     await showDialog<void>(
       context: context,
@@ -299,6 +407,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 })
                 .take(40)
                 .toList(growable: false);
+            final hasExactMatch = query.isNotEmpty &&
+                allPatients.any((p) {
+                  final name = p.title.trim().toLowerCase();
+                  final phone = p.phone.trim().toLowerCase();
+                  return name == query || phone == query;
+                });
 
             return ContentDialog(
               title: const Text('Patient Check-in'),
@@ -325,6 +439,25 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             () => query = value.trim().toLowerCase());
                       },
                     ),
+                    if (query.isNotEmpty && !hasExactMatch) ...[
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: () async {
+                          final navigator = Navigator.of(dialogContext);
+                          final created =
+                              await _openAddNewPatientDialog(queryController.text);
+                          if (created == null) return;
+                          _checkInPatient(created);
+                          if (navigator.mounted) {
+                            navigator.pop();
+                          }
+                        },
+                        child: Text(
+                          'Add "$query" as new patient',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 10),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 420),
