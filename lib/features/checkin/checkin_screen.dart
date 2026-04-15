@@ -26,6 +26,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:apexo/common_widgets/pick_doctor_dialog.dart';
 
 DateTime checkinPersistedDate = DateTime.now();
 
@@ -1004,140 +1005,6 @@ class _WorkflowColumn extends StatelessWidget {
   }
 }
 
-Future<List<String>?> _pickDoctor(
-  BuildContext context, {
-  List<String> initialSelected = const <String>[],
-}) async {
-  return showDialog<List<String>>(
-    context: context,
-    builder: (dialogContext) {
-      final doctorRows = doctors.present.values.toList(growable: false)
-        ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-      final selected = initialSelected.toSet();
-      return StatefulBuilder(
-        builder: (context, setStateDialog) => ContentDialog(
-          title: const Text('Assign Doctor(s)'),
-          content: SizedBox(
-            width: 420,
-            child: doctorRows.isEmpty
-                ? const Text('No doctors available to assign.')
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (selected.isEmpty)
-                        const Text(
-                          'No doctors selected',
-                          style: TextStyle(color: Color(0xFF6D84A8)),
-                        )
-                      else
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: doctorRows
-                              .where((doctor) => selected.contains(doctor.id))
-                              .map((doctor) {
-                            final doctorName = doctor.title.trim().isEmpty
-                                ? 'Unnamed doctor'
-                                : doctor.title;
-                            return GestureDetector(
-                              onTap: () {
-                                setStateDialog(() {
-                                  selected.remove(doctor.id);
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE9F9EF),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: const Color(0xFF22C55E),
-                                  ),
-                                ),
-                                child: Text(
-                                  doctorName,
-                                  style: const TextStyle(
-                                    color: Color(0xFF15803D),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(growable: false),
-                        ),
-                      const SizedBox(height: 10),
-                      if (selected.isNotEmpty) ...[
-                        const Divider(size: 1),
-                        const SizedBox(height: 10),
-                      ],
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 320),
-                        child: SingleChildScrollView(
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: doctorRows
-                                .where((doctor) => !selected.contains(doctor.id))
-                                .map((doctor) {
-                              final doctorName = doctor.title.trim().isEmpty
-                                  ? 'Unnamed doctor'
-                                  : doctor.title;
-                              return GestureDetector(
-                                onTap: () {
-                                  setStateDialog(() {
-                                    selected.add(doctor.id);
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEFF4FB),
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: const Color(0xFFD2E1F2),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    doctorName,
-                                    style: const TextStyle(
-                                      color: Color(0xFF355A84),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(growable: false),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-          actions: [
-            Button(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, selected.toList(growable: false)),
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
 class _WorkflowRow extends StatelessWidget {
   final Appointment appointment;
   final String stage;
@@ -1371,7 +1238,7 @@ class _WorkflowRow extends StatelessWidget {
 
     if (stage == 'waiting') {
       final pickedDoctorIds =
-          await _pickDoctor(context, initialSelected: appointment.operatorsIDs);
+          await pickDoctorDialog(context, initialSelected: appointment.operatorsIDs);
       if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
       appointment.operatorsIDs = pickedDoctorIds;
       appointment.checkinStage = 'with_doctor';
@@ -1608,7 +1475,7 @@ class _WorkflowRow extends StatelessWidget {
                       behavior: HitTestBehavior.opaque,
                       onTap: (stage == 'with_doctor' && selected)
                           ? () async {
-                              final pickedDoctorIds = await _pickDoctor(
+                              final pickedDoctorIds = await pickDoctorDialog(
                                 context,
                                 initialSelected: appointment.operatorsIDs,
                               );
@@ -2288,7 +2155,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
             ),
             onPressed: () async {
               Navigator.of(context).pop();
-              final pickedDoctorIds = await _pickDoctor(
+              final pickedDoctorIds = await pickDoctorDialog(
                 widget.rootContext,
                 initialSelected: appointment.operatorsIDs,
               );
