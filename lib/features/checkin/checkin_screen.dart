@@ -544,7 +544,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 _selectedDate.day == now.day;
             final screenWidth = MediaQuery.of(context).size.width;
             final isMobile = screenWidth < 760;
-            final isTablet = screenWidth >= 760 && screenWidth < 1160;
 
             return Container(
               color: const Color(0xFFF3F7FC),
@@ -611,146 +610,145 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       )
                     else
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Checkin',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF183A67),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEAF2FC),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                      color: const Color(0xFFD5E5F7)),
+                                ),
+                                child: Text(
+                                  'Patients: ${todaysAppointments.length}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1459AD),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Text(
-                                  'Checkin',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF183A67),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: const Color(0xFFD6E2F0)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Button(
+                                        onPressed: () => _changeDate(-1),
+                                        style: _dateButtonStyle,
+                                        child: const Icon(
+                                            FluentIcons.chevron_left,
+                                            size: 12),
+                                      ),
+                                      Button(
+                                        onPressed: () => _pickDate(context),
+                                        style: _dateButtonStyle,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              DateFormat('MMMM d, yyyy')
+                                                  .format(_selectedDate),
+                                              style: const TextStyle(
+                                                color: Color(0xFF25466E),
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 1),
+                                            Text(
+                                              DateFormat('EEEE')
+                                                  .format(_selectedDate),
+                                              style: const TextStyle(
+                                                color: Color(0xFF557195),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Button(
+                                        onPressed: () => _changeDate(1),
+                                        style: _dateButtonStyle,
+                                        child: const Icon(
+                                            FluentIcons.chevron_right,
+                                            size: 12),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEAF2FC),
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                        color: const Color(0xFFD5E5F7)),
-                                  ),
-                                  child: Text(
-                                    'Patients: ${todaysAppointments.length}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF1459AD),
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
+                                SizedBox(
+                                  height: 48,
+                                  width: 84,
+                                  child: Visibility(
+                                    visible: !isToday,
+                                    maintainSize: true,
+                                    maintainAnimation: true,
+                                    maintainState: true,
+                                    child: FilledButton(
+                                      onPressed: () => setState(() {
+                                        _selectedDate =
+                                            _dateOnly(DateTime.now());
+                                        checkinPersistedDate = _selectedDate;
+                                      }),
+                                      child: const Text('Today'),
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          SizedBox(
-                            width: isTablet ? 300 : 360,
-                            child: FilledButton(
-                              onPressed: _openQuickPatientSearchDialog,
-                              style: ButtonStyle(
-                                padding: WidgetStateProperty.all(
-                                  const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 11,
-                                  ),
+                          const SizedBox(width: 12),
+                          FilledButton(
+                            onPressed: _openQuickPatientSearchDialog,
+                            style: ButtonStyle(
+                              padding: WidgetStateProperty.all(
+                                const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 11,
                                 ),
                               ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(FluentIcons.search, size: 12),
-                                  SizedBox(width: 8),
-                                  Text('Patient Check-in'),
-                                ],
-                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.center,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border:
-                                  Border.all(color: const Color(0xFFD6E2F0)),
-                            ),
-                            child: Row(
+                            child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Button(
-                                  onPressed: () => _changeDate(-1),
-                                  style: _dateButtonStyle,
-                                  child: const Icon(FluentIcons.chevron_left,
-                                      size: 12),
-                                ),
-                                Button(
-                                  onPressed: () => _pickDate(context),
-                                  style: _dateButtonStyle,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        DateFormat('MMMM d, yyyy')
-                                            .format(_selectedDate),
-                                        style: const TextStyle(
-                                          color: Color(0xFF25466E),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 1),
-                                      Text(
-                                        DateFormat('EEEE')
-                                            .format(_selectedDate),
-                                        style: const TextStyle(
-                                          color: Color(0xFF557195),
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Button(
-                                  onPressed: () => _changeDate(1),
-                                  style: _dateButtonStyle,
-                                  child: const Icon(FluentIcons.chevron_right,
-                                      size: 12),
-                                ),
+                                Icon(FluentIcons.search, size: 12),
+                                SizedBox(width: 8),
+                                Text('Patient Check-in'),
                               ],
                             ),
                           ),
-                          SizedBox(
-                            height: 48,
-                            width: 84,
-                            child: Visibility(
-                              visible: !isToday,
-                              maintainSize: true,
-                              maintainAnimation: true,
-                              maintainState: true,
-                              child: FilledButton(
-                                onPressed: () => setState(() {
-                                  _selectedDate = _dateOnly(DateTime.now());
-                                  checkinPersistedDate = _selectedDate;
-                                }),
-                                child: const Text('Today'),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
-                    ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -1411,10 +1409,10 @@ class _WorkflowRow extends StatelessWidget {
     final genderLabel = rawGender == 1 ? 'M' : 'F';
     final doctorLabel = doctorsList.join(', ');
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color:
-            stage == 'completed' ? const Color(0xFFF4FCF7) : Colors.transparent,
+            stage == 'completed' ? const Color.fromARGB(255, 225, 248, 225) : Colors.transparent,
         border: const Border(top: BorderSide(color: Color(0xFFE2ECF8))),
       ),
       child: GestureDetector(

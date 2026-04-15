@@ -3794,7 +3794,7 @@ class _AllPatientsListCard extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SizedBox(
-              width: math.max(1200, screenWidth - 70),
+              width: math.max(1100, screenWidth - 70),
               child: Column(
                 children: [
                   Container(
@@ -3828,7 +3828,7 @@ class _AllPatientsListCard extends StatelessWidget {
                           onDark: isHeaderHighlighted,
                         ),
                         _SortableHead(
-                          flex: 18,
+                          flex: 16,
                           label: 'Phone',
                           keyName: 'phone',
                           current: sortBy,
@@ -3846,7 +3846,7 @@ class _AllPatientsListCard extends StatelessWidget {
                           onDark: isHeaderHighlighted,
                         ),
                         _SortableHead(
-                          flex: 12,
+                          flex: 10,
                           label: 'Visits',
                           keyName: 'visits',
                           current: sortBy,
@@ -3888,7 +3888,7 @@ class _AllPatientsListCard extends StatelessWidget {
                           onDark: isHeaderHighlighted,
                         ),
                         Expanded(
-                          flex: 12,
+                          flex: 20,
                           child: Text(
                             'Actions',
                             style: TextStyle(
@@ -3941,7 +3941,7 @@ class _AllPatientsListCard extends StatelessWidget {
 
                               return Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 10),
+                                    horizontal: 10, vertical: 6),
                                 decoration: const BoxDecoration(
                                   border: Border(
                                       top:
@@ -3975,7 +3975,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                       ),
                                     ),
                                     Expanded(
-                                      flex: 18,
+                                      flex: 16,
                                       child: Text(
                                         patient.phone,
                                         overflow: TextOverflow.ellipsis,
@@ -3992,7 +3992,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                       ),
                                     ),
                                     Expanded(
-                                      flex: 12,
+                                      flex: 10,
                                       child: Text(
                                         '$visits',
                                         style: const TextStyle(
@@ -4033,12 +4033,12 @@ class _AllPatientsListCard extends StatelessWidget {
                                       ),
                                     ),
                                     Expanded(
-                                      flex: 12,
+                                      flex: 20,
                                       child: Align(
                                         alignment: Alignment.center,
                                         child: Wrap(
-                                          spacing: 8,
-                                          runSpacing: 8,
+                                          spacing: 6,
+                                          runSpacing: 6,
                                           alignment: WrapAlignment.center,
                                           children: [
                                             _HoverActionItem(

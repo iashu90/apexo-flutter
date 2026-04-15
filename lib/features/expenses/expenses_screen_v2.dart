@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/delete_confirmation.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -827,7 +828,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toSet()
-      ..add('Consultation')
+      ..add('Consultant')
       ..add('Medication')
       ..add('Labwork')
       ..add('Utilities')
@@ -1044,55 +1045,56 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      InfoLabel(
-                        label: 'Doctor Details:',
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: doctors.present.values.map((doctor) {
-                            final selected =
-                                selectedDoctors.contains(doctor.id);
-                            return GestureDetector(
-                              onTap: () {
-                                setStateDialog(() {
-                                  if (selected) {
-                                    selectedDoctors.remove(doctor.id);
-                                  } else {
-                                    selectedDoctors.add(doctor.id);
-                                  }
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? const Color(0xFF2D7BD8)
-                                      : const Color(0xFFEFF4FB),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
+                      if (selectedCategory == 'Consultant')
+                        InfoLabel(
+                          label: 'Doctor Details:',
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: doctors.present.values.map((doctor) {
+                              final selected =
+                                  selectedDoctors.contains(doctor.id);
+                              return GestureDetector(
+                                onTap: () {
+                                  setStateDialog(() {
+                                    if (selected) {
+                                      selectedDoctors.remove(doctor.id);
+                                    } else {
+                                      selectedDoctors.add(doctor.id);
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
                                     color: selected
                                         ? const Color(0xFF2D7BD8)
-                                        : const Color(0xFFD4E2F3),
+                                        : const Color(0xFFEFF4FB),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: selected
+                                          ? const Color(0xFF2D7BD8)
+                                          : const Color(0xFFD4E2F3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    doctor.title.trim().isEmpty
+                                        ? 'Doctor'
+                                        : doctor.title,
+                                    style: TextStyle(
+                                      color: selected
+                                          ? Colors.white
+                                          : const Color(0xFF345982),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ),
-                                child: Text(
-                                  doctor.title.trim().isEmpty
-                                      ? 'Doctor'
-                                      : doctor.title,
-                                  style: TextStyle(
-                                    color: selected
-                                        ? Colors.white
-                                        : const Color(0xFF345982),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(growable: false),
+                              );
+                            }).toList(growable: false),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -1244,16 +1246,14 @@ class _ModeTab extends StatelessWidget {
           color: selected ? const Color(0xFF2D7BD8) : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color:
-                selected ? const Color(0xFF2D7BD8) : const Color(0xFFD4E2F3),
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD4E2F3),
           ),
         ),
         child: Center(
           child: Text(
             label,
             style: TextStyle(
-              color:
-                  selected ? Colors.white : const Color(0xFF355A82),
+              color: selected ? Colors.white : const Color(0xFF355A82),
               fontWeight: FontWeight.w700,
             ),
           ),

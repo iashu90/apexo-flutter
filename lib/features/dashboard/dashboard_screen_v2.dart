@@ -24,6 +24,15 @@ import 'package:apexo/features/dashboard/outstanding_balance_modal.dart';
 
 DateTime dashboardV2PersistedDate = DateTime.now();
 
+String _toTitleCase(String text) {
+  return text
+      .split(' ')
+      .map((word) => word.isEmpty
+          ? ''
+          : word[0].toUpperCase() + word.substring(1).toLowerCase())
+      .join(' ');
+}
+
 class DashboardScreenV2 extends StatefulWidget {
   const DashboardScreenV2({super.key});
 
@@ -1594,7 +1603,7 @@ class _TableHeader extends StatelessWidget {
                   onSort: onSort,
                   onDark: isFilterApplied)),
           Expanded(
-              flex: 12,
+              flex: 10,
               child: _SortableHeader(
                   label: 'Status',
                   keyName: 'status',
@@ -1603,7 +1612,7 @@ class _TableHeader extends StatelessWidget {
                   onSort: onSort,
                   onDark: isFilterApplied)),
           Expanded(
-              flex: 12,
+              flex: 10,
               child: _SortableHeader(
                   label: 'Mode',
                   keyName: 'paymentMode',
@@ -1621,7 +1630,7 @@ class _TableHeader extends StatelessWidget {
                   onSort: onSort,
                   onDark: isFilterApplied)),
           Expanded(
-              flex: 10,
+              flex: 14,
               child: _SortableHeader(
                   label: 'Actions',
                   keyName: 'actions',
@@ -1794,7 +1803,7 @@ class _AppointmentRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    appointment.title,
+                    _toTitleCase(appointment.title),
                     style: const TextStyle(
                       color: Color(0xFF1459AD),
                       fontWeight: FontWeight.w600,
@@ -1834,19 +1843,19 @@ class _AppointmentRow extends StatelessWidget {
             child: Text(
               treatment,
               style: const TextStyle(color: Color(0xFF2D476D)),
-              maxLines: 1,
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
-            flex: 12,
+            flex: 10,
             child: _StatusBadge(
               done: appointment.isDone,
               stage: appointment.checkinStage,
             ),
           ),
           Expanded(
-            flex: 12,
+            flex: 10,
             child: Row(
               children: [
                 isDigital
@@ -1888,7 +1897,7 @@ class _AppointmentRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 10,
+            flex: 14,
             child: Row(
               children: [
                 _ActionIconButton(
@@ -1898,7 +1907,7 @@ class _AppointmentRow extends StatelessWidget {
                   hoverColor: const Color(0xFFF1EDFB),
                   onTap: () => _openEditTreatmentModal(context),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 6),
                 _ActionIconButton(
                   tooltip: 'History',
                   icon: FluentIcons.history,
@@ -1906,7 +1915,7 @@ class _AppointmentRow extends StatelessWidget {
                   hoverColor: const Color(0xFFE7F1FF),
                   onTap: () => _openPatientHistoryDialog(context),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 6),
                 _ActionIconButton(
                   tooltip: 'Add Labwork',
                   icon: FluentIcons.test_beaker,
@@ -1914,7 +1923,7 @@ class _AppointmentRow extends StatelessWidget {
                   hoverColor: const Color(0xFFEAF8F1),
                   onTap: () => _openLabworkForPatient(context),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 6),
                 _ActionIconButton(
                   tooltip: 'Delete',
                   icon: FluentIcons.delete,
