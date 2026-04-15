@@ -388,6 +388,10 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                     onTap: () => _onSort('amount'),
                   ),
                 ),
+                const Expanded(
+                  flex: 12,
+                  child: _Head('To Pay'),
+                ),
                 Expanded(
                   flex: 10,
                   child: _SortableHead(
@@ -468,32 +472,33 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                             ),
                             Expanded(
                               flex: 12,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '₹${NumberFormat('#,##0').format(e.amount)}',
-                                    style: const TextStyle(
-                                      color: Color(0xFFD6455D),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  if (category == 'Consultant' && e.operators.isNotEmpty)
-                                    Builder(builder: (_) {
-                                      final outstanding = _doctorOutstanding(e);
-                                      if (outstanding <= 0) return const SizedBox.shrink();
-                                      return Text(
-                                        'To Pay: ₹${NumberFormat('#,##0').format(outstanding)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFFE09C31),
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      );
-                                    }),
-                                ],
+                              child: Text(
+                                '₹${NumberFormat('#,##0').format(e.amount)}',
+                                style: const TextStyle(
+                                  color: Color(0xFFD6455D),
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
+                            ),
+                            Expanded(
+                              flex: 12,
+                              child: Builder(builder: (_) {
+                                if (category != 'Consultant' ||
+                                    e.operators.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                final outstanding = _doctorOutstanding(e);
+                                if (outstanding <= 0) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Text(
+                                  '₹${NumberFormat('#,##0').format(outstanding)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFFE09C31),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                );
+                              }),
                             ),
                             Expanded(
                               flex: 10,

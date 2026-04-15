@@ -548,9 +548,16 @@ class _MetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: color,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x160D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -826,11 +833,11 @@ class _PatientRow extends StatelessWidget {
                     const SizedBox(width: 5),
                     if (row.patient.birth > 0)
                       Text(
-                        '${row.patient.birth}y ${row.patient.gender == 0 ? '♀' : '♂'}',
+                        '${row.patient.age}${row.patient.gender == 1 ? 'M' : 'F'}',
                         style: const TextStyle(
                           fontSize: 10,
                           color: Color(0xFF8EA8C3),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                   ],
@@ -843,6 +850,18 @@ class _PatientRow extends StatelessWidget {
                     color: Color(0xFF607B9F),
                   ),
                 ),
+                if (row.patient.address.trim().isNotEmpty) ...[  
+                  const SizedBox(height: 1),
+                  Text(
+                    row.patient.address.trim(),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF8AAAC5),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
                 if (row.treatments.isNotEmpty) ...[  
                   const SizedBox(height: 2),
                   Text(

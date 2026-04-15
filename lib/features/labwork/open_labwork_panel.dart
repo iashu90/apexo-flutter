@@ -336,7 +336,7 @@ class LaboratoryPicker extends StatelessWidget {
       key: WK.fieldLabworkLabName,
       focusNode: focusNode,
       controller: controller,
-      suggestions: labworks.allLabs
+      suggestions: labworks.predefinedLabs
           .map((e) => TagInputItem(value: e, label: e))
           .toList(),
       onChanged: (s) {
