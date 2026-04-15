@@ -38,6 +38,7 @@ dependencies:
   googleapis: ^13.1.0
   googleapis_auth: ^1.4.1
   flutter_svg: ^2.0.10
+  cupertino_icons: ^1.0.8 
 
 dev_dependencies:
   integration_test:

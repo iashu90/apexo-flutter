@@ -1750,7 +1750,40 @@ class _AppointmentRow extends StatelessWidget {
 
   Future<void> _openEditTreatmentModal(BuildContext context) async {
     final stage = appointment.checkinStage.trim().toLowerCase();
-    if (stage == 'waiting' || stage == 'pending') {
+    if (stage == 'pending') {
+      final patientName = appointment.title.trim().isEmpty
+          ? 'this patient'
+          : appointment.title;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => ContentDialog(
+          title: const Text(
+            'Confirm',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          content: Text('Move $patientName to waiting?'),
+          actions: [
+            Button(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.pop(ctx, false),
+            ),
+            FilledButton(
+              style: ButtonStyle(
+                backgroundColor:
+                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+              ),
+              child: const Text('Yes'),
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      appointment.checkinStage = 'waiting';
+      appointments.set(appointment);
+      return;
+    }
+    if (stage == 'waiting') {
       final pickedDoctorIds =
           await pickDoctorDialog(context, initialSelected: appointment.operatorsIDs);
       if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
@@ -1785,8 +1818,11 @@ class _AppointmentRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color:
-            isDuplicatePatient ? const Color(0xFFFFF1F1) : Colors.transparent,
+        color: isDuplicatePatient
+            ? const Color(0xFFFFF1F1)
+            : appointment.checkinStage.trim().toLowerCase() == 'pending'
+                ? const Color(0xFFFFFBEE)
+                : Colors.transparent,
         border: const Border(top: BorderSide(color: Color(0xFFE2ECF8))),
       ),
       child: Row(

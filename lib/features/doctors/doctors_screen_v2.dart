@@ -5,6 +5,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -365,12 +366,27 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                _DoctorDirectoryCard(
-                  doctors: allDoctors,
-                  onEdit: (doctor) => _openDoctorEntryModalV2(
-                    context,
-                    existingDoctor: doctor,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 380),
+                      child: _DoctorDirectoryCard(
+                        doctors: allDoctors,
+                        onEdit: (doctor) => _openDoctorEntryModalV2(
+                          context,
+                          existingDoctor: doctor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: _DoctorTodayDetailCard(
+                        doctors: allDoctors,
+                        todaysAppointments: todaysAppointments,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 _DoctorTodayEarningsCompactCard(rows: doneRows),
@@ -1127,11 +1143,11 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
   @override
   Widget build(BuildContext context) {
     final filtered = widget.doctors.where((doctor) {
-      if (_query.isEmpty) return false;
+      if (_query.isEmpty) return true;
       final name = doctor.title.toLowerCase();
       final phone = doctor.phone.toLowerCase();
       return name.contains(_query) || phone.contains(_query);
-    }).take(6).toList(growable: false);
+    }).toList(growable: true);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -1154,7 +1170,7 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
             ),
             const SizedBox(height: 1),
             const Text(
-              'Search by name or phone and edit.',
+              'Search to filter or click Edit to update.',
               style: TextStyle(
                 color: Color(0xFF6D84A8),
                 fontSize: 11,
@@ -1180,11 +1196,6 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
             if (widget.doctors.isEmpty)
               const Text(
                 'No doctors added yet.',
-                style: TextStyle(color: Color(0xFF6D84A8)),
-              )
-            else if (_query.isEmpty)
-              const Text(
-                'Type to find a doctor to edit.',
                 style: TextStyle(color: Color(0xFF6D84A8)),
               )
             else if (filtered.isEmpty)
@@ -1226,6 +1237,236 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
                   );
                 },
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Doctor Today Detail Card
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DoctorTodayDetailCard extends StatefulWidget {
+  final List<Doctor> doctors;
+  final List<Appointment> todaysAppointments;
+
+  const _DoctorTodayDetailCard({
+    required this.doctors,
+    required this.todaysAppointments,
+  });
+
+  @override
+  State<_DoctorTodayDetailCard> createState() =>
+      _DoctorTodayDetailCardState();
+}
+
+class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
+  Doctor? _selectedDoctor;
+
+  @override
+  void didUpdateWidget(_DoctorTodayDetailCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_selectedDoctor != null) {
+      final stillExists =
+          widget.doctors.any((d) => d.id == _selectedDoctor!.id);
+      if (!stillExists) _selectedDoctor = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final doctor = _selectedDoctor;
+
+    List<Appointment> doctorAppts = [];
+    if (doctor != null) {
+      doctorAppts = widget.todaysAppointments
+          .where((a) => a.operatorsIDs.contains(doctor.id))
+          .toList(growable: false);
+    }
+
+    final totalEarned = doctorAppts.fold<double>(
+        0, (s, a) => s + a.paid + a.prescriptionPaid);
+    final consultationCharge = expenses.present.values
+        .where((e) =>
+            e.items.any((i) => i.trim().toLowerCase() == 'consultant') &&
+            e.operatorsIDs.contains(doctor?.id ?? '') &&
+            _isToday(e.date))
+        .fold<double>(0, (s, e) => s + e.amount);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Doctor — Today',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF183A67),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ComboBox<Doctor>(
+                    value: _selectedDoctor,
+                    placeholder: const Text('Select a doctor'),
+                    items: widget.doctors
+                        .map(
+                          (d) => ComboBoxItem<Doctor>(
+                            value: d,
+                            child: Text(
+                              d.title.trim().isEmpty ? 'Unnamed' : d.title,
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (d) => setState(() => _selectedDoctor = d),
+                  ),
+                ),
+              ],
+            ),
+            if (doctor == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  'Select a doctor to see their activity today.',
+                  style: TextStyle(color: Color(0xFF8AAAC6)),
+                ),
+              )
+            else ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _TodayPill(
+                      label: 'Patients', value: '${doctorAppts.length}'),
+                  _TodayPill(
+                      label: 'Earned',
+                      value:
+                          '\u20b9${totalEarned.toStringAsFixed(0)}'),
+                  _TodayPill(
+                      label: 'Consultation',
+                      value:
+                          '\u20b9${consultationCharge.toStringAsFixed(0)}'),
+                ],
+              ),
+              if (doctorAppts.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Text(
+                    'No appointments today for this doctor.',
+                    style: TextStyle(color: Color(0xFF8AAAC6), fontSize: 12),
+                  ),
+                )
+              else ...[
+                const SizedBox(height: 10),
+                ...doctorAppts.map(
+                  (appt) => Container(
+                    margin: const EdgeInsets.only(bottom: 5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6FAFF),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFDCE8F6)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            appt.title.trim().isEmpty
+                                ? 'Unnamed'
+                                : appt.title,
+                            style: const TextStyle(
+                              color: Color(0xFF1459AD),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          appt.selectedTreatments.isEmpty
+                              ? '-'
+                              : appt.selectedTreatments.join(', '),
+                          style: const TextStyle(
+                            color: Color(0xFF5A7397),
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '\u20b9${(appt.paid + appt.prescriptionPaid).toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            color: Color(0xFF2BA58D),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _isToday(DateTime d) {
+    final now = DateTime.now();
+    return d.year == now.year && d.month == now.month && d.day == now.day;
+  }
+}
+
+class _TodayPill extends StatelessWidget {
+  final String label;
+  final String value;
+  const _TodayPill({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F6FF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFCBDEF5)),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 12),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(
+                color: Color(0xFF5A7397),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: const TextStyle(
+                color: Color(0xFF1459AD),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ],
         ),
       ),
