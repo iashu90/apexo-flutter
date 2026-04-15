@@ -1211,6 +1211,30 @@ class _WorkflowRow extends StatelessWidget {
 
   Future<void> _moveStage(BuildContext context) async {
     if (stage == 'scheduled') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: const Text('Check In Patient?'),
+          content: const Text(
+            'This will move the patient from Scheduled to Waiting.',
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: ButtonStyle(
+                backgroundColor:
+                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Check In'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
       appointment.checkinStage = 'waiting';
       appointment.checkedInAt = DateTime.now();
       appointments.set(appointment);

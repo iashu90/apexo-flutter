@@ -1,12 +1,11 @@
+import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as material show showDateRangePicker, DateTimeRange;
 import 'package:intl/intl.dart';
 
 String _lwTitleCase(String input) {
@@ -75,6 +74,9 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               const SizedBox(height: 10),
               _buildSearchAndDateFilters(),
               const SizedBox(height: 10),
+              if (_hasActiveFilter())
+                _buildFilterSummaryCard(filtered),
+              if (_hasActiveFilter()) const SizedBox(height: 10),
               Expanded(
                 child: grouped.isEmpty
                     ? _EmptyState(onClear: _clearFilters)
@@ -129,18 +131,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
           ),
         ),
         const Spacer(),
-        Button(
-          onPressed: _openAddLabDialog,
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(FluentIcons.add_friend, size: 14),
-              SizedBox(width: 6),
-              Text('Add Lab'),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
         FilledButton(
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
@@ -178,15 +168,11 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       _StatCardData('DELIVERED', '$delivered', 'done'),
       _StatCardData(
         'PAYMENT DUE',
-        paymentDue <= 0 ? '' : '₹${NumberFormat('#,##0').format(paymentDue)}',
-        paymentDue <= 0 ? '' : 'dues',
-        valueColor: const Color(0xFFD6455D),
-      ),
-      _StatCardData(
-        'DUES',
-        dues.isEmpty ? '' : '${dues.length} dues',
-        '',
-        valueColor: const Color(0xFFD6455D),
+        paymentDue <= 0 ? 'None' : '₹${NumberFormat('#,##0').format(paymentDue)}',
+        dues.isEmpty ? '' : '${dues.length} due${dues.length == 1 ? '' : 's'}',
+        valueColor: dues.isEmpty
+            ? const Color(0xFF1D3E67)
+            : const Color(0xFFD6455D),
       ),
     ];
 
@@ -292,8 +278,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
             items: const {
               'all': 'All Status',
               'in_lab': 'In Lab',
-              'ready': 'Doctors',
-              'done': 'Completed',
+              'ready': 'Ready',
+              'done': 'Delivered',
             },
             onChanged: (v) => setState(() => _statusFilter = v),
           ),
@@ -319,54 +305,68 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     );
   }
 
-  Future<void> _openAddLabDialog() async {
-    final labController = TextEditingController();
-    final phoneController = TextEditingController();
+  bool _hasActiveFilter() {
+    return _query.isNotEmpty ||
+        _statusFilter != 'all' ||
+        _paymentFilter != 'all' ||
+        _rangeFilter != 'all' ||
+        _labFilter != 'all';
+  }
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => ContentDialog(
-        title: const Text('Add New Lab'),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextBox(
-                controller: labController,
-                placeholder: 'Lab name',
-              ),
-              const SizedBox(height: 10),
-              TextBox(
-                controller: phoneController,
-                placeholder: 'Phone (optional)',
-              ),
-            ],
+  Widget _buildFilterSummaryCard(List<Labwork> filtered) {
+    final dues = filtered.where((l) => !l.paid).toList(growable: false);
+    final paymentDue = dues.fold<double>(0, (sum, l) => sum + l.price);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDF4F4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFEFD0D0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(FluentIcons.filter, size: 14, color: Color(0xFF9B3D3D)),
+          const SizedBox(width: 8),
+          Text(
+            '${filtered.length} result${filtered.length == 1 ? '' : 's'} match current filters',
+            style: const TextStyle(
+              color: Color(0xFF7A3535),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
           ),
-        ),
-        actions: [
-          Button(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = labController.text.trim();
-              if (name.isEmpty) return;
-              localSettings.savedLabs = {
-                ...localSettings.savedLabs,
-                name: phoneController.text.trim(),
-              };
-              localSettings.notifyAndPersist();
-              Navigator.pop(dialogContext);
-              final draft = Labwork.fromJson({
-                'lab': name,
-                'phoneNumber': phoneController.text.trim(),
-                'date': DateTime.now().millisecondsSinceEpoch,
-              });
-              openLabworkV2Dialog(context, draft);
-            },
-            child: const Text('Continue'),
+          if (dues.isNotEmpty) ...[
+            const SizedBox(width: 16),
+            Container(
+              width: 1,
+              height: 16,
+              color: const Color(0xFFD6A0A0),
+            ),
+            const SizedBox(width: 16),
+            Text(
+              '₹${NumberFormat('#,##0').format(paymentDue)} due',
+              style: const TextStyle(
+                color: Color(0xFFD6455D),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '(${dues.length} item${dues.length == 1 ? '' : 's'})',
+              style: const TextStyle(
+                color: Color(0xFF9B5A5A),
+                fontSize: 12,
+              ),
+            ),
+          ],
+          const Spacer(),
+          HyperlinkButton(
+            onPressed: _clearFilters,
+            child: const Text(
+              'Clear filters',
+              style: TextStyle(fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -400,17 +400,12 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   }
 
   Future<void> _openDateRangePicker() async {
-    final range = await material.showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: (_fromDate != null && _toDate != null)
-          ? material.DateTimeRange(start: _fromDate!, end: _toDate!)
-          : null,
-      builder: apexoDatePickerBuilder(context),
+    final range = await showCustomDateRangePicker(
+      context,
+      initialStart: _fromDate,
+      initialEnd: _toDate,
     );
     if (range == null || !mounted) return;
-
     setState(() {
       _rangeFilter = 'custom';
       _fromDate = DateTime(range.start.year, range.start.month, range.start.day);
@@ -823,17 +818,13 @@ class _LabworkRow extends StatelessWidget {
                 bg: const Color(0xFFF0EDF9),
               ),
               _Tag(
-                text: item.deliveredToDoctor
-                    ? 'Delivered to Doctor'
-                    : 'Pending Doctor',
+                text: item.deliveredToDoctor ? 'Ready' : 'In Lab',
                 bg: item.deliveredToDoctor
                     ? const Color(0xFFE7F6EC)
                     : const Color(0xFFFAF1E7),
               ),
               _Tag(
-                text: item.deliveredToPatient
-                    ? 'Delivered to Patient'
-                    : 'Pending Patient',
+                text: item.deliveredToPatient ? 'Delivered' : 'Not Delivered',
                 bg: item.deliveredToPatient
                     ? const Color(0xFFE7F6EC)
                     : const Color(0xFFFAF1E7),

@@ -91,6 +91,21 @@ class Labworks extends Store<Labwork> {
     return labs.toList();
   }
 
+  /// Only hardcoded + saved labs — NOT extracted from records.
+  List<String> get predefinedLabs {
+    final Set<String> labs = {
+      'Denco Lab',
+      'CS Lab',
+      'Deivamani Lab',
+    };
+    labs.addAll(
+      localSettings.savedLabs.keys
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty),
+    );
+    return labs.toList();
+  }
+
   List<String> get allPhones {
     Set<String> phones = {};
     for (var doc in docs.values) {

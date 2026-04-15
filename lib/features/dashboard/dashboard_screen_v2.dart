@@ -2018,7 +2018,8 @@ class _StatusBadge extends StatelessWidget {
     String? pendingSubtext() {
       if (done) return null;
       final normalized = (stage ?? '').trim().toLowerCase();
-      if (normalized == 'waiting' || normalized == 'pending') return 'Waiting';
+      if (normalized == 'waiting') return 'Waiting';
+      if (normalized == 'pending') return 'Scheduled';
       if (normalized == 'with_doctor' || normalized == 'treatment') {
         return 'Treatment';
       }

@@ -57,7 +57,12 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
   Future<void> _save() async {
     setState(() => _saving = true);
     widget.item.note = _notesCtrl.text.trim();
-    widget.item.lab = _labCtrl.text.trim();
+    // The TagInputWidget clears the controller after a selection, so we only
+    // override widget.item.lab from the controller when it still has text
+    // (free-typed value). When a suggestion is picked, widget.item.lab is
+    // already updated via onChanged.
+    final typedLab = _labCtrl.text.trim();
+    if (typedLab.isNotEmpty) widget.item.lab = typedLab;
     widget.item.selectedTeeth = _selectedTeeth.toList();
     labworks.set(widget.item);
     if (mounted) Navigator.pop(context);
@@ -296,13 +301,13 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                   checked: widget.item.deliveredToDoctor,
                   onChanged: (v) =>
                       setState(() => widget.item.deliveredToDoctor = v ?? false),
-                  content: Text(txt('deliveredToDoctor')),
+                  content: const Text('Ready (Delivered to Doctor)'),
                 ),
                 Checkbox(
                   checked: widget.item.deliveredToPatient,
                   onChanged: (v) =>
                       setState(() => widget.item.deliveredToPatient = v ?? false),
-                  content: Text(txt('deliveredToPatient')),
+                  content: const Text('Delivered (to Patient)'),
                 ),
               ],
             ),
