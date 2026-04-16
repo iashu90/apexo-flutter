@@ -12,7 +12,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/features/patients/open_patient_panel.dart';
+import 'package:apexo/features/patients/open_add_patient_popup.dart';
 
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
@@ -295,11 +295,10 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                         color: material.Colors.white, // White icon
                       ),
                       onPressed: () async {
-                        final newPatientId = uuid();
-                        final newPatient = await openPatient(
-                          Patient.fromJson({"id": newPatientId}),
+                        final newPatient = await openAddPatientPopup(
+                          context: context,
                         );
-                        routes.closePanel(newPatientId);
+                        if (newPatient == null) return;
                         widget.appointment.patientID = newPatient.id;
                       },
                     ),

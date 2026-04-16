@@ -6,7 +6,6 @@ import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
-import 'package:apexo/features/doctors/doctors_screen.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -562,7 +561,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                         : item is Doctor
                             ? PatientDetailsDialog(
                                 rows: item.doctorDetails,
-                                doctorFilterDate: globalDoctorSelectedDate,
+                                doctorFilterDate: DateTime.now(),
                                 hiddenColumns: [
                                   'Prescription',
                                   'Cost',

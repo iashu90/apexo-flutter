@@ -5,7 +5,7 @@ import 'package:apexo/utils/colors_without_yellow.dart';
 import 'package:apexo/utils/get_deterministic_item.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
-import 'package:apexo/features/patients/open_patient_panel.dart';
+import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/features/doctors/open_doctor_panel.dart';
@@ -92,7 +92,12 @@ class AppointmentCard extends StatelessWidget {
                             txt("patient"),
                             GestureDetector(
                                 onTap: () {
-                                  openPatient(appointment.patient);
+                                  final patient = appointment.patient;
+                                  if (patient == null) return;
+                                  openAddPatientPopup(
+                                    context: context,
+                                    existingPatient: patient,
+                                  );
                                 },
                                 child: ItemTitle(item: appointment.patient!)),
                             FluentIcons.medical,
