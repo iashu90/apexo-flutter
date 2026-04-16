@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/dashboard/overall_due_helper.dart';
@@ -19,7 +20,6 @@ import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
-import 'package:apexo/common_widgets/pick_doctor_dialog.dart';
 import 'package:apexo/features/dashboard/outstanding_balance_modal.dart';
 
 DateTime dashboardV2PersistedDate = DateTime.now();
@@ -1748,49 +1748,13 @@ class _AppointmentRow extends StatelessWidget {
   }
 
   Future<void> _openEditTreatmentModal(BuildContext context) async {
-    final stage = appointment.checkinStage.trim().toLowerCase();
-    if (stage == 'pending') {
-      final patientName =
-          appointment.title.trim().isEmpty ? 'this patient' : appointment.title;
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => ContentDialog(
-          title: Text(
-            'Checkin  $patientName ?',
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          actions: [
-            Button(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.pop(ctx, false),
-            ),
-            FilledButton(
-              style: ButtonStyle(
-                backgroundColor:
-                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-              ),
-              child: const Text('Yes'),
-              onPressed: () => Navigator.pop(ctx, true),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-      appointment.checkinStage = 'waiting';
-      appointments.set(appointment);
-      return;
-    }
-    if (stage == 'waiting') {
-      final pickedDoctorIds = await pickDoctorDialog(context,
-          initialSelected: appointment.operatorsIDs);
-      if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
-      appointment.operatorsIDs = pickedDoctorIds;
-      appointment.checkinStage = 'with_doctor';
-      appointment.isDone = false;
-      appointments.set(appointment);
-      return;
-    }
-    await openCheckinAppointmentModal(context, appointment);
+    await CheckinStageModalRouter.openForStage(
+      context: context,
+      appointment: appointment,
+      openTreatmentModal: openCheckinAppointmentModal,
+      openBillingModal: openCheckinAppointmentModal,
+      openCompleteModal: openCheckinAppointmentModal,
+    );
   }
 
   @override
