@@ -1055,7 +1055,7 @@ class _DoctorScheduleCard extends StatelessWidget {
                 Icon(FluentIcons.add, size: 14, color: Colors.white),
                 SizedBox(width: 8),
                 Text(
-                  'Checkin',
+                  'Check-in',
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.w600),
                 ),
@@ -1332,24 +1332,22 @@ class _AppointmentsTableCard extends StatelessWidget {
                         FilledButton(
                           onPressed: onAddAppointment,
                           style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(
-                                const Color(0xFF1A74DB)),
                             shape: WidgetStateProperty.all(
                               RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                                  borderRadius: BorderRadius.circular(16)),
                             ),
                           ),
                           child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                FluentIcons.add,
-                                size: 13,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 6),
+                              Icon(FluentIcons.add,
+                                  size: 14, color: Colors.white),
+                              SizedBox(width: 8),
                               Text(
-                                'Checkin',
-                                style: TextStyle(color: Colors.white),
+                                'Check-in',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
