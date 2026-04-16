@@ -389,7 +389,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               const Text(
-                                'Checkin',
+                                'Check-in',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w700,
@@ -428,7 +428,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 children: [
                                   Icon(FluentIcons.search, size: 12),
                                   SizedBox(width: 8),
-                                  Text('Patient Check-in'),
+                                  Text('Check-in'),
                                 ],
                               ),
                             ),
@@ -443,7 +443,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Text(
-                                'Checkin',
+                                'Check-in',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w700,
@@ -505,9 +505,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(FluentIcons.search, size: 12),
+                                Icon(FluentIcons.add, size: 12),
                                 SizedBox(width: 8),
-                                Text('Patient Check-in'),
+                                Text('Check-in'),
                               ],
                             ),
                           ),
@@ -1114,10 +1114,10 @@ class _WorkflowRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: stage == 'scheduled'
-            ? const Color.fromARGB(
-                255, 250, 242, 216) // Mild Orange (Orange 50)
+            ? const Color(0xFFFCF4E3) // Mild Orange (Orange 50)
             : stage == 'completed'
-                ? const Color.fromARGB(255, 235, 250, 230) // Mild Green (Green 50)
+                ? const Color.fromARGB(
+                    255, 235, 250, 230) // Mild Green (Green 50)
                 : Colors.transparent,
         border: const Border(
           top: BorderSide(color: Color(0xFFE2ECF8)),
@@ -1267,7 +1267,7 @@ class _WorkflowRow extends StatelessWidget {
                   Tooltip(
                     message: 'Check In',
                     child: IconButton(
-                      icon: const Icon(material.Icons.person, size: 18),
+                      icon: const Icon(material.Icons.person_add_rounded, size: 18),
                       style: ButtonStyle(
                         padding: WidgetStateProperty.all(
                           const EdgeInsets.all(8),
@@ -1278,9 +1278,9 @@ class _WorkflowRow extends StatelessWidget {
                           ),
                         ),
                         backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFFE8F4FF)),
+                            WidgetStateProperty.all(const Color(0xFFF1D992)),
                         foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                            WidgetStateProperty.all(const Color(0xFF91721C)),
                       ),
                       onPressed: () => _moveStage(context),
                     ),

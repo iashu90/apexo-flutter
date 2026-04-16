@@ -387,7 +387,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
     await showPatientCheckinLookupDialog(
       context: context,
       selectedDate: selectedDate,
-      title: 'Add Appointment (Dashboard)',
       onAddPatient: (query) => openAddPatientPopup(
         context: context,
         initialInput: query,
@@ -1046,9 +1045,8 @@ class _DoctorScheduleCard extends StatelessWidget {
           FilledButton(
             onPressed: onAddAppointment,
             style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
               shape: WidgetStateProperty.all(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
             ),
             child: const Row(

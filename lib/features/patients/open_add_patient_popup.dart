@@ -239,29 +239,6 @@ Future<Patient?> openAddPatientPopup({
                   },
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextBox(
-                        controller: customHistoryController,
-                        placeholder: 'Add custom medical history item',
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () {
-                        final custom = customHistoryController.text.trim();
-                        if (custom.isEmpty) return;
-                        setStateDialog(() {
-                          selectedMedicalHistory.add(custom);
-                          customHistoryController.clear();
-                        });
-                      },
-                      child: const Text('Add'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
                 InfoLabel(
                   label: 'Drug History:',
                   child: SizedBox.shrink(),
