@@ -3,44 +3,36 @@ const List<String> patientAllergyHistorySuggestions = <String>[
   'Latex Allergy',
   'Local Anesthetics',
 ];
-
 const List<String> patientMedicalHistorySuggestions = <String>[
-  'Antibiotics (Penicillin)',
-  'Latex Allergy',
-  'Local Anesthetics',
-  'Hypertension (High BP)',
-  'Heart Attack / Stroke',
+  'Hypertension',
+  'Diabetes',
+  'Thyroid Disorder',
+  'Heart Attack',
+  'Stroke',
   'Artificial Heart Valves',
-  'Blood Thinners (Anticoagulants)',
-  'Diabetes (HbA1c levels)',
-  'GLP-1 Agonists (Ozempic/Wegovy)',
-  'Osteoporosis (Bisphosphonates)',
-  'Joint Replacement',
   'Asthma',
-  'Sleep Apnea / Snoring',
   'Hepatitis (B or C)',
-  'HIV / AIDS',
-  'Epilepsy / Seizures',
-  'Anxiety / Dental Phobia',
-  'Tobacco / Vaping',
-  'Alcohol Consumption',
-  'Pregnancy',
+  'HIV',
+  'Epilepsy',
+  'Bleeding Disorders',
+  'Liver Disease',
+  'Corticosteroid Therapy',
+  'Any previous surgeries',
+  'Any previous hospitalizations',
+  'Other'
 ];
-
 const List<String> patientDrugHistorySuggestions = <String>[
-  'Blood Thinners (Anticoagulants)',
+  'Blood Thinners (Anticoagulants)'
 ];
-
 const List<String> patientMaternalHistorySuggestions = <String>[
   'Pregnancy',
   'Gestational Diabetes',
-  'Lactating Mother',
+  'Lactating Mother'
 ];
-
 const List<String> patientHabitsSuggestions = <String>[
   'Smoking',
   'Alcohol Consumption',
   'Drug Use',
   'Tobacco Use',
-  'Other',
+  'Other'
 ];

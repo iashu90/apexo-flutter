@@ -252,7 +252,9 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             dialogTitle: 'Save CSV',
             fileName: '${_patientsFileStem()}.csv',
           );
-          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+          if (savePath == null ||
+              savePath.trim().isEmpty ||
+              progress.isCancelled) {
             return;
           }
 
@@ -354,7 +356,9 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             dialogTitle: 'Save PDF',
             fileName: '${_patientsFileStem()}.pdf',
           );
-          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+          if (savePath == null ||
+              savePath.trim().isEmpty ||
+              progress.isCancelled) {
             return;
           }
 
@@ -455,9 +459,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
     final customHistoryController = TextEditingController();
 
     int gender = patient.gender;
-    String referral = patient.referralSource.trim().isEmpty
-        ? 'None'
-        : patient.referralSource;
+    String referral =
+        patient.referralSource.trim().isEmpty ? 'None' : patient.referralSource;
     final selectedMedicalHistory = patient.tags.toSet();
     String? nameError;
     String? ageError;
@@ -673,29 +676,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                         ),
                       );
                     }).toList(growable: false),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextBox(
-                          controller: customHistoryController,
-                          placeholder: 'Add custom medical history item',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: () {
-                          final custom = customHistoryController.text.trim();
-                          if (custom.isEmpty) return;
-                          setStateDialog(() {
-                            selectedMedicalHistory.add(custom);
-                            customHistoryController.clear();
-                          });
-                        },
-                        child: const Text('Add'),
-                      ),
-                    ],
                   ),
                   const SizedBox(height: 8),
                   InfoLabel(
@@ -4027,7 +4007,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                                   const Color(0xFFF1EDFB),
                                               hoverBorderColor:
                                                   const Color(0xFFD8CDF8),
-                                                onTap: () =>
+                                              onTap: () =>
                                                   onEditPatient(patient),
                                             ),
                                             _HoverActionItem(
@@ -4045,7 +4025,8 @@ class _AllPatientsListCard extends StatelessWidget {
                                                   const Color(0xFFEAF8F1),
                                               hoverBorderColor:
                                                   const Color(0xFFBFEAD8),
-                                              onTap: () => onOpenLabwork(patient),
+                                              onTap: () =>
+                                                  onOpenLabwork(patient),
                                             ),
                                             _HoverActionItem(
                                               icon: FluentIcons.delete,
