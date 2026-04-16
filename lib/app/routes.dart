@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
-import 'package:apexo/features/dashboard/dashboard_screen.dart';
 import 'package:apexo/features/dashboard/dashboard_screen_v2.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
@@ -12,9 +11,7 @@ import 'package:apexo/features/labwork/labworks_screen.dart';
 import 'package:apexo/features/labwork/labworks_v2_screen.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/doctors/doctors_screen_v2.dart';
-import 'package:apexo/features/patients/patients_screen.dart';
 import 'package:apexo/features/patients/patients_screen_v2.dart';
-import 'package:apexo/features/stats/screen_stats.dart';
 import 'package:apexo/features/stats/report_v2_screen.dart';
 import 'package:apexo/services/admins.dart';
 import 'package:apexo/services/backups.dart';
@@ -149,14 +146,6 @@ class _Routes {
           },
         ),
         Route(
-          title: "Dashboard (Old)",
-          identifier: "dashboard_old",
-          icon: FluentIcons.home,
-          screen: DashboardScreen.new,
-          accessible: true,
-          navbarTitle: "Old Dashboard",
-        ),
-        Route(
           title: 'Doctors',
           identifier: 'doctors_v2',
           icon: FluentIcons.medical,
@@ -211,19 +200,6 @@ class _Routes {
           },
         ),
         Route(
-          title: "Patients (Old)",
-          identifier: "patients_old",
-          navbarTitle: "Old Patients",
-          icon: FluentIcons.medication_admin,
-          screen: PatientsScreen.new,
-          accessible: permissions.list[1] || login.isAdmin,
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            appointments.synchronize();
-          },
-        ),
-        Route(
           title: txt("appointments"),
           identifier: "calendar",
           navbarTitle: txt("calendar"),
@@ -260,32 +236,6 @@ class _Routes {
             await doctors.synchronize();
             await patients.synchronize();
             expenses.synchronize();
-          },
-        ),
-        Route(
-          title: 'Expenses (Old)',
-          identifier: 'expenses_old',
-          navbarTitle: '',
-          icon: FluentIcons.receipt_processing,
-          screen: ExpensesScreen.new,
-          accessible: permissions.list[4] || login.isAdmin,
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            expenses.synchronize();
-          },
-        ),
-        Route(
-          title: txt("statistics"),
-          identifier: "statistics",
-          icon: FluentIcons.chart,
-          screen: StatsScreen.new,
-          accessible: false,
-          onSelect: () async {
-            chartsCtrl.resetSelected();
-            await doctors.synchronize();
-            await patients.synchronize();
-            appointments.synchronize();
           },
         ),
         Route(
