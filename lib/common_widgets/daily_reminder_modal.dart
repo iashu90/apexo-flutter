@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/checkin/checkin_stage_modals.dart';
@@ -7,7 +9,6 @@ import 'package:apexo/app/routes.dart' as app_routes;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// In-memory flag — resets every app session (not persisted).
 bool dailyReminderShown = false;
@@ -47,36 +48,38 @@ Future<void> showDailyReminderModal(BuildContext context) async {
       ? upcoming.first
       : (todaysAppointments.isNotEmpty ? todaysAppointments.first : null);
 
+  int scheduledCount = 0;
   int waitingCount = 0;
   int treatmentCount = 0;
   int completeCount = 0;
-  int nextHourCount = 0;
+  int billingCount = 0;
   int noShowRiskCount = 0;
   int waitingOver15Count = 0;
   int missingPhoneCount = 0;
   int treatmentPlanMissingCount = 0;
-
-  final nextHourLimit = now.add(const Duration(hours: 1));
+  final waitingPatients = <String>[];
 
   for (final appointment in todaysAppointments) {
     final stage = normalizeCheckinStage(appointment.checkinStage);
     switch (stage) {
       case 'scheduled':
+        scheduledCount++;
         break;
       case 'waiting':
         waitingCount++;
+        if (appointment.title.trim().isNotEmpty) {
+          waitingPatients.add(appointment.title.trim());
+        }
         break;
       case 'treatment':
         treatmentCount++;
         break;
+      case 'billing':
+        billingCount++;
+        break;
       case 'complete':
         completeCount++;
         break;
-    }
-
-    if (!appointment.date.isBefore(now) &&
-        appointment.date.isBefore(nextHourLimit)) {
-      nextHourCount++;
     }
 
     if (appointment.date.isBefore(now) &&
@@ -181,16 +184,14 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                   complete: completeCount,
                   treatment: treatmentCount,
                   waiting: waitingCount,
-                  nextHour: nextHourCount,
+                  scheduled: scheduledCount,
+                  billing: billingCount,
+                  waitingPatients: waitingPatients,
                   nextPatientName: nextPatient?.title.trim().isNotEmpty == true
                       ? nextPatient!.title
                       : 'No patient',
                   onCheckin: () {
                     _navigateToRouteById('checkin');
-                    Navigator.pop(dialogContext);
-                  },
-                  onViewSchedule: () {
-                    _navigateToRouteById('calendar');
                     Navigator.pop(dialogContext);
                   },
                 ),
@@ -209,19 +210,6 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                       child: _LabFollowUpsCard(
                         labRows:
                             pendingLabworks.take(2).toList(growable: false),
-                        pendingLabCount: pendingLabworks.length,
-                        onCallLab: () async {
-                          final first = pendingLabworks.isEmpty
-                              ? null
-                              : pendingLabworks.first;
-                          final number = first == null
-                              ? ''
-                              : (labworks.getPhoneNumber(first.lab) ??
-                                      first.phoneNumber)
-                                  .trim();
-                          if (number.isEmpty) return;
-                          await launchUrl(Uri.parse('tel:$number'));
-                        },
                         onOpenLabOrders: () {
                           _navigateToRouteById('labworks_v2');
                           Navigator.pop(dialogContext);
@@ -238,6 +226,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                 const SizedBox(height: 8),
                 _AttentionList(
                   rows: [
+                    '$noShowRiskCount no-show risk patient${noShowRiskCount == 1 ? '' : 's'}',
                     '$waitingOver15Count patient${waitingOver15Count == 1 ? '' : 's'} waiting > 15 min',
                     '$missingPhoneCount patient${missingPhoneCount == 1 ? '' : 's'} missing phone number',
                     '$treatmentPlanMissingCount treatment plan${treatmentPlanMissingCount == 1 ? '' : 's'} not scheduled',
@@ -605,19 +594,21 @@ class _AppointmentsSummaryGrid extends StatelessWidget {
   final int complete;
   final int treatment;
   final int waiting;
-  final int nextHour;
+  final int scheduled;
+  final int billing;
+  final List<String> waitingPatients;
   final String nextPatientName;
   final VoidCallback onCheckin;
-  final VoidCallback onViewSchedule;
 
   const _AppointmentsSummaryGrid({
     required this.complete,
     required this.treatment,
     required this.waiting,
-    required this.nextHour,
+    required this.scheduled,
+    required this.billing,
+    required this.waitingPatients,
     required this.nextPatientName,
     required this.onCheckin,
-    required this.onViewSchedule,
   });
 
   @override
@@ -630,7 +621,7 @@ class _AppointmentsSummaryGrid extends StatelessWidget {
               child: _SmallInfoCard(
                 title: 'Completed',
                 value: '$complete',
-                hint: '$complete',
+                hint: 'done',
                 color: const Color(0xFF2BA58D),
                 bg: const Color(0xFFF3F7FF),
               ),
@@ -638,10 +629,20 @@ class _AppointmentsSummaryGrid extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: _SmallInfoCard(
-                title: nextPatientName,
-                value: 'In Treatment',
-                hint: 'Just arrived',
-                color: const Color(0xFF2D7BD8),
+                title: 'Waiting',
+                value: '$waiting',
+                hint: waiting == 1 ? 'patient' : 'patients',
+                color: const Color(0xFFE09C31),
+                bg: const Color(0xFFF3F7FF),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _SmallInfoCard(
+                title: 'Scheduled',
+                value: '$scheduled',
+                hint: 'today',
+                color: const Color(0xFF5578A4),
                 bg: const Color(0xFFF3F7FF),
               ),
             ),
@@ -651,20 +652,36 @@ class _AppointmentsSummaryGrid extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _SmallActionCard(
-                title: 'Waiting $waiting',
-                subtitle: waiting > 0 ? '18 min' : 'No queue',
-                actionLabel: 'Check-in',
-                onAction: onCheckin,
+              child: _SmallInfoCard(
+                title: 'Treatment',
+                value: '$treatment',
+                hint: 'active',
+                color: const Color(0xFF2D7BD8),
+                bg: const Color(0xFFF3F7FF),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: _SmallActionCard(
-                title: 'Next Hour $nextHour',
-                subtitle: nextHour > 0 ? '$nextHour slot(s)' : 'No slots',
-                actionLabel: 'View Schedule',
-                onAction: onViewSchedule,
+                title: 'Waiting Queue',
+                subtitle: waitingPatients.isEmpty
+                    ? (nextPatientName == 'No patient'
+                        ? 'No waiting patients'
+                        : 'Next: $nextPatientName')
+                    : waitingPatients.join(', '),
+                actionLabel: 'Check-in',
+                onAction: onCheckin,
+                maxSubtitleLines: 3,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _SmallInfoCard(
+                title: 'Billing',
+                value: '$billing',
+                hint: 'pending',
+                color: const Color(0xFF7B61D1),
+                bg: const Color(0xFFF3F7FF),
               ),
             ),
           ],
@@ -766,14 +783,10 @@ class _DoctorsAndChairsCard extends StatelessWidget {
 
 class _LabFollowUpsCard extends StatelessWidget {
   final List<dynamic> labRows;
-  final int pendingLabCount;
-  final VoidCallback onCallLab;
   final VoidCallback onOpenLabOrders;
 
   const _LabFollowUpsCard({
     required this.labRows,
-    required this.pendingLabCount,
-    required this.onCallLab,
     required this.onOpenLabOrders,
   });
 
@@ -831,26 +844,12 @@ class _LabFollowUpsCard extends StatelessWidget {
               );
             }),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: pendingLabCount > 0 ? onCallLab : null,
-                  style: ButtonStyle(
-                    backgroundColor:
-                        WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                  ),
-                  child: const Text('Call Lab'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Button(
-                  onPressed: onOpenLabOrders,
-                  child: const Text('Open Lab Orders'),
-                ),
-              ),
-            ],
+          SizedBox(
+            width: double.infinity,
+            child: Button(
+              onPressed: onOpenLabOrders,
+              child: const Text('Open Lab Orders'),
+            ),
           ),
         ],
       ),
@@ -921,6 +920,8 @@ class _SmallInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showHint = hint.trim().isNotEmpty && hint.trim() != value.trim();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -949,14 +950,16 @@ class _SmallInfoCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            hint,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontWeight: FontWeight.w600,
+          if (showHint) ...[
+            const SizedBox(width: 10),
+            Text(
+              hint,
+              style: const TextStyle(
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -968,12 +971,14 @@ class _SmallActionCard extends StatelessWidget {
   final String subtitle;
   final String actionLabel;
   final VoidCallback onAction;
+  final int maxSubtitleLines;
 
   const _SmallActionCard({
     required this.title,
     required this.subtitle,
     required this.actionLabel,
     required this.onAction,
+    this.maxSubtitleLines = 1,
   });
 
   @override
@@ -999,6 +1004,8 @@ class _SmallActionCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             subtitle,
+            maxLines: maxSubtitleLines,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFF6B7280),
               fontWeight: FontWeight.w600,

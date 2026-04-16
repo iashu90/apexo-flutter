@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'package:apexo/common_widgets/custom_date_range_picker.dart';
+import 'package:apexo/common_widgets/month_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
@@ -84,11 +85,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               const SizedBox(height: 10),
               _buildStatStrip(all),
               const SizedBox(height: 10),
-              _buildSearchAndDateFilters(),
+              _buildSearchAndDateFilters(filtered),
               const SizedBox(height: 10),
-              if (_hasActiveFilter())
-                _buildFilterSummaryCard(filtered),
-              if (_hasActiveFilter()) const SizedBox(height: 10),
               Expanded(
                 child: filtered.isEmpty
                     ? _EmptyState(onClear: _clearFilters)
@@ -193,8 +191,12 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     );
   }
 
-  Widget _buildSearchAndDateFilters() {
-    final labs = ['all', ...labworks.allLabs.toSet()]
+  Widget _buildSearchAndDateFilters(List<Labwork> filtered) {
+    final dues = filtered.where((l) => !l.paid).toList(growable: false);
+    final paymentDue = dues.fold<double>(0, (sum, l) => sum + l.price);
+    final hasActiveFilter = _hasActiveFilter();
+
+    final labs = ['all', '__unassigned__', ...labworks.allLabs.toSet()]
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     return Container(
@@ -205,11 +207,14 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFD6E2F0)),
       ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
           SizedBox(
             width: 320,
             child: TextBox(
@@ -234,7 +239,13 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                   .map(
                     (v) => ComboBoxItem<String>(
                       value: v,
-                      child: Text(v == 'all' ? 'All Labs' : v),
+                      child: Text(
+                        v == 'all'
+                            ? 'All Labs'
+                            : v == '__unassigned__'
+                                ? 'Unassigned Lab'
+                                : v,
+                      ),
                     ),
                   )
                   .toList(growable: false),
@@ -251,6 +262,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               'all': 'All Dates',
               'today': 'Today',
               'week': 'This Week',
+              'last_month': 'Last Month',
               'month': 'This Month',
               'custom': 'Custom Date',
             },
@@ -268,7 +280,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               });
             },
           ),
-          if (_rangeFilter == 'month') _buildMonthSelector(),
           _dropFilter(
             width: 130,
             value: _paymentFilter,
@@ -307,6 +318,91 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                 ),
               ),
             ),
+          if (_rangeFilter == 'month')
+            SizedBox(
+              width: 360,
+              child: MonthNavigatorBar(
+                selectedMonth: _monthAnchor,
+                onPrevious: () {
+                  setState(() {
+                    _monthAnchor = DateTime(
+                      _monthAnchor.year,
+                      _monthAnchor.month - 1,
+                      1,
+                    );
+                  });
+                },
+                onNext: _monthAnchor.year < DateTime.now().year ||
+                        (_monthAnchor.year == DateTime.now().year &&
+                            _monthAnchor.month < DateTime.now().month)
+                    ? () {
+                        setState(() {
+                          _monthAnchor = DateTime(
+                            _monthAnchor.year,
+                            _monthAnchor.month + 1,
+                            1,
+                          );
+                        });
+                      }
+                    : null,
+                onPick: (value) => setState(() => _monthAnchor = value),
+              ),
+            ),
+            ],
+          ),
+          if (hasActiveFilter) ...[
+            const SizedBox(height: 10),
+            const Divider(size: 1),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Icon(FluentIcons.filter,
+                    size: 14, color: Color(0xFF2D4A70)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${filtered.length} result${filtered.length == 1 ? '' : 's'} match current filters',
+                    style: const TextStyle(
+                      color: Color(0xFF36557C),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '₹${NumberFormat('#,##0').format(paymentDue)} DUE',
+                      style: TextStyle(
+                        color: dues.isEmpty
+                            ? const Color(0xFF1D3E67)
+                            : const Color(0xFFD6455D),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    ),
+                    Text(
+                      '${dues.length} due item${dues.length == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: Color(0xFF5E7396),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                HyperlinkButton(
+                  onPressed: _clearFilters,
+                  child: const Text(
+                    'Clear filters',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -505,6 +601,9 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       final start = today.subtract(Duration(days: today.weekday - 1));
       from = start;
       to = start.add(const Duration(days: 6));
+    } else if (_rangeFilter == 'last_month') {
+      from = DateTime(today.year, today.month - 1, 1);
+      to = DateTime(today.year, today.month, 0);
     } else if (_rangeFilter == 'month') {
       from = DateTime(_monthAnchor.year, _monthAnchor.month, 1);
       to = DateTime(_monthAnchor.year, _monthAnchor.month + 1, 0);
@@ -527,7 +626,11 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
         if (!haystack.contains(_query)) return false;
       }
 
-      if (_labFilter != 'all' && l.lab.trim() != _labFilter) return false;
+      if (_labFilter == '__unassigned__') {
+        if (l.lab.trim().isNotEmpty) return false;
+      } else if (_labFilter != 'all' && l.lab.trim() != _labFilter) {
+        return false;
+      }
 
       if (_statusFilter == 'in_lab' && l.deliveredToDoctor) return false;
       if (_statusFilter == 'ready' &&
@@ -885,22 +988,34 @@ class _LabworkBoardColumn extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   itemCount: items.length,
-                  itemBuilder: (context, index) => _LabworkRow(
-                    item: items[index],
-                    onOpen: onOpen,
-                    onHistory: onHistory,
+                  itemBuilder: (context, index) => Column(
+                    children: [
+                      _LabworkRow(
+                        item: items[index],
+                        onOpen: onOpen,
+                        onHistory: onHistory,
+                      ),
+                      if (index < items.length - 1)
+                        const Divider(size: 1),
+                    ],
                   ),
                 ),
               ),
             )
           else
-            ...items.map(
-              (item) => _LabworkRow(
-                item: item,
-                onOpen: onOpen,
-                onHistory: onHistory,
-              ),
-            ),
+            ...items.asMap().entries.map(
+                  (entry) => Column(
+                    children: [
+                      _LabworkRow(
+                        item: entry.value,
+                        onOpen: onOpen,
+                        onHistory: onHistory,
+                      ),
+                      if (entry.key < items.length - 1)
+                        const Divider(size: 1),
+                    ],
+                  ),
+                ),
         ],
       ),
     );
@@ -1097,187 +1212,170 @@ class _LabworkRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final dueColor =
         item.paid ? const Color(0xFF2A8AD9) : const Color(0xFFD54A4A);
-    final dueBg = item.paid ? const Color(0xFFE7F2FC) : const Color(0xFFFDECEC);
     final hasDueLabel = item.paid || item.price > 0;
     final doctorNames = item.operators
         .map((d) => d.title)
         .where((n) => n.trim().isNotEmpty)
         .join(', ');
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-      decoration: BoxDecoration(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onOpen(item),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFDDE5F1)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 980;
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 980;
 
-          final head = Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: compact ? 62 : 68,
-                child: Text(
-                  DateFormat('dd MMM').format(item.date),
-                  style: const TextStyle(
-                    color: Color(0xFF4C5C77),
-                    fontWeight: FontWeight.w600,
+            final head = Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: compact ? 62 : 68,
+                  child: Text(
+                    DateFormat('dd MMM').format(item.date),
+                    style: const TextStyle(
+                      color: Color(0xFF4C5C77),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-              Container(width: 1, height: 34, color: const Color(0xFFE7ECF5)),
-              const SizedBox(width: 10),
-              Container(
-                width: 30,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFD8E5F8),
-                ),
-                child: Text(
-                  _initials(item.patient?.title ?? ''),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF32537F),
-                    fontSize: 11,
+                Container(width: 1, height: 34, color: const Color(0xFFE7ECF5)),
+                const SizedBox(width: 10),
+                Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFD8E5F8),
+                  ),
+                  child: Text(
+                    _initials(item.patient?.title ?? ''),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF32537F),
+                      fontSize: 11,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      item.patient?.title.trim().isNotEmpty == true
-                          ? _lwTitleCase(item.patient!.title)
-                          : 'Unknown patient',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1F2B40),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.patient?.phone ?? '-',
-                      style: const TextStyle(
-                        color: Color(0xFF6E7A90),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                    if (doctorNames.isNotEmpty)
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                       Text(
-                        'Dr: $doctorNames',
+                        item.patient?.title.trim().isNotEmpty == true
+                            ? _lwTitleCase(item.patient!.title)
+                            : 'Unknown patient',
                         style: const TextStyle(
-                          color: Color(0xFF5C7090),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1F2B40),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                  ],
-                ),
-              ),
-              if (hasDueLabel)
-                Container(
-                  constraints: const BoxConstraints(minWidth: 148),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: dueBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
+                      const SizedBox(height: 2),
                       Text(
-                        '₹${NumberFormat('#,##0').format(item.price)}',
-                        style: TextStyle(
-                          color: dueColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
+                        item.patient?.phone ?? '-',
+                        style: const TextStyle(
+                          color: Color(0xFF6E7A90),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
                         ),
                       ),
-                      Text(
-                        item.paid ? 'PAID' : 'DUE',
-                        style: TextStyle(
-                          color: dueColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                      if (doctorNames.isNotEmpty)
+                        Text(
+                          'Dr: $doctorNames',
+                          style: const TextStyle(
+                            color: Color(0xFF5C7090),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
                     ],
                   ),
                 ),
-              const SizedBox(width: 6),
-              if (item.patient != null)
-                IconButton(
-                  icon: const Icon(FluentIcons.history, size: 15),
-                  onPressed: () => onHistory(item),
-                ),
-              FilledButton(
-                style: ButtonStyle(
-                  padding: WidgetStateProperty.all(
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                if (hasDueLabel)
+                  SizedBox(
+                    width: 148,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '₹${NumberFormat('#,##0').format(item.price)}',
+                          style: TextStyle(
+                            color: dueColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          item.paid ? 'PAID' : 'DUE',
+                          style: TextStyle(
+                            color: dueColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                const SizedBox(width: 6),
+                if (item.patient != null)
+                  IconButton(
+                    icon: const Icon(FluentIcons.history, size: 15),
+                    onPressed: () => onHistory(item),
+                  ),
+              ],
+            );
+
+            final meta = Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _Tag(text: item.typeOfWork.isEmpty ? 'Type N/A' : item.typeOfWork),
+                _Tag(text: item.shade.isEmpty ? 'Shade -' : 'Shade ${item.shade}'),
+                _Tag(
+                  text: item.noOfUnits > 0 ? '${item.noOfUnits} Unit' : '0 Unit',
+                  bg: const Color(0xFFE8F2FD),
                 ),
-                onPressed: () => onOpen(item),
-                child: const Text('Open'),
-              ),
-            ],
-          );
+                _Tag(
+                  text: item.lab.trim().isEmpty ? 'Lab -' : item.lab,
+                  bg: const Color(0xFFEAF5EC),
+                ),
+                _Tag(
+                  text: item.selectedTeeth.isEmpty
+                      ? 'Teeth -'
+                      : 'Teeth ${item.selectedTeeth.take(6).join(', ')}${item.selectedTeeth.length > 6 ? '...' : ''}',
+                  bg: const Color(0xFFF0EDF9),
+                ),
+                _Tag(
+                  text: item.deliveredToDoctor ? 'Ready' : 'In Lab',
+                  bg: item.deliveredToDoctor
+                      ? const Color(0xFFE7F6EC)
+                      : const Color(0xFFFAF1E7),
+                ),
+                _Tag(
+                  text: item.deliveredToPatient ? 'Delivered' : 'Not Delivered',
+                  bg: item.deliveredToPatient
+                      ? const Color(0xFFE7F6EC)
+                      : const Color(0xFFFAF1E7),
+                ),
+              ],
+            );
 
-          final meta = Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _Tag(text: item.typeOfWork.isEmpty ? 'Type N/A' : item.typeOfWork),
-              _Tag(text: item.shade.isEmpty ? 'Shade -' : 'Shade ${item.shade}'),
-              _Tag(
-                text: item.noOfUnits > 0 ? '${item.noOfUnits} Unit' : '0 Unit',
-                bg: const Color(0xFFE8F2FD),
-              ),
-              _Tag(
-                text: item.lab.trim().isEmpty ? 'Lab -' : item.lab,
-                bg: const Color(0xFFEAF5EC),
-              ),
-              _Tag(
-                text: item.selectedTeeth.isEmpty
-                    ? 'Teeth -'
-                    : 'Teeth ${item.selectedTeeth.take(6).join(', ')}${item.selectedTeeth.length > 6 ? '...' : ''}',
-                bg: const Color(0xFFF0EDF9),
-              ),
-              _Tag(
-                text: item.deliveredToDoctor ? 'Ready' : 'In Lab',
-                bg: item.deliveredToDoctor
-                    ? const Color(0xFFE7F6EC)
-                    : const Color(0xFFFAF1E7),
-              ),
-              _Tag(
-                text: item.deliveredToPatient ? 'Delivered' : 'Not Delivered',
-                bg: item.deliveredToPatient
-                    ? const Color(0xFFE7F6EC)
-                    : const Color(0xFFFAF1E7),
-              ),
-            ],
-          );
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [head, const SizedBox(height: 8), meta],
-          );
-        },
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [head, const SizedBox(height: 8), meta],
+            );
+          },
+        ),
       ),
     );
   }
