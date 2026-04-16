@@ -227,6 +227,9 @@ class Patient extends Model {
   /* 7 */ String notes = "";
   /* 8 */ Map<String, String> teeth = {};
   /* 9 */ String referralSource = '';
+  /* 10 */ List<String> drugHistorySuggestions = [];
+  /* 11 */ List<String> maternalHistorySuggestions = [];
+  /* 12 */ List<String> habitsSuggestions = [];
 
   @override
   Patient.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
@@ -248,6 +251,12 @@ class Patient extends Model {
     /* 7 */ notes = json['notes'] ?? notes;
     /* 8 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
     /* 9 */ referralSource = json['referralSource'] ?? referralSource;
+    /* 10 */ drugHistorySuggestions =
+      List<String>.from(json['drugHistorySuggestions'] ?? []);
+    /* 11 */ maternalHistorySuggestions =
+      List<String>.from(json['maternalHistorySuggestions'] ?? []);
+    /* 12 */ habitsSuggestions =
+      List<String>.from(json['habitsSuggestions'] ?? []);
   }
   @override
   Map<String, dynamic> toJson() {
@@ -264,6 +273,17 @@ class Patient extends Model {
     /* 8 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
     /* 9 */ if (referralSource != d.referralSource)
       json['referralSource'] = referralSource;
+    /* 10 */ if (drugHistorySuggestions.toString() !=
+        d.drugHistorySuggestions.toString()) {
+      json['drugHistorySuggestions'] = drugHistorySuggestions;
+    }
+    /* 11 */ if (maternalHistorySuggestions.toString() !=
+        d.maternalHistorySuggestions.toString()) {
+      json['maternalHistorySuggestions'] = maternalHistorySuggestions;
+    }
+    /* 12 */ if (habitsSuggestions.toString() != d.habitsSuggestions.toString()) {
+      json['habitsSuggestions'] = habitsSuggestions;
+    }
     return json;
   }
 

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
+import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
@@ -384,162 +385,27 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   }
 
   Future<void> _openAddAppointmentFromDashboard() async {
-    final queryController = TextEditingController();
-    String query = '';
-
-    await showDialog<void>(
+    await showPatientCheckinLookupDialog(
       context: context,
-      builder: (dialogContext) {
-        final allPatients = patients.present.values.toList(growable: false);
-        final todaysAppointments = appointments.forDate(selectedDate);
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final matches = allPatients
-                .where((p) {
-                  if (query.isEmpty) return true;
-                  final name = p.title.toLowerCase();
-                  final phone = p.phone.toLowerCase();
-                  return name.contains(query) || phone.contains(query);
-                })
-                .take(40)
-                .toList(growable: false);
-
-            return ContentDialog(
-              title: const Text('Add Appointment (Dashboard)'),
-              content: SizedBox(
-                width: 520,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextBox(
-                      controller: queryController,
-                      placeholder: 'Search by patient name or phone',
-                      autofocus: true,
-                      prefix: const Padding(
-                        padding: EdgeInsets.only(left: 10),
-                        child: Icon(
-                          FluentIcons.search,
-                          size: 12,
-                          color: Color(0xFF6D84A8),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setDialogState(
-                            () => query = value.trim().toLowerCase());
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 420),
-                      child: matches.isEmpty
-                          ? const Center(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 30),
-                                child: Text(
-                                  'No matching patients.',
-                                  style: TextStyle(color: Color(0xFF6D84A8)),
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: matches.length,
-                              separatorBuilder: (_, __) =>
-                                  const Divider(size: 1),
-                              itemBuilder: (context, index) {
-                                final patient = matches[index];
-                                final existing = todaysAppointments
-                                    .where((a) => a.patientID == patient.id)
-                                    .toList(growable: false)
-                                    .lastOrNull;
-
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 2,
-                                    vertical: 6,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              patient.title.trim().isEmpty
-                                                  ? 'Unnamed patient'
-                                                  : patient.title,
-                                              style: const TextStyle(
-                                                color: Color(0xFF1F446E),
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              '${patient.phone} • ${patient.age}y',
-                                              style: const TextStyle(
-                                                color: Color(0xFF6D84A8),
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      if (existing != null)
-                                        Button(
-                                          onPressed: () async {
-                                            Navigator.pop(dialogContext);
-                                            await openCheckinAppointmentModal(
-                                              context,
-                                              existing,
-                                            );
-                                          },
-                                          child: const Text('Open'),
-                                        )
-                                      else
-                                        FilledButton(
-                                          onPressed: () async {
-                                            final appointment =
-                                                Appointment.fromJson({
-                                              'patientID': patient.id,
-                                              'date': _withCurrentTime(
-                                                selectedDate,
-                                              ).millisecondsSinceEpoch,
-                                              'isCheckedIn': true,
-                                              'checkinStage': 'waiting',
-                                              'checkedInAt': DateTime.now()
-                                                  .millisecondsSinceEpoch,
-                                            });
-                                            appointments.set(appointment);
-                                            Navigator.pop(dialogContext);
-                                            await openCheckinAppointmentModal(
-                                              context,
-                                              appointment,
-                                            );
-                                          },
-                                          child: const Text('Check-in'),
-                                        ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                Button(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Close'),
-                ),
-              ],
-            );
-          },
-        );
+      selectedDate: selectedDate,
+      title: 'Add Appointment (Dashboard)',
+      onAddPatient: (query) => openAddPatientPopup(
+        context: context,
+        initialInput: query,
+      ),
+      onOpenExisting: (appointment) async {
+        await openCheckinAppointmentModal(context, appointment);
+      },
+      onCheckInPatient: (patient) async {
+        final appointment = Appointment.fromJson({
+          'patientID': patient.id,
+          'date': _withCurrentTime(selectedDate).millisecondsSinceEpoch,
+          'isCheckedIn': true,
+          'checkinStage': 'waiting',
+          'checkedInAt': DateTime.now().millisecondsSinceEpoch,
+        });
+        appointments.set(appointment);
+        await openCheckinAppointmentModal(context, appointment);
       },
     );
   }
