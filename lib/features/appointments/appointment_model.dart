@@ -192,24 +192,30 @@ class Appointment extends Model {
     /* 4 */ if (preOpNotes != d.preOpNotes) json['preOpNotes'] = preOpNotes;
     /* 5 */ if (postOpNotes != d.postOpNotes) json['postOpNotes'] = postOpNotes;
     /* 6 */ if (price != d.price) json['price'] = price;
-    if (discountedPrice != d.discountedPrice)
+    if (discountedPrice != d.discountedPrice) {
       json['discountedPrice'] = discountedPrice;
+    }
     /* 7 */ if (paid != d.paid) json['paid'] = paid;
-    if (priceToPayDoctor != d.priceToPayDoctor)
+    if (priceToPayDoctor != d.priceToPayDoctor) {
       json['priceToPayDoctor'] = priceToPayDoctor;
+    }
     if (paidToDoctor != d.paidToDoctor) json['paidToDoctor'] = paidToDoctor;
-    if (prescriptionPrice != d.prescriptionPrice)
+    if (prescriptionPrice != d.prescriptionPrice) {
       json['prescriptionPrice'] = prescriptionPrice;
-    if (prescriptionPaid != d.prescriptionPaid)
+    }
+    if (prescriptionPaid != d.prescriptionPaid) {
       json['prescriptionPaid'] = prescriptionPaid;
+    }
     /* 8 */ if (imgs.isNotEmpty) json['imgs'] = imgs;
     /* 9 */ if (isDone != d.isDone) json['isDone'] = isDone;
     json['date'] = date.millisecondsSinceEpoch;
-    /* 12 */ if (selectedTreatments.isNotEmpty)
+    /* 12 */ if (selectedTreatments.isNotEmpty) {
       json['selectedTreatments'] = selectedTreatments;
+    }
     json['subTreatments'] = subTreatments;
-    /* 13 */ if (selectedTeeth.isNotEmpty)
+    /* 13 */ if (selectedTeeth.isNotEmpty) {
       json['selectedTeeth'] = selectedTeeth;
+    }
     if (discount != d.discount) json['discount'] = discount;
     if (discountType != d.discountType) json['discountType'] = discountType;
     json['treatmentGpayPaid'] = treatmentGpayPaid;

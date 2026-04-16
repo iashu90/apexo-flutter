@@ -8,11 +8,11 @@ class TeethPicker extends StatefulWidget {
   final bool isAdult;
 
   const TeethPicker({
-    Key? key,
+    super.key,
     required this.selectedTeeth,
     required this.onChanged,
     this.isAdult = true,
-  }) : super(key: key);
+  });
 
   @override
   _TeethPickerState createState() => _TeethPickerState();

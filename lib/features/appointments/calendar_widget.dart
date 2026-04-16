@@ -4,7 +4,6 @@ import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
 import 'package:apexo/core/activity_logger.dart';
-import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -159,7 +158,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
                 if (selectedAppointmentIds.isNotEmpty) ...[
                   const SizedBox(width: 10),
                   IconButton(
-                    icon: Icon(FluentIcons.delete),
+                    icon: const Icon(FluentIcons.delete),
                     onPressed: () async {
                       ActivityLogger.logAction(
                         "Delete Appointments Clicked",
@@ -434,8 +433,8 @@ class WeekAgendaCalendarState<Item extends Appointment>
     double totalPaid = 0;
     double totalDue = 0;
     for (final appt in itemsForSelectedDay) {
-      totalPaid += appt.paid ?? 0;
-      totalDue += appt.paymentDifference ?? 0;
+      totalPaid += appt.paid;
+      totalDue += appt.paymentDifference;
     }
 
     return Container(
@@ -717,27 +716,22 @@ class AppointmentCalendarTile<Item extends Appointment>
 
   final BuildContext context;
 
+  @override
   Widget build(BuildContext context) {
     String treatmentsStr = '';
-    if (allTreatments is List<Treatment> && item.selectedTreatments is List) {
-      final selectedNames =
-          item.selectedTreatments.map((e) => e.toString()).toSet();
-      final mainTreatments = (allTreatments as List<Treatment>)
-          .where((t) => selectedNames.contains(t.name))
-          .map((t) => t.name)
-          .where((s) => s.trim().isNotEmpty)
-          .join(', ');
+    final selectedNames =
+        item.selectedTreatments.map((e) => e.toString()).toSet();
+    final mainTreatments = allTreatments
+        .where((t) => selectedNames.contains(t.name))
+        .map((t) => t.name)
+        .where((s) => s.trim().isNotEmpty)
+        .join(', ');
 
-      // Add sub-treatments if any
-      if (item.subTreatments != null &&
-          item.subTreatments is List &&
-          item.subTreatments.isNotEmpty) {
-        treatmentsStr = "$mainTreatments - ${item.subTreatments.join(', ')}";
-      } else {
-        treatmentsStr = mainTreatments;
-      }
+    // Add sub-treatments if any
+    if (item.subTreatments.isNotEmpty) {
+      treatmentsStr = "$mainTreatments - ${item.subTreatments.join(', ')}";
     } else {
-      treatmentsStr = '';
+      treatmentsStr = mainTreatments;
     }
 
     return Container(
@@ -794,7 +788,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                       child: PatientDetailsDialog(
                           rows: item.patient?.patientDetails ?? [],
                           patient: item.patient,
-                          hiddenColumns: [
+                          hiddenColumns: const [
                             'Prescription',
                             'P.Mode',
                             'Doc Paid',
@@ -892,9 +886,9 @@ class AppointmentCalendarTile<Item extends Appointment>
           children: [
             if (item.preOpNotes.isNotEmpty)
               Txt(item.preOpNotes, overflow: TextOverflow.ellipsis),
-            if (item.selectedTeeth != null && item.selectedTeeth.isNotEmpty)
+            if (item.selectedTeeth.isNotEmpty)
               Txt(
-                "${item.selectedTeeth.join(', ')}",
+                item.selectedTeeth.join(', '),
                 style: const TextStyle(
                   fontSize: 14,
                   color: material.Colors.deepOrange,
@@ -902,7 +896,6 @@ class AppointmentCalendarTile<Item extends Appointment>
                 ),
               ),
             if (treatmentsStr.isNotEmpty &&
-                item.selectedTeeth != null &&
                 item.selectedTeeth.isNotEmpty)
               const SizedBox(width: 8),
             if (treatmentsStr.isNotEmpty)
@@ -965,7 +958,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                             color: getDoctorColor(item.subtitleLine2)
                                 .withOpacity(0.12),
                             blurRadius: 6,
-                            offset: Offset(0, 2),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                         border: Border.all(
@@ -999,7 +992,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                           BoxShadow(
                             color: Colors.grey.withOpacity(0.12),
                             blurRadius: 6,
-                            offset: Offset(0, 2),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                         border: Border.all(

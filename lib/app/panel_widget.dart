@@ -168,10 +168,10 @@ class _PanelScreenState extends State<PanelScreen> {
                           widget.panel.tabs[widget.panel.selectedTab()].footer!,
                         _buildBottomControls(),
                         if (showSuccessInfoBar)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8.0),
                             child: InfoBar(
-                              title: const Text(
+                              title: Text(
                                   'Appointment booked successfully!'),
                               severity: InfoBarSeverity.success,
                             ),
@@ -410,11 +410,11 @@ class _PanelScreenState extends State<PanelScreen> {
                       ? Colors.blue
                       : Colors.grey.withValues(alpha: 0.25)),
             ),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(FluentIcons.save),
-                const SizedBox(width: 5),
+                Icon(FluentIcons.save),
+                SizedBox(width: 5),
                 Txt("Check-in")
               ],
             ),

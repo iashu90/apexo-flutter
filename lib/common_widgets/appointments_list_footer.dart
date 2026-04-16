@@ -38,10 +38,10 @@ class AppointmentsListFooter extends StatelessWidget {
                 }),
             const SizedBox(width: 12),
             FilledButton(
-              child: Row(
+              child: const Row(
                 children: [
-                  const Icon(FluentIcons.test_beaker),
-                  const SizedBox(width: 10),
+                  Icon(FluentIcons.test_beaker),
+                  SizedBox(width: 10),
                   Txt("Add Labwork"),
                 ],
               ),

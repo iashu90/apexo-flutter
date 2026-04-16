@@ -55,9 +55,9 @@ class _LabworkEditingState extends State<_LabworkEditing> {
     labNameController.addListener(() {
       setState(() {});
     });
-    selectedTeethSet = Set<String>.from(widget.labwork.selectedTeeth ?? []);
-    if ((widget.labwork.noOfUnits ?? 0) > 0) {
-      pricePerUnit = (widget.labwork.price ?? 0) / widget.labwork.noOfUnits;
+    selectedTeethSet = Set<String>.from(widget.labwork.selectedTeeth);
+    if (widget.labwork.noOfUnits > 0) {
+      pricePerUnit = widget.labwork.price / widget.labwork.noOfUnits;
     } else {
       pricePerUnit = 0;
     }

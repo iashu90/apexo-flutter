@@ -279,9 +279,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   }
 
   String _composeShareMessage([_LedgerRowData? row]) {
-    final target = row == null
-        ? (_visibleRows.isEmpty ? null : _visibleRows.first)
-        : row;
+    final target = row ?? (_visibleRows.isEmpty ? null : _visibleRows.first);
     if (target == null) {
       return 'Patient ${widget.patient.title} invoice details are currently unavailable.';
     }
@@ -801,9 +799,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                         : null,
                     child: Text(canEmail ? 'Email' : 'Email (No address)'),
                   ),
-                  Button(
+                  const Button(
                     onPressed: null,
-                    child: const Text('SMS (Coming Soon)'),
+                    child: Text('SMS (Coming Soon)'),
                   ),
                 ],
               ),
@@ -1162,7 +1160,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                         ? const Color(0xFFEAF2FF)
                         : Colors.transparent,
                     child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     child: Row(
                       children: [
                         Expanded(flex: 12, child: _sortableHead('Date', 'date')),

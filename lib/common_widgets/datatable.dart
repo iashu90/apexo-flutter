@@ -379,7 +379,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   Widget _buildAlphabetFilter() {
     final isDark = FluentTheme.of(context).brightness == Brightness.dark;
     final selectedBg = isDark ? Colors.blue : Colors.blue;
-    final selectedFg = Colors.white;
+    const selectedFg = Colors.white;
     final unselectedBg =
         isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2);
     final unselectedFg = isDark ? Colors.white : Colors.black;
@@ -551,7 +551,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                         ? PatientDetailsDialog(
                             rows: item.patientDetails,
                             patient: item,
-                            hiddenColumns: [
+                            hiddenColumns: const [
                               'Prescription',
                               'P.Mode',
                               'Doc Paid',
@@ -562,7 +562,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                             ? PatientDetailsDialog(
                                 rows: item.doctorDetails,
                                 doctorFilterDate: DateTime.now(),
-                                hiddenColumns: [
+                                hiddenColumns: const [
                                   'Prescription',
                                   'Cost',
                                   'Paid',

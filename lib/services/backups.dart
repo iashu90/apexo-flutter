@@ -190,9 +190,7 @@ class _Backups {
       scopes: ['https://www.googleapis.com/auth/drive.file'],
     );
     AuthClient? client = await googleDrive.getSavedAuthClient();
-    if (client == null) {
-      client = await googleDrive.getUserConsentAuthClient(context);
-    }
+    client ??= await googleDrive.getUserConsentAuthClient(context);
 
     final file = await downloadLatestBackupFile();
     if (file == null) {

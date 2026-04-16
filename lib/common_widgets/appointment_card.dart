@@ -134,12 +134,12 @@ class AppointmentCard extends StatelessWidget {
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(50)),
                                 elevation: 100,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 3),
                                   child: Txt(
                                     "Price To Pay Doctor",
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                       fontStyle: FontStyle.italic,
@@ -155,7 +155,7 @@ class AppointmentCard extends StatelessWidget {
                                       .toStringAsFixed(2),
                                   textAlign: TextAlign.right,
                                   style: const TextStyle(fontSize: 13),
-                                  keyboardType: TextInputType.numberWithOptions(
+                                  keyboardType: const TextInputType.numberWithOptions(
                                       decimal: true),
                                   onFieldSubmitted: (value) {
                                     final newValue =
@@ -186,12 +186,12 @@ class AppointmentCard extends StatelessWidget {
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(50)),
                                 elevation: 100,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 3),
                                   child: Txt(
                                     "Doctor Paid",
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                       fontStyle: FontStyle.italic,
@@ -207,7 +207,7 @@ class AppointmentCard extends StatelessWidget {
                                       .toStringAsFixed(2),
                                   textAlign: TextAlign.right,
                                   style: const TextStyle(fontSize: 13),
-                                  keyboardType: TextInputType.numberWithOptions(
+                                  keyboardType: const TextInputType.numberWithOptions(
                                       decimal: true),
                                   onFieldSubmitted: (value) {
                                     final newValue =

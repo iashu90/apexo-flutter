@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element, unused_field, unused_local_variable, unused_import
+
 import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
@@ -26,7 +28,7 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
   String _performanceRange = 'month';
   String _doneRange = 'month';
   String _workloadRange = 'week';
-  bool _compareMode = false;
+  final bool _compareMode = false;
   DateTime? _customRangeStart;
   DateTime? _customRangeEnd;
 
@@ -334,7 +336,7 @@ Future<void> _openDoctorEntryModalV2(
                 const SizedBox(height: 10),
                 InfoLabel(
                   label: 'Duty Days:',
-                  child: SizedBox.shrink(),
+                  child: const SizedBox.shrink(),
                 ),
                 Wrap(
                   spacing: 6,
@@ -464,8 +466,9 @@ List<({String procedure, int thisMonth, int lastMonth, int delta})>
   final previous = <String, int>{};
 
   for (final appointment in allAppointments) {
-    if (doctorId != null && !appointment.operatorsIDs.contains(doctorId))
+    if (doctorId != null && !appointment.operatorsIDs.contains(doctorId)) {
       continue;
+    }
 
     final inCurrent = !appointment.date.isBefore(currentMonthStart) &&
         appointment.date.isBefore(nextMonthStart);
@@ -504,8 +507,9 @@ Map<int, Map<int, int>> _slotPressureHeatmap({
 }) {
   final heatmap = <int, Map<int, int>>{};
   for (final appointment in appointmentsList) {
-    if (doctorId != null && !appointment.operatorsIDs.contains(doctorId))
+    if (doctorId != null && !appointment.operatorsIDs.contains(doctorId)) {
       continue;
+    }
     final weekday = appointment.date.weekday;
     final hour = appointment.date.hour;
     final row = heatmap.putIfAbsent(weekday, () => <int, int>{});
@@ -790,9 +794,9 @@ class _DoctorHandledRangeCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            Row(
+            const Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Doctor',
                     style: TextStyle(
@@ -805,7 +809,7 @@ class _DoctorHandledRangeCard extends StatelessWidget {
                 Tooltip(
                   message:
                       'Appts = appointment count, Pts = unique patients, Earned = paid to doctor',
-                  child: const Text(
+                  child: Text(
                     'Appts G�� Pts G�� Earned',
                     style: TextStyle(
                       color: Color(0xFF5B789F),
@@ -1254,8 +1258,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                   : doctor.title,
                               style: const TextStyle(
                                 color: Color(0xFF143C6B),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 21,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 18,
                               ),
                             ),
                           ),
@@ -2582,8 +2586,8 @@ class _SlotPressureHeatmapCard extends StatelessWidget {
                             final hour = 8 + i;
                             final count = heatmap[weekday]?[hour] ?? 0;
                             final ratio = count / peak;
-                            final base = const Color(0xFFEAF2FC);
-                            final hot = const Color(0xFF2D7BD8);
+                            const base = Color(0xFFEAF2FC);
+                            const hot = Color(0xFF2D7BD8);
                             final color = Color.lerp(base, hot, ratio)!;
 
                             return Tooltip(

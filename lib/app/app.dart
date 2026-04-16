@@ -2,13 +2,11 @@ import 'package:apexo/app/navbar_widget.dart';
 import 'package:apexo/app/panel_widget.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/back_button.dart';
-import 'package:apexo/common_widgets/backup_status_widget.dart';
 import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/services/backups.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/en.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -196,12 +194,12 @@ class ApexoApp extends StatelessWidget {
               : NavigationPane(
                   autoSuggestBox: const CurrentUser(key: WK.currentUserSection),
                   autoSuggestBoxReplacement: const Icon(FluentIcons.contact),
-                  header: Column(
+                  header: const Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const AppLogo(),
-                      const SizedBox(height: 8),
+                      AppLogo(),
+                      SizedBox(height: 8),
                       //const BackupStatusWidget(),
                     ],
                   ),

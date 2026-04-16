@@ -35,13 +35,13 @@ class LabworkCard extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
           ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(FluentIcons.test_beaker, color: color, size: 20),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Expanded(
                 child: Acrylic(
                   elevation: 100,
@@ -78,18 +78,18 @@ class LabworkCard extends StatelessWidget {
                         Row(
                           children: [
                             Icon(FluentIcons.clock, color: color),
-                            SizedBox(width: 5),
+                            const SizedBox(width: 5),
                             Txt(
                               intl.DateFormat(
                                       "E d/MM/yyyy - hh:mm a", locale.s.$code)
-                                  .format(labwork.date ?? DateTime.now()),
+                                  .format(labwork.date),
                               style: TextStyle(
                                 color: color,
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(width: 5),
+                            const SizedBox(width: 5),
                             Row(
                                mainAxisAlignment: MainAxisAlignment.end,
                               children: [
@@ -115,8 +115,7 @@ class LabworkCard extends StatelessWidget {
                                                 text: intl.DateFormat(
                                                         "E d/MM/yyyy - hh:mm a",
                                                         locale.s.$code)
-                                                    .format(labwork.date ??
-                                                        DateTime.now()),
+                                                  .format(labwork.date),
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.bold,
                                                   color: Colors.warningPrimaryColor, // Highlight the date
@@ -151,8 +150,9 @@ class LabworkCard extends StatelessWidget {
                                       // Perform hard delete logic here
                                       await labworks.hardDelete(
                                           labwork.id); // or your delete method
-                                      if (Navigator.canPop(context))
+                                      if (Navigator.canPop(context)) {
                                         Navigator.pop(context);
+                                      }
                                     }
                                   },
                                   iconButtonMode: IconButtonMode.large,
@@ -169,18 +169,16 @@ class LabworkCard extends StatelessWidget {
                           ],
                         ),
 
-                        if (labwork.lab != null && labwork.lab.isNotEmpty) ...[
+                        if (labwork.lab.isNotEmpty) ...[
                           ..._betweenSections,
                           _buildSection(txt("laboratory"), labwork.lab,
                               FluentIcons.company_directory, color),
-                          if (labwork.typeOfWork != null &&
-                              labwork.typeOfWork.isNotEmpty) ...[
+                          if (labwork.typeOfWork.isNotEmpty) ...[
                             ..._betweenSections,
                             _buildSection("Type of work", labwork.typeOfWork,
                                 FluentIcons.add_work, color),
                           ],
-                          if (labwork.selectedTeeth != null &&
-                              labwork.selectedTeeth.isNotEmpty) ...[
+                          if (labwork.selectedTeeth.isNotEmpty) ...[
                             ..._betweenSections,
                             _buildSection(
                               "Teeth",
@@ -190,15 +188,15 @@ class LabworkCard extends StatelessWidget {
                               color,
                             ),
                           ],
-                          if (labwork.noOfUnits != null) ...[
-                            ..._betweenSections,
-                            _buildSection(
-                                "No. of units",
-                                labwork.noOfUnits.toString(),
-                                FluentIcons.number_field,
-                                color),
-                          ],
-                          SizedBox(height: 10),
+                          ...[
+                          ..._betweenSections,
+                          _buildSection(
+                              "No. of units",
+                              labwork.noOfUnits.toString(),
+                              FluentIcons.number_field,
+                              color),
+                        ],
+                          const SizedBox(height: 10),
                         ],
                       ],
                     ),

@@ -14,7 +14,7 @@ extension DoctorPayments on Doctor {
   double get totalPaidToDoctor {
     return allAppointments.fold<double>(
       0,
-      (sum, appointment) => sum + (appointment.paidToDoctor ?? 0),
+      (sum, appointment) => sum + appointment.paidToDoctor,
     );
   }
 
@@ -33,7 +33,7 @@ extension DoctorPayments on Doctor {
 
   /// Returns a list of this doctor's appointments where paidToDoctor > 0.
   List<Appointment> get appointmentsWithDoctorPayment {
-    return allAppointments.where((a) => (a.paidToDoctor ?? 0) > 0).toList();
+    return allAppointments.where((a) => a.paidToDoctor > 0).toList();
   }
 
   List<ReportDetailRow> get doctorDetails => allAppointments
@@ -43,24 +43,20 @@ extension DoctorPayments on Doctor {
         final patient = patients.get(appointment.patientID ?? '');
 
         final dateStr = appointment.date;
-        final costStr = '₹${(appointment.price ?? 0).toStringAsFixed(2)}';
-        final paidStr = '₹${(appointment.paid ?? 0).toStringAsFixed(2)}';
+        final costStr = '₹${appointment.price.toStringAsFixed(2)}';
+        final paidStr = '₹${appointment.paid.toStringAsFixed(2)}';
 
-        final prescriptionStr = (appointment.prescriptions != null &&
-                appointment.prescriptions.isNotEmpty)
+        final prescriptionStr = (appointment.prescriptions.isNotEmpty)
             ? appointment.prescriptions.join(', ')
             : '';
 
-        final treatmentStr = (appointment.selectedTreatments != null &&
-                appointment.selectedTreatments.isNotEmpty)
-            ? appointment.subTreatments != null &&
-                    appointment.subTreatments.isNotEmpty
+        final treatmentStr = (appointment.selectedTreatments.isNotEmpty)
+            ? appointment.subTreatments.isNotEmpty
                 ? "${appointment.selectedTreatments.join(', ')} - ${appointment.subTreatments.join(', ')}"
                 : appointment.selectedTreatments.join(', ')
             : '';
 
-        final teethStr = (appointment.selectedTeeth != null &&
-                appointment.selectedTeeth.isNotEmpty)
+        final teethStr = (appointment.selectedTeeth.isNotEmpty)
             ? appointment.selectedTeeth.join(', ')
             : '';
 
@@ -80,7 +76,7 @@ extension DoctorPayments on Doctor {
           treatmentPaymentMode: treatmentPaymentMode,
           preceptionPaymentMode: preceptionPaymentMode,
           patient: patient,
-          doctorPaid: '₹${(appointment.paidToDoctor ?? 0).toStringAsFixed(2)}',
+          doctorPaid: '₹${appointment.paidToDoctor.toStringAsFixed(2)}',
           doctorTotalPay: '₹${appointment.priceToPayDoctor.toStringAsFixed(2)}',
         );
       }).toList();
@@ -145,12 +141,14 @@ class Doctor extends Model {
   Map<String, dynamic> toJson() {
     final json = super.toJson();
     final d = Doctor.fromJson({});
-    /* 1 */ if (dutyDays.toString() != d.dutyDays.toString())
+    /* 1 */ if (dutyDays.toString() != d.dutyDays.toString()) {
       json['dutyDays'] = dutyDays;
+    }
     /* 2 */ if (email != d.email) json["email"] = email;
     /* 3 */ if (phone != d.phone) json["phone"] = phone;
-    /* 4 */ if (lockToUserIDs.toString() != d.lockToUserIDs.toString())
+    /* 4 */ if (lockToUserIDs.toString() != d.lockToUserIDs.toString()) {
       json["lockToUserIDs"] = lockToUserIDs;
+    }
     return json;
   }
 }
