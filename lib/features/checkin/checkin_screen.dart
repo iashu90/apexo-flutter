@@ -1357,9 +1357,10 @@ class _WorkflowRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: stage == 'scheduled'
-            ? const Color.fromARGB(255, 250, 242, 216) // Mild Orange (Orange 50)
+            ? const Color.fromARGB(
+                255, 250, 242, 216) // Mild Orange (Orange 50)
             : stage == 'completed'
-                ? const Color.fromARGB(255, 236, 232, 245) // Mild Green (Green 50)
+                ? const Color.fromARGB(255, 235, 250, 230) // Mild Green (Green 50)
                 : Colors.transparent,
         border: const Border(
           top: BorderSide(color: Color(0xFFE2ECF8)),
@@ -4388,13 +4389,16 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Age: ${a.patient?.age ?? 0}  •  Phone: ${a.patient?.phone ?? '-'}',
+                      'Age: ${a.patient?.age ?? 0}${a.patient?.age ?? ''}  • ${a.patient?.phone ?? ''}',
                       style: const TextStyle(
                         color: Color(0xFF6D84A8),
-                        fontSize: 11,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    const Divider(),
+                    const SizedBox(height: 10),
                     const Text(
                       'Treatment',
                       style: TextStyle(
