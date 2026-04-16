@@ -1472,8 +1472,8 @@ class _AppointmentsTableCard extends StatelessWidget {
                         FilledButton(
                           onPressed: onAddAppointment,
                           style: ButtonStyle(
-                            backgroundColor:
-                                WidgetStateProperty.all(const Color(0xFF1A74DB)),
+                            backgroundColor: WidgetStateProperty.all(
+                                const Color(0xFF1A74DB)),
                             shape: WidgetStateProperty.all(
                               RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8)),
@@ -1747,21 +1747,18 @@ class _AppointmentRow extends StatelessWidget {
     openLabworkV2Dialog(context, draft);
   }
 
-
   Future<void> _openEditTreatmentModal(BuildContext context) async {
     final stage = appointment.checkinStage.trim().toLowerCase();
     if (stage == 'pending') {
-      final patientName = appointment.title.trim().isEmpty
-          ? 'this patient'
-          : appointment.title;
+      final patientName =
+          appointment.title.trim().isEmpty ? 'this patient' : appointment.title;
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => ContentDialog(
-          title: const Text(
-            'Confirm',
-            style: TextStyle(fontWeight: FontWeight.w700),
+          title: Text(
+            'Checkin  $patientName ?',
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-          content: Text('Move $patientName to waiting?'),
           actions: [
             Button(
               child: const Text('Cancel'),
@@ -1784,8 +1781,8 @@ class _AppointmentRow extends StatelessWidget {
       return;
     }
     if (stage == 'waiting') {
-      final pickedDoctorIds =
-          await pickDoctorDialog(context, initialSelected: appointment.operatorsIDs);
+      final pickedDoctorIds = await pickDoctorDialog(context,
+          initialSelected: appointment.operatorsIDs);
       if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
       appointment.operatorsIDs = pickedDoctorIds;
       appointment.checkinStage = 'with_doctor';
@@ -1818,11 +1815,8 @@ class _AppointmentRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: isDuplicatePatient
-            ? const Color(0xFFFFF1F1)
-            : appointment.checkinStage.trim().toLowerCase() == 'pending'
-                ? const Color(0xFFFFFBEE)
-                : Colors.transparent,
+        color:
+            isDuplicatePatient ? const Color(0xFFFFF1F1) : Colors.transparent,
         border: const Border(top: BorderSide(color: Color(0xFFE2ECF8))),
       ),
       child: Row(
@@ -2334,9 +2328,8 @@ class _DateNavigator extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: showBorder
-                ? Border.all(color: const Color(0xFFD6E2F0))
-                : null,
+            border:
+                showBorder ? Border.all(color: const Color(0xFFD6E2F0)) : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
