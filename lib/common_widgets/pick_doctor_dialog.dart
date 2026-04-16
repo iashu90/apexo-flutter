@@ -15,7 +15,17 @@ Future<List<String>?> pickDoctorDialog(
       final selected = initialSelected.toSet();
       return StatefulBuilder(
         builder: (context, setDialogState) => ContentDialog(
-          title: const Text('Assign Doctor(s)'),
+          title: Row(
+            children: [
+              const Expanded(
+                child: Text('Assign Doctor(s)'),
+              ),
+              IconButton(
+                icon: const Icon(FluentIcons.chrome_close, size: 12),
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+            ],
+          ),
           content: SizedBox(
             width: 420,
             child: doctorRows.isEmpty

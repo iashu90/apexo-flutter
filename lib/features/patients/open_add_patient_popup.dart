@@ -73,25 +73,44 @@ Widget _buildSelectableHistoryChips({
 Future<Patient?> openAddPatientPopup({
   required BuildContext context,
   String initialInput = '',
+  Patient? existingPatient,
 }) async {
-  final seed = initialInput.trim();
+  final isEditMode = existingPatient != null;
+  final seed = isEditMode ? existingPatient!.title.trim() : initialInput.trim();
   final looksLikePhone = RegExp(r'^[+0-9\s()-]+$').hasMatch(seed);
 
   final nameController = TextEditingController(
-    text: looksLikePhone ? '' : _toTitleCaseForPatientPopup(seed),
+    text: isEditMode
+        ? existingPatient!.title
+        : (looksLikePhone ? '' : _toTitleCaseForPatientPopup(seed)),
   );
-  final ageController = TextEditingController();
-  final phoneController =
-      TextEditingController(text: looksLikePhone ? seed : '');
-  final addressController = TextEditingController();
-  final notesController = TextEditingController();
+  final ageController = TextEditingController(
+    text:
+        isEditMode && existingPatient!.age > 0 ? '${existingPatient.age}' : '',
+  );
+  final phoneController = TextEditingController(
+    text: isEditMode ? existingPatient!.phone : (looksLikePhone ? seed : ''),
+  );
+  final addressController = TextEditingController(
+    text: isEditMode ? existingPatient!.address : '',
+  );
 
-  int gender = 0;
-  String referral = 'None';
-  final selectedMedicalHistory = <String>{};
-  final selectedDrugHistory = <String>{};
-  final selectedMaternalHistory = <String>{};
-  final selectedHabitsHistory = <String>{};
+  int gender = isEditMode ? existingPatient!.gender : 0;
+  String referral = (isEditMode && existingPatient!.referralSource.isNotEmpty)
+      ? existingPatient.referralSource
+      : 'None';
+  final selectedMedicalHistory = isEditMode
+      ? existingPatient!.tags.toSet()
+      : <String>{};
+  final selectedDrugHistory = isEditMode
+      ? existingPatient!.drugHistorySuggestions.toSet()
+      : <String>{};
+  final selectedMaternalHistory = isEditMode
+      ? existingPatient!.maternalHistorySuggestions.toSet()
+      : <String>{};
+  final selectedHabitsHistory = isEditMode
+      ? existingPatient!.habitsSuggestions.toSet()
+      : <String>{};
   String? nameError;
   String? ageError;
   String? phoneError;
@@ -102,10 +121,10 @@ Future<Patient?> openAddPatientPopup({
       builder: (context, setStateDialog) => ContentDialog(
         title: Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
-                'Add Patient',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                isEditMode ? 'Edit Patient' : 'Add Patient',
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
             IconButton(
@@ -225,13 +244,6 @@ Future<Patient?> openAddPatientPopup({
                   placeholder: 'Address',
                 ),
                 const SizedBox(height: 8),
-                _popupFieldLabel('Notes:'),
-                TextBox(
-                  controller: notesController,
-                  placeholder: 'Notes',
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 8),
                 _popupFieldLabel('Medical History:'),
                 _buildSelectableHistoryChips(
                   options: patientMedicalHistorySuggestions,
@@ -342,27 +354,25 @@ Future<Patient?> openAddPatientPopup({
                 return;
               }
 
-              final patient = Patient.fromJson({
-                'id': uuid(),
-                'title': _toTitleCaseForPatientPopup(rawName),
-                'birth': parsedAge,
-                'gender': gender,
-                'phone': rawPhone,
-                'address': addressController.text.trim(),
-                'notes': notesController.text.trim(),
-                'tags': selectedMedicalHistory.toList(growable: false),
-                'drugHistorySuggestions':
-                  selectedDrugHistory.toList(growable: false),
-                'maternalHistorySuggestions':
-                  selectedMaternalHistory.toList(growable: false),
-                'habitsSuggestions':
-                  selectedHabitsHistory.toList(growable: false),
-                'referralSource': referral,
-              });
+              final patient = existingPatient ?? Patient.fromJson({'id': uuid()});
+              patient
+                ..title = _toTitleCaseForPatientPopup(rawName)
+                ..birth = parsedAge
+                ..gender = gender
+                ..phone = rawPhone
+                ..address = addressController.text.trim()
+                ..tags = selectedMedicalHistory.toList(growable: false)
+                ..drugHistorySuggestions =
+                    selectedDrugHistory.toList(growable: false)
+                ..maternalHistorySuggestions =
+                    selectedMaternalHistory.toList(growable: false)
+                ..habitsSuggestions =
+                    selectedHabitsHistory.toList(growable: false)
+                ..referralSource = referral;
               patients.set(patient);
               Navigator.pop(dialogContext, patient);
             },
-            child: const Text('Save'),
+            child: Text(isEditMode ? 'Update' : 'Save'),
           ),
         ],
       ),

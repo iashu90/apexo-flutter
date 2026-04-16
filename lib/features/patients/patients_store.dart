@@ -115,7 +115,6 @@ class Patients extends Store<Patient> {
         ..email = existing.email
         ..address = existing.address
         ..tags = List<String>.from(existing.tags)
-        ..notes = existing.notes
         ..teeth = Map<String, String>.from(existing.teeth)
         ..referralSource = existing.referralSource;
 
@@ -217,7 +216,6 @@ class Patients extends Store<Patient> {
         p.phone.trim().isNotEmpty ||
         p.email.trim().isNotEmpty ||
         p.address.trim().isNotEmpty ||
-        p.notes.trim().isNotEmpty ||
         p.referralSource.trim().isNotEmpty;
     final hasStructured =
         p.tags.isNotEmpty || p.teeth.isNotEmpty || p.birth > 0;

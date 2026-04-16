@@ -4,10 +4,10 @@ import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
+import 'package:apexo/features/dashboard/dashboard_insight_cards.dart';
 import 'package:apexo/features/dashboard/overall_due_helper.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
@@ -24,6 +24,9 @@ import 'package:intl/intl.dart';
 import 'package:apexo/features/dashboard/outstanding_balance_modal.dart';
 
 DateTime dashboardV2PersistedDate = DateTime.now();
+const String dashboardDoctorFilterAll = '__all__';
+const String dashboardDoctorFilterUnassigned = '__unassigned__';
+const String dashboardTreatmentFilterAll = '__all_treatments__';
 
 String _toTitleCase(String text) {
   return text
@@ -42,22 +45,18 @@ class DashboardScreenV2 extends StatefulWidget {
 }
 
 class _DashboardScreenV2State extends State<DashboardScreenV2> {
-  static const String _filterAll = '__all__';
-  static const String _filterUnassigned = '__unassigned__';
-  static const String _treatmentFilterAll = '__all_treatments__';
-
   late DateTime selectedDate;
   String _sortBy = 'time';
   bool _sortAscending = true;
   String _searchQuery = '';
-  String _selectedDoctorFilter = _filterAll;
-  String _selectedTreatmentFilter = _treatmentFilterAll;
+  String _selectedDoctorFilter = dashboardDoctorFilterAll;
+  String _selectedTreatmentFilter = dashboardTreatmentFilterAll;
   bool _showAllTreatmentStats = false;
   final TextEditingController _searchController = TextEditingController();
 
   String? _doctorFilterChipLabel() {
-    if (_selectedDoctorFilter == _filterAll) return null;
-    if (_selectedDoctorFilter == _filterUnassigned) {
+    if (_selectedDoctorFilter == dashboardDoctorFilterAll) return null;
+    if (_selectedDoctorFilter == dashboardDoctorFilterUnassigned) {
       return 'Doctor: Unassigned';
     }
     final doctorName = doctors.get(_selectedDoctorFilter)?.title ?? 'Unknown';
@@ -65,7 +64,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   }
 
   String? _treatmentFilterChipLabel() {
-    if (_selectedTreatmentFilter == _treatmentFilterAll) return null;
+    if (_selectedTreatmentFilter == dashboardTreatmentFilterAll) return null;
     return 'Treatment: $_selectedTreatmentFilter';
   }
 
@@ -191,8 +190,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   }
 
   List<Appointment> _doctorFiltered(List<Appointment> source) {
-    if (_selectedDoctorFilter == _filterAll) return source;
-    if (_selectedDoctorFilter == _filterUnassigned) {
+    if (_selectedDoctorFilter == dashboardDoctorFilterAll) return source;
+    if (_selectedDoctorFilter == dashboardDoctorFilterUnassigned) {
       return source.where((a) => a.operatorsIDs.isEmpty).toList();
     }
     return source
@@ -201,7 +200,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   }
 
   List<Appointment> _treatmentFiltered(List<Appointment> source) {
-    if (_selectedTreatmentFilter == _treatmentFilterAll) return source;
+    if (_selectedTreatmentFilter == dashboardTreatmentFilterAll) return source;
     final treatment = _selectedTreatmentFilter.toLowerCase();
     return source
         .where(
@@ -239,7 +238,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
     showDialog(
       context: context,
-      builder: (_) => ContentDialog(
+      builder: (dialogContext) => ContentDialog(
         title: const Text(
           'New Patients Today',
           style: TextStyle(
@@ -300,11 +299,22 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  patientName,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1D3C64),
-                                    fontWeight: FontWeight.w700,
+                                GestureDetector(
+                                  onTap: patient == null
+                                      ? null
+                                      : () async {
+                                          Navigator.pop(dialogContext);
+                                          await openAddPatientPopup(
+                                            context: context,
+                                            existingPatient: patient,
+                                          );
+                                        },
+                                  child: Text(
+                                    patientName,
+                                    style: const TextStyle(
+                                      color: Color(0xFF1459AD),
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -434,7 +444,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
             0, (sum, a) => sum + a.prescriptionPaid);
         final outstandingBalance = dashboardCtrl.totalDueAmount();
         final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
-        final treatmentStats = _TreatmentStats.from(doctorScopedAppointments);
+        final treatmentStats =
+          DashboardTreatmentStats.from(doctorScopedAppointments);
         final treatmentScopedAppointments =
             _treatmentFiltered(doctorScopedAppointments);
         final tableAppointments =
@@ -442,29 +453,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final duplicatePatientKeys =
             _duplicatePatientKeys(treatmentScopedAppointments);
         final isDoctorFilterApplied =
-            _selectedDoctorFilter != _DashboardScreenV2State._filterAll ||
+          _selectedDoctorFilter != dashboardDoctorFilterAll ||
                 _selectedTreatmentFilter !=
-                    _DashboardScreenV2State._treatmentFilterAll;
+              dashboardTreatmentFilterAll;
         final doctorFilterChip = _doctorFilterChipLabel();
         final treatmentFilterChip = _treatmentFilterChipLabel();
 
-        final doctorRevenueSplit = <String, double>{};
         final paymentModeAmounts = <String, double>{'Cash': 0, 'UPI': 0};
 
         for (final a in todaysAppointments) {
           final totalPayment = a.paid + a.prescriptionPaid;
-          final doctorIds = a.operatorsIDs.isEmpty
-              ? const ['__unassigned__']
-              : a.operatorsIDs;
-          final perDoctor = totalPayment / doctorIds.length;
-          for (final doctorId in doctorIds) {
-            final label = doctorId == '__unassigned__'
-                ? 'Unassigned'
-                : (doctors.get(doctorId)?.title ?? 'Unknown');
-            doctorRevenueSplit[label] =
-                (doctorRevenueSplit[label] ?? 0) + perDoctor;
-          }
-
           final isDigital = a.treatmentGpayPaid || a.prescriptionGpayPaid;
           if (isDigital) {
             paymentModeAmounts['UPI'] =
@@ -671,27 +669,30 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                     if (useColumn) {
                       return Column(
                         children: [
-                          _DoctorScheduleCard(
+                          DashboardDoctorInsightsCard(
                             todaysAppointments: todaysAppointments,
-                            doctorRevenueSplit: doctorRevenueSplit,
                             selectedFilter: _selectedDoctorFilter,
+                            allFilterToken: dashboardDoctorFilterAll,
+                            unassignedFilterToken:
+                                dashboardDoctorFilterUnassigned,
                             onFilterChanged: (v) => setState(() {
                               _selectedDoctorFilter = _selectedDoctorFilter == v
-                                  ? _DashboardScreenV2State._filterAll
+                                  ? dashboardDoctorFilterAll
                                   : v;
                             }),
                             onAddAppointment: _openAddAppointmentFromDashboard,
                           ),
                           const SizedBox(height: 10),
-                          _TreatmentStatsCard(
+                          DashboardTreatmentStatsCard(
                             stats: treatmentStats,
                             selectedTreatment: _selectedTreatmentFilter,
+                            allTreatmentFilterToken:
+                                dashboardTreatmentFilterAll,
                             showAll: _showAllTreatmentStats,
                             onFilterChanged: (v) => setState(() {
                               _selectedTreatmentFilter =
                                   _selectedTreatmentFilter == v
-                                      ? _DashboardScreenV2State
-                                          ._treatmentFilterAll
+                                      ? dashboardTreatmentFilterAll
                                       : v;
                             }),
                             onToggleShowAll: () => setState(
@@ -717,18 +718,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             onGoToday: _goToday,
                             onAddAppointment: _openAddAppointmentFromDashboard,
                             onClearDoctorFilter: () => setState(() {
-                              _selectedDoctorFilter =
-                                  _DashboardScreenV2State._filterAll;
+                              _selectedDoctorFilter = dashboardDoctorFilterAll;
                             }),
                             onClearTreatmentFilter: () => setState(() {
                               _selectedTreatmentFilter =
-                                  _DashboardScreenV2State._treatmentFilterAll;
+                                  dashboardTreatmentFilterAll;
                             }),
                             onClearFilters: () => setState(() {
-                              _selectedDoctorFilter =
-                                  _DashboardScreenV2State._filterAll;
+                              _selectedDoctorFilter = dashboardDoctorFilterAll;
                               _selectedTreatmentFilter =
-                                  _DashboardScreenV2State._treatmentFilterAll;
+                                  dashboardTreatmentFilterAll;
                             }),
                           ),
                         ],
@@ -741,29 +740,32 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           width: 320,
                           child: Column(
                             children: [
-                              _DoctorScheduleCard(
+                              DashboardDoctorInsightsCard(
                                 todaysAppointments: todaysAppointments,
-                                doctorRevenueSplit: doctorRevenueSplit,
                                 selectedFilter: _selectedDoctorFilter,
+                                allFilterToken: dashboardDoctorFilterAll,
+                                unassignedFilterToken:
+                                    dashboardDoctorFilterUnassigned,
                                 onFilterChanged: (v) => setState(() {
                                   _selectedDoctorFilter =
                                       _selectedDoctorFilter == v
-                                          ? _DashboardScreenV2State._filterAll
+                                          ? dashboardDoctorFilterAll
                                           : v;
                                 }),
                                 onAddAppointment:
                                     _openAddAppointmentFromDashboard,
                               ),
                               const SizedBox(height: 10),
-                              _TreatmentStatsCard(
+                              DashboardTreatmentStatsCard(
                                 stats: treatmentStats,
                                 selectedTreatment: _selectedTreatmentFilter,
+                                allTreatmentFilterToken:
+                                    dashboardTreatmentFilterAll,
                                 showAll: _showAllTreatmentStats,
                                 onFilterChanged: (v) => setState(() {
                                   _selectedTreatmentFilter =
                                       _selectedTreatmentFilter == v
-                                          ? _DashboardScreenV2State
-                                              ._treatmentFilterAll
+                                          ? dashboardTreatmentFilterAll
                                           : v;
                                 }),
                                 onToggleShowAll: () => setState(
@@ -793,18 +795,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                             onGoToday: _goToday,
                             onAddAppointment: _openAddAppointmentFromDashboard,
                             onClearDoctorFilter: () => setState(() {
-                              _selectedDoctorFilter =
-                                  _DashboardScreenV2State._filterAll;
+                              _selectedDoctorFilter = dashboardDoctorFilterAll;
                             }),
                             onClearTreatmentFilter: () => setState(() {
                               _selectedTreatmentFilter =
-                                  _DashboardScreenV2State._treatmentFilterAll;
+                                  dashboardTreatmentFilterAll;
                             }),
                             onClearFilters: () => setState(() {
-                              _selectedDoctorFilter =
-                                  _DashboardScreenV2State._filterAll;
+                              _selectedDoctorFilter = dashboardDoctorFilterAll;
                               _selectedTreatmentFilter =
-                                  _DashboardScreenV2State._treatmentFilterAll;
+                                  dashboardTreatmentFilterAll;
                             }),
                           ),
                         ),
@@ -937,148 +937,6 @@ class _RightDashboardColumn extends StatelessWidget {
       ],
     );
   }
-}
-
-class _DoctorScheduleCard extends StatelessWidget {
-  final List<Appointment> todaysAppointments;
-  final Map<String, double> doctorRevenueSplit;
-  final String selectedFilter;
-  final ValueChanged<String> onFilterChanged;
-  final VoidCallback onAddAppointment;
-
-  const _DoctorScheduleCard({
-    required this.todaysAppointments,
-    required this.doctorRevenueSplit,
-    required this.selectedFilter,
-    required this.onFilterChanged,
-    required this.onAddAppointment,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final doctorRows = <_DoctorScheduleRow>[];
-
-    final counts = <String, int>{};
-    for (final a in todaysAppointments) {
-      for (final id in a.operatorsIDs) {
-        counts[id] = (counts[id] ?? 0) + 1;
-      }
-    }
-
-    for (final entry in counts.entries) {
-      final doctor = doctors.get(entry.key);
-      if (doctor == null) continue;
-      doctorRows.add(
-        _DoctorScheduleRow(
-          id: doctor.id,
-          title: doctor.title,
-          count: entry.value,
-          revenue: doctorRevenueSplit[doctor.title] ?? 0,
-        ),
-      );
-    }
-
-    final totalDoctorRevenue = doctorRows.fold<double>(
-      0,
-      (sum, row) => sum + row.revenue,
-    );
-    final unassignedRevenue = doctorRevenueSplit['Unassigned'] ?? 0;
-
-    doctorRows.sort((a, b) => b.count.compareTo(a.count));
-
-    final unassigned =
-        todaysAppointments.where((a) => a.operatorsIDs.isEmpty).length;
-
-    return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Doctors Insights',
-            style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67)),
-          ),
-          if (doctorRows.isEmpty) ...[
-            const SizedBox(height: 6),
-            const Text(
-              'No doctors assigned for this day',
-              style: TextStyle(color: Color(0xFF637EA3)),
-            ),
-          ],
-          const SizedBox(height: 8),
-          _ScheduleLine(
-            title: 'All',
-            count: todaysAppointments.length,
-            secondaryMoney: '₹${totalDoctorRevenue.toStringAsFixed(0)}',
-            secondaryPct: '100%',
-            selected: selectedFilter == _DashboardScreenV2State._filterAll,
-            onTap: () => onFilterChanged(_DashboardScreenV2State._filterAll),
-          ),
-          _ScheduleLine(
-            title: 'Unassigned',
-            count: unassigned,
-            secondaryMoney: '₹${unassignedRevenue.toStringAsFixed(0)}',
-            secondaryPct: totalDoctorRevenue <= 0
-                ? '0%'
-                : '${(unassignedRevenue / totalDoctorRevenue * 100).toStringAsFixed(0)}%',
-            selected:
-                selectedFilter == _DashboardScreenV2State._filterUnassigned,
-            onTap: () =>
-                onFilterChanged(_DashboardScreenV2State._filterUnassigned),
-          ),
-          const SizedBox(height: 6),
-          ...doctorRows.take(6).map(
-                (row) => _ScheduleLine(
-                  title: row.title,
-                  count: row.count,
-                  secondaryMoney: '₹${row.revenue.toStringAsFixed(0)}',
-                  secondaryPct: totalDoctorRevenue <= 0
-                      ? '0%'
-                      : '${(row.revenue / totalDoctorRevenue * 100).toStringAsFixed(0)}%',
-                  selected: selectedFilter == row.id,
-                  onTap: () => onFilterChanged(row.id),
-                ),
-              ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: onAddAppointment,
-            style: ButtonStyle(
-              shape: WidgetStateProperty.all(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(FluentIcons.add, size: 14, color: Colors.white),
-                SizedBox(width: 8),
-                Text(
-                  'Check-in',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DoctorScheduleRow {
-  final String id;
-  final String title;
-  final int count;
-  final double revenue;
-
-  _DoctorScheduleRow(
-      {required this.id,
-      required this.title,
-      required this.count,
-      required this.revenue});
 }
 
 class _AppointmentTimingSummaryCard extends StatelessWidget {
@@ -1615,6 +1473,15 @@ class _AppointmentRow extends StatelessWidget {
     );
   }
 
+  Future<void> _openPatientEditor(BuildContext context) async {
+    final patient = appointment.patient;
+    if (patient == null) return;
+    await openAddPatientPopup(
+      context: context,
+      existingPatient: patient,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final doctorName = appointment.operators.isEmpty
@@ -1650,7 +1517,7 @@ class _AppointmentRow extends StatelessWidget {
           Expanded(
             flex: 15,
             child: GestureDetector(
-              onTap: () => openAppointment(appointment),
+              onTap: () => _openPatientEditor(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1917,97 +1784,6 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-class _ScheduleLine extends StatelessWidget {
-  final String title;
-  final int count;
-  final String? secondaryMoney;
-  final String? secondaryPct;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ScheduleLine({
-    required this.title,
-    required this.count,
-    this.secondaryMoney,
-    this.secondaryPct,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(top: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          color: selected ? const Color(0xFFDDEBFF) : const Color(0xFFF6F9FE),
-          border: Border.all(
-            color: selected ? const Color(0xFF8CB6E8) : Colors.transparent,
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected
-                      ? const Color(0xFF123D71)
-                      : const Color(0xFF27456D),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (secondaryMoney != null) ...[
-                  Text(
-                    secondaryMoney!,
-                    style: TextStyle(
-                      color: selected
-                          ? const Color(0xFF1459AD)
-                          : const Color(0xFF2D7BD8),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-                if (secondaryPct != null) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    secondaryPct!,
-                    style: TextStyle(
-                      color: selected
-                          ? const Color(0xFF2BA58D)
-                          : const Color(0xFF4A8B73),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-                const SizedBox(width: 6),
-                Text(
-                  '($count)',
-                  style: TextStyle(
-                    color: selected
-                        ? const Color(0xFF1A4B88)
-                        : const Color(0xFF637EA3),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _CardShell extends StatelessWidget {
   final Widget child;
 
@@ -2148,115 +1924,6 @@ Set<String> _duplicatePatientKeys(List<Appointment> appointmentsForView) {
       .where((entry) => entry.value > 1)
       .map((entry) => entry.key)
       .toSet();
-}
-
-class _TreatmentStats {
-  final List<MapEntry<String, int>> topTreatments;
-  final int totalTreatments;
-
-  _TreatmentStats({required this.topTreatments, required this.totalTreatments});
-
-  factory _TreatmentStats.from(List<Appointment> appointmentsOnDay) {
-    final counts = <String, int>{};
-    for (final a in appointmentsOnDay) {
-      for (final t in a.selectedTreatments) {
-        final key = t.trim();
-        if (key.isEmpty) continue;
-        counts[key] = (counts[key] ?? 0) + 1;
-      }
-    }
-
-    final sorted = counts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    final total = sorted.fold<int>(0, (sum, e) => sum + e.value);
-
-    return _TreatmentStats(
-      topTreatments: sorted.toList(),
-      totalTreatments: total,
-    );
-  }
-}
-
-class _TreatmentStatsCard extends StatelessWidget {
-  final _TreatmentStats stats;
-  final String selectedTreatment;
-  final bool showAll;
-  final ValueChanged<String> onFilterChanged;
-  final VoidCallback onToggleShowAll;
-
-  const _TreatmentStatsCard({
-    required this.stats,
-    required this.selectedTreatment,
-    required this.showAll,
-    required this.onFilterChanged,
-    required this.onToggleShowAll,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleTreatments = showAll
-        ? stats.topTreatments
-        : stats.topTreatments.take(5).toList(growable: false);
-
-    return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Treatment Stats',
-            style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67)),
-          ),
-          const SizedBox(height: 8),
-          _ScheduleLine(
-            title: 'Total',
-            count: stats.totalTreatments,
-            selected: selectedTreatment ==
-                _DashboardScreenV2State._treatmentFilterAll,
-            onTap: () => onFilterChanged(
-              _DashboardScreenV2State._treatmentFilterAll,
-            ),
-          ),
-          if (stats.topTreatments.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
-              child: Text(
-                'No treatments recorded for this day',
-                style: TextStyle(color: Color(0xFF637EA3)),
-              ),
-            )
-          else
-            ...visibleTreatments.map(
-              (entry) => _ScheduleLine(
-                title: entry.key,
-                count: entry.value,
-                selected:
-                    selectedTreatment.toLowerCase() == entry.key.toLowerCase(),
-                onTap: () => onFilterChanged(entry.key),
-              ),
-            ),
-          if (stats.topTreatments.length > 5) ...[
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: onToggleShowAll,
-              style: ButtonStyle(
-                backgroundColor:
-                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-              child: Text(showAll ? 'Show Top 5' : 'Show More'),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }
 
 class _InsightLine extends StatelessWidget {

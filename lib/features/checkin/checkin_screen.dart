@@ -1751,7 +1751,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
     final doctorName = appointment.operators.isEmpty
         ? 'Unassigned'
         : appointment.operators.map((d) => d.title).join(', ');
-    final patientNotes = patient?.notes.trim() ?? '';
     final medicalHistoryEntries = <String>{
       ...?patient?.tags,
       ...?patient?.drugHistorySuggestions,
@@ -1884,23 +1883,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   TodayAppointmentInsightCard(appointment: appointment),
                 ],
                 const SizedBox(height: 10),
-                if (patientNotes.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF7FBFF),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2ECF8)),
-                    ),
-                    child: Text(
-                      'Patient Notes: $patientNotes',
-                      style: const TextStyle(
-                          color: Color(0xFF5F789B), fontSize: 12),
-                    ),
-                  ),
                 if (otherRows.isEmpty) const SizedBox.shrink(),
               ],
             ),
