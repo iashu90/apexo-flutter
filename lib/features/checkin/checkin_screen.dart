@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
+import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
@@ -295,181 +296,18 @@ class _CheckinScreenState extends State<CheckinScreen> {
   }
 
   Future<void> _openQuickPatientSearchDialog() async {
-    await showDialog<void>(
+    await showPatientCheckinLookupDialog(
       context: context,
-      builder: (dialogContext) {
-        final queryController = TextEditingController(
-          text: '',
-        );
-        String query = queryController.text.trim().toLowerCase();
-
-        final allPatients = patients.present.values.toList(growable: false);
-        final todaysAppointments = appointments.forDate(_selectedDate);
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final matches = allPatients
-                .where((p) {
-                  if (query.isEmpty) return true;
-                  final name = p.title.toLowerCase();
-                  final phone = p.phone.toLowerCase();
-                  return name.contains(query) || phone.contains(query);
-                })
-                .take(40)
-                .toList(growable: false);
-            final hasExactMatch = query.isNotEmpty &&
-                allPatients.any((p) {
-                  final name = p.title.trim().toLowerCase();
-                  final phone = p.phone.trim().toLowerCase();
-                  return name == query || phone == query;
-                });
-
-            return ContentDialog(
-              title: Row(
-                children: [
-                  const Expanded(child: Text('Patient Check-in')),
-                  IconButton(
-                    icon: const Icon(FluentIcons.chrome_close, size: 12),
-                    onPressed: () => Navigator.pop(dialogContext),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: 520,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextBox(
-                      controller: queryController,
-                      placeholder: 'Search by patient name or phone',
-                      autofocus: true,
-                      prefix: const Padding(
-                        padding: EdgeInsets.only(left: 10),
-                        child: Icon(
-                          FluentIcons.search,
-                          size: 12,
-                          color: Color(0xFF6D84A8),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setDialogState(
-                            () => query = value.trim().toLowerCase());
-                      },
-                    ),
-                    if (query.isNotEmpty && !hasExactMatch) ...[
-                      const SizedBox(height: 8),
-                      FilledButton(
-                        onPressed: () async {
-                          final navigator = Navigator.of(dialogContext);
-                          final created =
-                              await _openAddPatientPopup(queryController.text);
-                          if (created == null) return;
-                          _checkInPatient(created);
-                          if (navigator.mounted) {
-                            navigator.pop();
-                          }
-                        },
-                        child: Text(
-                          'Add "$query" as new patient',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 420),
-                      child: matches.isEmpty
-                          ? const Center(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 30),
-                                child: Text(
-                                  'No matching patients.',
-                                  style: TextStyle(color: Color(0xFF6D84A8)),
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: matches.length,
-                              separatorBuilder: (_, __) =>
-                                  const Divider(size: 1),
-                              itemBuilder: (context, index) {
-                                final p = matches[index];
-                                final existing = todaysAppointments
-                                    .where((a) => a.patientID == p.id)
-                                    .toList(growable: false)
-                                    .lastOrNull;
-
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 2,
-                                    vertical: 6,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              p.title.trim().isEmpty
-                                                  ? 'Unnamed patient'
-                                                  : p.title,
-                                              style: const TextStyle(
-                                                color: Color(0xFF1F446E),
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              '${p.phone} • ${p.age}y',
-                                              style: const TextStyle(
-                                                color: Color(0xFF6D84A8),
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      if (existing != null)
-                                        Button(
-                                          onPressed: () {
-                                            setState(() =>
-                                                _selectedAppointment =
-                                                    existing);
-                                            Navigator.pop(dialogContext);
-                                          },
-                                          child: const Text('Open'),
-                                        )
-                                      else
-                                        FilledButton(
-                                          onPressed: () {
-                                            _checkInPatient(p);
-                                            Navigator.pop(dialogContext);
-                                          },
-                                          child: const Text('Check-in'),
-                                        ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                Button(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Close'),
-                ),
-              ],
-            );
-          },
-        );
+      selectedDate: _selectedDate,
+      title: 'Patient Check-in',
+      onAddPatient: _openAddPatientPopup,
+      onOpenExisting: (existing) async {
+        if (!mounted) return;
+        setState(() => _selectedAppointment = existing);
+      },
+      onCheckInPatient: (patient) async {
+        if (!mounted) return;
+        _checkInPatient(patient);
       },
     );
   }
@@ -1914,6 +1752,12 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         ? 'Unassigned'
         : appointment.operators.map((d) => d.title).join(', ');
     final patientNotes = patient?.notes.trim() ?? '';
+    final medicalHistoryEntries = <String>{
+      ...?patient?.tags,
+      ...?patient?.drugHistorySuggestions,
+      ...?patient?.maternalHistorySuggestions,
+      ...?patient?.habitsSuggestions,
+    }.where((entry) => entry.trim().isNotEmpty).toList(growable: false);
     final isCheckout = appointment.checkinStage == 'checkout';
     final pid = appointment.patientID;
 
@@ -1948,6 +1792,27 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   ),
                 ),
                 const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE7EA),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFF7A8B1)),
+                  ),
+                  child: Text(
+                    medicalHistoryEntries.isEmpty
+                        ? 'Medical History: No history recorded'
+                        : 'Medical History: ${medicalHistoryEntries.join(', ')}',
+                    style: const TextStyle(
+                      color: Color(0xFFC63A4D),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
                 if (!isCheckout)
                   GestureDetector(
                     onTap: () => _changeDoctor(appointment),

@@ -427,6 +427,21 @@ class _PatientDetailsState extends State<_PatientDetails> {
     'Alcohol Consumption',
     'Pregnancy',
   ];
+  static const List<String> _drugHistorySuggestions = [
+    'Blood Thinners (Anticoagulants)',
+  ];
+  static const List<String> _maternalHistorySuggestions = [
+    'Pregnancy',
+    'Gestational Diabetes',
+    'Lactating Mother',
+  ];
+  static const List<String> _habitsSuggestions = [
+    'Smoking',
+    'Alcohol Consumption',
+    'Drug Use',
+    'Tobacco Use',
+    'Other',
+  ];
 
   bool showSuccessInfoBar = false;
 
@@ -625,6 +640,66 @@ class _PatientDetailsState extends State<_PatientDetails> {
             strict: false,
             limit: 9999,
             placeholder: 'Add medical history...',
+          ),
+        ),
+        InfoLabel(
+          label: 'Drug History:',
+          isHeader: true,
+          child: TagInputWidget(
+            suggestions: _drugHistorySuggestions
+                .map((t) => TagInputItem(value: t, label: t))
+                .toList(growable: false),
+            onChanged: (tags) {
+              widget.patient.drugHistorySuggestions = List<String>.from(
+                tags.map((e) => e.value).where((e) => e != null),
+              );
+            },
+            initialValue: widget.patient.drugHistorySuggestions
+                .map((e) => TagInputItem(value: e, label: e))
+                .toList(),
+            strict: false,
+            limit: 9999,
+            placeholder: 'Add drug history...',
+          ),
+        ),
+        InfoLabel(
+          label: 'Maternal History:',
+          isHeader: true,
+          child: TagInputWidget(
+            suggestions: _maternalHistorySuggestions
+                .map((t) => TagInputItem(value: t, label: t))
+                .toList(growable: false),
+            onChanged: (tags) {
+              widget.patient.maternalHistorySuggestions = List<String>.from(
+                tags.map((e) => e.value).where((e) => e != null),
+              );
+            },
+            initialValue: widget.patient.maternalHistorySuggestions
+                .map((e) => TagInputItem(value: e, label: e))
+                .toList(),
+            strict: false,
+            limit: 9999,
+            placeholder: 'Add maternal history...',
+          ),
+        ),
+        InfoLabel(
+          label: 'Habits:',
+          isHeader: true,
+          child: TagInputWidget(
+            suggestions: _habitsSuggestions
+                .map((t) => TagInputItem(value: t, label: t))
+                .toList(growable: false),
+            onChanged: (tags) {
+              widget.patient.habitsSuggestions = List<String>.from(
+                tags.map((e) => e.value).where((e) => e != null),
+              );
+            },
+            initialValue: widget.patient.habitsSuggestions
+                .map((e) => TagInputItem(value: e, label: e))
+                .toList(),
+            strict: false,
+            limit: 9999,
+            placeholder: 'Add habits...',
           ),
         ),
         const SizedBox(height: 30),

@@ -16,6 +16,45 @@ String _toTitleCaseForPatientPopup(String input) {
   }).join(' ');
 }
 
+Widget _buildSelectableHistoryChips({
+  required List<String> options,
+  required Set<String> selected,
+  required void Function(String value) onToggle,
+}) {
+  return Wrap(
+    spacing: 6,
+    runSpacing: 6,
+    children: options.map((item) {
+      final isSelected = selected.contains(item);
+      return GestureDetector(
+        onTap: () => onToggle(item),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF2D7BD8)
+                : const Color(0xFFEFF4FB),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF2D7BD8)
+                  : const Color(0xFFD4E2F3),
+            ),
+          ),
+          child: Text(
+            item,
+            style: TextStyle(
+              color: isSelected ? Colors.white : const Color(0xFF345982),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }).toList(growable: false),
+  );
+}
+
 Future<Patient?> openAddPatientPopup({
   required BuildContext context,
   String initialInput = '',
@@ -74,6 +113,9 @@ Future<Patient?> openAddPatientPopup({
   int gender = 0;
   String referral = 'None';
   final selectedMedicalHistory = <String>{};
+  final selectedDrugHistory = <String>{};
+  final selectedMaternalHistory = <String>{};
+  final selectedHabitsHistory = <String>{};
   String? nameError;
   String? ageError;
   String? phoneError;
@@ -220,50 +262,18 @@ Future<Patient?> openAddPatientPopup({
                   label: 'Medical History:',
                   child: SizedBox.shrink(),
                 ),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: medicalHistorySuggestions.map((item) {
-                    final selected = selectedMedicalHistory.contains(item);
-                    return GestureDetector(
-                      onTap: () {
-                        setStateDialog(() {
-                          if (selected) {
-                            selectedMedicalHistory.remove(item);
-                          } else {
-                            selectedMedicalHistory.add(item);
-                          }
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? const Color(0xFF2D7BD8)
-                              : const Color(0xFFEFF4FB),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: selected
-                                ? const Color(0xFF2D7BD8)
-                                : const Color(0xFFD4E2F3),
-                          ),
-                        ),
-                        child: Text(
-                          item,
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.white
-                                : const Color(0xFF345982),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(growable: false),
+                _buildSelectableHistoryChips(
+                  options: medicalHistorySuggestions,
+                  selected: selectedMedicalHistory,
+                  onToggle: (item) {
+                    setStateDialog(() {
+                      if (selectedMedicalHistory.contains(item)) {
+                        selectedMedicalHistory.remove(item);
+                      } else {
+                        selectedMedicalHistory.add(item);
+                      }
+                    });
+                  },
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -287,6 +297,60 @@ Future<Patient?> openAddPatientPopup({
                       child: const Text('Add'),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                InfoLabel(
+                  label: 'Drug History:',
+                  child: SizedBox.shrink(),
+                ),
+                _buildSelectableHistoryChips(
+                  options: drugHistorySuggestions,
+                  selected: selectedDrugHistory,
+                  onToggle: (item) {
+                    setStateDialog(() {
+                      if (selectedDrugHistory.contains(item)) {
+                        selectedDrugHistory.remove(item);
+                      } else {
+                        selectedDrugHistory.add(item);
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                InfoLabel(
+                  label: 'Maternal History:',
+                  child: SizedBox.shrink(),
+                ),
+                _buildSelectableHistoryChips(
+                  options: maternalHistorySuggestions,
+                  selected: selectedMaternalHistory,
+                  onToggle: (item) {
+                    setStateDialog(() {
+                      if (selectedMaternalHistory.contains(item)) {
+                        selectedMaternalHistory.remove(item);
+                      } else {
+                        selectedMaternalHistory.add(item);
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                InfoLabel(
+                  label: 'Habits:',
+                  child: SizedBox.shrink(),
+                ),
+                _buildSelectableHistoryChips(
+                  options: habitsSuggestions,
+                  selected: selectedHabitsHistory,
+                  onToggle: (item) {
+                    setStateDialog(() {
+                      if (selectedHabitsHistory.contains(item)) {
+                        selectedHabitsHistory.remove(item);
+                      } else {
+                        selectedHabitsHistory.add(item);
+                      }
+                    });
+                  },
                 ),
                 const SizedBox(height: 8),
                 InfoLabel(
@@ -350,6 +414,12 @@ Future<Patient?> openAddPatientPopup({
                 'address': addressController.text.trim(),
                 'notes': notesController.text.trim(),
                 'tags': selectedMedicalHistory.toList(growable: false),
+                'drugHistorySuggestions':
+                  selectedDrugHistory.toList(growable: false),
+                'maternalHistorySuggestions':
+                  selectedMaternalHistory.toList(growable: false),
+                'habitsSuggestions':
+                  selectedHabitsHistory.toList(growable: false),
                 'referralSource': referral,
               });
               patients.set(patient);

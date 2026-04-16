@@ -186,7 +186,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
     final categories = [
       'all',
       ...expenses.allItems.toSet().where((e) => e.trim().isNotEmpty)
-    ]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    ];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -866,7 +866,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setStateDialog) {
           final categoryOptions = [
-            ...availableCategories.toList(growable: false)..sort(),
+              ...availableCategories.toList(growable: false),
             'Other',
           ];
 
