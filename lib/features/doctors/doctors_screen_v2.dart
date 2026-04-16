@@ -6,6 +6,7 @@ import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -28,6 +29,8 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
   String _performanceRange = 'month';
   String _doneRange = 'month';
   String _workloadRange = 'week';
+  DateTime _doneMonthAnchor =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
   final bool _compareMode = false;
   DateTime? _customRangeStart;
   DateTime? _customRangeEnd;
@@ -175,6 +178,7 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                 allAppointments: allAppointments,
                 selectedDate: _selectedDate,
                 range: _doneRange,
+                monthAnchor: _doneRange == 'month' ? _doneMonthAnchor : null,
                 customRangeStart: _customRangeStart,
                 customRangeEnd: _customRangeEnd,
               ),
@@ -247,6 +251,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                     child: _DoctorAppointmentDoneChartCard(
                       rows: doneRows,
                       selectedRange: _doneRange,
+                      monthAnchor: _doneMonthAnchor,
+                      monthOptions: _monthOptions(allAppointments),
+                      onMonthChanged: (month) =>
+                          setState(() => _doneMonthAnchor = month),
                       onSelectRange: (value) =>
                           setState(() => _doneRange = value),
                     ),
@@ -259,6 +267,14 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
       ],
     );
   }
+}
+
+List<DateTime> _monthOptions(List<Appointment> rows) {
+  return rows
+      .map((a) => DateTime(a.date.year, a.date.month, 1))
+      .toSet()
+      .toList(growable: false)
+    ..sort((a, b) => b.compareTo(a));
 }
 
 Future<void> _openDoctorEntryModalV2(
@@ -1158,32 +1174,59 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(FluentIcons.health, size: 16, color: Color(0xFF1F4F88)),
-                const SizedBox(width: 8),
-                const Text(
-                  'Doctor Activity & Metrics - Today',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF183A67),
-                  ),
-                ),
-                const Spacer(),
-                Button(
-                  onPressed: () {},
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(FluentIcons.download, size: 12),
-                      SizedBox(width: 6),
-                      Text('Export'),
+                      Text(
+                        'Doctor Activity & Metrics - Today',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF183A67),
+                        ),
+                      ),
                     ],
                   ),
                 ),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    _topMetric(
+                      'Total Patients',
+                      '$totalPatients',
+                      const Color(0xFF2D7BD8),
+                    ),
+                    _topMetric(
+                      'Hospital Gained',
+                      '₹${hospitalGained.toStringAsFixed(0)}',
+                      const Color(0xFF2BA58D),
+                    ),
+                    _topMetric(
+                      'Active Doctors',
+                      '${doctorEntries.length}',
+                      const Color(0xFFE09C31),
+                    ),
+                    Button(
+                      onPressed: () {},
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(FluentIcons.download, size: 12),
+                          SizedBox(width: 6),
+                          Text('Export'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               DateFormat('EEEE, dd MMMM yyyy').format(widget.selectedDate),
               style: const TextStyle(
@@ -1191,20 +1234,6 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              children: [
-                _topMetric('Total Patients', '$totalPatients', const Color(0xFF2D7BD8)),
-                _topMetric(
-                  'Hospital Gained',
-                  '₹${hospitalGained.toStringAsFixed(0)}',
-                  const Color(0xFF2BA58D),
-                ),
-                _topMetric('Active Doctors', '${doctorEntries.length}', const Color(0xFFE09C31)),
-              ],
             ),
             if (doctorEntries.isEmpty)
               const Padding(
@@ -1263,23 +1292,35 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                               ),
                             ),
                           ),
-                          _topMetric('Patients Seen', '${doctorAppts.length}', const Color(0xFF2D7BD8)),
+                          _inlineMetric(
+                            'Patients Seen',
+                            '${doctorAppts.length}',
+                            const Color(0xFF2D7BD8),
+                          ),
                           const SizedBox(width: 8),
-                          _topMetric('Earned', '₹${earned.toStringAsFixed(0)}', const Color(0xFF1F4F88)),
+                          _inlineMetric(
+                            'Earned',
+                            '₹${earned.toStringAsFixed(0)}',
+                            const Color(0xFF1F4F88),
+                          ),
                           const SizedBox(width: 8),
-                          _topMetric('Hospital Gained', '₹${hospital.toStringAsFixed(0)}', const Color(0xFF2BA58D)),
+                          _inlineMetric(
+                            'Hospital Gained',
+                            '₹${hospital.toStringAsFixed(0)}',
+                            const Color(0xFF2BA58D),
+                          ),
                         ],
                       ),
                     ),
                     content: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(minWidth: 960),
+                        constraints: const BoxConstraints(minWidth: 1180),
                         child: Column(
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
+                                  horizontal: 8, vertical: 8),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFEFF5FF),
                                 borderRadius: BorderRadius.circular(8),
@@ -1291,12 +1332,13 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                   SizedBox(width: 200, child: Text('Treatment', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 110, child: Text('Tooth/Area', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 110, child: Text('Stage', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 110, child: Text('Paid', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 120, child: Text('Consult Fee', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 90, child: Text('Status', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 110),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 6),
                             ...doctorAppts.map((appointment) {
                               final end = appointment.date.add(const Duration(minutes: 40));
                               final treatment = appointment.selectedTreatments
@@ -1305,21 +1347,25 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                               final tooth = appointment.selectedTeeth.isEmpty
                                   ? '-'
                                   : appointment.selectedTeeth.first;
-                              final stage = appointment.checkinStage.trim().isEmpty
-                                  ? (appointment.isDone ? 'Completed' : '-')
-                                  : appointment.checkinStage;
+                              final stage = _stageLabel(appointment);
+                              final stageColor = _stageColor(stage);
                               final paid = appointment.paid + appointment.prescriptionPaid;
+                              final consultantFee = appointment.paidToDoctor;
 
                               return Container(
-                                margin: const EdgeInsets.only(bottom: 6),
+                                margin: const EdgeInsets.only(bottom: 0),
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
+                                  horizontal: 8,
+                                  vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: const Color(0xFFE2ECF8)),
+                                  borderRadius: BorderRadius.circular(0),
+                                  border: const Border(
+                                    bottom: BorderSide(
+                                      color: Color(0xFFE2ECF8),
+                                    ),
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
@@ -1373,8 +1419,28 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       width: 110,
                                       child: Text(
                                         stage,
+                                        style: TextStyle(
+                                          color: stageColor,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 110,
+                                      child: Text(
+                                        '₹${paid.toStringAsFixed(0)}',
                                         style: const TextStyle(
-                                          color: Color(0xFF2BA58D),
+                                          color: Color(0xFF34567D),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 120,
+                                      child: Text(
+                                        '₹${consultantFee.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF34567D),
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -1415,13 +1481,47 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     );
   }
 
+  String _stageLabel(Appointment appointment) {
+    final stage = normalizeCheckinStage(appointment.checkinStage);
+    switch (stage) {
+      case 'waiting':
+        return 'Waiting';
+      case 'treatment':
+        return 'Treatment';
+      case 'billing':
+        return 'Billing';
+      case 'complete':
+        return 'Completed';
+      case 'scheduled':
+        return 'Waiting';
+      default:
+        return appointment.isDone ? 'Completed' : 'Waiting';
+    }
+  }
+
+  Color _stageColor(String stage) {
+    switch (stage) {
+      case 'Waiting':
+        return const Color(0xFFE09C31);
+      case 'Treatment':
+        return const Color(0xFF2D7BD8);
+      case 'Billing':
+        return const Color(0xFF7B61D1);
+      case 'Completed':
+        return const Color(0xFF2BA58D);
+      default:
+        return const Color(0xFF5E738F);
+    }
+  }
+
   Widget _topMetric(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      width: 164,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F7FE),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFDCE8F6)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1431,7 +1531,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w800,
-              fontSize: 21,
+              fontSize: 28,
             ),
           ),
           Text(
@@ -1439,7 +1539,39 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
             style: const TextStyle(
               color: Color(0xFF5D789D),
               fontWeight: FontWeight.w700,
-              fontSize: 11,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _inlineMetric(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: const BoxDecoration(
+        border: Border(
+          left: BorderSide(color: Color(0xFFD6E2F0)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 26,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF5D789D),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
             ),
           ),
         ],
@@ -1515,6 +1647,7 @@ List<Appointment> _scopedForRange({
   required List<Appointment> allAppointments,
   required DateTime selectedDate,
   required String range,
+  DateTime? monthAnchor,
   required DateTime? customRangeStart,
   required DateTime? customRangeEnd,
 }) {
@@ -1527,7 +1660,8 @@ List<Appointment> _scopedForRange({
       case 'week':
         return dateOnly(anchor.subtract(const Duration(days: 6)));
       case 'month':
-        return DateTime(anchor.year, anchor.month, 1);
+        final month = monthAnchor ?? anchor;
+        return DateTime(month.year, month.month, 1);
       case '6months':
         return DateTime(anchor.year, anchor.month - 5, 1);
       case 'ytd':
@@ -1542,16 +1676,18 @@ List<Appointment> _scopedForRange({
   final start = range == 'custom' && customRangeStart != null
       ? dateOnly(customRangeStart)
       : rangeStart(selectedDate, range);
-  final endExclusive = range == 'custom' && customRangeEnd != null
+    final endExclusive = range == 'custom' && customRangeEnd != null
       ? dateOnly(customRangeEnd).add(const Duration(days: 1))
-      : dateOnly(selectedDate).add(const Duration(days: 1));
+      : range == 'month'
+        ? DateTime(start.year, start.month + 1, 1)
+        : dateOnly(selectedDate).add(const Duration(days: 1));
 
   return allAppointments
       .where((a) => !a.date.isBefore(start) && a.date.isBefore(endExclusive))
       .toList(growable: false);
 }
 
-List<({Doctor doctor, int doneCount, int totalCount, double earned})>
+List<({Doctor doctor, int doneCount, int totalCount, double earned, double consultFee})>
     _doctorDoneMetrics({
   required List<Doctor> doctorsList,
   required List<Appointment> scoped,
@@ -1566,11 +1702,16 @@ List<({Doctor doctor, int doneCount, int totalCount, double earned})>
           0,
           (sum, a) => sum + a.paid + a.prescriptionPaid,
         );
+        final consultFee = rows.fold<double>(
+          0,
+          (sum, a) => sum + a.priceToPayDoctor,
+        );
         return (
           doctor: doctor,
           doneCount: doneCount,
           totalCount: rows.length,
           earned: earned,
+          consultFee: consultFee,
         );
       })
       .where((row) => row.totalCount > 0)
@@ -1948,14 +2089,27 @@ class _DoctorPerformanceCard extends StatelessWidget {
 }
 
 class _DoctorAppointmentDoneChartCard extends StatelessWidget {
-  final List<({Doctor doctor, int doneCount, int totalCount, double earned})>
+  final List<
+      ({
+        Doctor doctor,
+        int doneCount,
+        int totalCount,
+        double earned,
+        double consultFee,
+      })>
       rows;
   final String selectedRange;
+  final DateTime monthAnchor;
+  final List<DateTime> monthOptions;
+  final ValueChanged<DateTime> onMonthChanged;
   final ValueChanged<String> onSelectRange;
 
   const _DoctorAppointmentDoneChartCard({
     required this.rows,
     required this.selectedRange,
+    required this.monthAnchor,
+    required this.monthOptions,
+    required this.onMonthChanged,
     required this.onSelectRange,
   });
 
@@ -2027,6 +2181,27 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                 tab('custom', 'Custom'),
               ],
             ),
+            if (selectedRange == 'month' && monthOptions.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: 200,
+                child: ComboBox<DateTime>(
+                  isExpanded: true,
+                  value: monthAnchor,
+                  items: monthOptions
+                      .map(
+                        (m) => ComboBoxItem<DateTime>(
+                          value: m,
+                          child: Text(DateFormat('MMMM yyyy').format(m)),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (v) {
+                    if (v != null) onMonthChanged(v);
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 10),
             if (rows.isEmpty)
               const Text(
@@ -2035,10 +2210,8 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
               )
             else
               ...rows.take(12).map((row) {
-                final rate =
-                    row.totalCount == 0 ? 0.0 : row.doneCount / row.totalCount;
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
                       Expanded(
@@ -2051,28 +2224,13 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      SizedBox(
-                        width: 160,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            height: 8,
-                            color: const Color(0xFFEAF2FC),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: rate.clamp(0.0, 1.0),
-                              child: Container(color: const Color(0xFF2D7BD8)),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Text(
-                        '${row.doneCount}/${row.totalCount} • ₹${row.earned.toStringAsFixed(0)}',
+                        'Appts ${row.totalCount} • Gained ₹${row.earned.toStringAsFixed(0)} • Consult ₹${row.consultFee.toStringAsFixed(0)}',
                         style: const TextStyle(
                           color: Color(0xFF5B789F),
                           fontWeight: FontWeight.w700,
-                          fontSize: 11,
+                          fontSize: 12,
                         ),
                       ),
                     ],
