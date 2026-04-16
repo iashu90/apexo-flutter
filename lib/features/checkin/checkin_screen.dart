@@ -9,6 +9,7 @@ import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
+import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
@@ -1213,110 +1214,14 @@ class _WorkflowRow extends StatelessWidget {
   }
 
   Future<void> _moveStage(BuildContext context) async {
-    if (stage == 'scheduled') {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => ContentDialog(
-          title: const Text('Check In Patient?'),
-          content: const Text(
-            'This will move the patient from Scheduled to Waiting.',
-          ),
-          actions: [
-            Button(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: ButtonStyle(
-                backgroundColor:
-                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-              ),
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Check In'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-      appointment.checkinStage = 'waiting';
-      appointment.checkedInAt = DateTime.now();
-      appointments.set(appointment);
-      return;
-    }
-
-    if (stage == 'completed') {
-      final shouldUndo = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => ContentDialog(
-          title: const Text('Move back to Billing?'),
-          content:
-              const Text('This appointment will be moved back to Billing.'),
-          actions: [
-            Button(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              style: ButtonStyle(
-                backgroundColor:
-                    WidgetStateProperty.all(const Color(0xFFE56E7D)),
-              ),
-              child: const Text('Billing'),
-            ),
-          ],
-        ),
-      );
-      if (shouldUndo != true) return;
-      appointment.checkinStage = 'checkout';
-      appointment.isDone = false;
-      appointments.set(appointment);
-      return;
-    }
-
-    if (stage == 'waiting') {
-      final pickedDoctorIds = await pickDoctorDialog(context,
-          initialSelected: appointment.operatorsIDs);
-      if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
-      appointment.operatorsIDs = pickedDoctorIds;
-      appointment.checkinStage = 'with_doctor';
-      appointment.isDone = false;
-      appointments.set(appointment);
-      onSelect?.call(appointment);
-      return;
-    }
-
-    if (stage == 'with_doctor') {
-      final shouldMove = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => ContentDialog(
-          title: const Text('Move to Billing?'),
-          content: const Text('This appointment will be moved to Billing.'),
-          actions: [
-            Button(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Billing'),
-            ),
-          ],
-        ),
-      );
-      if (shouldMove != true) return;
-      appointment.checkinStage = 'checkout';
-      appointment.isDone = false;
-      appointments.set(appointment);
-      return;
-    }
-
-    final shouldComplete = await _confirmMoveToCompleted(context);
-    if (!shouldComplete) return;
-    appointment.checkinStage = 'completed';
-    appointment.isDone = true;
-    appointments.set(appointment);
-    await _openNextAppointmentPrompt(context, appointment);
+    await CheckinStageModalRouter.openForStage(
+      context: context,
+      appointment: appointment,
+      openTreatmentModal: openCheckinAppointmentModal,
+      openBillingModal: openCheckinAppointmentModal,
+      openCompleteModal: openCheckinAppointmentModal,
+      onUpdated: () => onSelect?.call(appointment),
+    );
   }
 
   Future<void> _undoStage(BuildContext context) async {
