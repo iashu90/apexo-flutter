@@ -17,6 +17,20 @@ String _toTitleCaseForPatientPopup(String input) {
   }).join(' ');
 }
 
+Widget _popupFieldLabel(String text) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF1F446E),
+      ),
+    ),
+  );
+}
+
 Widget _buildSelectableHistoryChips({
   required List<String> options,
   required Set<String> selected,
@@ -71,7 +85,6 @@ Future<Patient?> openAddPatientPopup({
       TextEditingController(text: looksLikePhone ? seed : '');
   final addressController = TextEditingController();
   final notesController = TextEditingController();
-  final customHistoryController = TextEditingController();
 
   int gender = 0;
   String referral = 'None';
@@ -102,23 +115,21 @@ Future<Patient?> openAddPatientPopup({
           ],
         ),
         content: SizedBox(
-          width: 520,
+          width: 700,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                InfoLabel(
-                  label: 'Name:',
-                  child: TextBox(
-                    controller: nameController,
-                    placeholder: 'Patient name',
-                    onChanged: (_) {
-                      if (nameError != null) {
-                        setStateDialog(() => nameError = null);
-                      }
-                    },
-                  ),
+                _popupFieldLabel('Name:'),
+                TextBox(
+                  controller: nameController,
+                  placeholder: 'Patient name',
+                  onChanged: (_) {
+                    if (nameError != null) {
+                      setStateDialog(() => nameError = null);
+                    }
+                  },
                 ),
                 if (nameError != null)
                   Padding(
@@ -135,34 +146,40 @@ Future<Patient?> openAddPatientPopup({
                 Row(
                   children: [
                     Expanded(
-                      child: InfoLabel(
-                        label: 'Age:',
-                        child: TextBox(
-                          controller: ageController,
-                          placeholder: 'Age',
-                          keyboardType: material.TextInputType.number,
-                          onChanged: (_) {
-                            if (ageError != null) {
-                              setStateDialog(() => ageError = null);
-                            }
-                          },
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _popupFieldLabel('Age:'),
+                          TextBox(
+                            controller: ageController,
+                            placeholder: 'Age',
+                            keyboardType: material.TextInputType.number,
+                            onChanged: (_) {
+                              if (ageError != null) {
+                                setStateDialog(() => ageError = null);
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: InfoLabel(
-                        label: 'Gender:',
-                        child: ComboBox<int>(
-                          value: gender,
-                          isExpanded: true,
-                          items: const [
-                            ComboBoxItem(value: 1, child: Text('Male')),
-                            ComboBoxItem(value: 0, child: Text('Female')),
-                          ],
-                          onChanged: (v) =>
-                              setStateDialog(() => gender = v ?? 0),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _popupFieldLabel('Gender:'),
+                          ComboBox<int>(
+                            value: gender,
+                            isExpanded: true,
+                            items: const [
+                              ComboBoxItem(value: 1, child: Text('Male')),
+                              ComboBoxItem(value: 0, child: Text('Female')),
+                            ],
+                            onChanged: (v) =>
+                                setStateDialog(() => gender = v ?? 0),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -179,18 +196,16 @@ Future<Patient?> openAddPatientPopup({
                     ),
                   ),
                 const SizedBox(height: 8),
-                InfoLabel(
-                  label: 'Phone:',
-                  child: TextBox(
-                    controller: phoneController,
-                    placeholder: 'Phone',
-                    keyboardType: material.TextInputType.number,
-                    onChanged: (_) {
-                      if (phoneError != null) {
-                        setStateDialog(() => phoneError = null);
-                      }
-                    },
-                  ),
+                _popupFieldLabel('Phone:'),
+                TextBox(
+                  controller: phoneController,
+                  placeholder: 'Phone',
+                  keyboardType: material.TextInputType.number,
+                  onChanged: (_) {
+                    if (phoneError != null) {
+                      setStateDialog(() => phoneError = null);
+                    }
+                  },
                 ),
                 if (phoneError != null)
                   Padding(
@@ -204,27 +219,20 @@ Future<Patient?> openAddPatientPopup({
                     ),
                   ),
                 const SizedBox(height: 8),
-                InfoLabel(
-                  label: 'Address:',
-                  child: TextBox(
-                    controller: addressController,
-                    placeholder: 'Address',
-                  ),
+                _popupFieldLabel('Address:'),
+                TextBox(
+                  controller: addressController,
+                  placeholder: 'Address',
                 ),
                 const SizedBox(height: 8),
-                InfoLabel(
-                  label: 'Notes:',
-                  child: TextBox(
-                    controller: notesController,
-                    placeholder: 'Notes',
-                    maxLines: 3,
-                  ),
+                _popupFieldLabel('Notes:'),
+                TextBox(
+                  controller: notesController,
+                  placeholder: 'Notes',
+                  maxLines: 3,
                 ),
                 const SizedBox(height: 8),
-                InfoLabel(
-                  label: 'Medical History:',
-                  child: SizedBox.shrink(),
-                ),
+                _popupFieldLabel('Medical History:'),
                 _buildSelectableHistoryChips(
                   options: patientMedicalHistorySuggestions,
                   selected: selectedMedicalHistory,
@@ -239,10 +247,7 @@ Future<Patient?> openAddPatientPopup({
                   },
                 ),
                 const SizedBox(height: 8),
-                InfoLabel(
-                  label: 'Drug History:',
-                  child: SizedBox.shrink(),
-                ),
+                _popupFieldLabel('Drug History:'),
                 _buildSelectableHistoryChips(
                   options: patientDrugHistorySuggestions,
                   selected: selectedDrugHistory,
@@ -257,10 +262,7 @@ Future<Patient?> openAddPatientPopup({
                   },
                 ),
                 const SizedBox(height: 8),
-                InfoLabel(
-                  label: 'Maternal History:',
-                  child: SizedBox.shrink(),
-                ),
+                _popupFieldLabel('Maternal History:'),
                 _buildSelectableHistoryChips(
                   options: patientMaternalHistorySuggestions,
                   selected: selectedMaternalHistory,
@@ -275,10 +277,7 @@ Future<Patient?> openAddPatientPopup({
                   },
                 ),
                 const SizedBox(height: 8),
-                InfoLabel(
-                  label: 'Habits:',
-                  child: SizedBox.shrink(),
-                ),
+                _popupFieldLabel('Habits:'),
                 _buildSelectableHistoryChips(
                   options: patientHabitsSuggestions,
                   selected: selectedHabitsHistory,
@@ -293,24 +292,22 @@ Future<Patient?> openAddPatientPopup({
                   },
                 ),
                 const SizedBox(height: 8),
-                InfoLabel(
-                  label: 'Referral:',
-                  child: ComboBox<String>(
-                    isExpanded: true,
-                    value: referral,
-                    items: const [
-                      ComboBoxItem(value: 'None', child: Text('None')),
-                      ComboBoxItem(value: 'Google', child: Text('Google')),
-                      ComboBoxItem(
-                          value: 'Social Media', child: Text('Social Media')),
-                      ComboBoxItem(value: 'Friends', child: Text('Friends')),
-                      ComboBoxItem(value: 'Camps', child: Text('Camps')),
-                      ComboBoxItem(
-                          value: 'Name Board', child: Text('Name Board')),
-                    ],
-                    onChanged: (v) =>
-                        setStateDialog(() => referral = v ?? 'None'),
-                  ),
+                _popupFieldLabel('Referral:'),
+                ComboBox<String>(
+                  isExpanded: true,
+                  value: referral,
+                  items: const [
+                    ComboBoxItem(value: 'None', child: Text('None')),
+                    ComboBoxItem(value: 'Google', child: Text('Google')),
+                    ComboBoxItem(
+                        value: 'Social Media', child: Text('Social Media')),
+                    ComboBoxItem(value: 'Friends', child: Text('Friends')),
+                    ComboBoxItem(value: 'Camps', child: Text('Camps')),
+                    ComboBoxItem(
+                        value: 'Name Board', child: Text('Name Board')),
+                  ],
+                  onChanged: (v) =>
+                      setStateDialog(() => referral = v ?? 'None'),
                 ),
               ],
             ),

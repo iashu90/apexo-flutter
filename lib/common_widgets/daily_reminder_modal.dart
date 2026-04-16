@@ -26,7 +26,8 @@ Future<void> showDailyReminderModal(BuildContext context) async {
       .where((l) => !l.deliveredToDoctor)
       .toList(growable: false);
 
-  final scheduledCount = todaysAppointments.length;
+  final totalAppointmentsCount = todaysAppointments.length;
+  int scheduledCount = 0;
   int waitingCount = 0;
   int treatmentCount = 0;
   int billingCount = 0;
@@ -34,6 +35,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
   for (final appointment in todaysAppointments) {
     switch (normalizeCheckinStage(appointment.checkinStage)) {
       case 'scheduled':
+        scheduledCount++;
         break;
       case 'waiting':
         waitingCount++;
@@ -99,12 +101,12 @@ Future<void> showDailyReminderModal(BuildContext context) async {
               iconColor: const Color(0xFF2D7BD8),
               bgColor: const Color(0xFFEAF2FF),
               label: 'Appointments Today',
-              value: '$scheduledCount',
-              subtitle: scheduledCount == 0
+              value: '$totalAppointmentsCount',
+              subtitle: totalAppointmentsCount == 0
                   ? 'No appointments scheduled'
-                  : scheduledCount == 1
+                : totalAppointmentsCount == 1
                       ? '1 appointment scheduled'
-                      : '$scheduledCount appointments scheduled',
+                  : '$totalAppointmentsCount appointments scheduled',
             ),
             const SizedBox(height: 10),
             Wrap(
