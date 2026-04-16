@@ -18,6 +18,18 @@ void showOutstandingBalanceModal(BuildContext context) {
   );
 }
 
+String _toTitleCaseForOutstandingModal(String input) {
+  final cleaned = input.trim();
+  if (cleaned.isEmpty) return cleaned;
+  final parts = cleaned.split(RegExp(r'\s+'));
+  return parts.map((word) {
+    if (word.isEmpty) return word;
+    final first = word.substring(0, 1).toUpperCase();
+    final rest = word.length > 1 ? word.substring(1).toLowerCase() : '';
+    return '$first$rest';
+  }).join(' ');
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Data model for per-patient outstanding row
 // ─────────────────────────────────────────────────────────────────────────────
@@ -273,6 +285,14 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
 
   @override
   Widget build(BuildContext context) {
+    final screen = MediaQuery.of(context).size;
+    final modalWidth = screen.width < 900
+        ? screen.width * 0.99
+        : screen.width < 1500
+            ? screen.width * 0.95
+            : 1360.0;
+    final modalHeight = screen.height * 0.92;
+
     final data = _computeData();
     final filtered = _applyFilter(data.rows);
     final visible = filtered.take(_visibleCount).toList(growable: false);
@@ -280,7 +300,7 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
         _checkedIds.where((id) => filtered.any((r) => r.patient.id == id)).length;
 
     return ContentDialog(
-      constraints: const BoxConstraints(maxWidth: 940, maxHeight: 860),
+      constraints: BoxConstraints(maxWidth: modalWidth, maxHeight: modalHeight),
       title: Row(
         children: [
           const Expanded(
@@ -299,71 +319,63 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
           ),
         ],
       ),
-      content: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFDCE6F2)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _Panel(
-              child: _MetricsRow(data: data),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Panel(
+            child: _MetricsRow(data: data),
+          ),
+          const SizedBox(height: 10),
+          _Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SearchAndActionsBar(searchCtrl: _searchCtrl),
+                const SizedBox(height: 10),
+                _FilterChipsRow(
+                  filters: _filters,
+                  active: _activeFilter,
+                  onSelect: (f) => setState(() {
+                    _activeFilter = f;
+                    _visibleCount = _pageSize;
+                  }),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            _Panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SearchAndActionsBar(searchCtrl: _searchCtrl),
-                  const SizedBox(height: 10),
-                  _FilterChipsRow(
-                    filters: _filters,
-                    active: _activeFilter,
-                    onSelect: (f) => setState(() {
-                      _activeFilter = f;
-                      _visibleCount = _pageSize;
-                    }),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: _Panel(
-                child: visible.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No outstanding patients match the current filter.',
-                          style: TextStyle(color: Color(0xFF7C93B1)),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: visible.length,
-                        itemBuilder: (context, index) {
-                          final row = visible[index];
-                          return _PatientRow(
-                            row: row,
-                            isChecked: _checkedIds.contains(row.patient.id),
-                            onCheckedChanged: (v) {
-                              setState(() {
-                                if (v == true) {
-                                  _checkedIds.add(row.patient.id);
-                                } else {
-                                  _checkedIds.remove(row.patient.id);
-                                }
-                              });
-                            },
-                          );
-                        },
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: _Panel(
+              child: visible.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No outstanding patients match the current filter.',
+                        style: TextStyle(color: Color(0xFF7C93B1)),
                       ),
-              ),
+                    )
+                  : ListView.builder(
+                      itemCount: visible.length,
+                      itemBuilder: (context, index) {
+                        final row = visible[index];
+                        return _PatientRow(
+                          row: row,
+                          isChecked: _checkedIds.contains(row.patient.id),
+                          onCheckedChanged: (v) {
+                            setState(() {
+                              if (v == true) {
+                                _checkedIds.add(row.patient.id);
+                              } else {
+                                _checkedIds.remove(row.patient.id);
+                              }
+                            });
+                          },
+                        );
+                      },
+                    ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       actions: [
         // ── Bottom bar ─────────────────────────────────────────────────
@@ -393,7 +405,7 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
                     msg.writeln();
                     for (final r in checkedRows) {
                       msg.writeln(
-                        '• ${r.patient.title}: ₹${NumberFormat("#,##0.00").format(r.due)} due',
+                        '• ${_toTitleCaseForOutstandingModal(r.patient.title)}: ${formatIndianShortCurrency(r.due, fractionDigits: 2)} due',
                       );
                     }
                     msg.writeln();
@@ -477,7 +489,7 @@ class _MetricsRow extends StatelessWidget {
             iconColor: const Color(0xFFD32F2F),
             icon: FluentIcons.money,
             title: 'Outstanding Amount',
-            value: formatIndianShortCurrency(data.totalOutstanding, fractionDigits: 0),
+            value: formatIndianShortCurrency(data.totalOutstanding, fractionDigits: 2),
             subtitle: growthPct >= 0
                 ? '▲ ${growthPct.toStringAsFixed(0)}% vs last month'
                 : '▼ ${growthPct.abs().toStringAsFixed(0)}% vs last month',
@@ -856,7 +868,7 @@ class _PatientRow extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        row.patient.title,
+                        _toTitleCaseForOutstandingModal(row.patient.title),
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF1B3A5C),
@@ -969,7 +981,7 @@ class _PatientRow extends StatelessWidget {
                   )
                 else
                   Text(
-                    '₹ ${NumberFormat('#,##0.00').format(due)}',
+                    formatIndianShortCurrency(due, fractionDigits: 2),
                     style: const TextStyle(
                       color: Color(0xFFD32F2F),
                       fontWeight: FontWeight.w700,
