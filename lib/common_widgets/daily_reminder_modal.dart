@@ -36,7 +36,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
           const Icon(
             CupertinoIcons.bell_solid,
             color: Colors.black,
-            size: 28.0,
+            size: 32.0,
           ),
           const SizedBox(width: 8),
           Expanded(
