@@ -25,6 +25,7 @@ class DashboardDoctorInsightsCard extends StatelessWidget {
     final doctorRows = <_DoctorInsightRow>[];
     final doctorCounts = <String, int>{};
     final doctorRevenue = <String, double>{};
+    final doctorNameByBucket = <String, String>{};
 
     int unassignedCount = 0;
     double unassignedRevenue = 0;
@@ -39,20 +40,24 @@ class DashboardDoctorInsightsCard extends StatelessWidget {
       }
 
       final primaryDoctorId = appointment.operatorsIDs.first;
-      doctorCounts[primaryDoctorId] = (doctorCounts[primaryDoctorId] ?? 0) + 1;
-      doctorRevenue[primaryDoctorId] =
-          (doctorRevenue[primaryDoctorId] ?? 0) + payment;
+      final resolvedDoctor = _findDoctorById(primaryDoctorId);
+      final bucketId = resolvedDoctor?.id ?? '__unknown__:$primaryDoctorId';
+      final bucketTitle = resolvedDoctor?.title.trim().isNotEmpty == true
+          ? resolvedDoctor!.title
+          : 'Unknown ($primaryDoctorId)';
+
+      doctorCounts[bucketId] = (doctorCounts[bucketId] ?? 0) + 1;
+      doctorRevenue[bucketId] = (doctorRevenue[bucketId] ?? 0) + payment;
+      doctorNameByBucket[bucketId] = bucketTitle;
     }
 
     for (final entry in doctorCounts.entries) {
-      final doctor = doctors.get(entry.key);
-      if (doctor == null) continue;
       doctorRows.add(
         _DoctorInsightRow(
-          id: doctor.id,
-          title: doctor.title,
+          id: entry.key,
+          title: doctorNameByBucket[entry.key] ?? 'Unknown',
           count: entry.value,
-          revenue: doctorRevenue[doctor.id] ?? 0,
+          revenue: doctorRevenue[entry.key] ?? 0,
         ),
       );
     }
@@ -102,7 +107,7 @@ class DashboardDoctorInsightsCard extends StatelessWidget {
             onTap: () => onFilterChanged(unassignedFilterToken),
           ),
           const SizedBox(height: 6),
-          ...doctorRows.take(6).map(
+          ...doctorRows.map(
                 (row) => _ScheduleLine(
                   title: row.title,
                   count: row.count,
@@ -269,6 +274,22 @@ class _DoctorInsightRow {
     required this.count,
     required this.revenue,
   });
+}
+
+dynamic _findDoctorById(String doctorId) {
+  final direct = doctors.get(doctorId);
+  if (direct != null) return direct;
+
+  final needle = doctorId.trim().toLowerCase();
+  if (needle.isEmpty) return null;
+
+  for (final doctor in doctors.present.values) {
+    if (doctor.id.trim().toLowerCase() == needle) {
+      return doctor;
+    }
+  }
+
+  return null;
 }
 
 class _ScheduleLine extends StatelessWidget {
