@@ -548,17 +548,6 @@ class _PatientDetailsState extends State<_PatientDetails> {
           ),
         ),
         InfoLabel(
-          label: "${txt("notes")}:",
-          isHeader: true,
-          child: CupertinoTextField(
-            key: WK.fieldPatientNotes,
-            controller: TextEditingController(text: widget.patient.notes),
-            onChanged: (value) => widget.patient.notes = value,
-            maxLines: null,
-            placeholder: "${txt("notes")}...",
-          ),
-        ),
-        InfoLabel(
           label: 'Referral:',
           isHeader: true,
           child: ComboBox<String>(

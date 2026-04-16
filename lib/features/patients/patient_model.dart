@@ -224,12 +224,11 @@ class Patient extends Model {
   /* 4 */ String email = "";
   /* 5 */ String address = "";
   /* 6 */ List<String> tags = [];
-  /* 7 */ String notes = "";
-  /* 8 */ Map<String, String> teeth = {};
-  /* 9 */ String referralSource = '';
-  /* 10 */ List<String> drugHistorySuggestions = [];
-  /* 11 */ List<String> maternalHistorySuggestions = [];
-  /* 12 */ List<String> habitsSuggestions = [];
+  /* 7 */ Map<String, String> teeth = {};
+  /* 8 */ String referralSource = '';
+  /* 9 */ List<String> drugHistorySuggestions = [];
+  /* 10 */ List<String> maternalHistorySuggestions = [];
+  /* 11 */ List<String> habitsSuggestions = [];
 
   @override
   Patient.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
@@ -248,14 +247,13 @@ class Patient extends Model {
     /* 4 */ email = json['email'] ?? email;
     /* 5 */ address = json['address'] ?? address;
     /* 6 */ tags = List<String>.from(json['tags'] ?? tags);
-    /* 7 */ notes = json['notes'] ?? notes;
-    /* 8 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
-    /* 9 */ referralSource = json['referralSource'] ?? referralSource;
-    /* 10 */ drugHistorySuggestions =
+    /* 7 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
+    /* 8 */ referralSource = json['referralSource'] ?? referralSource;
+    /* 9 */ drugHistorySuggestions =
       List<String>.from(json['drugHistorySuggestions'] ?? []);
-    /* 11 */ maternalHistorySuggestions =
+    /* 10 */ maternalHistorySuggestions =
       List<String>.from(json['maternalHistorySuggestions'] ?? []);
-    /* 12 */ habitsSuggestions =
+    /* 11 */ habitsSuggestions =
       List<String>.from(json['habitsSuggestions'] ?? []);
   }
   @override
@@ -269,19 +267,18 @@ class Patient extends Model {
     /* 4 */ if (email != d.email) json['email'] = email;
     /* 5 */ if (address != d.address) json['address'] = address;
     /* 6 */ if (tags.toString() != d.tags.toString()) json['tags'] = tags;
-    /* 7 */ if (notes != d.notes) json['notes'] = notes;
-    /* 8 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
-    /* 9 */ if (referralSource != d.referralSource)
+    /* 7 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
+    /* 8 */ if (referralSource != d.referralSource)
       json['referralSource'] = referralSource;
-    /* 10 */ if (drugHistorySuggestions.toString() !=
+    /* 9 */ if (drugHistorySuggestions.toString() !=
         d.drugHistorySuggestions.toString()) {
       json['drugHistorySuggestions'] = drugHistorySuggestions;
     }
-    /* 11 */ if (maternalHistorySuggestions.toString() !=
+    /* 10 */ if (maternalHistorySuggestions.toString() !=
         d.maternalHistorySuggestions.toString()) {
       json['maternalHistorySuggestions'] = maternalHistorySuggestions;
     }
-    /* 12 */ if (habitsSuggestions.toString() != d.habitsSuggestions.toString()) {
+    /* 11 */ if (habitsSuggestions.toString() != d.habitsSuggestions.toString()) {
       json['habitsSuggestions'] = habitsSuggestions;
     }
     return json;
