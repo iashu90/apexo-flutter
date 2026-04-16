@@ -58,12 +58,16 @@ Future<void> showDailyReminderModal(BuildContext context) async {
   int missingPhoneCount = 0;
   int treatmentPlanMissingCount = 0;
   final waitingPatients = <String>[];
+  final scheduledPatients = <String>[];
 
   for (final appointment in todaysAppointments) {
     final stage = normalizeCheckinStage(appointment.checkinStage);
     switch (stage) {
       case 'scheduled':
         scheduledCount++;
+        if (appointment.title.trim().isNotEmpty) {
+          scheduledPatients.add(appointment.title.trim());
+        }
         break;
       case 'waiting':
         waitingCount++;
@@ -187,9 +191,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                   scheduled: scheduledCount,
                   billing: billingCount,
                   waitingPatients: waitingPatients,
-                  nextPatientName: nextPatient?.title.trim().isNotEmpty == true
-                      ? nextPatient!.title
-                      : 'No patient',
+                  scheduledPatients: scheduledPatients,
                   onCheckin: () {
                     _navigateToRouteById('checkin');
                     Navigator.pop(dialogContext);
@@ -597,7 +599,7 @@ class _AppointmentsSummaryGrid extends StatelessWidget {
   final int scheduled;
   final int billing;
   final List<String> waitingPatients;
-  final String nextPatientName;
+  final List<String> scheduledPatients;
   final VoidCallback onCheckin;
 
   const _AppointmentsSummaryGrid({
@@ -607,84 +609,78 @@ class _AppointmentsSummaryGrid extends StatelessWidget {
     required this.scheduled,
     required this.billing,
     required this.waitingPatients,
-    required this.nextPatientName,
+    required this.scheduledPatients,
     required this.onCheckin,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final queueNames = [
+      ...waitingPatients,
+      ...scheduledPatients,
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _SmallInfoCard(
+        Expanded(
+          flex: 3,
+          child: Column(
+            children: [
+              _SmallInfoCard(
                 title: 'Completed',
                 value: '$complete',
                 hint: 'done',
                 color: const Color(0xFF2BA58D),
                 bg: const Color(0xFFF3F7FF),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _SmallInfoCard(
+              const SizedBox(height: 8),
+              _SmallInfoCard(
                 title: 'Waiting',
                 value: '$waiting',
                 hint: waiting == 1 ? 'patient' : 'patients',
                 color: const Color(0xFFE09C31),
                 bg: const Color(0xFFF3F7FF),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _SmallInfoCard(
+              const SizedBox(height: 8),
+              _SmallInfoCard(
                 title: 'Scheduled',
                 value: '$scheduled',
                 hint: 'today',
                 color: const Color(0xFF5578A4),
                 bg: const Color(0xFFF3F7FF),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _SmallInfoCard(
+              const SizedBox(height: 8),
+              _SmallInfoCard(
                 title: 'Treatment',
                 value: '$treatment',
                 hint: 'active',
                 color: const Color(0xFF2D7BD8),
                 bg: const Color(0xFFF3F7FF),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _SmallActionCard(
-                title: 'Waiting Queue',
-                subtitle: waitingPatients.isEmpty
-                    ? (nextPatientName == 'No patient'
-                        ? 'No waiting patients'
-                        : 'Next: $nextPatientName')
-                    : waitingPatients.join(', '),
-                actionLabel: 'Check-in',
-                onAction: onCheckin,
-                maxSubtitleLines: 3,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _SmallInfoCard(
+              const SizedBox(height: 8),
+              _SmallInfoCard(
                 title: 'Billing',
                 value: '$billing',
                 hint: 'pending',
                 color: const Color(0xFF7B61D1),
                 bg: const Color(0xFFF3F7FF),
               ),
-            ),
-          ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 4,
+          child: _SmallActionCard(
+            title: 'Waiting + Scheduled Queue',
+            subtitle: queueNames.isEmpty
+                ? 'No waiting or scheduled patients'
+                : queueNames.join('\n'),
+            actionLabel: 'Check-in',
+            onAction: onCheckin,
+            maxSubtitleLines: 12,
+          ),
         ),
       ],
     );

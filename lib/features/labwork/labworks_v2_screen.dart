@@ -83,9 +83,11 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
             children: [
               _buildHeader(),
               const SizedBox(height: 10),
-              _buildStatStrip(all),
-              const SizedBox(height: 10),
               _buildSearchAndDateFilters(filtered),
+              const SizedBox(height: 10),
+              _buildMonthNavigator(),
+              const SizedBox(height: 10),
+              _buildStatStrip(all),
               const SizedBox(height: 10),
               Expanded(
                 child: filtered.isEmpty
@@ -318,36 +320,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                 ),
               ),
             ),
-          if (_rangeFilter == 'month')
-            SizedBox(
-              width: 360,
-              child: MonthNavigatorBar(
-                selectedMonth: _monthAnchor,
-                onPrevious: () {
-                  setState(() {
-                    _monthAnchor = DateTime(
-                      _monthAnchor.year,
-                      _monthAnchor.month - 1,
-                      1,
-                    );
-                  });
-                },
-                onNext: _monthAnchor.year < DateTime.now().year ||
-                        (_monthAnchor.year == DateTime.now().year &&
-                            _monthAnchor.month < DateTime.now().month)
-                    ? () {
-                        setState(() {
-                          _monthAnchor = DateTime(
-                            _monthAnchor.year,
-                            _monthAnchor.month + 1,
-                            1,
-                          );
-                        });
-                      }
-                    : null,
-                onPick: (value) => setState(() => _monthAnchor = value),
-              ),
-            ),
             ],
           ),
           if (hasActiveFilter) ...[
@@ -404,6 +376,49 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildMonthNavigator() {
+    final canGoNext = _monthAnchor.year < DateTime.now().year ||
+        (_monthAnchor.year == DateTime.now().year &&
+            _monthAnchor.month < DateTime.now().month);
+
+    return Center(
+      child: SizedBox(
+        width: 420,
+        child: MonthNavigatorBar(
+          selectedMonth: _monthAnchor,
+          onPrevious: () {
+            setState(() {
+              _monthAnchor = DateTime(
+                _monthAnchor.year,
+                _monthAnchor.month - 1,
+                1,
+              );
+              _rangeFilter = 'month';
+            });
+          },
+          onNext: canGoNext
+              ? () {
+                  setState(() {
+                    _monthAnchor = DateTime(
+                      _monthAnchor.year,
+                      _monthAnchor.month + 1,
+                      1,
+                    );
+                    _rangeFilter = 'month';
+                  });
+                }
+              : null,
+          onPick: (value) {
+            setState(() {
+              _monthAnchor = value;
+              _rangeFilter = 'month';
+            });
+          },
+        ),
       ),
     );
   }
