@@ -64,7 +64,15 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
             ..sort((a, b) => b.date.compareTo(a.date));
 
           final filtered = _applyFilters(all);
-          final grouped = _groupByDate(filtered);
+            final inLab = filtered
+              .where((l) => !l.deliveredToDoctor)
+              .toList(growable: false);
+            final ready = filtered
+              .where((l) => l.deliveredToDoctor && !l.deliveredToPatient)
+              .toList(growable: false);
+            final delivered = filtered
+              .where((l) => l.deliveredToPatient)
+              .toList(growable: false);
 
           return Column(
             children: [
@@ -78,36 +86,20 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                 _buildFilterSummaryCard(filtered),
               if (_hasActiveFilter()) const SizedBox(height: 10),
               Expanded(
-                child: grouped.isEmpty
+                child: filtered.isEmpty
                     ? _EmptyState(onClear: _clearFilters)
-                    : ListView.builder(
-                        itemCount: grouped.length,
-                        itemBuilder: (context, index) {
-                          final entry = grouped[index];
-                          final section = entry.$1;
-                          final collapsed = _collapsedSection[section] ?? false;
-
-                          return _DateSection(
-                            title: section,
-                            count: entry.$2.length,
-                            collapsible: _isMonthSection(section),
-                            collapsed: collapsed,
-                            onToggle: () {
-                              setState(() {
-                                _collapsedSection[section] = !collapsed;
-                              });
-                            },
-                            items: entry.$2,
-                            onOpen: (item) => openLabworkV2Dialog(context, item),
-                            onHistory: (item) {
-                              final patient = item.patient;
-                              if (patient == null) return;
-                              showPatientHistoryDialogV2(
-                                context: context,
-                                patient: patient,
-                                rows: patient.patientDetails,
-                              );
-                            },
+                    : _LabworkBoard(
+                        inLab: inLab,
+                        ready: ready,
+                        delivered: delivered,
+                        onOpen: (item) => openLabworkV2Dialog(context, item),
+                        onHistory: (item) {
+                          final patient = item.patient;
+                          if (patient == null) return;
+                          showPatientHistoryDialogV2(
+                            context: context,
+                            patient: patient,
+                            rows: patient.patientDetails,
                           );
                         },
                       ),
@@ -585,6 +577,252 @@ class _StatCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LabworkBoard extends StatelessWidget {
+  final List<Labwork> inLab;
+  final List<Labwork> ready;
+  final List<Labwork> delivered;
+  final void Function(Labwork?) onOpen;
+  final void Function(Labwork) onHistory;
+
+  const _LabworkBoard({
+    required this.inLab,
+    required this.ready,
+    required this.delivered,
+    required this.onOpen,
+    required this.onHistory,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 1120;
+
+        final inLabColumn = _LabworkBoardColumn(
+          title: 'In Lab',
+          count: inLab.length,
+          color: const Color(0xFFE4A11B),
+          items: inLab,
+          onOpen: onOpen,
+          onHistory: onHistory,
+        );
+        final readyColumn = _LabworkBoardColumn(
+          title: 'Ready',
+          count: ready.length,
+          color: const Color(0xFF2D7BD8),
+          items: ready,
+          onOpen: onOpen,
+          onHistory: onHistory,
+        );
+        final deliveredColumn = _LabworkBoardColumn(
+          title: 'Delivered',
+          count: delivered.length,
+          color: const Color(0xFF2BA58D),
+          items: delivered,
+          onOpen: onOpen,
+          onHistory: onHistory,
+        );
+
+        if (stacked) {
+          return ListView(
+            children: [
+              inLabColumn,
+              const SizedBox(height: 10),
+              readyColumn,
+              const SizedBox(height: 10),
+              deliveredColumn,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: inLabColumn),
+            const SizedBox(width: 10),
+            Expanded(child: readyColumn),
+            const SizedBox(width: 10),
+            Expanded(child: deliveredColumn),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _LabworkBoardColumn extends StatelessWidget {
+  final String title;
+  final int count;
+  final Color color;
+  final List<Labwork> items;
+  final void Function(Labwork?) onOpen;
+  final void Function(Labwork) onHistory;
+
+  const _LabworkBoardColumn({
+    required this.title,
+    required this.count,
+    required this.color,
+    required this.items,
+    required this.onOpen,
+    required this.onHistory,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD6E2F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(11)),
+            ),
+            child: Text(
+              '$title ($count)',
+              style: TextStyle(
+                color: color,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'No labworks in this state.',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              ),
+            )
+          else
+            ...items.map(
+              (item) => _LabworkBoardCard(
+                item: item,
+                onOpen: onOpen,
+                onHistory: onHistory,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LabworkBoardCard extends StatelessWidget {
+  final Labwork item;
+  final void Function(Labwork?) onOpen;
+  final void Function(Labwork) onHistory;
+
+  const _LabworkBoardCard({
+    required this.item,
+    required this.onOpen,
+    required this.onHistory,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dueColor =
+        item.paid ? const Color(0xFF2A8AD9) : const Color(0xFFD54A4A);
+    final dueLabel = item.paid
+        ? '₹${NumberFormat('#,##0').format(item.price)} Paid'
+        : '₹${NumberFormat('#,##0').format(item.price)} Due';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FBFF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFDCE8F6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.patient?.title.trim().isNotEmpty == true
+                      ? _lwTitleCase(item.patient!.title)
+                      : 'Unknown patient',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF1F2B40),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Text(
+                DateFormat('dd MMM').format(item.date),
+                style: const TextStyle(
+                  color: Color(0xFF5A7397),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            item.typeOfWork.trim().isEmpty ? 'Type: -' : item.typeOfWork,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF4D5C77),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Lab: ${item.lab.trim().isEmpty ? '-' : item.lab}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF6E7E99),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            dueLabel,
+            style: TextStyle(
+              color: dueColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Button(
+                onPressed: item.patient == null ? null : () => onHistory(item),
+                child: const Text('History'),
+              ),
+              const SizedBox(width: 6),
+              FilledButton(
+                onPressed: () => onOpen(item),
+                child: const Text('Open'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

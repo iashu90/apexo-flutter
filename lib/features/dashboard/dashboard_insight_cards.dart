@@ -43,7 +43,7 @@ class DashboardDoctorInsightsCard extends StatelessWidget {
       final resolvedDoctor = _findDoctorById(primaryDoctorId);
       final bucketId = resolvedDoctor?.id ?? '__unknown__:$primaryDoctorId';
       final bucketTitle = resolvedDoctor?.title.trim().isNotEmpty == true
-          ? resolvedDoctor!.title
+          ? _doctorTitleCase(resolvedDoctor!.title)
           : 'Unknown ($primaryDoctorId)';
 
       doctorCounts[bucketId] = (doctorCounts[bucketId] ?? 0) + 1;
@@ -290,6 +290,20 @@ dynamic _findDoctorById(String doctorId) {
   }
 
   return null;
+}
+
+String _doctorTitleCase(String input) {
+  final cleaned = input.trim();
+  if (cleaned.isEmpty) return cleaned;
+  final parts = cleaned.split(RegExp(r'\s+'));
+  return parts
+      .map((word) {
+        if (word.isEmpty) return word;
+        final first = word.substring(0, 1).toUpperCase();
+        final rest = word.length > 1 ? word.substring(1).toLowerCase() : '';
+        return '$first$rest';
+      })
+      .join(' ');
 }
 
 class _ScheduleLine extends StatelessWidget {

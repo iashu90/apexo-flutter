@@ -74,14 +74,15 @@ Future<void> openCheckinAppointmentModal(
   Appointment appointment,
 ) async {
   final screenWidth = MediaQuery.of(context).size.width;
-  final isCheckoutStage =
-      appointment.checkinStage.trim().toLowerCase() == 'checkout';
+  final normalizedStage = appointment.checkinStage.trim().toLowerCase();
+  final isWideStage = normalizedStage == 'checkout' ||
+      normalizedStage == 'with_doctor' ||
+      normalizedStage == 'treatment';
   final popupWidth = screenWidth < 760
       ? screenWidth - 20
-      : isCheckoutStage
+      : isWideStage
           ? (screenWidth * 0.75).clamp(760.0, 1000.0)
           : 540.0;
-  final normalizedStage = appointment.checkinStage.trim().toLowerCase();
   final stageLabel =
       normalizedStage == 'with_doctor' || normalizedStage == 'treatment'
           ? 'Treatment'
@@ -1796,13 +1797,15 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                     ),
                   ),
                 ),
+                const Divider(size: 1),
+                const SizedBox(height: 10),
                 Text(
                   isCheckout
                       ? 'Today\'s Appointment Details'
                       : 'Current Appointment Details',
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
                     color: Color(0xFF183A67),
                   ),
                 ),
@@ -2247,9 +2250,27 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
 
   bool _discountEnabled = false;
   Set<String> _selectedTreatments = {};
+  Set<String> _selectedConsultationTypes = {};
   String? _selectedPostOpParent;
   Set<String> _selectedTeeth = {};
   Map<String, ToothState> _teethStates = {};
+
+  static const List<String> _consultationSubTypes = [
+    'General',
+    'RCT',
+    'Extraction',
+    'Ortho',
+    'Pulpectomy',
+    'Food Lodgment',
+    'Sinusits',
+    'Gum Disease',
+    'Implant',
+    'TMJ',
+    'Crown & Bridge',
+    'Clear Aligner',
+    'Denture Evaluation',
+    'Others',
+  ];
 
   static const Map<String, List<String>> _postOpSuggestions = {
     'Post Tooth Extraction': [
@@ -2369,6 +2390,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         text: a.discount == 0 ? '' : a.discount.toStringAsFixed(0));
     _discountEnabled = a.discount > 0;
     _selectedTreatments = a.selectedTreatments.toSet();
+    _selectedConsultationTypes = a.subTreatments
+      .where((e) => e.trim().isNotEmpty)
+      .toSet();
     _selectedTeeth = a.selectedTeeth.toSet();
     _teethStates = {
       for (final id in _allToothIds) id: ToothState(toothId: id),
@@ -2379,6 +2403,11 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       }
       _teethStates[id]!.surfaces[ToothSurface.occlusal] = TreatmentType.filling;
     }
+  }
+
+  bool _hasConsultationSelected() {
+    return _selectedTreatments
+        .any((t) => t.trim().toLowerCase() == 'consultation');
   }
 
   @override
@@ -2862,11 +2891,62 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         onChanged: (values) {
                           _selectedTreatments = values.toSet();
                           a.selectedTreatments = values;
+                          if (!_hasConsultationSelected()) {
+                            _selectedConsultationTypes.clear();
+                            a.subTreatments = [];
+                          } else {
+                            a.subTreatments = _selectedConsultationTypes
+                                .toList(growable: false);
+                          }
                           appointments.set(a);
                           setState(() {});
                         },
                       ),
                     ),
+                    if (_hasConsultationSelected()) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Consultation Type:',
+                        style: TextStyle(
+                          color: Color(0xFF5A7397),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: _consultationSubTypes
+                            .map(
+                              (type) => _quickChip(
+                                label: type,
+                                selected:
+                                    _selectedConsultationTypes.contains(type),
+                                selectedColor: const Color(0xFFE2EEFf),
+                                selectedTextColor: const Color(0xFF124E95),
+                                normalColor: const Color(0xFFF1F6FD),
+                                normalTextColor: const Color(0xFF355A84),
+                                onTap: () {
+                                  setState(() {
+                                    if (_selectedConsultationTypes
+                                        .contains(type)) {
+                                      _selectedConsultationTypes.remove(type);
+                                    } else {
+                                      _selectedConsultationTypes.add(type);
+                                    }
+                                    a.subTreatments =
+                                        _selectedConsultationTypes.toList(
+                                      growable: false,
+                                    );
+                                    appointments.set(a);
+                                  });
+                                },
+                              ),
+                            )
+                            .toList(growable: false),
+                      ),
+                    ],
                     if (mergedTopTreatments.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       Text(
@@ -2897,6 +2977,15 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                     }
                                     a.selectedTreatments = _selectedTreatments
                                         .toList(growable: false);
+                                    if (!_hasConsultationSelected()) {
+                                      _selectedConsultationTypes.clear();
+                                      a.subTreatments = [];
+                                    } else {
+                                      a.subTreatments =
+                                          _selectedConsultationTypes.toList(
+                                        growable: false,
+                                      );
+                                    }
                                     appointments.set(a);
                                   });
                                 },

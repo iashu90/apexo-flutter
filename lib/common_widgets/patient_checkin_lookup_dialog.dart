@@ -57,7 +57,7 @@ Future<void> showPatientCheckinLookupDialog({
               ],
             ),
             content: SizedBox(
-              width: 520,
+              width: 700,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,

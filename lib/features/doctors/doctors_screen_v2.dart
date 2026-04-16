@@ -168,10 +168,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                 .toList(growable: false);
 
             final activeDoctorIdsToday = <String>{};
-            double todayDoctorPay = 0;
+            double todayConsultationFee = 0;
             for (final appointment in todaysAppointments) {
               activeDoctorIdsToday.addAll(appointment.operatorsIDs);
-              todayDoctorPay += appointment.paidToDoctor;
+              todayConsultationFee += appointment.priceToPayDoctor;
             }
 
             final handledRows = _doctorMetrics(
@@ -271,8 +271,8 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                       color: const Color(0xFF2D7BD8),
                     ),
                     _MetricCard(
-                      title: 'Paid to Doctors Today',
-                      value: 'Rs ${todayDoctorPay.toStringAsFixed(0)}',
+                      title: 'Consultation Fee Today',
+                      value: 'Rs ${todayConsultationFee.toStringAsFixed(0)}',
                       color: const Color(0xFFE09C31),
                     ),
                   ],
@@ -1249,6 +1249,10 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                   0,
                   (sum, a) => sum + a.paid + a.prescriptionPaid,
                 );
+                final totalPatientCost = doctorAppts.fold<double>(
+                  0,
+                  (sum, a) => sum + a.price + a.prescriptionPrice,
+                );
                 final consultToPay = doctorAppts.fold<double>(
                   0,
                   (sum, a) =>
@@ -1304,9 +1308,18 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '₹${earned.toStringAsFixed(0)}',
+                            'Cost ₹${totalPatientCost.toStringAsFixed(0)}',
                             style: const TextStyle(
                               color: Color(0xFF2BA58D),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Earned ₹${earned.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: Color(0xFF1459AD),
                               fontWeight: FontWeight.w700,
                               fontSize: 11,
                             ),
@@ -2013,7 +2026,7 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${row.doneCount}/${row.totalCount}',
+                        '${row.doneCount}/${row.totalCount} • ₹${row.earned.toStringAsFixed(0)}',
                         style: const TextStyle(
                           color: Color(0xFF5B789F),
                           fontWeight: FontWeight.w700,
