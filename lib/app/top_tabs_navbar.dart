@@ -61,8 +61,8 @@ class TopTabsNavBar extends StatelessWidget {
                 child: IconButton(
                   icon: const Icon(
                     CupertinoIcons.bell_fill,
-                    color: Colors.black,
-                    size: 28.0,
+                    color: Colors.white,
+                    size: 24.0,
                   ),
                   onPressed: () => showDailyReminderModal(context),
                 ),
