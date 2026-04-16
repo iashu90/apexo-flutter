@@ -3735,18 +3735,6 @@ class _AllPatientsListCard extends StatelessWidget {
                                           alignment: WrapAlignment.center,
                                           children: [
                                             _HoverActionItem(
-                                              icon: FluentIcons.edit,
-                                              label: 'Edit',
-                                              iconColor:
-                                                  const Color(0xFF8267D6),
-                                              hoverColor:
-                                                  const Color(0xFFF1EDFB),
-                                              hoverBorderColor:
-                                                  const Color(0xFFD8CDF8),
-                                              onTap: () =>
-                                                  onEditPatient(patient),
-                                            ),
-                                            _HoverActionItem(
                                               icon: FluentIcons.history,
                                               label: 'History',
                                               onTap: () =>
