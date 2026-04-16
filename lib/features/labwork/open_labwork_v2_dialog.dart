@@ -77,7 +77,9 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
       constraints: const BoxConstraints(maxWidth: 1140, maxHeight: 760),
       title: Row(
         children: [
-          Text(labworks.get(widget.item.id) == null ? 'New Labwork' : 'Edit Labwork'),
+          Text(labworks.get(widget.item.id) == null
+              ? 'New Labwork'
+              : 'Edit Labwork'),
           const Spacer(),
           IconButton(
             icon: const Icon(FluentIcons.chrome_close, size: 16),
@@ -145,18 +147,24 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                   width: isWide ? 330 : 460,
                   label: '${txt('typeOfWork')}:',
                   child: ComboBox<String>(
-                    value:
-                        widget.item.typeOfWork.isEmpty ? null : widget.item.typeOfWork,
+                    value: widget.item.typeOfWork.isEmpty
+                        ? null
+                        : widget.item.typeOfWork,
                     items: const [
+                      'Zirconia Premium',
                       'Zirconia',
                       'PFM',
+                      'DMLS',
+                      'Full Metal',
+                      'PMMA',
                       'RPD',
                       'Denture',
                       'Implant',
                       'ESSIX',
                       'Other',
                     ]
-                        .map((v) => ComboBoxItem<String>(value: v, child: Text(v)))
+                        .map((v) =>
+                            ComboBoxItem<String>(value: v, child: Text(v)))
                         .toList(growable: false),
                     placeholder: const Text('Select type of work'),
                     onChanged: (v) =>
@@ -189,10 +197,12 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                       '3R1.5',
                       '3R2.5',
                     ]
-                        .map((v) => ComboBoxItem<String>(value: v, child: Text(v)))
+                        .map((v) =>
+                            ComboBoxItem<String>(value: v, child: Text(v)))
                         .toList(growable: false),
                     placeholder: const Text('Select shade'),
-                    onChanged: (v) => setState(() => widget.item.shade = v ?? ''),
+                    onChanged: (v) =>
+                        setState(() => widget.item.shade = v ?? ''),
                   ),
                 ),
               ],
@@ -230,7 +240,8 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                     onChanged: (n) {
                       setState(() {
                         widget.item.noOfUnits = n?.toInt() ?? 0;
-                        widget.item.price = _pricePerUnit * widget.item.noOfUnits;
+                        widget.item.price =
+                            _pricePerUnit * widget.item.noOfUnits;
                       });
                     },
                   ),
@@ -246,7 +257,8 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                     onChanged: (n) {
                       setState(() {
                         _pricePerUnit = n ?? 0;
-                        widget.item.price = _pricePerUnit * widget.item.noOfUnits;
+                        widget.item.price =
+                            _pricePerUnit * widget.item.noOfUnits;
                       });
                     },
                   ),
@@ -263,7 +275,8 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                       setState(() {
                         widget.item.price = n ?? 0;
                         if (widget.item.noOfUnits > 0) {
-                          _pricePerUnit = widget.item.price / widget.item.noOfUnits;
+                          _pricePerUnit =
+                              widget.item.price / widget.item.noOfUnits;
                         }
                       });
                     },
@@ -278,7 +291,8 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                         checked: widget.item.paid,
                         onChanged: (v) =>
                             setState(() => widget.item.paid = v ?? false),
-                        content: Text(widget.item.paid ? txt('paid') : txt('unpaid')),
+                        content: Text(
+                            widget.item.paid ? txt('paid') : txt('unpaid')),
                       ),
                     ],
                   ),
@@ -299,14 +313,14 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
               children: [
                 Checkbox(
                   checked: widget.item.deliveredToDoctor,
-                  onChanged: (v) =>
-                      setState(() => widget.item.deliveredToDoctor = v ?? false),
+                  onChanged: (v) => setState(
+                      () => widget.item.deliveredToDoctor = v ?? false),
                   content: const Text('Ready (Delivered to Doctor)'),
                 ),
                 Checkbox(
                   checked: widget.item.deliveredToPatient,
-                  onChanged: (v) =>
-                      setState(() => widget.item.deliveredToPatient = v ?? false),
+                  onChanged: (v) => setState(
+                      () => widget.item.deliveredToPatient = v ?? false),
                   content: const Text('Delivered (to Patient)'),
                 ),
               ],
