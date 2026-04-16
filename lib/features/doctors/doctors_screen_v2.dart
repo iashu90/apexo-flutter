@@ -167,25 +167,6 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                     !a.date.isBefore(startOfDay) && a.date.isBefore(endOfDay))
                 .toList(growable: false);
 
-            final activeDoctorIdsToday = <String>{};
-            double todayConsultationFee = 0;
-            for (final appointment in todaysAppointments) {
-              activeDoctorIdsToday.addAll(appointment.operatorsIDs);
-              todayConsultationFee += appointment.priceToPayDoctor;
-            }
-
-            final handledRows = _doctorMetrics(
-              doctorsList: allDoctors,
-              scoped: scopedCurrent,
-            );
-            final compareRows = _doctorMetrics(
-              doctorsList: allDoctors,
-              scoped: scopedCompare,
-            );
-            final compareById = {
-              for (final row in compareRows) row.doctor.id: row,
-            };
-
             final doneRows = _doctorDoneMetrics(
               doctorsList: allDoctors,
               scoped: _scopedForRange(
@@ -251,57 +232,11 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _MetricCard(
-                      title: 'Total Doctors',
-                      value: '${allDoctors.length}',
-                      color: const Color(0xFF1D3E67),
-                    ),
-                    _MetricCard(
-                      title: 'Active Today',
-                      value: '${activeDoctorIdsToday.length}',
-                      color: const Color(0xFF2BA58D),
-                    ),
-                    _MetricCard(
-                      title: 'Appointments Today',
-                      value: '${todaysAppointments.length}',
-                      color: const Color(0xFF2D7BD8),
-                    ),
-                    _MetricCard(
-                      title: 'Consultation Fee Today',
-                      value: 'Rs ${todayConsultationFee.toStringAsFixed(0)}',
-                      color: const Color(0xFFE09C31),
-                    ),
-                  ],
+                _DoctorTodayDetailCard(
+                  doctors: allDoctors,
+                  todaysAppointments: todaysAppointments,
+                  selectedDate: _selectedDate,
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 380),
-                      child: _DoctorDirectoryCard(
-                        doctors: allDoctors,
-                        onEdit: (doctor) => _openDoctorEntryModalV2(
-                          context,
-                          existingDoctor: doctor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Flexible(
-                      child: _DoctorTodayDetailCard(
-                        doctors: allDoctors,
-                        todaysAppointments: todaysAppointments,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _DoctorTodayEarningsCompactCard(rows: doneRows),
                 const SizedBox(height: 10),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -1168,10 +1103,12 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
 class _DoctorTodayDetailCard extends StatefulWidget {
   final List<Doctor> doctors;
   final List<Appointment> todaysAppointments;
+  final DateTime selectedDate;
 
   const _DoctorTodayDetailCard({
     required this.doctors,
     required this.todaysAppointments,
+    required this.selectedDate,
   });
 
   @override
@@ -1199,10 +1136,16 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     final doctorEntries = rowsByDoctor.entries.toList(growable: false)
       ..sort((a, b) => a.key.title.toLowerCase().compareTo(b.key.title.toLowerCase()));
 
+    final totalPatients = widget.todaysAppointments.length;
+    final hospitalGained = widget.todaysAppointments.fold<double>(
+      0,
+      (sum, a) => sum + a.paid + a.prescriptionPaid,
+    );
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFD7E3F0)),
       ),
       child: Padding(
@@ -1212,30 +1155,58 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           children: [
             Row(
               children: [
+                const Icon(FluentIcons.health, size: 16, color: Color(0xFF1F4F88)),
+                const SizedBox(width: 8),
                 const Text(
-                  'Doctor Activity Today',
+                  'Doctor Activity & Metrics - Today',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF183A67),
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  '${doctorEntries.length} doctors',
-                  style: const TextStyle(
-                    color: Color(0xFF6D84A8),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                Button(
+                  onPressed: () {},
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(FluentIcons.download, size: 12),
+                      SizedBox(width: 6),
+                      Text('Export'),
+                    ],
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              DateFormat('EEEE, dd MMMM yyyy').format(widget.selectedDate),
+              style: const TextStyle(
+                color: Color(0xFF6D84A8),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                _topMetric('Total Patients', '$totalPatients', const Color(0xFF2D7BD8)),
+                _topMetric(
+                  'Hospital Gained',
+                  '₹${hospitalGained.toStringAsFixed(0)}',
+                  const Color(0xFF2BA58D),
+                ),
+                _topMetric('Active Doctors', '${doctorEntries.length}', const Color(0xFFE09C31)),
               ],
             ),
             if (doctorEntries.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 12),
                 child: Text(
-                  'No appointments found for doctors today.',
+                  'No appointments found for this date.',
                   style: TextStyle(color: Color(0xFF8AAAC6)),
                 ),
               )
@@ -1249,26 +1220,16 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                   0,
                   (sum, a) => sum + a.paid + a.prescriptionPaid,
                 );
-                final totalPatientCost = doctorAppts.fold<double>(
+                final hospital = doctorAppts.fold<double>(
                   0,
                   (sum, a) => sum + a.price + a.prescriptionPrice,
-                );
-                final consultToPay = doctorAppts.fold<double>(
-                  0,
-                  (sum, a) =>
-                      sum + (a.consultantDoctorID == doctor.id ? a.priceToPayDoctor : 0),
-                );
-                final consultPaid = doctorAppts.fold<double>(
-                  0,
-                  (sum, a) =>
-                      sum + (a.consultantDoctorID == doctor.id ? a.paidToDoctor : 0),
                 );
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF7FBFF),
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFFF8FBFF),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: const Color(0xFFDCE8F6)),
                   ),
                   child: Expander(
@@ -1283,7 +1244,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                       });
                     },
                     header: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
                         children: [
                           Expanded(
@@ -1292,133 +1253,210 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                   ? 'Unnamed doctor'
                                   : doctor.title,
                               style: const TextStyle(
-                                color: Color(0xFF1459AD),
+                                color: Color(0xFF143C6B),
                                 fontWeight: FontWeight.w700,
-                                fontSize: 13,
+                                fontSize: 21,
                               ),
                             ),
                           ),
-                          Text(
-                            '${doctorAppts.length} pts',
-                            style: const TextStyle(
-                              color: Color(0xFF5A7397),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                            ),
-                          ),
+                          _topMetric('Patients Seen', '${doctorAppts.length}', const Color(0xFF2D7BD8)),
                           const SizedBox(width: 8),
-                          Text(
-                            'Cost ₹${totalPatientCost.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              color: Color(0xFF2BA58D),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                            ),
-                          ),
+                          _topMetric('Earned', '₹${earned.toStringAsFixed(0)}', const Color(0xFF1F4F88)),
                           const SizedBox(width: 8),
-                          Text(
-                            'Earned ₹${earned.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              color: Color(0xFF1459AD),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                            ),
-                          ),
+                          _topMetric('Hospital Gained', '₹${hospital.toStringAsFixed(0)}', const Color(0xFF2BA58D)),
                         ],
                       ),
                     ),
-                    content: Column(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF5FF),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'Consultation to pay: ₹${consultToPay.toStringAsFixed(0)} · Paid: ₹${consultPaid.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              color: Color(0xFF355279),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                    content: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minWidth: 960),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF5FF),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Row(
+                                children: [
+                                  SizedBox(width: 210, child: Text('Patient', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 140, child: Text('Time', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 200, child: Text('Treatment', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 110, child: Text('Tooth/Area', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 110, child: Text('Stage', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 90, child: Text('Status', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 110),
+                                ],
+                              ),
                             ),
-                          ),
-                        ),
-                        ...doctorAppts.map((appt) {
-                          final treatment = appt.selectedTreatments
-                              .where((t) => t.trim().isNotEmpty)
-                              .join(', ');
-                          final teeth = appt.selectedTeeth
-                              .where((t) => t.trim().isNotEmpty)
-                              .join(', ');
-                          final stage = appt.checkinStage.trim().isEmpty
-                              ? '-'
-                              : appt.checkinStage;
-                          final collected = appt.paid + appt.prescriptionPaid;
-                          return Container(
-                            width: double.infinity,
-                            margin: const EdgeInsets.only(bottom: 6),
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: const Color(0xFFE2ECF8)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                            const SizedBox(height: 6),
+                            ...doctorAppts.map((appointment) {
+                              final end = appointment.date.add(const Duration(minutes: 40));
+                              final treatment = appointment.selectedTreatments
+                                  .where((t) => t.trim().isNotEmpty)
+                                  .join(', ');
+                              final tooth = appointment.selectedTeeth.isEmpty
+                                  ? '-'
+                                  : appointment.selectedTeeth.first;
+                              final stage = appointment.checkinStage.trim().isEmpty
+                                  ? (appointment.isDone ? 'Completed' : '-')
+                                  : appointment.checkinStage;
+                              final paid = appointment.paid + appointment.prescriptionPaid;
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFE2ECF8)),
+                                ),
+                                child: Row(
                                   children: [
-                                    Expanded(
+                                    SizedBox(
+                                      width: 210,
                                       child: Text(
-                                        appt.title.trim().isEmpty
+                                        appointment.title.trim().isEmpty
                                             ? 'Unnamed patient'
-                                            : appt.title,
+                                            : appointment.title,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Color(0xFF1F446E),
                                           fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 140,
+                                      child: Text(
+                                        '${DateFormat('hh:mm a').format(appointment.date)} - ${DateFormat('hh:mm a').format(end)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF4D6488),
+                                          fontWeight: FontWeight.w600,
                                           fontSize: 12,
                                         ),
                                       ),
                                     ),
-                                    Text(
-                                      '₹${collected.toStringAsFixed(0)}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF2BA58D),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
+                                    SizedBox(
+                                      width: 200,
+                                      child: Text(
+                                        treatment.isEmpty ? '-' : treatment,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFF34567D),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 110,
+                                      child: Text(
+                                        tooth,
+                                        style: const TextStyle(
+                                          color: Color(0xFF34567D),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 110,
+                                      child: Text(
+                                        stage,
+                                        style: const TextStyle(
+                                          color: Color(0xFF2BA58D),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 90,
+                                      child: _statusPill(
+                                        paid > 0 ? 'Paid' : 'Free',
+                                        paid > 0,
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 110,
+                                      child: Button(
+                                        onPressed: () {},
+                                        child: Text(
+                                          appointment.isDone
+                                              ? 'View Details'
+                                              : 'Open',
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  'Treatment: ${treatment.isEmpty ? '-' : treatment}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF5A7397),
-                                    fontSize: 11,
-                                  ),
-                                ),
-                                Text(
-                                  'Teeth: ${teeth.isEmpty ? '-' : teeth} · Stage: $stage',
-                                  style: const TextStyle(
-                                    color: Color(0xFF7C93B1),
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );
               }),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _topMetric(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F7FE),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDCE8F6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 21,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF5D789D),
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusPill(String text, bool isPaid) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isPaid ? const Color(0xFFE7F6EC) : const Color(0xFFEFF2F6),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: isPaid ? const Color(0xFF1E8B66) : const Color(0xFF5E738F),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

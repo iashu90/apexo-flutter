@@ -126,7 +126,7 @@ class ReportV2Screen extends StatelessWidget {
   }
 }
 
-enum _RangeFilter { today, week, month, sixMonths, ytd, year, all }
+enum _RangeFilter { today, week,lastMonth, month, sixMonths, ytd, year, all }
 
 extension _RangeFilterLabel on _RangeFilter {
   String get label {
@@ -137,6 +137,8 @@ extension _RangeFilterLabel on _RangeFilter {
         return 'Week';
       case _RangeFilter.month:
         return 'Monthly';
+      case _RangeFilter.lastMonth:
+        return 'Last Month';
       case _RangeFilter.sixMonths:
         return '6M';
       case _RangeFilter.ytd:
@@ -174,6 +176,11 @@ List<Appointment> _rangeRows(
       final anchor = monthAnchor ?? today;
       start = DateTime(anchor.year, anchor.month, 1);
       endExclusive = DateTime(anchor.year, anchor.month + 1, 1);
+      break;
+    case _RangeFilter.lastMonth:
+      final prev = DateTime(today.year, today.month - 1, 1);
+      start = prev;
+      endExclusive = DateTime(prev.year, prev.month + 1, 1);
       break;
     case _RangeFilter.sixMonths:
       start = DateTime(today.year, today.month - 5, 1);
