@@ -292,6 +292,8 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                 ComboBoxItem<String>(value: 'week', child: Text('This Week')),
                 ComboBoxItem<String>(value: 'month', child: Text('This Month')),
                 ComboBoxItem<String>(
+                    value: 'last_month', child: Text('Last Month')),
+                ComboBoxItem<String>(
                     value: 'custom', child: Text('Custom Date')),
               ],
               onChanged: (v) async {
@@ -730,6 +732,10 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
     } else if (_rangeFilter == 'month') {
       from = DateTime(today.year, today.month, 1);
       to = DateTime(today.year, today.month + 1, 0);
+    } else if (_rangeFilter == 'last_month') {
+      final prev = DateTime(today.year, today.month - 1, 1);
+      from = prev;
+      to = DateTime(prev.year, prev.month + 1, 0);
     } else if (_rangeFilter == 'custom') {
       from = _fromDate;
       to = _toDate;

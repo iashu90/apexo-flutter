@@ -1,10 +1,9 @@
 import 'package:apexo/common_widgets/date_time_picker.dart';
-import 'package:apexo/common_widgets/operators_picker.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
-import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -29,49 +28,70 @@ class _LabworkV2Dialog extends StatefulWidget {
 
 class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
   late final TextEditingController _notesCtrl;
-  late final TextEditingController _labCtrl;
-  final FocusNode _labFocusNode = FocusNode();
   Set<String> _selectedTeeth = {};
   double _pricePerUnit = 0;
   bool _saving = false;
+  String _deliveryState = 'in_lab';
 
   @override
   void initState() {
     super.initState();
     _notesCtrl = TextEditingController(text: widget.item.note);
-    _labCtrl = TextEditingController(text: widget.item.lab);
     _selectedTeeth = Set<String>.from(widget.item.selectedTeeth);
     if (widget.item.noOfUnits > 0) {
       _pricePerUnit = widget.item.price / widget.item.noOfUnits;
     }
+    _deliveryState = widget.item.deliveredToPatient
+        ? 'delivery'
+        : widget.item.deliveredToDoctor
+            ? 'ready'
+            : 'in_lab';
   }
 
   @override
   void dispose() {
     _notesCtrl.dispose();
-    _labCtrl.dispose();
-    _labFocusNode.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     setState(() => _saving = true);
     widget.item.note = _notesCtrl.text.trim();
-    // The TagInputWidget clears the controller after a selection, so we only
-    // override widget.item.lab from the controller when it still has text
-    // (free-typed value). When a suggestion is picked, widget.item.lab is
-    // already updated via onChanged.
-    final typedLab = _labCtrl.text.trim();
-    if (typedLab.isNotEmpty) widget.item.lab = typedLab;
     widget.item.selectedTeeth = _selectedTeeth.toList();
     labworks.set(widget.item);
     if (mounted) Navigator.pop(context);
+  }
+
+  void _setDeliveryState(String state) {
+    setState(() {
+      _deliveryState = state;
+      if (state == 'in_lab') {
+        widget.item.deliveredToDoctor = false;
+        widget.item.deliveredToPatient = false;
+      } else if (state == 'ready') {
+        widget.item.deliveredToDoctor = true;
+        widget.item.deliveredToPatient = false;
+      } else {
+        widget.item.deliveredToDoctor = true;
+        widget.item.deliveredToPatient = true;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width > 1150;
+    final doctorsList = doctors.present.values.toList(growable: false)
+      ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    final selectedDoctorId =
+        widget.item.operatorsIDs.isEmpty ? null : widget.item.operatorsIDs.first;
+
+    final labOptions = <String>{
+      ...labworks.predefinedLabs,
+      if (widget.item.lab.trim().isNotEmpty) widget.item.lab.trim(),
+    }.toList(growable: false)
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     return ContentDialog(
       constraints: const BoxConstraints(maxWidth: 1140, maxHeight: 760),
@@ -115,9 +135,28 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                 _fieldBox(
                   width: isWide ? 330 : 460,
                   label: '${txt('doctors')}:',
-                  child: OperatorsPicker(
-                    value: widget.item.operatorsIDs,
-                    onChanged: (ids) => widget.item.operatorsIDs = ids,
+                  child: ComboBox<String>(
+                    isExpanded: true,
+                    value: selectedDoctorId,
+                    items: doctorsList
+                        .map(
+                          (doctor) => ComboBoxItem<String>(
+                            value: doctor.id,
+                            child: Text(
+                              doctor.title.trim().isEmpty
+                                  ? 'Unnamed doctor'
+                                  : doctor.title,
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                    placeholder: const Text('Select doctor'),
+                    onChanged: (id) {
+                      setState(() {
+                        widget.item.operatorsIDs =
+                            id == null ? <String>[] : <String>[id];
+                      });
+                    },
                   ),
                 ),
               ],
@@ -130,15 +169,21 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                 _fieldBox(
                   width: isWide ? 330 : 460,
                   label: '${txt('laboratory')}:',
-                  child: LaboratoryPicker(
-                    value: widget.item.lab,
-                    controller: _labCtrl,
-                    focusNode: _labFocusNode,
+                  child: ComboBox<String>(
+                    isExpanded: true,
+                    value: widget.item.lab.trim().isEmpty ? null : widget.item.lab,
+                    items: labOptions
+                        .map(
+                          (lab) => ComboBoxItem<String>(
+                            value: lab,
+                            child: Text(lab),
+                          ),
+                        )
+                        .toList(growable: false),
+                    placeholder: const Text('Select laboratory'),
                     onChanged: (lab) {
-                      if (lab == null) return;
                       setState(() {
-                        _labCtrl.text = lab;
-                        widget.item.lab = lab;
+                        widget.item.lab = lab ?? '';
                       });
                     },
                   ),
@@ -285,14 +330,19 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                 _fieldBox(
                   width: isWide ? 330 : 460,
                   label: 'Payment Status:',
-                  child: Row(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Checkbox(
-                        checked: widget.item.paid,
-                        onChanged: (v) =>
-                            setState(() => widget.item.paid = v ?? false),
-                        content: Text(
-                            widget.item.paid ? txt('paid') : txt('unpaid')),
+                      _toggleChoice(
+                        label: 'UNPAID',
+                        selected: !widget.item.paid,
+                        onTap: () => setState(() => widget.item.paid = false),
+                      ),
+                      _toggleChoice(
+                        label: 'PAID',
+                        selected: widget.item.paid,
+                        onTap: () => setState(() => widget.item.paid = true),
                       ),
                     ],
                   ),
@@ -307,23 +357,29 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
               maxLines: 3,
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 18,
-              runSpacing: 8,
-              children: [
-                Checkbox(
-                  checked: widget.item.deliveredToDoctor,
-                  onChanged: (v) => setState(
-                      () => widget.item.deliveredToDoctor = v ?? false),
-                  content: const Text('Ready (Delivered to Doctor)'),
-                ),
-                Checkbox(
-                  checked: widget.item.deliveredToPatient,
-                  onChanged: (v) => setState(
-                      () => widget.item.deliveredToPatient = v ?? false),
-                  content: const Text('Delivered (to Patient)'),
-                ),
-              ],
+            InfoLabel(
+              label: 'Labwork Status:',
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _toggleChoice(
+                    label: 'In Lab',
+                    selected: _deliveryState == 'in_lab',
+                    onTap: () => _setDeliveryState('in_lab'),
+                  ),
+                  _toggleChoice(
+                    label: 'Ready',
+                    selected: _deliveryState == 'ready',
+                    onTap: () => _setDeliveryState('ready'),
+                  ),
+                  _toggleChoice(
+                    label: 'Delivery',
+                    selected: _deliveryState == 'delivery',
+                    onTap: () => _setDeliveryState('delivery'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -354,6 +410,35 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
       child: InfoLabel(
         label: label,
         child: child,
+      ),
+    );
+  }
+
+  Widget _toggleChoice({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color:
+                selected ? const Color(0xFF2D7BD8) : const Color(0xFFD6E2F0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : const Color(0xFF355279),
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
       ),
     );
   }

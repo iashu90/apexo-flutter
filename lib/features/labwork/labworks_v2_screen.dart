@@ -32,9 +32,12 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   String _paymentFilter = 'all';
   String _rangeFilter = 'all';
   String _labFilter = 'all';
+  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _fromDate;
   DateTime? _toDate;
-  final Map<String, bool> _collapsedSection = {};
+  bool _inLabCollapsed = false;
+  bool _readyCollapsed = false;
+  bool _deliveredCollapsed = false;
 
   @override
   void initState() {
@@ -92,6 +95,16 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                         inLab: inLab,
                         ready: ready,
                         delivered: delivered,
+                        inLabCollapsed: _inLabCollapsed,
+                        readyCollapsed: _readyCollapsed,
+                        deliveredCollapsed: _deliveredCollapsed,
+                        onToggleInLab: () =>
+                            setState(() => _inLabCollapsed = !_inLabCollapsed),
+                        onToggleReady: () =>
+                            setState(() => _readyCollapsed = !_readyCollapsed),
+                        onToggleDelivered: () => setState(
+                          () => _deliveredCollapsed = !_deliveredCollapsed,
+                        ),
                         onOpen: (item) => openLabworkV2Dialog(context, item),
                         onHistory: (item) {
                           final patient = item.patient;
@@ -254,6 +267,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               });
             },
           ),
+          if (_rangeFilter == 'month') _buildMonthSelector(),
           _dropFilter(
             width: 130,
             value: _paymentFilter,
@@ -309,55 +323,126 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     final dues = filtered.where((l) => !l.paid).toList(growable: false);
     final paymentDue = dues.fold<double>(0, (sum, l) => sum + l.price);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDF4F4),
+        color: const Color(0xFFF7FBFF),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFEFD0D0)),
+        border: Border.all(color: const Color(0xFFD6E2F0)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(FluentIcons.filter, size: 14, color: Color(0xFF9B3D3D)),
+          const Icon(FluentIcons.filter, size: 14, color: Color(0xFF2D4A70)),
           const SizedBox(width: 8),
-          Text(
-            '${filtered.length} result${filtered.length == 1 ? '' : 's'} match current filters',
-            style: const TextStyle(
-              color: Color(0xFF7A3535),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
-          if (dues.isNotEmpty) ...[
-            const SizedBox(width: 16),
-            Container(
-              width: 1,
-              height: 16,
-              color: const Color(0xFFD6A0A0),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              '₹${NumberFormat('#,##0').format(paymentDue)} due',
+          Expanded(
+            child: Text(
+              '${filtered.length} result${filtered.length == 1 ? '' : 's'} match current filters',
               style: const TextStyle(
-                color: Color(0xFFD6455D),
+                color: Color(0xFF36557C),
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              '(${dues.length} item${dues.length == 1 ? '' : 's'})',
-              style: const TextStyle(
-                color: Color(0xFF9B5A5A),
-                fontSize: 12,
-              ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: dues.isEmpty
+                  ? const Color(0xFFEAF2FF)
+                  : const Color(0xFFFDECEC),
+              borderRadius: BorderRadius.circular(8),
             ),
-          ],
-          const Spacer(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '₹${NumberFormat('#,##0').format(paymentDue)} DUE',
+                  style: TextStyle(
+                    color: dues.isEmpty
+                        ? const Color(0xFF1D3E67)
+                        : const Color(0xFFD6455D),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+                Text(
+                  '${dues.length} due item${dues.length == 1 ? '' : 's'}',
+                  style: const TextStyle(
+                    color: Color(0xFF5E7396),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
           HyperlinkButton(
             onPressed: _clearFilters,
             child: const Text(
               'Clear filters',
               style: TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF4FB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD6E2F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: IconButton(
+              icon: const Icon(FluentIcons.chevron_left, size: 10),
+              onPressed: () {
+                setState(() {
+                  _monthAnchor = DateTime(
+                    _monthAnchor.year,
+                    _monthAnchor.month - 1,
+                    1,
+                  );
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            DateFormat('MMMM yyyy').format(_monthAnchor),
+            style: const TextStyle(
+              color: Color(0xFF355279),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: IconButton(
+              icon: const Icon(FluentIcons.chevron_right, size: 10),
+              onPressed: _monthAnchor.year < DateTime.now().year ||
+                      (_monthAnchor.year == DateTime.now().year &&
+                          _monthAnchor.month < DateTime.now().month)
+                  ? () {
+                      setState(() {
+                        _monthAnchor = DateTime(
+                          _monthAnchor.year,
+                          _monthAnchor.month + 1,
+                          1,
+                        );
+                      });
+                    }
+                  : null,
             ),
           ),
         ],
@@ -420,8 +505,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       from = start;
       to = start.add(const Duration(days: 6));
     } else if (_rangeFilter == 'month') {
-      from = DateTime(today.year, today.month, 1);
-      to = DateTime(today.year, today.month + 1, 0);
+      from = DateTime(_monthAnchor.year, _monthAnchor.month, 1);
+      to = DateTime(_monthAnchor.year, _monthAnchor.month + 1, 0);
     } else if (_rangeFilter == 'custom') {
       from = _fromDate;
       to = _toDate;
@@ -500,6 +585,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       _paymentFilter = 'all';
       _rangeFilter = 'all';
       _labFilter = 'all';
+      _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
       _fromDate = null;
       _toDate = null;
     });
@@ -586,6 +672,12 @@ class _LabworkBoard extends StatelessWidget {
   final List<Labwork> inLab;
   final List<Labwork> ready;
   final List<Labwork> delivered;
+  final bool inLabCollapsed;
+  final bool readyCollapsed;
+  final bool deliveredCollapsed;
+  final VoidCallback onToggleInLab;
+  final VoidCallback onToggleReady;
+  final VoidCallback onToggleDelivered;
   final void Function(Labwork?) onOpen;
   final void Function(Labwork) onHistory;
 
@@ -593,6 +685,12 @@ class _LabworkBoard extends StatelessWidget {
     required this.inLab,
     required this.ready,
     required this.delivered,
+    required this.inLabCollapsed,
+    required this.readyCollapsed,
+    required this.deliveredCollapsed,
+    required this.onToggleInLab,
+    required this.onToggleReady,
+    required this.onToggleDelivered,
     required this.onOpen,
     required this.onHistory,
   });
@@ -608,6 +706,8 @@ class _LabworkBoard extends StatelessWidget {
           count: inLab.length,
           color: const Color(0xFFE4A11B),
           items: inLab,
+          collapsed: inLabCollapsed,
+          onToggle: onToggleInLab,
           onOpen: onOpen,
           onHistory: onHistory,
         );
@@ -616,6 +716,8 @@ class _LabworkBoard extends StatelessWidget {
           count: ready.length,
           color: const Color(0xFF2D7BD8),
           items: ready,
+          collapsed: readyCollapsed,
+          onToggle: onToggleReady,
           onOpen: onOpen,
           onHistory: onHistory,
         );
@@ -624,6 +726,8 @@ class _LabworkBoard extends StatelessWidget {
           count: delivered.length,
           color: const Color(0xFF2BA58D),
           items: delivered,
+          collapsed: deliveredCollapsed,
+          onToggle: onToggleDelivered,
           onOpen: onOpen,
           onHistory: onHistory,
         );
@@ -643,11 +747,47 @@ class _LabworkBoard extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: inLabColumn),
+            Expanded(
+              child: _LabworkBoardColumn(
+                title: 'In Lab',
+                count: inLab.length,
+                color: const Color(0xFFE4A11B),
+                items: inLab,
+                collapsed: inLabCollapsed,
+                onToggle: onToggleInLab,
+                useInnerScroll: true,
+                onOpen: onOpen,
+                onHistory: onHistory,
+              ),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: readyColumn),
+            Expanded(
+              child: _LabworkBoardColumn(
+                title: 'Ready',
+                count: ready.length,
+                color: const Color(0xFF2D7BD8),
+                items: ready,
+                collapsed: readyCollapsed,
+                onToggle: onToggleReady,
+                useInnerScroll: true,
+                onOpen: onOpen,
+                onHistory: onHistory,
+              ),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: deliveredColumn),
+            Expanded(
+              child: _LabworkBoardColumn(
+                title: 'Delivered',
+                count: delivered.length,
+                color: const Color(0xFF2BA58D),
+                items: delivered,
+                collapsed: deliveredCollapsed,
+                onToggle: onToggleDelivered,
+                useInnerScroll: true,
+                onOpen: onOpen,
+                onHistory: onHistory,
+              ),
+            ),
           ],
         );
       },
@@ -660,6 +800,9 @@ class _LabworkBoardColumn extends StatelessWidget {
   final int count;
   final Color color;
   final List<Labwork> items;
+  final bool collapsed;
+  final VoidCallback onToggle;
+  final bool useInnerScroll;
   final void Function(Labwork?) onOpen;
   final void Function(Labwork) onHistory;
 
@@ -668,6 +811,9 @@ class _LabworkBoardColumn extends StatelessWidget {
     required this.count,
     required this.color,
     required this.items,
+    required this.collapsed,
+    required this.onToggle,
+    this.useInnerScroll = false,
     required this.onOpen,
     required this.onHistory,
   });
@@ -690,16 +836,40 @@ class _LabworkBoardColumn extends StatelessWidget {
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(11)),
             ),
-            child: Text(
-              '$title ($count)',
-              style: TextStyle(
-                color: color,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '$title ($count)',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    collapsed
+                        ? FluentIcons.chevron_right
+                        : FluentIcons.chevron_down,
+                    size: 12,
+                    color: color,
+                  ),
+                  onPressed: onToggle,
+                ),
+              ],
             ),
           ),
-          if (items.isEmpty)
+          if (collapsed)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'Collapsed',
+                style: TextStyle(color: Color(0xFF6D84A8)),
+              ),
+            )
+          else if (items.isEmpty)
             const Padding(
               padding: EdgeInsets.all(12),
               child: Text(
@@ -707,9 +877,24 @@ class _LabworkBoardColumn extends StatelessWidget {
                 style: TextStyle(color: Color(0xFF6D84A8)),
               ),
             )
+          else if (useInnerScroll)
+            Expanded(
+              child: Scrollbar(
+                child: ListView.builder(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) => _LabworkRow(
+                    item: items[index],
+                    onOpen: onOpen,
+                    onHistory: onHistory,
+                  ),
+                ),
+              ),
+            )
           else
             ...items.map(
-              (item) => _LabworkBoardCard(
+              (item) => _LabworkRow(
                 item: item,
                 onOpen: onOpen,
                 onHistory: onHistory,
@@ -1005,32 +1190,49 @@ class _LabworkRow extends StatelessWidget {
               ),
               if (hasDueLabel)
                 Container(
-                  constraints: const BoxConstraints(minWidth: 108),
+                  constraints: const BoxConstraints(minWidth: 148),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: dueBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    item.paid
-                        ? '₹${NumberFormat('#,##0').format(item.price)} Paid'
-                        : '₹${NumberFormat('#,##0').format(item.price)} Due',
-                    style: TextStyle(
-                      color: dueColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '₹${NumberFormat('#,##0').format(item.price)}',
+                        style: TextStyle(
+                          color: dueColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        item.paid ? 'PAID' : 'DUE',
+                        style: TextStyle(
+                          color: dueColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              const SizedBox(width: 4),
-              IconButton(
-                icon: const Icon(FluentIcons.history, size: 15),
-                onPressed: item.patient == null ? null : () => onHistory(item),
-              ),
-              IconButton(
-                icon: const Icon(FluentIcons.edit, size: 15),
+              const SizedBox(width: 6),
+              if (item.patient != null)
+                IconButton(
+                  icon: const Icon(FluentIcons.history, size: 15),
+                  onPressed: () => onHistory(item),
+                ),
+              FilledButton(
+                style: ButtonStyle(
+                  padding: WidgetStateProperty.all(
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                ),
                 onPressed: () => onOpen(item),
+                child: const Text('Open'),
               ),
             ],
           );
