@@ -1,4 +1,5 @@
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -58,44 +59,6 @@ Widget _buildSelectableHistoryChips({
 Future<Patient?> openAddPatientPopup({
   required BuildContext context,
   String initialInput = '',
-  List<String> allergyHistorySuggestions = const <String>[
-    'Antibiotics (Penicillin)',
-    'Latex Allergy',
-    'Local Anesthetics',
-  ],
-  List<String> medicalHistorySuggestions = const <String>[
-    'Hypertension',
-    'Diabetes',
-    'Thyroid Disorder',
-    'Heart Attack',
-    'Stroke',
-    'Artificial Heart Valves',
-    'Asthma',
-    'Hepatitis (B or C)',
-    'HIV',
-    'Epilepsy',
-    'Bleeding Disorders',
-    'Liver Disease',
-    'Corticosteroid Therapy',
-    'Any previous surgeries',
-    'Any previous hospitalizations',
-    'Other'
-  ],
-  List<String> drugHistorySuggestions = const <String>[
-    'Blood Thinners (Anticoagulants)'
-  ],
-  List<String> maternalHistorySuggestions = const <String>[
-    'Pregnancy',
-    'Gestational Diabetes',
-    'Lactating Mother'
-  ],
-  List<String> habitsSuggestions = const <String>[
-    'Smoking',
-    'Alcohol Consumption',
-    'Drug Use',
-    'Tobacco Use',
-    'Other'
-  ],
 }) async {
   final seed = initialInput.trim();
   final looksLikePhone = RegExp(r'^[+0-9\s()-]+$').hasMatch(seed);
@@ -263,7 +226,7 @@ Future<Patient?> openAddPatientPopup({
                   child: SizedBox.shrink(),
                 ),
                 _buildSelectableHistoryChips(
-                  options: medicalHistorySuggestions,
+                  options: patientMedicalHistorySuggestions,
                   selected: selectedMedicalHistory,
                   onToggle: (item) {
                     setStateDialog(() {
@@ -304,7 +267,7 @@ Future<Patient?> openAddPatientPopup({
                   child: SizedBox.shrink(),
                 ),
                 _buildSelectableHistoryChips(
-                  options: drugHistorySuggestions,
+                  options: patientDrugHistorySuggestions,
                   selected: selectedDrugHistory,
                   onToggle: (item) {
                     setStateDialog(() {
@@ -322,7 +285,7 @@ Future<Patient?> openAddPatientPopup({
                   child: SizedBox.shrink(),
                 ),
                 _buildSelectableHistoryChips(
-                  options: maternalHistorySuggestions,
+                  options: patientMaternalHistorySuggestions,
                   selected: selectedMaternalHistory,
                   onToggle: (item) {
                     setStateDialog(() {
@@ -340,7 +303,7 @@ Future<Patient?> openAddPatientPopup({
                   child: SizedBox.shrink(),
                 ),
                 _buildSelectableHistoryChips(
-                  options: habitsSuggestions,
+                  options: patientHabitsSuggestions,
                   selected: selectedHabitsHistory,
                   onToggle: (item) {
                     setStateDialog(() {

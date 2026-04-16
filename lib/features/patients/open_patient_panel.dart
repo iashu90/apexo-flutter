@@ -15,6 +15,7 @@ import 'package:apexo/common_widgets/qrlink.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/widget_keys.dart';
@@ -405,44 +406,6 @@ class _PatientDetails extends StatefulWidget {
 }
 
 class _PatientDetailsState extends State<_PatientDetails> {
-  static const List<String> _medicalHistorySuggestions = [
-    'Antibiotics (Penicillin)',
-    'Latex Allergy',
-    'Local Anesthetics',
-    'Hypertension (High BP)',
-    'Heart Attack / Stroke',
-    'Artificial Heart Valves',
-    'Blood Thinners (Anticoagulants)',
-    'Diabetes (HbA1c levels)',
-    'GLP-1 Agonists (Ozempic/Wegovy)',
-    'Osteoporosis (Bisphosphonates)',
-    'Joint Replacement',
-    'Asthma',
-    'Sleep Apnea / Snoring',
-    'Hepatitis (B or C)',
-    'HIV / AIDS',
-    'Epilepsy / Seizures',
-    'Anxiety / Dental Phobia',
-    'Tobacco / Vaping',
-    'Alcohol Consumption',
-    'Pregnancy',
-  ];
-  static const List<String> _drugHistorySuggestions = [
-    'Blood Thinners (Anticoagulants)',
-  ];
-  static const List<String> _maternalHistorySuggestions = [
-    'Pregnancy',
-    'Gestational Diabetes',
-    'Lactating Mother',
-  ];
-  static const List<String> _habitsSuggestions = [
-    'Smoking',
-    'Alcohol Consumption',
-    'Drug Use',
-    'Tobacco Use',
-    'Other',
-  ];
-
   bool showSuccessInfoBar = false;
 
   bool get _isNameValid => widget.patient.title.trim().isNotEmpty;
@@ -625,7 +588,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
           child: TagInputWidget(
             key: WK.fieldPatientTags,
             suggestions: {
-              ..._medicalHistorySuggestions,
+              ...patientMedicalHistorySuggestions,
               ...patients.allTags,
             }
                 .map((t) => TagInputItem(value: t, label: t))
@@ -646,7 +609,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
           label: 'Drug History:',
           isHeader: true,
           child: TagInputWidget(
-            suggestions: _drugHistorySuggestions
+            suggestions: patientDrugHistorySuggestions
                 .map((t) => TagInputItem(value: t, label: t))
                 .toList(growable: false),
             onChanged: (tags) {
@@ -666,7 +629,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
           label: 'Maternal History:',
           isHeader: true,
           child: TagInputWidget(
-            suggestions: _maternalHistorySuggestions
+            suggestions: patientMaternalHistorySuggestions
                 .map((t) => TagInputItem(value: t, label: t))
                 .toList(growable: false),
             onChanged: (tags) {
@@ -686,7 +649,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
           label: 'Habits:',
           isHeader: true,
           child: TagInputWidget(
-            suggestions: _habitsSuggestions
+            suggestions: patientHabitsSuggestions
                 .map((t) => TagInputItem(value: t, label: t))
                 .toList(growable: false),
             onChanged: (tags) {

@@ -9,7 +9,6 @@ import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/dashboard/overall_due_helper.dart';
-import 'package:apexo/features/dashboard/patient_look_up.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
@@ -673,8 +672,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                     if (useColumn) {
                       return Column(
                         children: [
-                          _QuickCheckInCard(selectedDate: selectedDate),
-                          const SizedBox(height: 10),
                           _DoctorScheduleCard(
                             todaysAppointments: todaysAppointments,
                             doctorRevenueSplit: doctorRevenueSplit,
@@ -745,8 +742,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           width: 320,
                           child: Column(
                             children: [
-                              _QuickCheckInCard(selectedDate: selectedDate),
-                              const SizedBox(height: 10),
                               _DoctorScheduleCard(
                                 todaysAppointments: todaysAppointments,
                                 doctorRevenueSplit: doctorRevenueSplit,
@@ -1062,7 +1057,7 @@ class _DoctorScheduleCard extends StatelessWidget {
                 Icon(FluentIcons.add, size: 14, color: Colors.white),
                 SizedBox(width: 8),
                 Text(
-                  'Add Appointment',
+                  'Checkin',
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.w600),
                 ),
@@ -1355,7 +1350,7 @@ class _AppointmentsTableCard extends StatelessWidget {
                               ),
                               SizedBox(width: 6),
                               Text(
-                                'Add Appointment',
+                                'Checkin',
                                 style: TextStyle(color: Colors.white),
                               ),
                             ],
@@ -2133,74 +2128,6 @@ class _DateNavigator extends StatelessWidget {
       onPick: onPick,
       onToday: onToday,
       showBorder: showBorder,
-    );
-  }
-}
-
-class _QuickCheckInCard extends StatelessWidget {
-  final DateTime selectedDate;
-
-  const _QuickCheckInCard({required this.selectedDate});
-
-  DateTime _withCurrentTime(DateTime d) {
-    final now = DateTime.now();
-    return DateTime(d.year, d.month, d.day, now.hour, now.minute);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardShell(
-      child: SizedBox(
-        width: double.infinity,
-        child: PatientLookup(
-          patientCheckIn: (patient) {
-            if (patient == null) return;
-            final todays = appointments
-                .forDate(selectedDate)
-                .where((a) => a.patientID == patient.id)
-                .toList(growable: false)
-              ..sort((a, b) => a.date.compareTo(b.date));
-
-            if (todays.isNotEmpty) {
-              final appt = todays.first;
-              appt.isCheckedIn = true;
-              appt.checkedInAt = DateTime.now();
-              appointments.set(appt);
-              return;
-            }
-
-            final dt = _withCurrentTime(selectedDate);
-            appointments.set(Appointment.fromJson({
-              'patientID': patient.id,
-              'date': dt.millisecondsSinceEpoch,
-              'isCheckedIn': true,
-              'checkedInAt': DateTime.now().millisecondsSinceEpoch,
-            }));
-          },
-          addAppointment: (patient) {
-            final dt = _withCurrentTime(selectedDate);
-            openAppointment(Appointment.fromJson({
-              'patientID': patient.id,
-              'date': dt.millisecondsSinceEpoch,
-            }));
-          },
-          onCreateNew: (searchQuery) {
-            openAddPatientPopup(
-              context: context,
-              initialInput: searchQuery,
-            ).then((createdPatient) {
-              if (createdPatient == null) return;
-              final dt = _withCurrentTime(selectedDate);
-              appointments.set(Appointment.fromJson({
-                'patientID': createdPatient.id,
-                'date': dt.millisecondsSinceEpoch,
-                'isCheckedIn': true,
-                'checkedInAt': DateTime.now().millisecondsSinceEpoch,
-              }));
-            });
-          },
-        ),
-      ),
     );
   }
 }
