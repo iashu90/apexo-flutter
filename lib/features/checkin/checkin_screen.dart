@@ -1267,7 +1267,8 @@ class _WorkflowRow extends StatelessWidget {
                   Tooltip(
                     message: 'Check In',
                     child: IconButton(
-                      icon: const Icon(material.Icons.person_add_rounded, size: 18),
+                      icon: const Icon(material.Icons.person_add_rounded,
+                          size: 18),
                       style: ButtonStyle(
                         padding: WidgetStateProperty.all(
                           const EdgeInsets.all(8),
@@ -1780,6 +1781,21 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    medicalHistoryEntries.isEmpty
+                        ? 'Medical History: No history recorded'
+                        : 'Medical History: ${medicalHistoryEntries.join(', ')}',
+                    style: const TextStyle(
+                      color: Color(0xFFC63A4D),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
                 Text(
                   isCheckout
                       ? 'Today\'s Appointment Details'
@@ -1791,27 +1807,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFE7EA),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFF7A8B1)),
-                  ),
-                  child: Text(
-                    medicalHistoryEntries.isEmpty
-                        ? 'Medical History: No history recorded'
-                        : 'Medical History: ${medicalHistoryEntries.join(', ')}',
-                    style: const TextStyle(
-                      color: Color(0xFFC63A4D),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
                 if (!isCheckout)
                   GestureDetector(
                     onTap: () => _changeDoctor(appointment),
