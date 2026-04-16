@@ -1299,13 +1299,13 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           ),
                           const SizedBox(width: 8),
                           _inlineMetric(
-                            'Earned',
+                            'Fee',
                             '₹${earned.toStringAsFixed(0)}',
-                            const Color(0xFF1F4F88),
+                            const Color(0xFFD6455D),
                           ),
                           const SizedBox(width: 8),
                           _inlineMetric(
-                            'Hospital Gained',
+                            'Revenue',
                             '₹${hospital.toStringAsFixed(0)}',
                             const Color(0xFF2BA58D),
                           ),
@@ -1548,13 +1548,10 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   }
 
   Widget _inlineMetric(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: const BoxDecoration(
-        border: Border(
-          left: BorderSide(color: Color(0xFFD6E2F0)),
-        ),
-      ),
+    return SizedBox(
+      width: 132,
+      child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1562,19 +1559,24 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
             value,
             style: TextStyle(
               color: color,
-              fontWeight: FontWeight.w800,
-              fontSize: 26,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
             label,
             style: const TextStyle(
               color: Color(0xFF5D789D),
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               fontSize: 12,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
       ),
     );
   }
@@ -1687,7 +1689,14 @@ List<Appointment> _scopedForRange({
       .toList(growable: false);
 }
 
-List<({Doctor doctor, int doneCount, int totalCount, double earned, double consultFee})>
+List<({
+  Doctor doctor,
+  int doneCount,
+  int totalCount,
+  double earned,
+  double consultFee,
+  double revenue,
+})>
     _doctorDoneMetrics({
   required List<Doctor> doctorsList,
   required List<Appointment> scoped,
@@ -1706,12 +1715,17 @@ List<({Doctor doctor, int doneCount, int totalCount, double earned, double consu
           0,
           (sum, a) => sum + a.priceToPayDoctor,
         );
+        final revenue = rows.fold<double>(
+          0,
+          (sum, a) => sum + a.price + a.prescriptionPrice,
+        );
         return (
           doctor: doctor,
           doneCount: doneCount,
           totalCount: rows.length,
           earned: earned,
           consultFee: consultFee,
+          revenue: revenue,
         );
       })
       .where((row) => row.totalCount > 0)
@@ -2096,6 +2110,7 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
         int totalCount,
         double earned,
         double consultFee,
+        double revenue,
       })>
       rows;
   final String selectedRange;
@@ -2141,6 +2156,10 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
       );
     }
 
+    final totalAppointments = rows.fold<int>(0, (s, r) => s + r.totalCount);
+    final totalConsult = rows.fold<double>(0, (s, r) => s + r.consultFee);
+    final totalRevenue = rows.fold<double>(0, (s, r) => s + r.revenue);
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -2159,15 +2178,61 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Appointment Done By Doctor',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67),
-              ),
+            Row(
+              children: [
+                const Icon(FluentIcons.health, size: 16, color: Color(0xFF2D7BD8)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Appointments Done By Doctor',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF183A67),
+                  ),
+                ),
+                const Spacer(),
+                Button(
+                  onPressed: () {},
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(FluentIcons.download, size: 12),
+                      SizedBox(width: 6),
+                      Text('Export'),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: _summaryTile(
+                    title: 'Appointments',
+                    value: '$totalAppointments',
+                    valueColor: const Color(0xFF1B3557),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _summaryTile(
+                    title: 'Doctors Earned',
+                    value: '₹${totalConsult.toStringAsFixed(0)}',
+                    valueColor: const Color(0xFF2BA58D),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _summaryTile(
+                    title: 'Hospital Gained',
+                    value: '₹${totalRevenue.toStringAsFixed(0)}',
+                    valueColor: const Color(0xFF2D7BD8),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -2209,36 +2274,172 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                 style: TextStyle(color: Color(0xFF6D84A8)),
               )
             else
-              ...rows.take(12).map((row) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          row.doctor.title,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF1F446E),
-                            fontWeight: FontWeight.w700,
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFDCE8F6)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEFF5FF),
+                      ),
+                      child: const Row(
+                        children: [
+                          Expanded(
+                            flex: 4,
+                            child: Text(
+                              'Doctor',
+                              style: TextStyle(
+                                color: Color(0xFF355279),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              'Appointments',
+                              style: TextStyle(
+                                color: Color(0xFF355279),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              'Fee',
+                              style: TextStyle(
+                                color: Color(0xFF355279),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              'Doctors Earned',
+                              style: TextStyle(
+                                color: Color(0xFF355279),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              'Hospital Gained',
+                              style: TextStyle(
+                                color: Color(0xFF355279),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ...rows.take(12).map((row) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: Color(0xFFE2ECF8)),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: Text(
+                                  row.doctor.title,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF1F446E),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  '${row.totalCount}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1F2B40),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  '₹${row.consultFee.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1F4F88),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  '₹${row.earned.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF2BA58D),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  '₹${row.revenue.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF2D7BD8),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Appts ${row.totalCount} • Gained ₹${row.earned.toStringAsFixed(0)} • Consult ₹${row.consultFee.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          color: Color(0xFF5B789F),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+                  ],
+                ),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _summaryTile({
+    required String title,
+    required String value,
+    required Color valueColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F7FF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDCE8F6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 34,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF4D6488),
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
