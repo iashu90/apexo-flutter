@@ -670,7 +670,8 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
 
     setState(() {
       _rangeFilter = 'custom';
-      _fromDate = DateTime(range.start.year, range.start.month, range.start.day);
+      _fromDate =
+          DateTime(range.start.year, range.start.month, range.start.day);
       _toDate = DateTime(range.end.year, range.end.month, range.end.day);
       _page = 1;
     });
@@ -806,8 +807,8 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
     final doctorIds = expense.operators.map((d) => d.id).toSet();
     double total = 0;
     for (final e in expenses.present.values) {
-      final isConsultant = e.items.any(
-          (item) => item.trim().toLowerCase() == 'consultant');
+      final isConsultant =
+          e.items.any((item) => item.trim().toLowerCase() == 'consultant');
       if (!isConsultant) continue;
       final hasCommonDoctor =
           e.operatorsIDs.any((id) => doctorIds.contains(id));
@@ -849,16 +850,16 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
         .where((e) => e.isNotEmpty)
         .toSet()
       ..add('Consultant')
-      ..add('Medication')
       ..add('Labwork')
-      ..add('Utilities')
       ..add('Doctor 1')
       ..add('Doctor 2')
+      ..add('Receptionist')
       ..add('Sister 1')
       ..add('Sister 2')
       ..add('Maid')
       ..add('Electricity')
-      ..add('Service Charges');
+      ..add('BioMedical Waste')
+      ..add('Medication');
 
     await showDialog<void>(
       context: context,

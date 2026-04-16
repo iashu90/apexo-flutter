@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
@@ -473,25 +474,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
     );
   }
 
-  ButtonStyle get _dateButtonStyle {
-    return ButtonStyle(
-      padding: WidgetStateProperty.all(
-        const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      ),
-      backgroundColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.pressed))
-          return const Color(0x331A74DB);
-        if (states.contains(WidgetState.hovered))
-          return const Color(0x1F1A74DB);
-        return Colors.transparent;
-      }),
-      foregroundColor: WidgetStateProperty.all(const Color(0xFF1468CC)),
-      shape: WidgetStateProperty.all(
-        const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
@@ -658,78 +640,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                        color: const Color(0xFFD6E2F0)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Button(
-                                        onPressed: () => _changeDate(-1),
-                                        style: _dateButtonStyle,
-                                        child: const Icon(
-                                            FluentIcons.chevron_left,
-                                            size: 12),
-                                      ),
-                                      Button(
-                                        onPressed: () => _pickDate(context),
-                                        style: _dateButtonStyle,
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              DateFormat('MMMM d, yyyy')
-                                                  .format(_selectedDate),
-                                              style: const TextStyle(
-                                                color: Color(0xFF25466E),
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 1),
-                                            Text(
-                                              DateFormat('EEEE')
-                                                  .format(_selectedDate),
-                                              style: const TextStyle(
-                                                color: Color(0xFF557195),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Button(
-                                        onPressed: () => _changeDate(1),
-                                        style: _dateButtonStyle,
-                                        child: const Icon(
-                                            FluentIcons.chevron_right,
-                                            size: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                SizedBox(
-                                  height: 48,
-                                  width: 84,
-                                  child: Visibility(
-                                    visible: !isToday,
-                                    maintainSize: true,
-                                    maintainAnimation: true,
-                                    maintainState: true,
-                                    child: FilledButton(
-                                      onPressed: () => setState(() {
-                                        _selectedDate =
-                                            _dateOnly(DateTime.now());
-                                        checkinPersistedDate = _selectedDate;
-                                      }),
-                                      child: const Text('Today'),
-                                    ),
-                                  ),
+                                DateNavigatorBar(
+                                  selectedDate: _selectedDate,
+                                  onPrevious: () => _changeDate(-1),
+                                  onNext: () => _changeDate(1),
+                                  onPick: () => _pickDate(context),
+                                  onToday: () => setState(() {
+                                    _selectedDate = _dateOnly(DateTime.now());
+                                    checkinPersistedDate = _selectedDate;
+                                  }),
                                 ),
                               ],
                             ),
@@ -1368,7 +1287,7 @@ class _WorkflowRow extends StatelessWidget {
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: stage == 'waiting'
+        onTap: (stage == 'waiting' || stage == 'scheduled')
             ? () => _moveStage(context)
             : (onSelect == null ? null : () => onSelect!(appointment)),
         child: Row(
@@ -1510,7 +1429,7 @@ class _WorkflowRow extends StatelessWidget {
                   Tooltip(
                     message: 'Check In',
                     child: IconButton(
-                      icon: const Icon(material.Icons.login_rounded, size: 18),
+                      icon: const Icon(material.Icons.person, size: 18),
                       style: ButtonStyle(
                         padding: WidgetStateProperty.all(
                           const EdgeInsets.all(8),
@@ -4389,7 +4308,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Age: ${a.patient?.age ?? 0}${a.patient?.age ?? ''}  • ${a.patient?.phone ?? ''}',
+                      'Age: ${a.patient?.age ?? 0}${(a.patient?.gender == 1 ? 'M' : a.patient?.gender == 0 ? 'F' : '')}  • ${a.patient?.phone ?? ''}',
                       style: const TextStyle(
                         color: Color(0xFF6D84A8),
                         fontSize: 14,

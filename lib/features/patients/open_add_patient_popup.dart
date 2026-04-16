@@ -19,27 +19,43 @@ String _toTitleCaseForPatientPopup(String input) {
 Future<Patient?> openAddPatientPopup({
   required BuildContext context,
   String initialInput = '',
-  List<String> medicalHistorySuggestions = const <String>[
+  List<String> allergyHistorySuggestions = const <String>[
     'Antibiotics (Penicillin)',
     'Latex Allergy',
     'Local Anesthetics',
-    'Hypertension (High BP)',
-    'Heart Attack / Stroke',
+  ],
+  List<String> medicalHistorySuggestions = const <String>[
+    'Hypertension',
+    'Diabetes',
+    'Thyroid Disorder',
+    'Heart Attack',
+    'Stroke',
     'Artificial Heart Valves',
-    'Blood Thinners (Anticoagulants)',
-    'Diabetes (HbA1c levels)',
-    'GLP-1 Agonists (Ozempic/Wegovy)',
-    'Osteoporosis (Bisphosphonates)',
-    'Joint Replacement',
     'Asthma',
-    'Sleep Apnea / Snoring',
     'Hepatitis (B or C)',
-    'HIV / AIDS',
-    'Epilepsy / Seizures',
-    'Anxiety / Dental Phobia',
-    'Tobacco / Vaping',
-    'Alcohol Consumption',
+    'HIV',
+    'Epilepsy',
+    'Bleeding Disorders',
+    'Liver Disease',
+    'Corticosteroid Therapy',
+    'Any previous surgeries',
+    'Any previous hospitalizations',
+    'Other'
+  ],
+  List<String> drugHistorySuggestions = const <String>[
+    'Blood Thinners (Anticoagulants)'
+  ],
+  List<String> maternalHistorySuggestions = const <String>[
     'Pregnancy',
+    'Gestational Diabetes',
+    'Lactating Mother'
+  ],
+  List<String> habitsSuggestions = const <String>[
+    'Smoking',
+    'Alcohol Consumption',
+    'Drug Use',
+    'Tobacco Use',
+    'Other'
   ],
 }) async {
   final seed = initialInput.trim();
@@ -49,7 +65,8 @@ Future<Patient?> openAddPatientPopup({
     text: looksLikePhone ? '' : _toTitleCaseForPatientPopup(seed),
   );
   final ageController = TextEditingController();
-  final phoneController = TextEditingController(text: looksLikePhone ? seed : '');
+  final phoneController =
+      TextEditingController(text: looksLikePhone ? seed : '');
   final addressController = TextEditingController();
   final notesController = TextEditingController();
   final customHistoryController = TextEditingController();
@@ -138,7 +155,8 @@ Future<Patient?> openAddPatientPopup({
                             ComboBoxItem(value: 1, child: Text('Male')),
                             ComboBoxItem(value: 0, child: Text('Female')),
                           ],
-                          onChanged: (v) => setStateDialog(() => gender = v ?? 0),
+                          onChanged: (v) =>
+                              setStateDialog(() => gender = v ?? 0),
                         ),
                       ),
                     ),
@@ -279,12 +297,15 @@ Future<Patient?> openAddPatientPopup({
                     items: const [
                       ComboBoxItem(value: 'None', child: Text('None')),
                       ComboBoxItem(value: 'Google', child: Text('Google')),
-                      ComboBoxItem(value: 'Social Media', child: Text('Social Media')),
+                      ComboBoxItem(
+                          value: 'Social Media', child: Text('Social Media')),
                       ComboBoxItem(value: 'Friends', child: Text('Friends')),
                       ComboBoxItem(value: 'Camps', child: Text('Camps')),
-                      ComboBoxItem(value: 'Name Board', child: Text('Name Board')),
+                      ComboBoxItem(
+                          value: 'Name Board', child: Text('Name Board')),
                     ],
-                    onChanged: (v) => setStateDialog(() => referral = v ?? 'None'),
+                    onChanged: (v) =>
+                        setStateDialog(() => referral = v ?? 'None'),
                   ),
                 ),
               ],
@@ -304,7 +325,8 @@ Future<Patient?> openAddPatientPopup({
 
               final computedNameError =
                   rawName.isEmpty ? 'Patient name is required.' : null;
-              final computedAgeError = parsedAge <= 0 ? 'Age is required.' : null;
+              final computedAgeError =
+                  parsedAge <= 0 ? 'Age is required.' : null;
               final computedPhoneError =
                   rawPhone.isEmpty ? 'Phone number is required.' : null;
 

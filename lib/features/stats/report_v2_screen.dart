@@ -29,95 +29,95 @@ class ReportV2Screen extends StatelessWidget {
             final allAppointments =
                 appointments.present.values.toList(growable: false);
             final allExpenses = expenses.present.values.toList(growable: false);
-            final screenWidth = MediaQuery.of(context).size.width;
-            final horizontalPadding = screenWidth < 700 ? 32.0 : 42.0;
-            final available =
-                (screenWidth - horizontalPadding).clamp(320.0, 1800.0);
-            final twoColWidth = available >= 700
-                ? ((available - 10) / 2).clamp(320.0, 900.0)
-                : available;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Reports',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF12355F),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Advanced analytics for appointments, traffic, and doctor outputs',
-                  style: TextStyle(
-                    color: Color(0xFF5A7397),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _DailyAppointmentsTrendWindowCard(rows: allAppointments),
-                const SizedBox(height: 10),
-                _DailyRevenueTrendWindowCard(rows: allAppointments),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final available = constraints.maxWidth;
+                final twoColWidth = available >= 900
+                    ? (available - 10) / 2
+                    : available;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(
-                      width: twoColWidth,
-                      child: _MonthlyAppointmentsTrendWindowCard(
-                        rows: allAppointments,
+                    const Text(
+                      'Reports',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF12355F),
                       ),
                     ),
-                    SizedBox(
-                      width: twoColWidth,
-                      child: _MonthlyRevenueTrendWindowCard(
-                          rows: allAppointments),
-                    ),
-                    SizedBox(
-                      width: twoColWidth,
-                      child:
-                          _MonthlyExpensesTrendWindowCard(rows: allExpenses),
-                    ),
-                    SizedBox(
-                      width: twoColWidth,
-                      child: _MonthlyNetRevenueTrendWindowCard(
-                        appointmentsRows: allAppointments,
-                        expenseRows: allExpenses,
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Advanced analytics for appointments, traffic, and doctor outputs',
+                      style: TextStyle(
+                        color: Color(0xFF5A7397),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(
-                      width: twoColWidth,
-                      child: _ReferralSourceDistributionCard(),
-                    ),
-                    SizedBox(
-                      width: twoColWidth,
-                      child: _MonthlyTreatmentDistributionCard(
-                        rows: allAppointments,
-                      ),
-                    ),
-                    SizedBox(
-                      width: twoColWidth,
-                      child: _TrafficByTimeCard(rows: allAppointments),
-                    ),
-                    SizedBox(
-                      width: twoColWidth,
-                      child: _TrafficByDayCard(rows: allAppointments),
-                    ),
-                    SizedBox(
-                      width: twoColWidth,
-                      child:
-                          _AppointmentMetricsCard(rows: allAppointments),
-                    ),
-                    SizedBox(
-                      width: twoColWidth,
-                      child: _NewVsReturningCard(rows: allAppointments),
+                    const SizedBox(height: 12),
+                    _DailyAppointmentsTrendWindowCard(rows: allAppointments),
+                    const SizedBox(height: 10),
+                    _DailyRevenueTrendWindowCard(rows: allAppointments),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _MonthlyAppointmentsTrendWindowCard(
+                            rows: allAppointments,
+                          ),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _MonthlyRevenueTrendWindowCard(
+                              rows: allAppointments),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _MonthlyExpensesTrendWindowCard(
+                              rows: allExpenses),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _MonthlyNetRevenueTrendWindowCard(
+                            appointmentsRows: allAppointments,
+                            expenseRows: allExpenses,
+                          ),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _ReferralSourceDistributionCard(),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _MonthlyTreatmentDistributionCard(
+                            rows: allAppointments,
+                          ),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _TrafficByTimeCard(rows: allAppointments),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _TrafficByDayCard(rows: allAppointments),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _AppointmentMetricsCard(rows: allAppointments),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _NewVsReturningCard(rows: allAppointments),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
+                );
+              },
             );
           },
         ),
