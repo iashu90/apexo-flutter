@@ -612,7 +612,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                             color: Color(0xFFD6455D), fontSize: 11),
                       ),
                     ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   InfoLabel(
                     label: 'Address:',
                     child: TextBox(
@@ -620,7 +620,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       placeholder: 'Address',
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   InfoLabel(
                     label: 'Notes:',
                     child: TextBox(
@@ -629,7 +629,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       maxLines: 3,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                const SizedBox(height: 16),
                   InfoLabel(
                     label: 'Medical History:',
                     child: SizedBox.shrink(),
@@ -677,7 +677,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       );
                     }).toList(growable: false),
                   ),
-                  const SizedBox(height: 8),
+                const SizedBox(height: 16),
                   InfoLabel(
                     label: 'Referral:',
                     child: ComboBox<String>(
