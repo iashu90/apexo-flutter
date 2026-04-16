@@ -13,6 +13,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
+import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -30,29 +31,6 @@ class PatientsScreenV2 extends StatefulWidget {
 }
 
 class _PatientsScreenV2State extends State<PatientsScreenV2> {
-  static const List<String> _medicalHistorySuggestions = [
-    'Antibiotics (Penicillin)',
-    'Latex Allergy',
-    'Local Anesthetics',
-    'Hypertension (High BP)',
-    'Heart Attack / Stroke',
-    'Artificial Heart Valves',
-    'Blood Thinners (Anticoagulants)',
-    'Diabetes (HbA1c levels)',
-    'GLP-1 Agonists (Ozempic/Wegovy)',
-    'Osteoporosis (Bisphosphonates)',
-    'Joint Replacement',
-    'Asthma',
-    'Sleep Apnea / Snoring',
-    'Hepatitis (B or C)',
-    'HIV / AIDS',
-    'Epilepsy / Seizures',
-    'Anxiety / Dental Phobia',
-    'Tobacco / Vaping',
-    'Alcohol Consumption',
-    'Pregnancy',
-  ];
-
   final TextEditingController _listSearchController = TextEditingController();
 
   String _listQuery = '';
@@ -656,7 +634,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: _medicalHistorySuggestions.map((item) {
+                    children: patientMedicalHistorySuggestions.map((item) {
                       final selected = selectedMedicalHistory.contains(item);
                       return GestureDetector(
                         onTap: () {
@@ -765,7 +743,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   Future<void> _openAddPatientPopup() async {
     await openAddPatientPopup(
       context: context,
-      medicalHistorySuggestions: _medicalHistorySuggestions,
     );
   }
 

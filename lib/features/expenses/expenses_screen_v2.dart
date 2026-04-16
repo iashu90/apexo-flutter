@@ -30,6 +30,42 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
   bool _sortAscending = false;
 
   static const int _pageSize = 10;
+  static const List<String> _defaultExpenseCategories = [
+    'Consultant',
+    'Labwork',
+    'Doctor 1',
+    'Doctor 2',
+    'Receptionist',
+    'Sister 1',
+    'Sister 2',
+    'Maid',
+    'Electricity',
+    'BioMedical Waste',
+    'Medication',
+  ];
+
+  List<String> _orderedExpenseCategories() {
+    final dedup = <String>{};
+    final ordered = <String>[];
+
+    for (final category in _defaultExpenseCategories) {
+      final normalized = category.trim();
+      if (normalized.isEmpty) continue;
+      if (dedup.add(normalized.toLowerCase())) {
+        ordered.add(normalized);
+      }
+    }
+
+    for (final category in expenses.allItems) {
+      final normalized = category.trim();
+      if (normalized.isEmpty) continue;
+      if (dedup.add(normalized.toLowerCase())) {
+        ordered.add(normalized);
+      }
+    }
+
+    return ordered;
+  }
 
   @override
   void initState() {
@@ -185,7 +221,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
   Widget _buildFilters(List<Expense> allRows) {
     final categories = [
       'all',
-      ...expenses.allItems.toSet().where((e) => e.trim().isNotEmpty)
+      ..._orderedExpenseCategories(),
     ];
 
     return SingleChildScrollView(
@@ -845,28 +881,14 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
     String? amountError;
     String? categoryError;
 
-    final availableCategories = expenses.allItems
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toSet()
-      ..add('Consultant')
-      ..add('Labwork')
-      ..add('Doctor 1')
-      ..add('Doctor 2')
-      ..add('Receptionist')
-      ..add('Sister 1')
-      ..add('Sister 2')
-      ..add('Maid')
-      ..add('Electricity')
-      ..add('BioMedical Waste')
-      ..add('Medication');
+    final availableCategories = _orderedExpenseCategories();
 
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setStateDialog) {
           final categoryOptions = [
-              ...availableCategories.toList(growable: false),
+            ...availableCategories,
             'Other',
           ];
 
