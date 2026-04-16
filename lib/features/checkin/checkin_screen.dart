@@ -71,27 +71,28 @@ Future<void> openCheckinAppointmentModal(
   Appointment appointment,
 ) async {
   final screenWidth = MediaQuery.of(context).size.width;
-  final isCheckoutStage = appointment.checkinStage.trim().toLowerCase() == 'checkout';
+  final isCheckoutStage =
+      appointment.checkinStage.trim().toLowerCase() == 'checkout';
   final popupWidth = screenWidth < 760
       ? screenWidth - 20
       : isCheckoutStage
           ? (screenWidth * 0.75).clamp(760.0, 1000.0)
           : 540.0;
   final normalizedStage = appointment.checkinStage.trim().toLowerCase();
-  final stageLabel = normalizedStage == 'with_doctor' ||
-          normalizedStage == 'treatment'
-      ? 'Treatment'
-      : normalizedStage == 'checkout'
-          ? 'Billing'
-          : normalizedStage == 'completed'
-          ? 'Complete'
-              : 'Check-in';
-    final patientName = appointment.title.trim().isEmpty
+  final stageLabel =
+      normalizedStage == 'with_doctor' || normalizedStage == 'treatment'
+          ? 'Treatment'
+          : normalizedStage == 'checkout'
+              ? 'Billing'
+              : normalizedStage == 'completed'
+                  ? 'Complete'
+                  : 'Check-in';
+  final patientName = appointment.title.trim().isEmpty
       ? 'Unnamed patient'
       : _toTitleCase(appointment.title);
-    final patientAge = appointment.patient?.age ?? 0;
-    final patientGender = appointment.patient?.gender == 1 ? 'M' : 'F';
-    final patientPhone = (appointment.patient?.phone ?? '').trim();
+  final patientAge = appointment.patient?.age ?? 0;
+  final patientGender = appointment.patient?.gender == 1 ? 'M' : 'F';
+  final patientPhone = (appointment.patient?.phone ?? '').trim();
 
   await showDialog<void>(
     context: context,
@@ -127,9 +128,9 @@ Future<void> openCheckinAppointmentModal(
                     colors: appointment.checkinStage == 'completed'
                         ? const [Color(0xFF2BA58D), Color(0xFF1D8D77)]
                         : appointment.checkinStage == 'checkout'
-                        ? const [Color(0xFF8B5CF6), Color(0xFF6D3FD2)]
-                        : (appointment.checkinStage == 'with_doctor' ||
-                            appointment.checkinStage == 'treatment')
+                            ? const [Color(0xFF8B5CF6), Color(0xFF6D3FD2)]
+                            : (appointment.checkinStage == 'with_doctor' ||
+                                    appointment.checkinStage == 'treatment')
                                 ? const [Color(0xFF5A84E6), Color(0xFF3F68CC)]
                                 : const [Color(0xFFE4A11B), Color(0xFFD28C02)],
                   ),
@@ -804,7 +805,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             _expandedStages['waiting'] =
                                 !(_expandedStages['waiting'] ?? true);
                           }),
-                          rowStageBuilder: (a) => a.checkinStage == 'pending' ? 'scheduled' : 'waiting',
+                          rowStageBuilder: (a) => a.checkinStage == 'pending'
+                              ? 'scheduled'
+                              : 'waiting',
                         );
 
                         final withDoctorColumn = _WorkflowColumn(
@@ -1272,8 +1275,8 @@ class _WorkflowRow extends StatelessWidget {
     }
 
     if (stage == 'waiting') {
-      final pickedDoctorIds =
-          await pickDoctorDialog(context, initialSelected: appointment.operatorsIDs);
+      final pickedDoctorIds = await pickDoctorDialog(context,
+          initialSelected: appointment.operatorsIDs);
       if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
       appointment.operatorsIDs = pickedDoctorIds;
       appointment.checkinStage = 'with_doctor';
@@ -1448,9 +1451,14 @@ class _WorkflowRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color:
-            stage == 'completed' ? const Color.fromARGB(255, 225, 248, 225) : Colors.transparent,
-        border: const Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+        color: stage == 'scheduled'
+            ? const Color.fromARGB(255, 250, 242, 216) // Mild Orange (Orange 50)
+            : stage == 'completed'
+                ? const Color.fromARGB(255, 236, 232, 245) // Mild Green (Green 50)
+                : Colors.transparent,
+        border: const Border(
+          top: BorderSide(color: Color(0xFFE2ECF8)),
+        ),
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -1590,7 +1598,8 @@ class _WorkflowRow extends StatelessWidget {
                       onPressed: () => _undoStage(context),
                     ),
                   ),
-                if (stage != 'waiting' && stage != 'scheduled') const SizedBox(width: 8),
+                if (stage != 'waiting' && stage != 'scheduled')
+                  const SizedBox(width: 8),
                 if (stage == 'scheduled')
                   Tooltip(
                     message: 'Check In',
@@ -1615,9 +1624,7 @@ class _WorkflowRow extends StatelessWidget {
                   ),
                 if (stage == 'waiting' || stage == 'checkout')
                   Tooltip(
-                    message: stage == 'waiting'
-                        ? 'Check-in'
-                        : 'Complete',
+                    message: stage == 'waiting' ? 'Check-in' : 'Complete',
                     child: IconButton(
                       icon: Icon(
                         stage == 'waiting'
@@ -1816,8 +1823,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                                           horizontal: 10, vertical: 6),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFEFF4FB),
-                                          borderRadius:
-                                              BorderRadius.circular(999),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
                                         border: Border.all(
                                           color: const Color(0xFFD2E1F2),
                                         ),
@@ -2121,8 +2128,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                     onTap: () => _changeDoctor(appointment),
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 6),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -2200,8 +2207,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                     ),
                     child: Text(
                       'Patient Notes: $patientNotes',
-                      style:
-                          const TextStyle(color: Color(0xFF5F789B), fontSize: 12),
+                      style: const TextStyle(
+                          color: Color(0xFF5F789B), fontSize: 12),
                     ),
                   ),
                 if (otherRows.isEmpty) const SizedBox.shrink(),
@@ -2368,8 +2375,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                 child: StreamBuilder(
                   stream: appointments.observableMap.stream,
                   builder: (context, _) {
-                    final latest = appointments.present.values
-                        .firstWhere((a) => a.id == appointment.id, orElse: () => appointment);
+                    final latest = appointments.present.values.firstWhere(
+                        (a) => a.id == appointment.id,
+                        orElse: () => appointment);
                     final paid = latest.paid;
                     return Text('Collect (₹${paid.toStringAsFixed(0)})');
                   },
@@ -4319,7 +4327,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                               if (picked == null) return;
                               setState(() => _paymentDate = picked);
                             },
-                            child: Text(DateFormat('dd MMM yyyy').format(_paymentDate)),
+                            child: Text(
+                                DateFormat('dd MMM yyyy').format(_paymentDate)),
                           ),
                         ],
                       ),
@@ -4341,8 +4350,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         child: ComboBox<String>(
                           isExpanded: true,
                           placeholder: const Text('Select consultant'),
-                          value: consultantDoctors
-                                  .any((d) => d.id == _selectedConsultantDoctorId)
+                          value: consultantDoctors.any(
+                                  (d) => d.id == _selectedConsultantDoctorId)
                               ? _selectedConsultantDoctorId
                               : null,
                           items: [
@@ -4519,7 +4528,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     const SizedBox(height: 8),
                     _summaryLine(
                         'Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
-                   const SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     if (widget.discountEnabled) ...[
                       _summaryLine(
                         'Discount Applied',
@@ -4537,7 +4546,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ),
                       const SizedBox(height: 10),
                     ],
-                     _summaryLine(
+                    _summaryLine(
                         'Already Paid', '₹${a.paid.toStringAsFixed(0)}'),
                     _summaryLine(
                       'Remaining Balance',
