@@ -1,5 +1,4 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as material;
 import '../../features/doctors/doctors_store.dart';
 
 /// Utility to pick one or more doctors in a dialog.

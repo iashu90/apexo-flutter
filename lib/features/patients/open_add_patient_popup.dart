@@ -76,40 +76,40 @@ Future<Patient?> openAddPatientPopup({
   Patient? existingPatient,
 }) async {
   final isEditMode = existingPatient != null;
-  final seed = isEditMode ? existingPatient!.title.trim() : initialInput.trim();
+  final seed = isEditMode ? existingPatient.title.trim() : initialInput.trim();
   final looksLikePhone = RegExp(r'^[+0-9\s()-]+$').hasMatch(seed);
 
   final nameController = TextEditingController(
     text: isEditMode
-        ? existingPatient!.title
+        ? existingPatient.title
         : (looksLikePhone ? '' : _toTitleCaseForPatientPopup(seed)),
   );
   final ageController = TextEditingController(
     text:
-        isEditMode && existingPatient!.age > 0 ? '${existingPatient.age}' : '',
+        isEditMode && existingPatient.age > 0 ? '${existingPatient.age}' : '',
   );
   final phoneController = TextEditingController(
-    text: isEditMode ? existingPatient!.phone : (looksLikePhone ? seed : ''),
+    text: isEditMode ? existingPatient.phone : (looksLikePhone ? seed : ''),
   );
   final addressController = TextEditingController(
-    text: isEditMode ? existingPatient!.address : '',
+    text: isEditMode ? existingPatient.address : '',
   );
 
-  int gender = isEditMode ? existingPatient!.gender : 0;
-  String referral = (isEditMode && existingPatient!.referralSource.isNotEmpty)
+  int gender = isEditMode ? existingPatient.gender : 0;
+  String referral = (isEditMode && existingPatient.referralSource.isNotEmpty)
       ? existingPatient.referralSource
       : 'None';
   final selectedMedicalHistory = isEditMode
-      ? existingPatient!.tags.toSet()
+      ? existingPatient.tags.toSet()
       : <String>{};
   final selectedDrugHistory = isEditMode
-      ? existingPatient!.drugHistorySuggestions.toSet()
+      ? existingPatient.drugHistorySuggestions.toSet()
       : <String>{};
   final selectedMaternalHistory = isEditMode
-      ? existingPatient!.maternalHistorySuggestions.toSet()
+      ? existingPatient.maternalHistorySuggestions.toSet()
       : <String>{};
   final selectedHabitsHistory = isEditMode
-      ? existingPatient!.habitsSuggestions.toSet()
+      ? existingPatient.habitsSuggestions.toSet()
       : <String>{};
   String? nameError;
   String? ageError;

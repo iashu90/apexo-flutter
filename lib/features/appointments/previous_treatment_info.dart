@@ -7,9 +7,9 @@ class PreviousTreatmentInfo extends StatefulWidget {
   final List<Appointment> appointments;
 
   const PreviousTreatmentInfo({
-    Key? key,
+    super.key,
     required this.appointments,
-  }) : super(key: key);
+  });
 
   @override
   State<PreviousTreatmentInfo> createState() => _PreviousTreatmentInfoState();
@@ -68,8 +68,8 @@ class _PreviousTreatmentInfoState extends State<PreviousTreatmentInfo> {
           ),
           if (_expanded)
             ...widget.appointments.map((appointment) {
-              final treatments = appointment.selectedTreatments ?? [];
-              final subTreatments = appointment.subTreatments ?? [];
+              final treatments = appointment.selectedTreatments;
+              final subTreatments = appointment.subTreatments;
               final dateStr = DateFormat('d MMM yyyy').format(appointment.date);
 
               return Padding(

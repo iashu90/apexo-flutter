@@ -5,7 +5,6 @@ import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/dashboard/dashboard_screen_v2.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
-import 'package:apexo/features/expenses/expenses_screen.dart';
 import 'package:apexo/features/expenses/expenses_screen_v2.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
 import 'package:apexo/features/labwork/labworks_v2_screen.dart';

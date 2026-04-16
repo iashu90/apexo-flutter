@@ -11,7 +11,6 @@ import '../../services/archived.dart';
 import '../../features/login/login_controller.dart';
 
 const _storeName = "prescriptions";
-List<String>? _prescriptions;
 
 class PrescriptionsStore extends Store<Prescriptions> {
   PrescriptionsStore()
@@ -30,10 +29,6 @@ class PrescriptionsStore extends Store<Prescriptions> {
   @override
   init() {
     super.init();
-    observableMap.observe((_) => _prescriptions = null);
-    observableMap.observe((_) {
-      _prescriptions = observableMap.values.map((p) => p.prescription).toList();
-    });
     login.activators[_storeName] = () async {
       await loaded;
       local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));

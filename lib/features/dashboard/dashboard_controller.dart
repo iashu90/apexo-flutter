@@ -91,7 +91,7 @@ class _DashboardController {
   double prescriptionPaymentsForDate(DateTime date) {
     double res = 0;
     for (var appointment in appointmentsForDate(date)) {
-      res += appointment.prescriptionPaid ?? 0;
+      res += appointment.prescriptionPaid;
     }
     return res;
   }

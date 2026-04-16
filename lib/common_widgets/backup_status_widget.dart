@@ -88,12 +88,12 @@ class _BackupStatusWidgetState extends State<BackupStatusWidget> {
           onPressed: () async {
             _handleBackup(context);
           },
-          child: Row(
+          child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(FluentIcons.sync, size: 10),
-              const SizedBox(width: 4),
-              const Text("Manual Backup", style: TextStyle(fontSize: 10)),
+              Icon(FluentIcons.sync, size: 10),
+              SizedBox(width: 4),
+              Text("Manual Backup", style: TextStyle(fontSize: 10)),
             ],
           ),
         ),

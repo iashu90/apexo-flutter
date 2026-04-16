@@ -1,10 +1,14 @@
 import 'en.dart';
 
 class Es implements En {
+  @override
   Direction $direction = Direction.ltr;
+  @override
   String $name = "Español";
+  @override
   String $code = "es";
 
+  @override
   Map<String, String> dictionary = {
     // common
     "cancel": "Cancelar",

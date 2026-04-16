@@ -995,8 +995,9 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                                 onChanged: (value) {
                                   setStateDialog(() {
                                     selectedCategory = value ?? '';
-                                    if (categoryError != null)
+                                    if (categoryError != null) {
                                       categoryError = null;
+                                    }
                                   });
                                 },
                               ),

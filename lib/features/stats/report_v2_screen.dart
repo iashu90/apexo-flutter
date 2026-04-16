@@ -392,7 +392,7 @@ class _MonthlyTreatmentDistributionCardState
         .toList(growable: false);
     final rows = _treatmentDistributionRows(scoped);
     final total = rows.fold<int>(0, (s, e) => s + e.value);
-    final colors = const [
+    const colors = [
       Color(0xFF2D7BD8),
       Color(0xFF2BA58D),
       Color(0xFFE09C31),
@@ -929,7 +929,7 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
     final rows = counts.entries.toList(growable: false)
       ..sort((a, b) => b.value.compareTo(a.value));
     final total = rows.fold<int>(0, (sum, e) => sum + e.value);
-    final colors = const [
+    const colors = [
       Color(0xFF2D7BD8),
       Color(0xFF2BA58D),
       Color(0xFFE09C31),
@@ -1108,7 +1108,6 @@ class _SimpleBarsCard extends StatelessWidget {
   final String? subtitle;
   final List<({String label, double value})> rows;
   final Color barColor;
-  final int showEveryNthXLabel;
   final Widget? trailing;
   final String Function(double value)? valueFormatter;
   final bool verticalValueLabels;
@@ -1118,7 +1117,6 @@ class _SimpleBarsCard extends StatelessWidget {
     this.subtitle,
     required this.rows,
     required this.barColor,
-    this.showEveryNthXLabel = 1,
     this.trailing,
     this.valueFormatter,
     this.verticalValueLabels = false,

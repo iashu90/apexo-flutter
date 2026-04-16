@@ -144,11 +144,6 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
               Tooltip(
                 message: txt("goToToday"),
                 child: FilledButton(
-                  child: Row(
-                    children: [
-                      Icon(FluentIcons.refresh),
-                    ],
-                  ),
                   onPressed: () {
                     ActivityLogger.logAction(
                       "Go To Today Clicked",
@@ -166,6 +161,11 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
                     ),
                     backgroundColor: ButtonState.all(Colors.blue),
                     foregroundColor: ButtonState.all(Colors.white),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(FluentIcons.refresh),
+                    ],
                   ),
                 ),
               )

@@ -8,7 +8,6 @@ import 'package:apexo/features/appointments/sittings_checkbox.dart';
 import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/features/data/prescriptions_model.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
-import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -22,7 +21,6 @@ import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/utils/uuid.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -285,7 +283,7 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                 const SizedBox(width: 5),
                 if (widget.appointment.patientID == null)
                   Container(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: material.Colors.blue,
                       shape: BoxShape.circle,
                     ),
@@ -430,7 +428,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
       selectedTreatments = {};
     }
     // Initialize selectedTeethSet from the saved appointment value
-    selectedTeethSet = Set<String>.from(widget.appointment.selectedTeeth ?? []);
+    selectedTeethSet = Set<String>.from(widget.appointment.selectedTeeth);
     widget.appointment.treatmentGpayPaid = widget.appointment.treatmentGpayPaid;
     for (int i = 0; i < rctSittings.length; i++) {
       rctChecked[i] = widget.appointment.subTreatments.contains(rctSittings[i]);
@@ -521,7 +519,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                   });
                 },
                 initialValue: [
-                  ...(widget.appointment.diagnosis ?? [])
+                  ...widget.appointment.diagnosis
                       .map((v) => TagInputItem(value: v, label: v)),
                 ],
                 strict: false,
@@ -656,7 +654,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 widget.appointment.isDone = true;
               });
             },
-            placeholder: "${txt("postOperativeNotes")}",
+            placeholder: txt("postOperativeNotes"),
           ),
         ),
         InfoLabel(
@@ -677,8 +675,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                   });
                 },
                 style: const TextStyle(fontWeight: FontWeight.bold),
-                prefix: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                prefix: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
                   child: Icon(material.Icons.discount,
                       color: material.Colors.blue, size: 18),
                 ),
@@ -909,7 +907,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               widget.appointment.treatmentGpayPaid = checked ?? false;
             });
           },
-          content: Txt("Paid via UPI"),
+          content: const Txt("Paid via UPI"),
         ),
 
         const Divider(direction: Axis.horizontal),
@@ -924,14 +922,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         ),
         const SizedBox(height: 20),
         FilledButton(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(FluentIcons.save),
-                SizedBox(width: 8),
-                Txt("Save & Book New Appointment"),
-              ],
-            ),
             onPressed: () async {
               appointments.set(widget.appointment);
               routes.closePanel(widget.appointment.id);
@@ -945,6 +935,14 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             style: ButtonStyle(
               textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
               backgroundColor: WidgetStatePropertyAll(Colors.blue),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(FluentIcons.save),
+                SizedBox(width: 8),
+                Txt("Save & Book New Appointment"),
+              ],
             )),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
     );
@@ -959,13 +957,13 @@ class PrescriptionInput extends StatefulWidget {
   final Panel panel;
 
   const PrescriptionInput({
-    Key? key,
+    super.key,
     required this.allPrescriptions,
     required this.initialPrescriptions,
     required this.onChanged,
     required this.panel,
     required this.appointment,
-  }) : super(key: key);
+  });
 
   @override
   State<PrescriptionInput> createState() => _PrescriptionInputState();
@@ -1093,7 +1091,7 @@ class _PrescriptionInputState extends State<PrescriptionInput> {
                 widget.appointment.prescriptionGpayPaid = checked ?? false;
               });
             },
-            content: Txt("Paid via UPI"),
+            content: const Txt("Paid via UPI"),
           ),
         ),
       ],

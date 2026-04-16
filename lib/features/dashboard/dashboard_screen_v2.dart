@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element, unused_field, unused_local_variable, unused_import
+
 import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
@@ -566,7 +568,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       columns = 1;
                     }
 
-                    final gap = 10.0;
+                    const gap = 10.0;
                     final cardWidth = (width - (columns - 1) * gap) / columns;
 
                     return Wrap(
@@ -1278,7 +1280,7 @@ class _TableHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color:
             isFilterApplied ? const Color(0xFF1A74DB) : const Color(0xFFEFF4FB),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
       ),
       child: Row(
         children: [
@@ -2956,7 +2958,6 @@ class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final Color iconBackground;
-  final VoidCallback? onTap;
 
   const _StatCard({
     required this.title,
@@ -2964,51 +2965,47 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.iconBackground,
-    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 180, maxWidth: 260),
-        child: SizedBox(
-          height: 140,
-          child: _CardShell(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF496489),
-                              fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      Text(value,
-                          style: const TextStyle(
-                              fontSize: 38,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1B3557))),
-                    ],
-                  ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 180, maxWidth: 260),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF496489),
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Text(value,
+                        style: const TextStyle(
+                            fontSize: 38,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1B3557))),
+                  ],
                 ),
-                Container(
-                  width: 38,
-                  height: 38,
-                  margin: const EdgeInsets.only(top: 2),
-                  decoration: BoxDecoration(
-                    color: iconBackground,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 18),
+              ),
+              Container(
+                width: 38,
+                height: 38,
+                margin: const EdgeInsets.only(top: 2),
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+            ],
           ),
         ),
       ),

@@ -1,5 +1,4 @@
 import 'package:apexo/core/model.dart';
-import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';

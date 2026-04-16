@@ -33,7 +33,6 @@ class PatientDetailsDialog extends StatefulWidget {
 class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
   late DateTime selectedDate;
   late DateTime doctorFilterDate;
-  late List<ReportDetailRow> _rows;
   String modeFilter = 'All';
   String dueFilter = 'All'; // Options: All, Due, Fully Paid
   bool doctorOnlyToday = true;
@@ -43,7 +42,6 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
     super.initState();
     selectedDate = widget.initialDate ?? DateTime.now();
     doctorFilterDate = widget.doctorFilterDate ?? DateTime.now();
-    _rows = widget.rows;
   }
 
   List<ReportDetailRow> get filteredRows {
@@ -176,7 +174,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
-                          if (selectedDate != null && widget.patient == null)
+                          if (widget.patient == null)
                             Padding(
                               padding: const EdgeInsets.only(top: 2.0),
                               child: Text(
@@ -278,20 +276,20 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                         decoration: getFilterBoxDecoration(dueFilter != 'All'),
                         child: ComboBox<String>(
                           value: dueFilter,
-                          items: [
-                            const ComboBoxItem(
-                              child: Text('All'),
+                          items: const [
+                            ComboBoxItem(
                               value: 'All',
+                              child: Text('All'),
                             ),
-                            const ComboBoxItem(
-                              child: Text('Due'),
+                            ComboBoxItem(
                               value: 'Due',
+                              child: Text('Due'),
                             ),
-                            const ComboBoxItem(
+                            ComboBoxItem(
+                              value: 'Fully Paid',
                               child: Text(
                                 'Fully Paid',
                               ),
-                              value: 'Fully Paid',
                             ),
                           ],
                           onChanged: (value) {
@@ -332,18 +330,18 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                         decoration: getFilterBoxDecoration(modeFilter != 'All'),
                         child: ComboBox<String>(
                           value: modeFilter,
-                          items: [
+                          items: const [
                             ComboBoxItem(
-                              child: Text('All'),
                               value: 'All',
+                              child: Text('All'),
                             ),
                             ComboBoxItem(
-                              child: Text('Cash'),
                               value: 'Cash',
+                              child: Text('Cash'),
                             ),
                             ComboBoxItem(
-                              child: Text('UPI'),
                               value: 'UPI',
+                              child: Text('UPI'),
                             ),
                           ],
                           onChanged: (value) {

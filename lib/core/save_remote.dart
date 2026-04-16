@@ -106,7 +106,7 @@ class SaveRemote {
     do {
       try {
         ActivityLogger.logApi(
-          pbInstance.baseURL + "/api/collections/data/records",
+          "${pbInstance.baseURL}/api/collections/data/records",
           "GET",
           params: {
             "filter": 'updated>"$date"&&store="$storeName"',
@@ -126,7 +126,7 @@ class SaveRemote {
         );
 
         ActivityLogger.logApi(
-          pbInstance.baseURL + "/api/collections/data/records",
+          "${pbInstance.baseURL}/api/collections/data/records",
           "GET_RESPONSE",
           params: {
             "response": pageResult.items.map((item) => item.data).toList(),

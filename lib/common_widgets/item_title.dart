@@ -115,7 +115,7 @@ class _ItemTitleState extends State<ItemTitle> {
                   ),
                   if (widget.item is Patient)
                     Txt(
-                      (widget.item as Patient).phone ?? '',
+                      (widget.item as Patient).phone,
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                       overflow: TextOverflow.ellipsis,
                     ),

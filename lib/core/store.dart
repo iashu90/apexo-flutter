@@ -98,12 +98,8 @@ class Store<G extends Model> {
       final value = values[i];
       try {
         final decoded = _deSerialize(value);
-        if (decoded is Map<String, dynamic>) {
-          modeled.add(modeling(decoded));
-        } else {
-          keysToDelete.add(key);
-        }
-      } catch (_) {
+        modeled.add(modeling(decoded));
+            } catch (_) {
         print("Corrupt data in local storage: $value");
         keysToDelete.add(key);
       }
@@ -204,15 +200,17 @@ class Store<G extends Model> {
   }
 
   Future<SyncResult> _syncTry() async {
-    if (isDemo == true)
+    if (isDemo == true) {
       return SyncResult(exception: "sync is disabled in demo mode");
+    }
     if (local == null || remote == null) {
       return SyncResult(
           exception: "local/remote persistence layers are not defined");
     }
 
-    if (remote!.isOnline == false)
+    if (remote!.isOnline == false) {
       return SyncResult(exception: "remote server is offline");
+    }
     try {
       int localVersion = await local!.getVersion();
       int remoteVersion = await remote!.getVersion();
@@ -503,10 +501,12 @@ class Store<G extends Model> {
   /// delete an image
   Future<void> deleteImg(String rowID, String name) async {
     onSyncStart?.call();
-    if (remote == null)
+    if (remote == null) {
       throw Exception("remote persistence layer is not defined");
-    if (local == null)
+    }
+    if (local == null) {
       throw Exception("local persistence layer is not defined");
+    }
     Map<String, int> lastDeferred = await local!.getDeferred();
     if (remote!.isOnline && lastDeferred.isEmpty) {
       try {
@@ -537,10 +537,12 @@ class Store<G extends Model> {
   /// upload set of files to a certain row
   Future<void> uploadImg(String rowID, String path) async {
     onSyncStart?.call();
-    if (remote == null)
+    if (remote == null) {
       throw Exception("remote persistence layer is not defined");
-    if (local == null)
+    }
+    if (local == null) {
       throw Exception("local persistence layer is not defined");
+    }
 
     Map<String, int> lastDeferred = await local!.getDeferred();
 

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+// ignore_for_file: unused_import, unused_element
+
 import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
@@ -42,9 +44,9 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   String _sortBy = 'name';
   bool _sortAscending = true;
   double _highValueThreshold = 10000;
-  int _topPatientsVisibleCount = 10;
-  int _topOutstandingVisibleCount = 10;
-  int _topProcedureVisibleCount = 10;
+  final int _topPatientsVisibleCount = 10;
+  final int _topOutstandingVisibleCount = 10;
+  final int _topProcedureVisibleCount = 10;
   int _currentPage = 1;
   bool _isExportingPatientsCsv = false;
   bool _isExportingPatientsPdf = false;
@@ -1726,7 +1728,7 @@ class _DonutPainter extends CustomPainter {
     }
 
     double start = -math.pi / 2;
-    final gap = 0.04;
+    const gap = 0.04;
     for (final segment in segments) {
       if (segment.value <= 0) continue;
       final sweep = (segment.value / total) * math.pi * 2;

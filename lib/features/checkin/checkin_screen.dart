@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element, unused_field, unused_local_variable, unused_import, dead_code
+
 import 'dart:async';
 import 'dart:io';
 
@@ -335,8 +337,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
 
             final filtered = todaysAppointments.where((a) {
               if (_selectedDoctor == '__all__') return true;
-              if (_selectedDoctor == '__unassigned__')
+              if (_selectedDoctor == '__unassigned__') {
                 return a.operatorsIDs.isEmpty;
+              }
               return a.operatorsIDs.contains(_selectedDoctor);
             }).toList(growable: false);
 
@@ -2775,10 +2778,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
 
     final topTreatments = _topTreatmentsForPatient();
     final globalTopTreatments = _topTreatmentsAcrossClinic();
-    final mergedTopTreatments = [
+    final mergedTopTreatments = <dynamic>{
       ...topTreatments,
       ...globalTopTreatments,
-    ].toSet().take(10).toList(growable: false);
+    }.take(10).toList(growable: false);
 
     return Container(
       width: double.infinity,
@@ -2953,7 +2956,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         topTreatments.isNotEmpty
                             ? 'Top 10 treatments (includes patient history):'
                             : 'Top 10 provided treatments:',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Color(0xFF5A7397),
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -4126,7 +4129,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                                     ),
                                   ),
                                 )
-                                .toList(growable: false),
+                                ,
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -4174,9 +4177,9 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Patient',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Color(0xFF5A7397),
                         fontWeight: FontWeight.w700,
                         fontSize: 11,

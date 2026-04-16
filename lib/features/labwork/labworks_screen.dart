@@ -41,30 +41,12 @@ class _LabworksScreenState extends State<LabworksScreen> {
     final allLabworks = labworks.present.values.toList();
     _totalOwed = allLabworks.fold(
       0.0,
-      (sum, lw) => sum + (lw.paid ? -lw.price : (lw.price ?? 0)),
+      (sum, lw) => sum + (lw.paid ? -lw.price : lw.price),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final allLabworks = labworks.present.values.toList();
-
-    // Filter by date range if set
-    final filteredLabworks = allLabworks.where((labwork) {
-      final lwDate =
-          DateTime(labwork.date.year, labwork.date.month, labwork.date.day);
-      if (_fromDate != null) {
-        final from =
-            DateTime(_fromDate!.year, _fromDate!.month, _fromDate!.day);
-        if (lwDate.isBefore(from)) return false;
-      }
-      if (_toDate != null) {
-        final to = DateTime(_toDate!.year, _toDate!.month, _toDate!.day);
-        if (lwDate.isAfter(to)) return false;
-      }
-      return true;
-    }).toList();
-
     return ScaffoldPage(
       key: WK.labworksScreen,
       padding: EdgeInsets.zero,
@@ -98,7 +80,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                   compact: true,
                   items: filteredLabworks,
                   store: labworks,
-                  labelOrder: [
+                  labelOrder: const [
                     "Patient",
                     "Type",
                     "Teeth",
@@ -114,8 +96,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                     setState(() {
                       _totalOwed = filteredList.fold(
                         0.0,
-                        (sum, lw) =>
-                            sum + (lw.paid ? -lw.price : (lw.price ?? 0)),
+                        (sum, lw) => sum + (lw.paid ? -lw.price : lw.price),
                       );
                     });
                   },
@@ -151,11 +132,11 @@ class _LabworksScreenState extends State<LabworksScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Row(
                       children: [
-                        SizedBox(
+                        const SizedBox(
                           width: 130,
                           child: Text(
                             "Filter by date:",
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(fontWeight: FontWeight.w600),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
@@ -399,8 +380,8 @@ class _LabworksScreenState extends State<LabworksScreen> {
                       },
                     ),
                   ],
-                  furtherActions: [
-                    const SizedBox(width: 5),
+                  furtherActions: const [
+                    SizedBox(width: 5),
                   ],
                   onSelect: openLabwork,
                   itemActions: [

@@ -22,23 +22,19 @@ class Patient extends Model {
         ...allAppointments.map((appointment) {
           final dateStr = appointment.date;
 
-          final costStr = '₹${(appointment.price ?? 0).toStringAsFixed(2)}';
-          final paidStr = '₹${(appointment.paid ?? 0).toStringAsFixed(2)}';
+          final costStr = '₹${appointment.price.toStringAsFixed(2)}';
+          final paidStr = '₹${appointment.paid.toStringAsFixed(2)}';
 
-          final prescriptionStr = (appointment.prescriptions != null &&
-                  appointment.prescriptions.isNotEmpty)
+          final prescriptionStr = (appointment.prescriptions.isNotEmpty)
               ? appointment.prescriptions.join(', ')
               : '';
-          final treatmentStr = (appointment.selectedTreatments != null &&
-                  appointment.selectedTreatments.isNotEmpty)
-              ? appointment.subTreatments != null &&
-                      appointment.subTreatments.isNotEmpty
+          final treatmentStr = (appointment.selectedTreatments.isNotEmpty)
+              ? appointment.subTreatments.isNotEmpty
                   ? "${appointment.selectedTreatments.join(', ')} - ${appointment.subTreatments.join(', ')}"
                   : appointment.selectedTreatments.join(', ')
               : '';
 
-          final teethStr = (appointment.selectedTeeth != null &&
-                  appointment.selectedTeeth.isNotEmpty)
+          final teethStr = (appointment.selectedTeeth.isNotEmpty)
               ? appointment.selectedTeeth.join(', ')
               : '';
 
@@ -268,8 +264,9 @@ class Patient extends Model {
     /* 5 */ if (address != d.address) json['address'] = address;
     /* 6 */ if (tags.toString() != d.tags.toString()) json['tags'] = tags;
     /* 7 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
-    /* 8 */ if (referralSource != d.referralSource)
+    /* 8 */ if (referralSource != d.referralSource) {
       json['referralSource'] = referralSource;
+    }
     /* 9 */ if (drugHistorySuggestions.toString() !=
         d.drugHistorySuggestions.toString()) {
       json['drugHistorySuggestions'] = drugHistorySuggestions;

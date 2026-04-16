@@ -144,8 +144,8 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
             letterSpacing: 0.5,
           ),
           dataRowColor: WidgetStateProperty.resolveWith<Color?>(
-            (Set<MaterialState> states) {
-              if (states.contains(MaterialState.selected)) {
+            (Set<WidgetState> states) {
+              if (states.contains(WidgetState.selected)) {
                 return Colors.blue.withOpacity(0.08);
               }
               return null;
@@ -375,8 +375,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: Text(
-                        row.doctorTotalPay ??
-                            '', // Make sure this field exists in ReportDetailRow
+                        row.doctorTotalPay,
                         style: _cellTextStyle.copyWith(
                           fontWeight: FontWeight.w600,
                           color: const Color.fromARGB(255, 243, 157, 28),

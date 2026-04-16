@@ -53,8 +53,8 @@ class ActivityLogger {
     log.severe(msg);
     _writeToFile(msg);
     if (stacktrace != null) {
-      _writeToFile(stacktrace.toString() + "\n");
-      log.info(stacktrace.toString() + "\n");
+      _writeToFile("$stacktrace\n");
+      log.info("$stacktrace\n");
     }
   }
 }

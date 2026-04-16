@@ -60,8 +60,8 @@ class ExpensesScreen extends StatelessWidget {
                         },
                       ),
                     ],
-                    furtherActions: [
-                      const SizedBox(width: 5),
+                    furtherActions: const [
+                      SizedBox(width: 5),
                     ],
                     onSelect: (item) => {openExpense(item)},
                     itemActions: [
