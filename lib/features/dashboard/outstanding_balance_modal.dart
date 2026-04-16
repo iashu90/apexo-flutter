@@ -287,9 +287,9 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
             child: Text(
               'Outstanding Balance',
               style: TextStyle(
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 fontSize: 20,
-                color: Color(0xFF0D2A4E),
+                color: Color(0xFF12355F),
               ),
             ),
           ),
@@ -299,59 +299,71 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
           ),
         ],
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Metric cards ────────────────────────────────────────────────
-          _MetricsRow(data: data),
-          const SizedBox(height: 14),
-
-          // ── Search + actions ────────────────────────────────────────────
-          _SearchAndActionsBar(searchCtrl: _searchCtrl),
-          const SizedBox(height: 10),
-
-          // ── Filter chips ────────────────────────────────────────────────
-          _FilterChipsRow(
-            filters: _filters,
-            active: _activeFilter,
-            onSelect: (f) => setState(() {
-              _activeFilter = f;
-              _visibleCount = _pageSize;
-            }),
-          ),
-          const SizedBox(height: 10),
-
-          // ── List ────────────────────────────────────────────────────────
-          Expanded(
-            child: visible.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No outstanding patients match the current filter.',
-                      style: TextStyle(color: Color(0xFF7C93B1)),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: visible.length,
-                    itemBuilder: (context, index) {
-                      final row = visible[index];
-                      return _PatientRow(
-                        row: row,
-                        isChecked: _checkedIds.contains(row.patient.id),
-                        onCheckedChanged: (v) {
-                          setState(() {
-                            if (v == true) {
-                              _checkedIds.add(row.patient.id);
-                            } else {
-                              _checkedIds.remove(row.patient.id);
-                            }
-                          });
-                        },
-                      );
-                    },
+      content: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFDCE6F2)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Panel(
+              child: _MetricsRow(data: data),
+            ),
+            const SizedBox(height: 10),
+            _Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SearchAndActionsBar(searchCtrl: _searchCtrl),
+                  const SizedBox(height: 10),
+                  _FilterChipsRow(
+                    filters: _filters,
+                    active: _activeFilter,
+                    onSelect: (f) => setState(() {
+                      _activeFilter = f;
+                      _visibleCount = _pageSize;
+                    }),
                   ),
-          ),
-        ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: _Panel(
+                child: visible.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No outstanding patients match the current filter.',
+                          style: TextStyle(color: Color(0xFF7C93B1)),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: visible.length,
+                        itemBuilder: (context, index) {
+                          final row = visible[index];
+                          return _PatientRow(
+                            row: row,
+                            isChecked: _checkedIds.contains(row.patient.id),
+                            onCheckedChanged: (v) {
+                              setState(() {
+                                if (v == true) {
+                                  _checkedIds.add(row.patient.id);
+                                } else {
+                                  _checkedIds.remove(row.patient.id);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
         // ── Bottom bar ─────────────────────────────────────────────────
@@ -545,9 +557,9 @@ class _MetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: color,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E3F0)),
+        border: Border.all(color: borderColor),
         boxShadow: const [
           BoxShadow(
             color: Color(0x160D2F5B),
@@ -598,6 +610,32 @@ class _MetricCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _Panel extends StatelessWidget {
+  final Widget child;
+
+  const _Panel({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120D2F5B),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }

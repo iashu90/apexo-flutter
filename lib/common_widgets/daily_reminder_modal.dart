@@ -1,4 +1,5 @@
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -26,6 +27,29 @@ Future<void> showDailyReminderModal(BuildContext context) async {
       .toList(growable: false);
 
   final scheduledCount = todaysAppointments.length;
+  int waitingCount = 0;
+  int treatmentCount = 0;
+  int billingCount = 0;
+  int completeCount = 0;
+  for (final appointment in todaysAppointments) {
+    switch (normalizeCheckinStage(appointment.checkinStage)) {
+      case 'scheduled':
+        break;
+      case 'waiting':
+        waitingCount++;
+        break;
+      case 'treatment':
+        treatmentCount++;
+        break;
+      case 'billing':
+        billingCount++;
+        break;
+      case 'complete':
+        completeCount++;
+        break;
+    }
+  }
+
   final pendingLabCount = pendingLabworks.length;
 
   await showDialog<void>(
@@ -81,6 +105,38 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                   : scheduledCount == 1
                       ? '1 appointment scheduled'
                       : '$scheduledCount appointments scheduled',
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _MiniStageCountCard(
+                  label: 'Scheduled',
+                  value: '$scheduledCount',
+                  color: const Color(0xFF2D7BD8),
+                ),
+                _MiniStageCountCard(
+                  label: 'Waiting',
+                  value: '$waitingCount',
+                  color: const Color(0xFFE09C31),
+                ),
+                _MiniStageCountCard(
+                  label: 'Treatment',
+                  value: '$treatmentCount',
+                  color: const Color(0xFF4E76D8),
+                ),
+                _MiniStageCountCard(
+                  label: 'Billing',
+                  value: '$billingCount',
+                  color: const Color(0xFF8A63D2),
+                ),
+                _MiniStageCountCard(
+                  label: 'Completed',
+                  value: '$completeCount',
+                  color: const Color(0xFF2BA58D),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             _ReminderCard(
@@ -178,6 +234,53 @@ class _ReminderCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStageCountCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _MiniStageCountCard({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 118,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              color: color,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
