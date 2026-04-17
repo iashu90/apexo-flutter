@@ -32,7 +32,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   String _query = '';
   String _statusFilter = 'all';
   String _paymentFilter = 'all';
-  String _rangeFilter = 'all';
+  String _rangeFilter = 'month';
   String _labFilter = 'all';
   DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _fromDate;
@@ -59,38 +59,38 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage(
+    return ScaffoldPage.scrollable(
       key: WK.labworksScreenV2,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      content: StreamBuilder(
-        stream: labworks.observableMap.stream,
-        builder: (context, _) {
-          final all = labworks.present.values.toList(growable: false)
-            ..sort((a, b) => b.date.compareTo(a.date));
+      children: [
+        StreamBuilder(
+          stream: labworks.observableMap.stream,
+          builder: (context, _) {
+            final all = labworks.present.values.toList(growable: false)
+              ..sort((a, b) => b.date.compareTo(a.date));
 
-          final filtered = _applyFilters(all);
+            final filtered = _applyFilters(all);
             final inLab = filtered
-              .where((l) => !l.deliveredToDoctor)
-              .toList(growable: false);
+                .where((l) => !l.deliveredToDoctor)
+                .toList(growable: false);
             final ready = filtered
-              .where((l) => l.deliveredToDoctor && !l.deliveredToPatient)
-              .toList(growable: false);
+                .where((l) => l.deliveredToDoctor && !l.deliveredToPatient)
+                .toList(growable: false);
             final delivered = filtered
-              .where((l) => l.deliveredToPatient)
-              .toList(growable: false);
+                .where((l) => l.deliveredToPatient)
+                .toList(growable: false);
 
-          return Column(
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 10),
-              _buildSearchAndDateFilters(filtered),
-              const SizedBox(height: 10),
-              _buildMonthNavigator(),
-              const SizedBox(height: 10),
-              _buildStatStrip(all),
-              const SizedBox(height: 10),
-              Expanded(
-                child: filtered.isEmpty
+            return Column(
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 10),
+                _buildStatStrip(all),
+                const SizedBox(height: 10),
+                _buildSearchAndDateFilters(filtered),
+                const SizedBox(height: 10),
+                _buildMonthNavigator(),
+                const SizedBox(height: 10),
+                filtered.isEmpty
                     ? _EmptyState(onClear: _clearFilters)
                     : _LabworkBoard(
                         inLab: inLab,
@@ -117,11 +117,11 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                           );
                         },
                       ),
-              ),
-            ],
-          );
-        },
-      ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -384,40 +384,44 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     final canGoNext = _monthAnchor.year < DateTime.now().year ||
         (_monthAnchor.year == DateTime.now().year &&
             _monthAnchor.month < DateTime.now().month);
+    final monthModeActive = _rangeFilter == 'month';
 
     return Center(
-      child: SizedBox(
-        width: 420,
-        child: MonthNavigatorBar(
-          selectedMonth: _monthAnchor,
-          onPrevious: () {
-            setState(() {
-              _monthAnchor = DateTime(
-                _monthAnchor.year,
-                _monthAnchor.month - 1,
-                1,
-              );
-              _rangeFilter = 'month';
-            });
-          },
-          onNext: canGoNext
-              ? () {
-                  setState(() {
-                    _monthAnchor = DateTime(
-                      _monthAnchor.year,
-                      _monthAnchor.month + 1,
-                      1,
-                    );
-                    _rangeFilter = 'month';
-                  });
-                }
-              : null,
-          onPick: (value) {
-            setState(() {
-              _monthAnchor = value;
-              _rangeFilter = 'month';
-            });
-          },
+      child: Opacity(
+        opacity: monthModeActive ? 1 : 0.45,
+        child: IgnorePointer(
+          ignoring: !monthModeActive,
+          child: SizedBox(
+            width: 420,
+            child: MonthNavigatorBar(
+              selectedMonth: _monthAnchor,
+              onPrevious: () {
+                setState(() {
+                  _monthAnchor = DateTime(
+                    _monthAnchor.year,
+                    _monthAnchor.month - 1,
+                    1,
+                  );
+                });
+              },
+              onNext: canGoNext
+                  ? () {
+                      setState(() {
+                        _monthAnchor = DateTime(
+                          _monthAnchor.year,
+                          _monthAnchor.month + 1,
+                          1,
+                        );
+                      });
+                    }
+                  : null,
+              onPick: (value) {
+                setState(() {
+                  _monthAnchor = value;
+                });
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -702,7 +706,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       _searchCtrl.text = '';
       _statusFilter = 'all';
       _paymentFilter = 'all';
-      _rangeFilter = 'all';
+      _rangeFilter = 'month';
       _labFilter = 'all';
       _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
       _fromDate = null;
@@ -852,7 +856,8 @@ class _LabworkBoard extends StatelessWidget {
         );
 
         if (stacked) {
-          return ListView(
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               inLabColumn,
               const SizedBox(height: 10),
@@ -874,7 +879,6 @@ class _LabworkBoard extends StatelessWidget {
                 items: inLab,
                 collapsed: inLabCollapsed,
                 onToggle: onToggleInLab,
-                useInnerScroll: true,
                 onOpen: onOpen,
                 onHistory: onHistory,
               ),
@@ -888,7 +892,6 @@ class _LabworkBoard extends StatelessWidget {
                 items: ready,
                 collapsed: readyCollapsed,
                 onToggle: onToggleReady,
-                useInnerScroll: true,
                 onOpen: onOpen,
                 onHistory: onHistory,
               ),
@@ -902,7 +905,6 @@ class _LabworkBoard extends StatelessWidget {
                 items: delivered,
                 collapsed: deliveredCollapsed,
                 onToggle: onToggleDelivered,
-                useInnerScroll: true,
                 onOpen: onOpen,
                 onHistory: onHistory,
               ),

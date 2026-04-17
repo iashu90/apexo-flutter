@@ -238,17 +238,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                _DoctorTodayDetailCard(
-                  doctors: allDoctors,
-                  todaysAppointments: todaysAppointments,
-                  selectedDate: _selectedDate,
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 620),
-                    child: _DoctorAppointmentDoneChartCard(
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final twoCol = constraints.maxWidth >= 1260;
+                    final doneCard = _DoctorAppointmentDoneChartCard(
                       rows: doneRows,
                       selectedRange: _doneRange,
                       monthAnchor: _doneMonthAnchor,
@@ -257,8 +250,38 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                           setState(() => _doneMonthAnchor = month),
                       onSelectRange: (value) =>
                           setState(() => _doneRange = value),
-                    ),
-                  ),
+                    );
+
+                    if (!twoCol) {
+                      return Column(
+                        children: [
+                          _DoctorTodayDetailCard(
+                            doctors: allDoctors,
+                            todaysAppointments: todaysAppointments,
+                            selectedDate: _selectedDate,
+                          ),
+                          const SizedBox(height: 10),
+                          doneCard,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 7,
+                          child: _DoctorTodayDetailCard(
+                            doctors: allDoctors,
+                            todaysAppointments: todaysAppointments,
+                            selectedDate: _selectedDate,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(flex: 6, child: doneCard),
+                      ],
+                    );
+                  },
                 ),
               ],
             );
@@ -275,6 +298,14 @@ List<DateTime> _monthOptions(List<Appointment> rows) {
       .toSet()
       .toList(growable: false)
     ..sort((a, b) => b.compareTo(a));
+}
+
+String _shortMoney(num value) {
+  final abs = value.abs();
+  if (abs < 1000) {
+    return '₹${value.toStringAsFixed(0)}';
+  }
+  return '₹${NumberFormat.compact(locale: 'en_IN').format(value)}';
 }
 
 Future<void> _openDoctorEntryModalV2(
@@ -1157,9 +1188,13 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
       ..sort((a, b) => a.key.title.toLowerCase().compareTo(b.key.title.toLowerCase()));
 
     final totalPatients = widget.todaysAppointments.length;
-    final hospitalGained = widget.todaysAppointments.fold<double>(
+    final revenue = widget.todaysAppointments.fold<double>(
       0,
       (sum, a) => sum + a.paid + a.prescriptionPaid,
+    );
+    final doctorsFee = widget.todaysAppointments.fold<double>(
+      0,
+      (sum, a) => sum + (a.priceToPayDoctor > 0 ? a.priceToPayDoctor : a.paidToDoctor),
     );
 
     return DecoratedBox(
@@ -1202,9 +1237,14 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                       const Color(0xFF2D7BD8),
                     ),
                     _topMetric(
-                      'Hospital Gained',
-                      '₹${hospitalGained.toStringAsFixed(0)}',
+                      'Revenue',
+                      _shortMoney(revenue),
                       const Color(0xFF2BA58D),
+                    ),
+                    _topMetric(
+                      'Doctors Fee',
+                      _shortMoney(doctorsFee),
+                      const Color(0xFFD6455D),
                     ),
                     _topMetric(
                       'Active Doctors',
@@ -1253,9 +1293,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                   0,
                   (sum, a) => sum + a.paid + a.prescriptionPaid,
                 );
-                final hospital = doctorAppts.fold<double>(
+                final doctorFee = doctorAppts.fold<double>(
                   0,
-                  (sum, a) => sum + a.price + a.prescriptionPrice,
+                  (sum, a) => sum + (a.priceToPayDoctor > 0 ? a.priceToPayDoctor : a.paidToDoctor),
                 );
 
                 return Container(
@@ -1299,14 +1339,14 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           ),
                           const SizedBox(width: 8),
                           _inlineMetric(
-                            'Fee',
-                            '₹${earned.toStringAsFixed(0)}',
+                            'Doctors Fee',
+                            _shortMoney(doctorFee),
                             const Color(0xFFD6455D),
                           ),
                           const SizedBox(width: 8),
                           _inlineMetric(
                             'Revenue',
-                            '₹${hospital.toStringAsFixed(0)}',
+                            _shortMoney(earned),
                             const Color(0xFF2BA58D),
                           ),
                         ],
@@ -2102,7 +2142,9 @@ class _DoctorPerformanceCard extends StatelessWidget {
   }
 }
 
-class _DoctorAppointmentDoneChartCard extends StatelessWidget {
+enum _DoctorDoneSortKey { doctor, appointments, fee, revenue }
+
+class _DoctorAppointmentDoneChartCard extends StatefulWidget {
   final List<
       ({
         Doctor doctor,
@@ -2129,11 +2171,32 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
   });
 
   @override
+  State<_DoctorAppointmentDoneChartCard> createState() =>
+      _DoctorAppointmentDoneChartCardState();
+}
+
+class _DoctorAppointmentDoneChartCardState
+    extends State<_DoctorAppointmentDoneChartCard> {
+  _DoctorDoneSortKey _sortKey = _DoctorDoneSortKey.appointments;
+  bool _ascending = false;
+
+  void _toggleSort(_DoctorDoneSortKey key) {
+    setState(() {
+      if (_sortKey == key) {
+        _ascending = !_ascending;
+      } else {
+        _sortKey = key;
+        _ascending = false;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     Widget tab(String key, String label) {
-      final selected = selectedRange == key;
+      final selected = widget.selectedRange == key;
       return GestureDetector(
-        onTap: () => onSelectRange(key),
+        onTap: () => widget.onSelectRange(key),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
@@ -2156,9 +2219,29 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
       );
     }
 
-    final totalAppointments = rows.fold<int>(0, (s, r) => s + r.totalCount);
-    final totalConsult = rows.fold<double>(0, (s, r) => s + r.consultFee);
-    final totalRevenue = rows.fold<double>(0, (s, r) => s + r.revenue);
+    final totalAppointments =
+        widget.rows.fold<int>(0, (s, r) => s + r.totalCount);
+    final totalDoctorFee =
+        widget.rows.fold<double>(0, (s, r) => s + r.consultFee);
+    final totalRevenue = widget.rows.fold<double>(0, (s, r) => s + r.earned);
+
+    final sortedRows = widget.rows.toList(growable: false)
+      ..sort((a, b) {
+        int compare;
+        switch (_sortKey) {
+          case _DoctorDoneSortKey.doctor:
+            compare = a.doctor.title
+                .toLowerCase()
+                .compareTo(b.doctor.title.toLowerCase());
+          case _DoctorDoneSortKey.appointments:
+            compare = a.totalCount.compareTo(b.totalCount);
+          case _DoctorDoneSortKey.fee:
+            compare = a.consultFee.compareTo(b.consultFee);
+          case _DoctorDoneSortKey.revenue:
+            compare = a.earned.compareTo(b.earned);
+        }
+        return _ascending ? compare : -compare;
+      });
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -2210,24 +2293,25 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                 Expanded(
                   child: _summaryTile(
                     title: 'Appointments',
-                    value: '$totalAppointments',
+                    value: NumberFormat.compact(locale: 'en_IN')
+                        .format(totalAppointments),
                     valueColor: const Color(0xFF1B3557),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _summaryTile(
-                    title: 'Doctors Earned',
-                    value: '₹${totalConsult.toStringAsFixed(0)}',
-                    valueColor: const Color(0xFF2BA58D),
+                    title: 'Doctors Fee',
+                    value: _shortMoney(totalDoctorFee),
+                    valueColor: const Color(0xFFD6455D),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _summaryTile(
-                    title: 'Hospital Gained',
-                    value: '₹${totalRevenue.toStringAsFixed(0)}',
-                    valueColor: const Color(0xFF2D7BD8),
+                    title: 'Revenue',
+                    value: _shortMoney(totalRevenue),
+                    valueColor: const Color(0xFF2BA58D),
                   ),
                 ),
               ],
@@ -2246,14 +2330,14 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                 tab('custom', 'Custom'),
               ],
             ),
-            if (selectedRange == 'month' && monthOptions.isNotEmpty) ...[
+            if (widget.selectedRange == 'month' && widget.monthOptions.isNotEmpty) ...[
               const SizedBox(height: 8),
               SizedBox(
                 width: 200,
                 child: ComboBox<DateTime>(
                   isExpanded: true,
-                  value: monthAnchor,
-                  items: monthOptions
+                  value: widget.monthAnchor,
+                  items: widget.monthOptions
                       .map(
                         (m) => ComboBoxItem<DateTime>(
                           value: m,
@@ -2262,13 +2346,13 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                       )
                       .toList(growable: false),
                   onChanged: (v) {
-                    if (v != null) onMonthChanged(v);
+                    if (v != null) widget.onMonthChanged(v);
                   },
                 ),
               ),
             ],
             const SizedBox(height: 10),
-            if (rows.isEmpty)
+            if (sortedRows.isEmpty)
               const Text(
                 'No completion data in selected range.',
                 style: TextStyle(color: Color(0xFF6D84A8)),
@@ -2286,58 +2370,37 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                       decoration: const BoxDecoration(
                         color: Color(0xFFEFF5FF),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Expanded(
                             flex: 4,
-                            child: Text(
+                            child: _sortableHeader(
                               'Doctor',
-                              style: TextStyle(
-                                color: Color(0xFF355279),
-                                fontWeight: FontWeight.w700,
-                              ),
+                              _DoctorDoneSortKey.doctor,
                             ),
                           ),
                           Expanded(
-                            child: Text(
+                            child: _sortableHeader(
                               'Appointments',
-                              style: TextStyle(
-                                color: Color(0xFF355279),
-                                fontWeight: FontWeight.w700,
-                              ),
+                              _DoctorDoneSortKey.appointments,
                             ),
                           ),
                           Expanded(
-                            child: Text(
-                              'Fee',
-                              style: TextStyle(
-                                color: Color(0xFF355279),
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: _sortableHeader(
+                              'Doctors Fee',
+                              _DoctorDoneSortKey.fee,
                             ),
                           ),
                           Expanded(
-                            child: Text(
-                              'Doctors Earned',
-                              style: TextStyle(
-                                color: Color(0xFF355279),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              'Hospital Gained',
-                              style: TextStyle(
-                                color: Color(0xFF355279),
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: _sortableHeader(
+                              'Revenue',
+                              _DoctorDoneSortKey.revenue,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    ...rows.take(12).map((row) => Container(
+                    ...sortedRows.take(12).map((row) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
                           decoration: const BoxDecoration(
                             border: Border(
@@ -2359,7 +2422,8 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                               ),
                               Expanded(
                                 child: Text(
-                                  '${row.totalCount}',
+                                  NumberFormat.compact(locale: 'en_IN')
+                                      .format(row.totalCount),
                                   style: const TextStyle(
                                     color: Color(0xFF1F2B40),
                                     fontWeight: FontWeight.w700,
@@ -2368,40 +2432,65 @@ class _DoctorAppointmentDoneChartCard extends StatelessWidget {
                               ),
                               Expanded(
                                 child: Text(
-                                  '₹${row.consultFee.toStringAsFixed(0)}',
+                                  _shortMoney(row.consultFee),
                                   style: const TextStyle(
-                                    color: Color(0xFF1F4F88),
+                                    color: Color(0xFFD6455D),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
                               Expanded(
                                 child: Text(
-                                  '₹${row.earned.toStringAsFixed(0)}',
+                                  _shortMoney(row.earned),
                                   style: const TextStyle(
                                     color: Color(0xFF2BA58D),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
-                              Expanded(
-                                child: Text(
-                                  '₹${row.revenue.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF2D7BD8),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
                             ],
                           ),
-                        ),
-                      ),
+                        )),
                   ],
                 ),
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _sortableHeader(String title, _DoctorDoneSortKey key) {
+    final selected = _sortKey == key;
+    return GestureDetector(
+      onTap: () => _toggleSort(key),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF355279),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            selected
+                ? (_ascending
+                    ? FluentIcons.chevron_up
+                    : FluentIcons.chevron_down)
+                : FluentIcons.sort,
+            size: 10,
+            color: selected
+                ? const Color(0xFF2D7BD8)
+                : const Color(0xFF6D84A8),
+          ),
+        ],
       ),
     );
   }

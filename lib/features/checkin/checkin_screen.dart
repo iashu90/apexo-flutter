@@ -2783,25 +2783,14 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       ...globalTopTreatments,
     }.take(10).toList(growable: false);
 
-    return Container(
+    const sectionTitleStyle = TextStyle(
+      color: Color(0xFF2C4E76),
+      fontWeight: FontWeight.w800,
+      fontSize: 15,
+    );
+
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF8FBFF), Color(0xFFF1F7FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD8E7F8)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120D2F5B),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2810,8 +2799,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               'Treatment',
               style: TextStyle(
                 color: Color(0xFF2C4E76),
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
               ),
             ),
           if (isWithDoctor) const SizedBox(height: 14),
@@ -2842,17 +2831,16 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    InfoLabel(
-                      label: 'Diagnosis:',
-                      child: _CheckinSearchableTagInput(
-                        initialValues: a.diagnosis,
-                        suggestions: allDiagnosis,
-                        placeholder: 'Add diagnosis...',
-                        onChanged: (values) {
-                          a.diagnosis = values;
-                          appointments.set(a);
-                        },
-                      ),
+                    const Text('Diagnosis', style: sectionTitleStyle),
+                    const SizedBox(height: 6),
+                    _CheckinSearchableTagInput(
+                      initialValues: a.diagnosis,
+                      suggestions: allDiagnosis,
+                      placeholder: 'Add diagnosis...',
+                      onChanged: (values) {
+                        a.diagnosis = values;
+                        appointments.set(a);
+                      },
                     ),
                     const SizedBox(height: 10),
                     Wrap(
@@ -2882,29 +2870,28 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           .toList(growable: false),
                     ),
                     const SizedBox(height: 16),
-                    InfoLabel(
-                      label: 'Treatment:',
-                      child: _CheckinSearchableTagInput(
-                        initialValues:
-                            _selectedTreatments.toList(growable: false),
-                        suggestions: allTreatments
-                            .map((t) => t.name)
-                            .toList(growable: false),
-                        placeholder: 'Add treatment...',
-                        onChanged: (values) {
-                          _selectedTreatments = values.toSet();
-                          a.selectedTreatments = values;
-                          if (!_hasConsultationSelected()) {
-                            _selectedConsultationTypes.clear();
-                            a.subTreatments = [];
-                          } else {
-                            a.subTreatments = _selectedConsultationTypes
-                                .toList(growable: false);
-                          }
-                          appointments.set(a);
-                          setState(() {});
-                        },
-                      ),
+                    const Text('Treatment', style: sectionTitleStyle),
+                    const SizedBox(height: 6),
+                    _CheckinSearchableTagInput(
+                      initialValues:
+                          _selectedTreatments.toList(growable: false),
+                      suggestions: allTreatments
+                          .map((t) => t.name)
+                          .toList(growable: false),
+                      placeholder: 'Add treatment...',
+                      onChanged: (values) {
+                        _selectedTreatments = values.toSet();
+                        a.selectedTreatments = values;
+                        if (!_hasConsultationSelected()) {
+                          _selectedConsultationTypes.clear();
+                          a.subTreatments = [];
+                        } else {
+                          a.subTreatments = _selectedConsultationTypes
+                              .toList(growable: false);
+                        }
+                        appointments.set(a);
+                        setState(() {});
+                      },
                     ),
                     if (_hasConsultationSelected()) ...[
                       const SizedBox(height: 10),
@@ -2998,25 +2985,24 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       ),
                     ],
                     const SizedBox(height: 10),
-                    InfoLabel(
-                      label: 'Treatment Price:',
-                      child: CupertinoTextField(
-                        controller: _priceController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
-                        prefix: const Padding(
-                          padding: EdgeInsets.only(left: 10),
-                          child: Text('₹',
-                              style: TextStyle(color: Color(0xFF355279))),
-                        ),
-                        placeholder: 'Treatment price',
-                        onChanged: (value) {
-                          a.price = double.tryParse(value) ?? 0;
-                          appointments.set(a);
-                        },
+                    const Text('Treatment Price', style: sectionTitleStyle),
+                    const SizedBox(height: 6),
+                    CupertinoTextField(
+                      controller: _priceController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 10),
+                        child:
+                            Text('₹', style: TextStyle(color: Color(0xFF355279))),
                       ),
+                      placeholder: 'Treatment price',
+                      onChanged: (value) {
+                        a.price = double.tryParse(value) ?? 0;
+                        appointments.set(a);
+                      },
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -3047,18 +3033,17 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 final secondColumn = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    InfoLabel(
-                      label: 'Post-operative notes:',
-                      child: CupertinoTextField(
-                        controller: _postOpController,
-                        minLines: 4,
-                        maxLines: 8,
-                        onChanged: (value) {
-                          a.postOpNotes = value;
-                          appointments.set(a);
-                        },
-                        placeholder: 'Post-operative notes',
-                      ),
+                    const Text('Post-operative Notes', style: sectionTitleStyle),
+                    const SizedBox(height: 6),
+                    CupertinoTextField(
+                      controller: _postOpController,
+                      minLines: 4,
+                      maxLines: 8,
+                      onChanged: (value) {
+                        a.postOpNotes = value;
+                        appointments.set(a);
+                      },
+                      placeholder: 'Post-operative notes',
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -3083,50 +3068,40 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     if (_selectedPostOpParent != null &&
                         _postOpSuggestions[_selectedPostOpParent!] != null) ...[
                       const SizedBox(height: 14),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF6FAFF),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFDCE8F8)),
-                        ),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _postOpSuggestions[_selectedPostOpParent!]!
-                              .map(
-                                (child) => _quickChip(
-                                  label: child,
-                                  selectedColor: const Color(0xFFFFEAD8),
-                                  selectedTextColor: const Color(0xFF9A4A00),
-                                  normalColor: const Color(0xFFFFF4E8),
-                                  normalTextColor: const Color(0xFF8A5B2F),
-                                  onTap: () {
-                                    final parent = _selectedPostOpParent;
-                                    if (parent == null) return;
-                                    final parentLine = '- $parent';
-                                    final childLine = '  - $child';
-                                    final current =
-                                        _postOpController.text.trim();
-                                    if (current.contains(
-                                            '$parentLine\n$childLine') ||
-                                        current.contains('\n$childLine')) {
-                                      return;
-                                    }
-                                    _postOpController.text = current
-                                            .contains(parentLine)
-                                        ? '$current\n$childLine'
-                                        : (current.isEmpty
-                                            ? '$parentLine\n$childLine'
-                                            : '$current\n$parentLine\n$childLine');
-                                    a.postOpNotes = _postOpController.text;
-                                    appointments.set(a);
-                                  },
-                                ),
-                              )
-                              .toList(growable: false),
-                        ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _postOpSuggestions[_selectedPostOpParent!]!
+                            .map(
+                              (child) => _quickChip(
+                                label: child,
+                                selectedColor: const Color(0xFFFFEAD8),
+                                selectedTextColor: const Color(0xFF9A4A00),
+                                normalColor: const Color(0xFFFFF4E8),
+                                normalTextColor: const Color(0xFF8A5B2F),
+                                onTap: () {
+                                  final parent = _selectedPostOpParent;
+                                  if (parent == null) return;
+                                  final parentLine = '- $parent';
+                                  final childLine = '  - $child';
+                                  final current =
+                                      _postOpController.text.trim();
+                                  if (current.contains('$parentLine\n$childLine') ||
+                                      current.contains('\n$childLine')) {
+                                    return;
+                                  }
+                                  _postOpController.text = current
+                                          .contains(parentLine)
+                                      ? '$current\n$childLine'
+                                      : (current.isEmpty
+                                          ? '$parentLine\n$childLine'
+                                          : '$current\n$parentLine\n$childLine');
+                                  a.postOpNotes = _postOpController.text;
+                                  appointments.set(a);
+                                },
+                              ),
+                            )
+                            .toList(growable: false),
                       ),
                     ],
                     if (widget.showInlineBottomActions) ...[
@@ -4694,13 +4669,8 @@ class _PatientJourneyTimeline extends StatelessWidget {
             .toList(growable: false);
     final points = scoped.take(8).toList(growable: false);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7FBFF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2ECF8)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -4708,8 +4678,8 @@ class _PatientJourneyTimeline extends StatelessWidget {
             'Journey Timeline',
             style: TextStyle(
               color: Color(0xFF2C4E76),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
             ),
           ),
           const SizedBox(height: 8),
