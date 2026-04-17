@@ -3056,8 +3056,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       suggestions: allDiagnosis,
                       placeholder: 'Add diagnosis...',
                       onChanged: (values) {
-                        a.diagnosis = values;
-                        appointments.set(a);
+                        setState(() {
+                          a.diagnosis = values;
+                          appointments.set(a);
+                        });
                       },
                     ),
                     const SizedBox(height: 10),

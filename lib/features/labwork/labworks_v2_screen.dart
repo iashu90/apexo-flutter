@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'package:apexo/common_widgets/custom_date_range_picker.dart';
+import 'package:apexo/common_widgets/lab_bulk_update_dialog.dart';
 import 'package:apexo/common_widgets/month_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
@@ -136,6 +137,18 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
           ),
         ),
         const Spacer(),
+        Button(
+          onPressed: () => showLabBulkUpdateDialog(context),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(FluentIcons.edit, size: 12),
+              SizedBox(width: 6),
+              Text('Lab Bulk Update'),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
         FilledButton(
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
@@ -200,6 +213,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildMonthNavigator(),
+        const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -227,39 +242,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  SizedBox(
-                    width: 290,
-                    child: MonthNavigatorBar(
-                      selectedMonth: _monthAnchor,
-                      onPrevious: () {
-                        setState(() {
-                          _monthAnchor = DateTime(
-                            _monthAnchor.year,
-                            _monthAnchor.month - 1,
-                            1,
-                          );
-                        });
-                      },
-                      onNext: _monthAnchor.year < DateTime.now().year ||
-                              (_monthAnchor.year == DateTime.now().year &&
-                                  _monthAnchor.month < DateTime.now().month)
-                          ? () {
-                              setState(() {
-                                _monthAnchor = DateTime(
-                                  _monthAnchor.year,
-                                  _monthAnchor.month + 1,
-                                  1,
-                                );
-                              });
-                            }
-                          : null,
-                      onPick: (value) {
-                        setState(() {
-                          _monthAnchor = value;
-                        });
-                      },
-                    ),
-                  ),
                   SizedBox(
                     width: 190,
                     child: ComboBox<String>(
@@ -316,6 +298,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                       'all': 'All Payment',
                       'paid': 'Paid',
                       'due': 'Due',
+                      'no_due': 'No Outstanding',
                     },
                     onChanged: (v) => setState(() => _paymentFilter = v),
                   ),
@@ -640,7 +623,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       }
 
       if (_paymentFilter == 'paid' && !l.paid) return false;
-      if (_paymentFilter == 'due' && l.paid) return false;
+      if (_paymentFilter == 'due' && (l.paid || l.price <= 0)) return false;
+      if (_paymentFilter == 'no_due' && (!l.paid && l.price > 0)) return false;
 
       if (from != null || to != null) {
         final d = DateTime(l.date.year, l.date.month, l.date.day);
