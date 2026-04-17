@@ -21,6 +21,7 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:apexo/utils/share_actions.dart';
+import 'package:apexo/utils/pdf_export_layout.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -991,6 +992,199 @@ class _WorkflowRow extends StatelessWidget {
     );
   }
 
+  Future<void> _deleteScheduledAppointment(
+    BuildContext context,
+    Appointment appointment,
+  ) async {
+    await appointments.hardDelete(appointment.id);
+  }
+
+  Future<void> _openScheduleActions(
+    BuildContext context,
+    Appointment appointment,
+  ) async {
+    final originalDate = appointment.date;
+    DateTime selectedDate = DateTime(
+      originalDate.year,
+      originalDate.month,
+      originalDate.day,
+    );
+    material.TimeOfDay selectedTime = material.TimeOfDay(
+      hour: originalDate.hour,
+      minute: originalDate.minute,
+    );
+    bool confirmDelete = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          final updatedDateTime = DateTime(
+            selectedDate.year,
+            selectedDate.month,
+            selectedDate.day,
+            selectedTime.hour,
+            selectedTime.minute,
+          );
+          final hasChanged = updatedDateTime != originalDate;
+
+          return ContentDialog(
+            title: const Text('Edit Scheduled Appointment'),
+            content: SizedBox(
+              width: 520,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appointment.title.trim().isEmpty
+                        ? 'Unnamed patient'
+                        : _toTitleCase(appointment.title),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF183A67),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Text(
+                        'Date:',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () async {
+                          final picked = await material.showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2000, 1, 1),
+                            lastDate: DateTime(2100, 12, 31),
+                            builder: apexoDatePickerBuilder(context),
+                          );
+                          if (picked == null) return;
+                          setStateDialog(() {
+                            selectedDate = DateTime(
+                              picked.year,
+                              picked.month,
+                              picked.day,
+                            );
+                          });
+                        },
+                        child: Text(
+                          DateFormat('dd MMM yyyy').format(selectedDate),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text(
+                        'Time:',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () async {
+                          final picked = await material.showTimePicker(
+                            context: context,
+                            initialTime: selectedTime,
+                          );
+                          if (picked == null) return;
+                          setStateDialog(() {
+                            selectedTime = picked;
+                          });
+                        },
+                        child: Text(selectedTime.format(context)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Current: ${DateFormat('dd MMM yyyy, h:mm a').format(originalDate)}',
+                    style: const TextStyle(
+                      color: Color(0xFF5F789B),
+                      fontSize: 12,
+                    ),
+                  ),
+                  Text(
+                    'Updated: ${DateFormat('dd MMM yyyy, h:mm a').format(updatedDateTime)}',
+                    style: TextStyle(
+                      color: hasChanged
+                          ? const Color(0xFF1459AD)
+                          : const Color(0xFF5F789B),
+                      fontSize: 12,
+                      fontWeight: hasChanged ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  if (confirmDelete) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF4F4),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFF3C3C8)),
+                      ),
+                      child: const Text(
+                        'Delete confirmation: this action is permanent and cannot be undone.',
+                        style: TextStyle(
+                          color: Color(0xFFA11E34),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              Button(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+              FilledButton(
+                style: ButtonStyle(
+                  backgroundColor:
+                      WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                ),
+                onPressed: hasChanged
+                    ? () {
+                        appointment.date = updatedDateTime;
+                        appointments.set(appointment);
+                        onSelect?.call(appointment);
+                        Navigator.pop(dialogContext);
+                      }
+                    : null,
+                child: const Text('Update'),
+              ),
+              FilledButton(
+                style: ButtonStyle(
+                  backgroundColor:
+                      WidgetStateProperty.all(const Color(0xFFD6455D)),
+                ),
+                onPressed: () async {
+                  if (!confirmDelete) {
+                    setStateDialog(() => confirmDelete = true);
+                    return;
+                  }
+                  await _deleteScheduledAppointment(context, appointment);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                },
+                child: Text(confirmDelete ? 'Confirm Delete' : 'Delete'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _moveStage(BuildContext context) async {
     await CheckinStageModalRouter.openForStage(
       context: context,
@@ -1283,6 +1477,31 @@ class _WorkflowRow extends StatelessWidget {
                     ),
                   ),
                 if (stage != 'waiting' && stage != 'scheduled')
+                  const SizedBox(width: 8),
+                if (stage == 'scheduled')
+                  Tooltip(
+                    message: 'Edit Appointment',
+                    child: IconButton(
+                      icon:
+                          const Icon(material.Icons.edit, size: 18),
+                      style: ButtonStyle(
+                        padding: WidgetStateProperty.all(
+                          const EdgeInsets.all(8),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        backgroundColor:
+                            WidgetStateProperty.all(const Color(0xFFEAF2FF)),
+                        foregroundColor:
+                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                      ),
+                      onPressed: () => _openScheduleActions(context, appointment),
+                    ),
+                  ),
+                if (stage == 'scheduled')
                   const SizedBox(width: 8),
                 if (stage == 'scheduled')
                   Tooltip(
@@ -3550,6 +3769,12 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(24),
+        header: (context) => exportPdfHeader(
+          context,
+          title: 'Payment Receipt',
+          subtitle: 'Check-in billing export',
+        ),
+        footer: exportPdfFooter,
         build: (context) => [
           pw.Text(
             'INVOICE / PAYMENT RECEIPT',

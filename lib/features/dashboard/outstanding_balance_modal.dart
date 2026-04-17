@@ -1,7 +1,9 @@
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/indian_money.dart';
+import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -221,6 +223,8 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
   String _activeFilter = 'All';
   final Set<String> _checkedIds = {};
   int _visibleCount = _pageSize;
+  bool _isExportingPdf = false;
+  bool _isExportingCsv = false;
 
   static const List<String> _filters = [
     'All',
@@ -283,6 +287,119 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
     return result;
   }
 
+  String _fileStem() {
+    final stamp = DateFormat('dd_MMM_yyyy_HH_mm').format(DateTime.now());
+    return 'outstanding_balance_$stamp';
+  }
+
+  Future<void> _exportOutstandingCsv(List<_OutstandingRow> rows) async {
+    if (_isExportingCsv || _isExportingPdf || rows.isEmpty) return;
+    setState(() => _isExportingCsv = true);
+    try {
+      final csvRows = <List<String>>[
+        const [
+          'Patient',
+          'Phone',
+          'Age',
+          'Total Cost',
+          'Total Paid',
+          'Due',
+          'Last Visit',
+          'Due Days',
+          'Payment Type',
+          'Treatments',
+        ],
+        ...rows.map((r) => [
+              r.patient.title.trim().isEmpty ? 'Unnamed patient' : r.patient.title,
+              r.patient.phone,
+              '${r.patient.age}',
+              r.totalCost.toStringAsFixed(2),
+              r.totalPaid.toStringAsFixed(2),
+              r.due.toStringAsFixed(2),
+              r.lastAppointmentDate == null
+                  ? '-'
+                  : DateFormat('dd MMM yyyy').format(r.lastAppointmentDate!),
+              '${r.dueDays}',
+              r.hasUpiPayment ? 'UPI' : 'Cash',
+              r.treatments.join(', '),
+            ]),
+      ];
+
+      await CsvExportUtility.saveCsv(
+        rows: csvRows,
+        fileName: '${_fileStem()}.csv',
+      );
+    } catch (error) {
+      if (!mounted) return;
+      displayInfoBar(
+        context,
+        builder: (ctx, close) => InfoBar(
+          title: const Text('CSV export failed'),
+          content: Text('$error'),
+          severity: InfoBarSeverity.error,
+          action: IconButton(
+            icon: const Icon(FluentIcons.clear),
+            onPressed: close,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingCsv = false);
+    }
+  }
+
+  Future<void> _exportOutstandingPdf(List<_OutstandingRow> rows) async {
+    if (_isExportingCsv || _isExportingPdf || rows.isEmpty) return;
+    setState(() => _isExportingPdf = true);
+    try {
+      final tableRows = <List<String>>[
+        const [
+          'Patient',
+          'Phone',
+          'Due',
+          'Last Visit',
+          'Due Days',
+          'Status',
+          'Payment',
+        ],
+        ...rows.map((r) => [
+              r.patient.title.trim().isEmpty ? 'Unnamed patient' : r.patient.title,
+              r.patient.phone,
+              r.due.toStringAsFixed(2),
+              r.lastAppointmentDate == null
+                  ? '-'
+                  : DateFormat('dd MMM yyyy').format(r.lastAppointmentDate!),
+              '${r.dueDays}',
+              r.isUnpaid ? 'Unpaid' : (r.isPartial ? 'Partial' : 'Paid'),
+              r.hasUpiPayment ? 'UPI' : 'Cash',
+            ]),
+      ];
+
+      await PdfExportUtility.savePdf(
+        title: 'Outstanding Balance Export',
+        subtitle: 'Total rows: ${rows.length}',
+        data: tableRows,
+        fileName: '${_fileStem()}.pdf',
+      );
+    } catch (error) {
+      if (!mounted) return;
+      displayInfoBar(
+        context,
+        builder: (ctx, close) => InfoBar(
+          title: const Text('PDF export failed'),
+          content: Text('$error'),
+          severity: InfoBarSeverity.error,
+          action: IconButton(
+            icon: const Icon(FluentIcons.clear),
+            onPressed: close,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingPdf = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
@@ -331,7 +448,17 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SearchAndActionsBar(searchCtrl: _searchCtrl),
+                _SearchAndActionsBar(
+                  searchCtrl: _searchCtrl,
+                  isExportingCsv: _isExportingCsv,
+                  isExportingPdf: _isExportingPdf,
+                  onExportPdf: filtered.isEmpty
+                    ? null
+                    : () => _exportOutstandingPdf(filtered),
+                  onExportCsv: filtered.isEmpty
+                    ? null
+                    : () => _exportOutstandingCsv(filtered),
+                ),
                 const SizedBox(height: 10),
                 _FilterChipsRow(
                   filters: _filters,
@@ -658,8 +785,18 @@ class _Panel extends StatelessWidget {
 
 class _SearchAndActionsBar extends StatelessWidget {
   final TextEditingController searchCtrl;
+  final bool isExportingCsv;
+  final bool isExportingPdf;
+  final VoidCallback? onExportPdf;
+  final VoidCallback? onExportCsv;
 
-  const _SearchAndActionsBar({required this.searchCtrl});
+  const _SearchAndActionsBar({
+    required this.searchCtrl,
+    required this.isExportingCsv,
+    required this.isExportingPdf,
+    required this.onExportPdf,
+    required this.onExportCsv,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -677,7 +814,7 @@ class _SearchAndActionsBar extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Button(
-          onPressed: () {},
+          onPressed: (isExportingCsv || isExportingPdf) ? null : onExportPdf,
           child: const Row(
             children: [
               Icon(FluentIcons.pdf, size: 14),
@@ -688,12 +825,12 @@ class _SearchAndActionsBar extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Button(
-          onPressed: () {},
-          child: const Row(
+          onPressed: (isExportingCsv || isExportingPdf) ? null : onExportCsv,
+          child: Row(
             children: [
-              Icon(FluentIcons.download, size: 14),
-              SizedBox(width: 6),
-              Text('CSV'),
+              const Icon(FluentIcons.download, size: 14),
+              const SizedBox(width: 6),
+              Text(isExportingCsv ? 'CSVs...' : 'CSVs'),
             ],
           ),
         ),

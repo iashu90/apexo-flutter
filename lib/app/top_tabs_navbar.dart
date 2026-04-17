@@ -1,4 +1,5 @@
 import 'package:apexo/app/routes.dart' as app_routes;
+import 'package:apexo/common_widgets/bulk_update_dialog.dart';
 import 'package:apexo/common_widgets/daily_reminder_modal.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -67,6 +68,17 @@ class TopTabsNavBar extends StatelessWidget {
                   onPressed: () => showDailyReminderModal(context),
                 ),
               ),
+              Tooltip(
+                message: 'Bulk Update',
+                child: IconButton(
+                  icon: const Icon(
+                    FluentIcons.edit,
+                    color: Colors.white,
+                    size: 20.0,
+                  ),
+                  onPressed: () => showBulkUpdateDialog(context),
+                ),
+              ),
               const SizedBox(width: 4),
               const NetworkActions(),
               if (!veryCompact) ...[
@@ -86,7 +98,7 @@ class TopTabsNavBar extends StatelessWidget {
       'patients',
       'checkin',
       'doctors_v2',
-      'labworks_v2',
+      'labworks',
       'expenses',
       'report_v2',
     ];
@@ -181,7 +193,7 @@ class _TabButton extends StatelessWidget {
   String _displayTitle(app_routes.Route route) {
     if (route.identifier == 'statistics') return txt('reports');
     if (route.identifier == 'report_v2') return 'Report';
-    if (route.identifier == 'labworks_v2') return 'Labwork';
+    if (route.identifier == 'labworks') return 'Labwork';
     return route.title;
   }
 }

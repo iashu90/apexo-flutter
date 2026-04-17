@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/utils/pdf_export_layout.dart';
 import 'package:apexo/utils/share_actions.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -316,6 +317,14 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(24),
+        header: (context) => exportPdfHeader(
+          context,
+          title: 'Patient Invoice / Payment Receipt',
+          subtitle: widget.patient.title.trim().isEmpty
+              ? widget.patient.id
+              : widget.patient.title,
+        ),
+        footer: exportPdfFooter,
         build: (context) => [
           pw.Text(
             'INVOICE / PAYMENT RECEIPT',
@@ -1013,7 +1022,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                     Button(onPressed: _openPrintOptions, child: const Text('Print')),
                     Button(
                       onPressed: _isExportingCsv || _isExportingPdf ? null : _exportCsv,
-                      child: const Text('Download CSV'),
+                      child: const Text('Download CSVs'),
                     ),
                     Button(
                       onPressed: _isExportingCsv || _isExportingPdf ? null : _exportPdf,
