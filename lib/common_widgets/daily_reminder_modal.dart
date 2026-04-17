@@ -988,7 +988,7 @@ class _SmallActionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7FBFF),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFD6E2F0)),
       ),
@@ -1050,12 +1050,16 @@ class _SmallActionCard extends StatelessWidget {
                   ),
                 ),
           const SizedBox(height: 8),
-          FilledButton(
-            onPressed: onAction,
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: onAction,
+              style: ButtonStyle(
+                backgroundColor:
+                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+              ),
+              child: Text(actionLabel),
             ),
-            child: Text(actionLabel),
           ),
         ],
       ),

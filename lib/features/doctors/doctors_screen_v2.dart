@@ -11,6 +11,7 @@ import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
+import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
@@ -300,12 +301,15 @@ List<DateTime> _monthOptions(List<Appointment> rows) {
     ..sort((a, b) => b.compareTo(a));
 }
 
-String _shortMoney(num value) {
-  final abs = value.abs();
-  if (abs < 1000) {
-    return '₹${value.toStringAsFixed(0)}';
-  }
-  return '₹${NumberFormat.compact(locale: 'en_IN').format(value)}';
+String _doctorTitleCase(String input) {
+  final cleaned = input.trim();
+  if (cleaned.isEmpty) return cleaned;
+  return cleaned
+      .split(RegExp(r'\s+'))
+      .map((word) => word.isEmpty
+          ? word
+          : '${word[0].toUpperCase()}${word.length > 1 ? word.substring(1).toLowerCase() : ''}')
+      .join(' ');
 }
 
 Future<void> _openDoctorEntryModalV2(
@@ -1209,71 +1213,48 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Icon(FluentIcons.health, size: 16, color: Color(0xFF2D7BD8)),
+                const SizedBox(width: 8),
                 const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Doctor Activity & Metrics - Today',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF183A67),
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'Doctor Activity',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF183A67),
+                    ),
                   ),
                 ),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.end,
-                  children: [
-                    _topMetric(
-                      'Total Patients',
-                      '$totalPatients',
-                      const Color(0xFF2D7BD8),
-                    ),
-                    _topMetric(
-                      'Revenue',
-                      _shortMoney(revenue),
-                      const Color(0xFF2BA58D),
-                    ),
-                    _topMetric(
-                      'Doctors Fee',
-                      _shortMoney(doctorsFee),
-                      const Color(0xFFD6455D),
-                    ),
-                    _topMetric(
-                      'Active Doctors',
-                      '${doctorEntries.length}',
-                      const Color(0xFFE09C31),
-                    ),
-                    Button(
-                      onPressed: () {},
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(FluentIcons.download, size: 12),
-                          SizedBox(width: 6),
-                          Text('Export'),
-                        ],
-                      ),
-                    ),
-                  ],
+                Text(
+                  DateFormat('EEEE, dd MMMM yyyy').format(widget.selectedDate),
+                  style: const TextStyle(
+                    color: Color(0xFF6D84A8),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              DateFormat('EEEE, dd MMMM yyyy').format(widget.selectedDate),
-              style: const TextStyle(
-                color: Color(0xFF6D84A8),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _topMetric(
+                    'Total Patients',
+                    NumberFormat.compact(locale: 'en_IN').format(totalPatients),
+                    const Color(0xFF1B3557),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _topMetric(
+                    'Revenue',
+                    formatIndianShortCurrency(revenue),
+                    const Color(0xFF2BA58D),
+                  ),
+                ),
+              ],
             ),
             if (doctorEntries.isEmpty)
               const Padding(
@@ -1324,7 +1305,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                             child: Text(
                               doctor.title.trim().isEmpty
                                   ? 'Unnamed doctor'
-                                  : doctor.title,
+                                  : _doctorTitleCase(doctor.title),
                               style: const TextStyle(
                                 color: Color(0xFF143C6B),
                                 fontWeight: FontWeight.w500,
@@ -1340,13 +1321,13 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           const SizedBox(width: 8),
                           _inlineMetric(
                             'Doctors Fee',
-                            _shortMoney(doctorFee),
+                              formatIndianShortCurrency(doctorFee),
                             const Color(0xFFD6455D),
                           ),
                           const SizedBox(width: 8),
                           _inlineMetric(
                             'Revenue',
-                            _shortMoney(earned),
+                              formatIndianShortCurrency(earned),
                             const Color(0xFF2BA58D),
                           ),
                         ],
@@ -1373,7 +1354,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                   SizedBox(width: 110, child: Text('Tooth/Area', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 110, child: Text('Stage', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 110, child: Text('Paid', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 120, child: Text('Consult Fee', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 120, child: Text('Fee', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 90, child: Text('Status', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 110),
                                 ],
@@ -1390,7 +1371,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                               final stage = _stageLabel(appointment);
                               final stageColor = _stageColor(stage);
                               final paid = appointment.paid + appointment.prescriptionPaid;
-                              final consultantFee = appointment.paidToDoctor;
+                                final consultantFee = appointment.priceToPayDoctor > 0
+                                  ? appointment.priceToPayDoctor
+                                  : appointment.paidToDoctor;
 
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 0),
@@ -1414,7 +1397,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       child: Text(
                                         appointment.title.trim().isEmpty
                                             ? 'Unnamed patient'
-                                            : appointment.title,
+                                          : _doctorTitleCase(appointment.title),
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Color(0xFF1F446E),
@@ -1478,7 +1461,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                     SizedBox(
                                       width: 120,
                                       child: Text(
-                                        '₹${consultantFee.toStringAsFixed(0)}',
+                                        formatIndianShortCurrency(consultantFee),
                                         style: const TextStyle(
                                           color: Color(0xFF34567D),
                                           fontWeight: FontWeight.w700,
@@ -1556,12 +1539,11 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
 
   Widget _topMetric(String label, String value, Color color) {
     return Container(
-      width: 164,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E3F0)),
+        color: const Color(0xFFF3F7FF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDCE8F6)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1571,15 +1553,17 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w800,
-              fontSize: 28,
+              fontSize: 34,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFF5D789D),
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
+              color: Color(0xFF4D6488),
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
             ),
           ),
         ],
@@ -2302,7 +2286,7 @@ class _DoctorAppointmentDoneChartCardState
                 Expanded(
                   child: _summaryTile(
                     title: 'Doctors Fee',
-                    value: _shortMoney(totalDoctorFee),
+                    value: formatIndianShortCurrency(totalDoctorFee),
                     valueColor: const Color(0xFFD6455D),
                   ),
                 ),
@@ -2310,7 +2294,7 @@ class _DoctorAppointmentDoneChartCardState
                 Expanded(
                   child: _summaryTile(
                     title: 'Revenue',
-                    value: _shortMoney(totalRevenue),
+                    value: formatIndianShortCurrency(totalRevenue),
                     valueColor: const Color(0xFF2BA58D),
                   ),
                 ),
@@ -2412,7 +2396,7 @@ class _DoctorAppointmentDoneChartCardState
                               Expanded(
                                 flex: 4,
                                 child: Text(
-                                  row.doctor.title,
+                                  _doctorTitleCase(row.doctor.title),
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: Color(0xFF1F446E),
@@ -2432,7 +2416,7 @@ class _DoctorAppointmentDoneChartCardState
                               ),
                               Expanded(
                                 child: Text(
-                                  _shortMoney(row.consultFee),
+                                  formatIndianShortCurrency(row.consultFee),
                                   style: const TextStyle(
                                     color: Color(0xFFD6455D),
                                     fontWeight: FontWeight.w700,
@@ -2441,7 +2425,7 @@ class _DoctorAppointmentDoneChartCardState
                               ),
                               Expanded(
                                 child: Text(
-                                  _shortMoney(row.earned),
+                                  formatIndianShortCurrency(row.earned),
                                   style: const TextStyle(
                                     color: Color(0xFF2BA58D),
                                     fontWeight: FontWeight.w700,
