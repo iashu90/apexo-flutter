@@ -1189,7 +1189,13 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     }
 
     final doctorEntries = rowsByDoctor.entries.toList(growable: false)
-      ..sort((a, b) => a.key.title.toLowerCase().compareTo(b.key.title.toLowerCase()));
+      ..sort((a, b) {
+        final byPatients = b.value.length.compareTo(a.value.length);
+        if (byPatients != 0) return byPatients;
+        return a.key.title
+            .toLowerCase()
+            .compareTo(b.key.title.toLowerCase());
+      });
 
     final totalPatients = widget.todaysAppointments.length;
     final revenue = widget.todaysAppointments.fold<double>(
@@ -1469,9 +1475,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                     SizedBox(
                                       width: 120,
                                       child: Text(
-                                        formatIndianShortCurrency(consultantFee),
+                                        '₹${consultantFee.toStringAsFixed(0)}',
                                         style: const TextStyle(
-                                          color: Color(0xFF34567D),
+                                          color: Color(0xFFD6455D),
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),

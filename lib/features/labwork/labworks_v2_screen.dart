@@ -30,7 +30,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   final TextEditingController _searchCtrl = TextEditingController();
 
   String _query = '';
-  String _statusFilter = 'all';
   String _paymentFilter = 'all';
   String _rangeFilter = 'month';
   String _labFilter = 'all';
@@ -84,11 +83,9 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               children: [
                 _buildHeader(),
                 const SizedBox(height: 10),
-                _buildStatStrip(all),
+                _buildStatStrip(all, filtered),
                 const SizedBox(height: 10),
                 _buildSearchAndDateFilters(filtered),
-                const SizedBox(height: 10),
-                _buildMonthNavigator(),
                 const SizedBox(height: 10),
                 filtered.isEmpty
                     ? _EmptyState(onClear: _clearFilters)
@@ -156,7 +153,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     );
   }
 
-  Widget _buildStatStrip(List<Labwork> all) {
+  Widget _buildStatStrip(List<Labwork> all, List<Labwork> filtered) {
     final today = DateTime.now();
     final todayItems =
         all.where((l) => _isSameDay(l.date, today)).toList(growable: false);
@@ -166,6 +163,9 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     final delivered = all.where((l) => l.deliveredToPatient).length;
     final dues = all.where((l) => !l.paid).toList(growable: false);
     final paymentDue = dues.fold<double>(0, (sum, l) => sum + l.price);
+    final filteredDues = filtered.where((l) => !l.paid).toList(growable: false);
+    final filteredDueAmount =
+      filteredDues.fold<double>(0, (sum, l) => sum + l.price);
 
     final cards = [
       _StatCardData('TODAY', '${todayItems.length}', 'orders'),
@@ -177,6 +177,18 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
         paymentDue <= 0 ? 'None' : '₹${NumberFormat('#,##0').format(paymentDue)}',
         dues.isEmpty ? '' : '${dues.length} due${dues.length == 1 ? '' : 's'}',
         valueColor: dues.isEmpty
+            ? const Color(0xFF1D3E67)
+            : const Color(0xFFD6455D),
+      ),
+      _StatCardData(
+        'FILTERED DUE',
+        filteredDueAmount <= 0
+            ? 'None'
+            : '₹${NumberFormat('#,##0').format(filteredDueAmount)}',
+        filteredDues.isEmpty
+            ? ''
+            : '${filteredDues.length} due${filteredDues.length == 1 ? '' : 's'}',
+        valueColor: filteredDues.isEmpty
             ? const Color(0xFF1D3E67)
             : const Color(0xFFD6455D),
       ),
@@ -194,189 +206,177 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   }
 
   Widget _buildSearchAndDateFilters(List<Labwork> filtered) {
-    final dues = filtered.where((l) => !l.paid).toList(growable: false);
-    final paymentDue = dues.fold<double>(0, (sum, l) => sum + l.price);
     final hasActiveFilter = _hasActiveFilter();
 
     final labs = ['all', '__unassigned__', ...labworks.allLabs.toSet()]
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7FBFF),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD6E2F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-          SizedBox(
-            width: 320,
-            child: TextBox(
-              textAlign: TextAlign.left,
-              controller: _searchCtrl,
-              placeholder: 'Search patient / phone / teeth / doctor',
-              prefix: const Padding(
-                padding: EdgeInsets.only(left: 10),
-                child: Icon(
-                  FluentIcons.search,
-                  size: 12,
-                  color: Color(0xFF6B778C),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 210,
-            child: ComboBox<String>(
-              value: _labFilter,
-              items: labs
-                  .map(
-                    (v) => ComboBoxItem<String>(
-                      value: v,
-                      child: Text(
-                        v == 'all'
-                            ? 'All Labs'
-                            : v == '__unassigned__'
-                                ? 'Unassigned Lab'
-                                : v,
-                      ),
-                    ),
-                  )
-                  .toList(growable: false),
-              onChanged: (v) {
-                if (v == null) return;
-                setState(() => _labFilter = v);
-              },
-            ),
-          ),
-          _dropFilter(
-            width: 150,
-            value: _rangeFilter,
-            items: const {
-              'all': 'All Dates',
-              'today': 'Today',
-              'week': 'This Week',
-              'last_month': 'Last Month',
-              'month': 'This Month',
-              'custom': 'Custom Date',
-            },
-            onChanged: (v) {
-              if (v == 'custom') {
-                _openDateRangePicker();
-                return;
-              }
-              setState(() {
-                _rangeFilter = v;
-                if (v != 'custom') {
-                  _fromDate = null;
-                  _toDate = null;
-                }
-              });
-            },
-          ),
-          _dropFilter(
-            width: 130,
-            value: _paymentFilter,
-            items: const {
-              'all': 'All Payment',
-              'paid': 'Paid',
-              'due': 'Due',
-            },
-            onChanged: (v) => setState(() => _paymentFilter = v),
-          ),
-          _dropFilter(
-            width: 140,
-            value: _statusFilter,
-            items: const {
-              'all': 'All Status',
-              'in_lab': 'In Lab',
-              'ready': 'Ready',
-              'done': 'Delivered',
-            },
-            onChanged: (v) => setState(() => _statusFilter = v),
-          ),
-          if (_rangeFilter == 'custom' && (_fromDate != null || _toDate != null))
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAF2FF),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0xFFD2E1F6)),
-              ),
-              child: Text(
-                '${DateFormat('dd MMM').format(_fromDate ?? _toDate!)} - ${DateFormat('dd MMM').format(_toDate ?? _fromDate!)}',
-                style: const TextStyle(
-                  color: Color(0xFF2D4A70),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            ],
-          ),
-          if (hasActiveFilter) ...[
-            const SizedBox(height: 10),
-            const Divider(size: 1),
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Icon(FluentIcons.filter,
-                    size: 14, color: Color(0xFF2D4A70)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${filtered.length} result${filtered.length == 1 ? '' : 's'} match current filters',
-                    style: const TextStyle(
-                      color: Color(0xFF36557C),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 340,
+              child: TextBox(
+                textAlign: TextAlign.left,
+                controller: _searchCtrl,
+                placeholder: 'Search patient / phone / teeth / doctor',
+                prefix: const Padding(
+                  padding: EdgeInsets.only(left: 10),
+                  child: Icon(
+                    FluentIcons.search,
+                    size: 12,
+                    color: Color(0xFF6B778C),
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '₹${NumberFormat('#,##0').format(paymentDue)} DUE',
-                      style: TextStyle(
-                        color: dues.isEmpty
-                            ? const Color(0xFF1D3E67)
-                            : const Color(0xFFD6455D),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                      ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 290,
+                    child: MonthNavigatorBar(
+                      selectedMonth: _monthAnchor,
+                      onPrevious: () {
+                        setState(() {
+                          _monthAnchor = DateTime(
+                            _monthAnchor.year,
+                            _monthAnchor.month - 1,
+                            1,
+                          );
+                        });
+                      },
+                      onNext: _monthAnchor.year < DateTime.now().year ||
+                              (_monthAnchor.year == DateTime.now().year &&
+                                  _monthAnchor.month < DateTime.now().month)
+                          ? () {
+                              setState(() {
+                                _monthAnchor = DateTime(
+                                  _monthAnchor.year,
+                                  _monthAnchor.month + 1,
+                                  1,
+                                );
+                              });
+                            }
+                          : null,
+                      onPick: (value) {
+                        setState(() {
+                          _monthAnchor = value;
+                        });
+                      },
                     ),
-                    Text(
-                      '${dues.length} due item${dues.length == 1 ? '' : 's'}',
-                      style: const TextStyle(
-                        color: Color(0xFF5E7396),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                HyperlinkButton(
-                  onPressed: _clearFilters,
-                  child: const Text(
-                    'Clear filters',
-                    style: TextStyle(fontSize: 12),
                   ),
-                ),
-              ],
+                  SizedBox(
+                    width: 190,
+                    child: ComboBox<String>(
+                      value: _labFilter,
+                      items: labs
+                          .map(
+                            (v) => ComboBoxItem<String>(
+                              value: v,
+                              child: Text(
+                                v == 'all'
+                                    ? 'All Labs'
+                                    : v == '__unassigned__'
+                                        ? 'Unassigned Lab'
+                                        : v,
+                              ),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _labFilter = v);
+                      },
+                    ),
+                  ),
+                  _dropFilter(
+                    width: 150,
+                    value: _rangeFilter,
+                    items: const {
+                      'all': 'All Dates',
+                      'today': 'Today',
+                      'week': 'This Week',
+                      'last_month': 'Last Month',
+                      'month': 'This Month',
+                      'custom': 'Custom Date',
+                    },
+                    onChanged: (v) {
+                      if (v == 'custom') {
+                        _openDateRangePicker();
+                        return;
+                      }
+                      setState(() {
+                        _rangeFilter = v;
+                        if (v != 'custom') {
+                          _fromDate = null;
+                          _toDate = null;
+                        }
+                      });
+                    },
+                  ),
+                  _dropFilter(
+                    width: 130,
+                    value: _paymentFilter,
+                    items: const {
+                      'all': 'All Payment',
+                      'paid': 'Paid',
+                      'due': 'Due',
+                    },
+                    onChanged: (v) => setState(() => _paymentFilter = v),
+                  ),
+                ],
+              ),
             ),
           ],
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            if (_rangeFilter == 'custom' && (_fromDate != null || _toDate != null))
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFD2E1F6)),
+                ),
+                child: Text(
+                  '${DateFormat('dd MMM').format(_fromDate ?? _toDate!)} - ${DateFormat('dd MMM').format(_toDate ?? _fromDate!)}',
+                  style: const TextStyle(
+                    color: Color(0xFF2D4A70),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            const Spacer(),
+            Text(
+              '${filtered.length} result${filtered.length == 1 ? '' : 's'}',
+              style: const TextStyle(
+                color: Color(0xFF36557C),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 10),
+            HyperlinkButton(
+              onPressed: hasActiveFilter ? _clearFilters : null,
+              child: const Text(
+                'Clear filters',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -429,7 +429,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
 
   bool _hasActiveFilter() {
     return _query.isNotEmpty ||
-        _statusFilter != 'all' ||
         _paymentFilter != 'all' ||
         _rangeFilter != 'all' ||
         _labFilter != 'all';
@@ -651,13 +650,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
         return false;
       }
 
-      if (_statusFilter == 'in_lab' && l.deliveredToDoctor) return false;
-      if (_statusFilter == 'ready' &&
-          (!l.deliveredToDoctor || l.deliveredToPatient)) {
-        return false;
-      }
-      if (_statusFilter == 'done' && !l.deliveredToPatient) return false;
-
       if (_paymentFilter == 'paid' && !l.paid) return false;
       if (_paymentFilter == 'due' && l.paid) return false;
 
@@ -704,7 +696,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     setState(() {
       _query = '';
       _searchCtrl.text = '';
-      _statusFilter = 'all';
       _paymentFilter = 'all';
       _rangeFilter = 'month';
       _labFilter = 'all';
