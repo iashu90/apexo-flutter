@@ -979,12 +979,18 @@ class _SmallActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rows = subtitle
+        .split('\n')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList(growable: false);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF7FBFF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: const Color(0xFFD6E2F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -992,22 +998,57 @@ class _SmallActionCard extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              color: Color(0xFF1F2937),
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
+              color: Color(0xFF183A67),
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            maxLines: maxSubtitleLines,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
+          const SizedBox(height: 8),
+          if (rows.isEmpty)
+            const Text(
+              'No waiting or scheduled patients',
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            )
+          else
+            ...rows.take(maxSubtitleLines).map(
+                  (name) => Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE3ECF8)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          FluentIcons.contact,
+                          size: 12,
+                          color: Color(0xFF2D7BD8),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF1F446E),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
           const SizedBox(height: 8),
           FilledButton(
             onPressed: onAction,
