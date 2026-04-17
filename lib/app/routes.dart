@@ -6,7 +6,6 @@ import 'package:apexo/core/store.dart';
 import 'package:apexo/features/dashboard/dashboard_screen_v2.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
 import 'package:apexo/features/expenses/expenses_screen_v2.dart';
-import 'package:apexo/features/labwork/labworks_screen.dart';
 import 'package:apexo/features/labwork/labworks_v2_screen.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/doctors/doctors_screen_v2.dart';
@@ -161,20 +160,6 @@ class _Routes {
           title: txt("labworks"),
           identifier: "labworks",
           navbarTitle: txt("labworks"),
-          icon: FluentIcons.test_beaker,
-          screen: LabworksScreen.new,
-          accessible:
-              permissions.list[3] || permissions.list[0] || login.isAdmin,
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            labworks.synchronize();
-          },
-        ),
-        Route(
-          title: 'Labworks V2',
-          identifier: 'labworks_v2',
-          navbarTitle: 'Labworks V2',
           icon: FluentIcons.test_beaker,
           screen: LabworksV2Screen.new,
           accessible:
