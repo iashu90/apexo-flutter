@@ -3,12 +3,65 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as material;
+import 'package:intl/intl.dart';
 
 typedef PatientLookupAddPatient = Future<Patient?> Function(String query);
 typedef PatientLookupOpenExisting = Future<void> Function(
   Appointment appointment,
 );
 typedef PatientLookupCheckInPatient = Future<void> Function(Patient patient);
+
+Future<DateTime?> _pickScheduleDateTime(
+  BuildContext context,
+  DateTime selectedDate,
+) async {
+  final now = DateTime.now();
+  final initialDate = selectedDate.isBefore(now)
+      ? DateTime(now.year, now.month, now.day)
+      : DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+  final pickedDate = await material.showDatePicker(
+    context: context,
+    initialDate: initialDate,
+    firstDate: DateTime(now.year - 1, 1, 1),
+    lastDate: DateTime(now.year + 5, 12, 31),
+    helpText: 'Select appointment date',
+  );
+  if (pickedDate == null) return null;
+
+  final pickedTime = await material.showTimePicker(
+    context: context,
+    initialTime: const material.TimeOfDay(hour: 10, minute: 0),
+    helpText: 'Select appointment time',
+  );
+  if (pickedTime == null) return null;
+
+  return DateTime(
+    pickedDate.year,
+    pickedDate.month,
+    pickedDate.day,
+    pickedTime.hour,
+    pickedTime.minute,
+  );
+}
+
+Future<DateTime?> _scheduleAppointmentForPatient(
+  BuildContext context,
+  Patient patient,
+  DateTime selectedDate,
+) async {
+  final scheduledAt = await _pickScheduleDateTime(context, selectedDate);
+  if (scheduledAt == null) return null;
+
+  final appointment = Appointment.fromJson({});
+  appointment.patientID = patient.id;
+  appointment.date = scheduledAt;
+  appointment.checkinStage = 'scheduled';
+  appointments.set(appointment);
+
+  return scheduledAt;
+}
 
 Future<void> showPatientCheckinLookupDialog({
   required BuildContext context,
@@ -177,6 +230,31 @@ Future<void> showPatientCheckinLookupDialog({
                                         },
                                         child: const Text('Check-in'),
                                       ),
+                                    const SizedBox(width: 8),
+                                    Button(
+                                      onPressed: () async {
+                                        final scheduledAt =
+                                            await _scheduleAppointmentForPatient(
+                                          context,
+                                          patient,
+                                          selectedDate,
+                                        );
+                                        if (scheduledAt == null || !context.mounted) {
+                                          return;
+                                        }
+                                        displayInfoBar(
+                                          context,
+                                          builder: (context, close) => InfoBar(
+                                            title: const Text('Appointment scheduled'),
+                                            content: Text(
+                                              'Scheduled for ${DateFormat('dd MMM yyyy, hh:mm a').format(scheduledAt)}',
+                                            ),
+                                            severity: InfoBarSeverity.success,
+                                          ),
+                                        );
+                                      },
+                                      child: const Text('Schedule'),
+                                    ),
                                   ],
                                 ),
                               );

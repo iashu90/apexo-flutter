@@ -1,71 +1,20 @@
+import 'package:apexo/common_widgets/password_guard_dialog.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 Future<void> showBulkUpdateDialog(BuildContext context) async {
-  final passwordController = TextEditingController();
-  String? error;
-
-  final unlocked = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (context, setStateDialog) => ContentDialog(
-        title: const Text('Bulk Update Access'),
-        content: SizedBox(
-          width: 360,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Enter password to continue.'),
-              const SizedBox(height: 8),
-              TextBox(
-                controller: passwordController,
-                placeholder: 'Password',
-                obscureText: true,
-                onChanged: (_) {
-                  if (error != null) setStateDialog(() => error = null);
-                },
-              ),
-              if (error != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  error!,
-                  style: const TextStyle(
-                    color: Color(0xFFD6455D),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          Button(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (passwordController.text.trim() != '0001') {
-                setStateDialog(() => error = 'Invalid password.');
-                return;
-              }
-              Navigator.pop(dialogContext, true);
-            },
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  if (unlocked != true || !context.mounted) return;
-
-  await showDialog<void>(
-    context: context,
-    builder: (_) => const _BulkUpdateDialog(),
+  await runPasswordProtectedAction(
+    context,
+    title: 'Bulk Update Access',
+    message: 'Enter password to continue.',
+    onAuthorized: () async {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => const _BulkUpdateDialog(),
+      );
+    },
   );
 }
 
@@ -95,6 +44,7 @@ class _BulkUpdateDialog extends StatefulWidget {
 class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
   final _currentController = TextEditingController();
   final _replaceController = TextEditingController();
+  final _matchSearchController = TextEditingController();
 
   String _updateType = 'Treatment Rename';
   String _matchMode = 'Exact';
@@ -103,13 +53,28 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
   bool _finding = false;
   bool _updating = false;
   String? _result;
+  int _progressDone = 0;
+  int _progressTotal = 0;
+  String _progressLabel = '';
 
   List<_BulkMatch> _matches = const [];
+
+  List<_BulkMatch> get _visibleMatches {
+    final query = _matchSearchController.text.trim().toLowerCase();
+    if (query.isEmpty) return _matches;
+    return _matches.where((m) {
+      return m.title.toLowerCase().contains(query) ||
+          m.subtitle.toLowerCase().contains(query) ||
+          m.oldValue.toLowerCase().contains(query) ||
+          m.newValue.toLowerCase().contains(query);
+    }).toList(growable: false);
+  }
 
   @override
   void dispose() {
     _currentController.dispose();
     _replaceController.dispose();
+    _matchSearchController.dispose();
     super.dispose();
   }
 
@@ -138,15 +103,19 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
 
   bool _appointmentMatches(Appointment a, String current, String replacement) {
     if (_updateType == 'Treatment Rename') {
-      final nextTreatments =
-          a.selectedTreatments.map((e) => _replaceWithRule(e, current, replacement));
-      final nextSub = a.subTreatments.map((e) => _replaceWithRule(e, current, replacement));
-      return !_listEquals(a.selectedTreatments, nextTreatments.toList(growable: false)) ||
-          !_listEquals(a.subTreatments, nextSub.toList(growable: false));
+      final nextTreatments = a.selectedTreatments
+          .map((e) => _replaceWithRule(e, current, replacement))
+          .toList(growable: false);
+      final nextSub = a.subTreatments
+          .map((e) => _replaceWithRule(e, current, replacement))
+          .toList(growable: false);
+      return !_listEquals(a.selectedTreatments, nextTreatments) ||
+          !_listEquals(a.subTreatments, nextSub);
     }
 
-    final nextDiagnosis =
-        a.diagnosis.map((e) => _replaceWithRule(e, current, replacement)).toList(growable: false);
+    final nextDiagnosis = a.diagnosis
+        .map((e) => _replaceWithRule(e, current, replacement))
+        .toList(growable: false);
     final nextPre = _replaceWithRule(a.preOpNotes, current, replacement);
     final nextPost = _replaceWithRule(a.postOpNotes, current, replacement);
     return !_listEquals(a.diagnosis, nextDiagnosis) ||
@@ -162,7 +131,11 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
     return true;
   }
 
-  void _applyAppointmentUpdate(Appointment a, String current, String replacement) {
+  void _applyAppointmentUpdate(
+    Appointment a,
+    String current,
+    String replacement,
+  ) {
     if (_updateType == 'Treatment Rename') {
       a.selectedTreatments = a.selectedTreatments
           .map((e) => _replaceWithRule(e, current, replacement))
@@ -174,8 +147,9 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
       return;
     }
 
-    a.diagnosis =
-        a.diagnosis.map((e) => _replaceWithRule(e, current, replacement)).toList(growable: false);
+    a.diagnosis = a.diagnosis
+        .map((e) => _replaceWithRule(e, current, replacement))
+        .toList(growable: false);
     a.preOpNotes = _replaceWithRule(a.preOpNotes, current, replacement);
     a.postOpNotes = _replaceWithRule(a.postOpNotes, current, replacement);
     appointments.set(a);
@@ -189,6 +163,9 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
       _finding = true;
       _result = null;
       _matches = const [];
+      _progressDone = 0;
+      _progressTotal = 0;
+      _progressLabel = '';
     });
 
     if (_updateType != 'Age -> Year Of Birth' && current.isEmpty) {
@@ -268,6 +245,9 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
     setState(() {
       _updating = true;
       _result = null;
+      _progressDone = 0;
+      _progressTotal = _matches.length;
+      _progressLabel = 'Updating 0 of ${_matches.length}';
     });
 
     final current = _currentController.text.trim();
@@ -281,6 +261,12 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
         p.birth = DateTime.now().year - p.birth;
         patients.set(p);
         updated += 1;
+        if (mounted) {
+          setState(() {
+            _progressDone = updated;
+            _progressLabel = 'Updating $updated of $_progressTotal';
+          });
+        }
       }
     } else {
       for (final m in _matches) {
@@ -288,6 +274,12 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
         if (a == null) continue;
         _applyAppointmentUpdate(a, current, replacement);
         updated += 1;
+        if (mounted) {
+          setState(() {
+            _progressDone = updated;
+            _progressLabel = 'Updating $updated of $_progressTotal';
+          });
+        }
       }
     }
 
@@ -297,6 +289,8 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
     setState(() {
       _updating = false;
       _result = 'Updated $updated record(s).';
+      _progressDone = _progressTotal;
+      _progressLabel = 'Completed $updated update(s).';
     });
   }
 
@@ -322,7 +316,10 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
               isExpanded: true,
               value: _updateType,
               items: const [
-                ComboBoxItem(value: 'Treatment Rename', child: Text('Treatment Rename')),
+                ComboBoxItem(
+                  value: 'Treatment Rename',
+                  child: Text('Treatment Rename'),
+                ),
                 ComboBoxItem(
                   value: 'Appointment Text Replace',
                   child: Text('Appointment Text Replace'),
@@ -338,6 +335,7 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
                   _updateType = v;
                   _matches = const [];
                   _result = null;
+                  _matchSearchController.clear();
                 });
               },
             ),
@@ -368,8 +366,14 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
                       isExpanded: true,
                       value: _matchMode,
                       items: const [
-                        ComboBoxItem(value: 'Exact', child: Text('Exact match')),
-                        ComboBoxItem(value: 'Contains', child: Text('Contains / replace all')),
+                        ComboBoxItem(
+                          value: 'Exact',
+                          child: Text('Exact match'),
+                        ),
+                        ComboBoxItem(
+                          value: 'Contains',
+                          child: Text('Contains / replace all'),
+                        ),
                       ],
                       onChanged: (v) {
                         if (v == null) return;
@@ -382,7 +386,8 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
                     child: Checkbox(
                       checked: _caseSensitive,
                       content: const Text('Case sensitive'),
-                      onChanged: (v) => setState(() => _caseSensitive = v ?? false),
+                      onChanged: (v) =>
+                          setState(() => _caseSensitive = v ?? false),
                     ),
                   ),
                 ],
@@ -418,6 +423,19 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
                 ),
               ],
             ),
+            if (_updating && _progressTotal > 0) ...[
+              const SizedBox(height: 8),
+              ProgressBar(value: _progressDone / _progressTotal),
+              const SizedBox(height: 6),
+              Text(
+                _progressLabel,
+                style: const TextStyle(
+                  color: Color(0xFF355279),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
             if (_result != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -429,6 +447,23 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
               ),
             ],
             const SizedBox(height: 10),
+            if (_matches.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TextBox(
+                  controller: _matchSearchController,
+                  placeholder: 'Search in results',
+                  prefix: const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Icon(
+                      FluentIcons.search,
+                      size: 12,
+                      color: Color(0xFF6D84A8),
+                    ),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 320),
               child: _matches.isEmpty
@@ -438,31 +473,38 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
                         style: TextStyle(color: Color(0xFF6D84A8)),
                       ),
                     )
-                  : ListView.separated(
-                      itemCount: _matches.length,
-                      separatorBuilder: (_, __) => const Divider(size: 1),
-                      itemBuilder: (context, index) {
-                        final m = _matches[index];
-                        return ListTile.selectable(
-                          title: Text(m.title),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(m.subtitle),
-                              const SizedBox(height: 3),
-                              Text('Current: ${m.oldValue}'),
-                              Text('New: ${m.newValue}'),
-                            ],
+                  : _visibleMatches.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No results match this search.',
+                            style: TextStyle(color: Color(0xFF6D84A8)),
                           ),
-                          trailing: Button(
-                            onPressed: _updating || _finding
-                                ? null
-                                : () => _updateOne(m),
-                            child: const Text('Update'),
-                          ),
-                        );
-                      },
-                    ),
+                        )
+                      : ListView.separated(
+                          itemCount: _visibleMatches.length,
+                          separatorBuilder: (_, __) => const Divider(size: 1),
+                          itemBuilder: (context, index) {
+                            final m = _visibleMatches[index];
+                            return ListTile.selectable(
+                              title: Text(m.title),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(m.subtitle),
+                                  const SizedBox(height: 3),
+                                  Text('Current: ${m.oldValue}'),
+                                  Text('New: ${m.newValue}'),
+                                ],
+                              ),
+                              trailing: Button(
+                                onPressed: _updating || _finding
+                                    ? null
+                                    : () => _updateOne(m),
+                                child: const Text('Update'),
+                              ),
+                            );
+                          },
+                        ),
             ),
           ],
         ),
