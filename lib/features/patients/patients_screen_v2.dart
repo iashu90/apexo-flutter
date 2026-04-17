@@ -585,6 +585,14 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               final daysSinceFirst = visits.isEmpty
                   ? 99999
                   : now.difference(visits.first.date).inDays;
+              final hasProcedureFocus = visits.any((appointment) {
+                return appointment.selectedTreatments.any((treatment) {
+                  final normalized = treatment.toLowerCase();
+                  return normalized.contains('rct') ||
+                      normalized.contains('ortho') ||
+                      normalized.contains('crown');
+                });
+              });
 
               switch (_listBehaviorFilter) {
                 case 'highValue':
@@ -594,9 +602,19 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                 case 'inactive':
                   return visits.isNotEmpty && daysSinceLast > 180;
                 case 'new':
-                  return visits.isNotEmpty && daysSinceFirst <= 30;
+                  return visits.isNotEmpty &&
+                      visits.first.date.year == now.year &&
+                      visits.first.date.month == now.month &&
+                      visits.first.date.day == now.day;
                 case 'focused':
                   return visits.isNotEmpty && daysSinceLast <= 90;
+                case 'outstandingOnly':
+                  return patient.outstandingPayments > 0;
+                case 'procedureFocus':
+                  return hasProcedureFocus;
+                case 'visitedThisMonth':
+                  return visits.any((a) =>
+                      a.date.year == now.year && a.date.month == now.month);
                 case 'oneTimer':
                   return visits.length == 1;
                 case 'invalidPhone':
@@ -799,32 +817,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                             ],
                           ),
                         ),
-                        SizedBox(
-                          width: metricWidth,
-                          child: _DonutMetricCard(
-                            title: 'Gender Distribution',
-                            centerValue:
-                                '${genderBuckets.values.fold<int>(0, (s, v) => s + v)}',
-                            segments: [
-                              _DonutSegment(
-                                label: 'Male',
-                                value: genderBuckets['Male'] ?? 0,
-                                color: const Color(0xFF2D7BD8),
-                              ),
-                              _DonutSegment(
-                                label: 'Female',
-                                value: genderBuckets['Female'] ?? 0,
-                                color: const Color(0xFF2BA58D),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(
-                          width: metricWidth,
-                          height: 160,
-                          child:
-                              _CompactAgeDistributionCard(buckets: ageBuckets),
-                        ),
                       ],
                     );
                   },
@@ -857,52 +849,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                           ),
                         ),
                       ),
-                      SizedBox(
-                        width: cardWidth,
-                        child: _TopOutstandingCard(
-                          rows: topOutstanding,
-                          visitsByPatient: visitsByPatient,
-                          selectedRange: _outstandingRange,
-                          ranges: _focusRanges,
-                          onSelectRange: (v) => setState(() {
-                            _outstandingRange = v;
-                          }),
-                          onOpenHistory: _openPatientHistoryDialog,
-                          visibleCount: _topOutstandingVisibleCount,
-                          onViewMore: () => _showTopPatientsDialog(
-                            title: 'Top Outstanding Patients',
-                            rows: topOutstanding
-                                .map((e) => MapEntry(e.key, e.value.round()))
-                                .toList(growable: false),
-                            metricLabel: 'due',
-                            visitsByPatient: visitsByPatient,
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: cardWidth,
-                        child: _TopProcedurePatientsCard(
-                          selectedTab: _procedureTab,
-                          rows: topProcedurePatients.toList(growable: false),
-                          visitsByPatient: visitsByPatient,
-                          selectedRange: _procedureRange,
-                          ranges: _procedureRanges,
-                          onSelectRange: (v) => setState(() {
-                            _procedureRange = v;
-                          }),
-                          onSelectTab: (tab) => setState(() {
-                            _procedureTab = tab;
-                          }),
-                          onOpenHistory: _openPatientHistoryDialog,
-                          visibleCount: _topProcedureVisibleCount,
-                          onViewMore: () => _showTopPatientsDialog(
-                            title: 'Procedure Focus Patients',
-                            rows: topProcedurePatients,
-                            metricLabel: 'sessions',
-                            visitsByPatient: visitsByPatient,
-                          ),
-                        ),
-                      ),
                     ];
 
                     if (useHorizontalStrip) {
@@ -914,10 +860,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               cards[0],
-                              const SizedBox(width: 10),
-                              cards[1],
-                              const SizedBox(width: 10),
-                              cards[2],
                             ],
                           ),
                         ),
@@ -927,10 +869,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                     return Column(
                       children: [
                         cards[0],
-                        const SizedBox(height: 10),
-                        cards[1],
-                        const SizedBox(height: 10),
-                        cards[2],
                       ],
                     );
                   },
@@ -3463,12 +3401,14 @@ class _AllPatientsListCard extends StatelessWidget {
               behaviorChip('highValue', 'High value patients'),
               behaviorChip('frequent', 'Frequent visitors'),
               behaviorChip('inactive', 'Inactive patients'),
-              behaviorChip('new', 'New patients'),
-              behaviorChip('focused', 'Focused by last visit'),
+              behaviorChip('new', "Today's new"),
               behaviorChip('oneTimer', 'One timer'),
+              behaviorChip('outstandingOnly', 'Outstanding'),
+              behaviorChip('procedureFocus', 'Procedure focus'),
+              behaviorChip('visitedThisMonth', 'Visited this month'),
               behaviorChip('invalidPhone', 'Invalid Phone Number'),
               behaviorChip('noVisit', 'No Visit'),
-              behaviorChip('todayVisited', "Today's"),
+              behaviorChip('todayVisited', "Today's patients"),
               if (behaviorFilter == 'highValue')
                 SizedBox(
                   width: 180,
@@ -3515,26 +3455,8 @@ class _AllPatientsListCard extends StatelessWidget {
                         ),
                         _SortableHead(
                           flex: 24,
-                          label: 'Patient',
+                          label: 'Patient Details',
                           keyName: 'name',
-                          current: sortBy,
-                          ascending: sortAscending,
-                          onSort: onSort,
-                          onDark: isHeaderHighlighted,
-                        ),
-                        _SortableHead(
-                          flex: 16,
-                          label: 'Phone',
-                          keyName: 'phone',
-                          current: sortBy,
-                          ascending: sortAscending,
-                          onSort: onSort,
-                          onDark: isHeaderHighlighted,
-                        ),
-                        _SortableHead(
-                          flex: 10,
-                          label: 'Age',
-                          keyName: 'age',
                           current: sortBy,
                           ascending: sortAscending,
                           onSort: onSort,
@@ -3571,6 +3493,18 @@ class _AllPatientsListCard extends StatelessWidget {
                             ascending: sortAscending,
                             onSort: onSort,
                             onDark: isHeaderHighlighted,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 18,
+                          child: Text(
+                            'Treatments',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: isHeaderHighlighted
+                                  ? Colors.white
+                                  : const Color(0xFF2C4468),
+                            ),
                           ),
                         ),
                         _SortableHead(
@@ -3632,6 +3566,15 @@ class _AllPatientsListCard extends StatelessWidget {
                                 (sum, visit) =>
                                     sum + visit.paid + visit.prescriptionPaid,
                               );
+                                final treatments = patientVisits
+                                  .expand((visit) => visit.selectedTreatments)
+                                  .map((t) => t.trim())
+                                  .where((t) => t.isNotEmpty)
+                                  .toSet()
+                                  .toList(growable: false);
+                                final treatmentSummary = treatments.isEmpty
+                                  ? 'No treatments'
+                                  : treatments.take(3).join(', ');
                               final outstanding = patient.outstandingPayments;
 
                               return Container(
@@ -3657,33 +3600,32 @@ class _AllPatientsListCard extends StatelessWidget {
                                       flex: 24,
                                       child: GestureDetector(
                                         onTap: () => onEditPatient(patient),
-                                        child: Text(
-                                          patient.title.trim().isEmpty
-                                              ? 'Unnamed patient'
-                                              : patient.title,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: Color(0xFF1459AD),
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              patient.title.trim().isEmpty
+                                                  ? 'Unnamed patient'
+                                                  : patient.title,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: Color(0xFF1459AD),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${patient.phone} • ${patient.age}y',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: Color(0xFF7A8FAE),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 16,
-                                      child: Text(
-                                        patient.phone,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                            color: Color(0xFF2D476D)),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 10,
-                                      child: Text(
-                                        '${patient.age}',
-                                        style: const TextStyle(
-                                            color: Color(0xFF2D476D)),
                                       ),
                                     ),
                                     Expanded(
@@ -3693,6 +3635,20 @@ class _AllPatientsListCard extends StatelessWidget {
                                         style: const TextStyle(
                                           color: Color(0xFF2D476D),
                                           fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 18,
+                                      child: Text(
+                                        treatments.length > 3
+                                            ? '$treatmentSummary +${treatments.length - 3}'
+                                            : treatmentSummary,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFF355279),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),

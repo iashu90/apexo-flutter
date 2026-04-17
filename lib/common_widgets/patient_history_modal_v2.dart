@@ -82,6 +82,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   final TextEditingController _searchController = TextEditingController();
   int _exportLogSequence = 0;
   String _query = '';
+  String _historyTab = 'treatments';
   String _statusFilter = 'All';
   String _modeFilter = 'All';
   String _dateRange = 'All';
@@ -512,6 +513,14 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
+  List<_LedgerRowData> get _tabRows {
+    final showLabs = _historyTab == 'labs';
+    return _allRows.where((row) {
+      final isLab = row.treatment.toLowerCase().startsWith('labwork:');
+      return showLabs ? isLab : !isLab;
+    }).toList(growable: false);
+  }
+
   List<_LedgerRowData> get _visibleRows {
     final now = DateTime.now();
     DateTime? startDate;
@@ -525,7 +534,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
       startDate = now.subtract(const Duration(days: 365));
     }
 
-    final filtered = _allRows.where((row) {
+    final filtered = _tabRows.where((row) {
       if (startDate != null && row.date.isBefore(startDate)) return false;
 
       if (_statusFilter != 'All' && row.status != _statusFilter) {
@@ -1008,7 +1017,11 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                             WidgetStateProperty.all(const Color(0xFF2563EB)),
                       ),
                       onPressed: () {},
-                      child: const Text('+ Add Treatment'),
+                      child: Text(
+                        _historyTab == 'labs'
+                            ? '+ Add Lab Record'
+                            : '+ Add Treatment',
+                      ),
                     ),
                     FilledButton(
                       style: ButtonStyle(
@@ -1035,6 +1048,29 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   icon: const Icon(FluentIcons.chrome_close, size: 10),
                   onPressed: () => Navigator.pop(context),
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x120D2F5B),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                _tabChip('treatments', 'Treatments'),
+                const SizedBox(width: 8),
+                _tabChip('labs', 'Labs'),
               ],
             ),
           ),
@@ -1084,7 +1120,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                 Expanded(
                   child: TextBox(
                     controller: _searchController,
-                    placeholder: 'Search treatments...',
+                    placeholder: _historyTab == 'labs'
+                        ? 'Search lab records...'
+                        : 'Search treatments...',
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 8),
                       child: Icon(FluentIcons.search, size: 12),
@@ -1313,8 +1351,6 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                       const SizedBox(height: 4),
                                       Text('Medicines prescribed: ${row.prescription}'),
                                       const SizedBox(height: 4),
-                                      const Text('Lab charges: -'),
-                                      const SizedBox(height: 4),
                                       const Text('Attachments: No files attached'),
                                       const SizedBox(height: 10),
                                       const Text(
@@ -1360,6 +1396,39 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
         onChanged: (v) {
           if (v != null) onChanged(v);
         },
+      ),
+    );
+  }
+
+  Widget _tabChip(String value, String label) {
+    final selected = _historyTab == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _historyTab = value;
+          _expandedRowId = null;
+          _searchController.clear();
+          _query = '';
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF2D7BD8)
+                : const Color(0xFFD2E1F2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : const Color(0xFF355A84),
+          ),
+        ),
       ),
     );
   }

@@ -213,99 +213,97 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildMonthNavigator(),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 420,
-              child: TextBox(
-                textAlign: TextAlign.left,
-                controller: _searchCtrl,
-                placeholder: 'Search patient / phone / teeth / doctor',
-                prefix: const Padding(
-                  padding: EdgeInsets.only(left: 10),
-                  child: Icon(
-                    FluentIcons.search,
-                    size: 12,
-                    color: Color(0xFF6B778C),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 390,
+                child: TextBox(
+                  textAlign: TextAlign.left,
+                  controller: _searchCtrl,
+                  placeholder: 'Search patient / phone / teeth / doctor',
+                  prefix: const Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: Icon(
+                      FluentIcons.search,
+                      size: 12,
+                      color: Color(0xFF6B778C),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 190,
-                    child: ComboBox<String>(
-                      value: _labFilter,
-                      items: labs
-                          .map(
-                            (v) => ComboBoxItem<String>(
-                              value: v,
-                              child: Text(
-                                v == 'all'
-                                    ? 'All Labs'
-                                    : v == '__unassigned__'
-                                        ? 'Unassigned Lab'
-                                        : v,
-                              ),
-                            ),
-                          )
-                          .toList(growable: false),
-                      onChanged: (v) {
-                        if (v == null) return;
-                        setState(() => _labFilter = v);
-                      },
-                    ),
-                  ),
-                  _dropFilter(
-                    width: 150,
-                    value: _rangeFilter,
-                    items: const {
-                      'all': 'All Dates',
-                      'today': 'Today',
-                      'week': 'This Week',
-                      'last_month': 'Last Month',
-                      'month': 'This Month',
-                      'custom': 'Custom Date',
-                    },
-                    onChanged: (v) {
-                      if (v == 'custom') {
-                        _openDateRangePicker();
-                        return;
-                      }
-                      setState(() {
-                        _rangeFilter = v;
-                        if (v != 'custom') {
-                          _fromDate = null;
-                          _toDate = null;
-                        }
-                      });
-                    },
-                  ),
-                  _dropFilter(
-                    width: 130,
-                    value: _paymentFilter,
-                    items: const {
-                      'all': 'All Payment',
-                      'paid': 'Paid',
-                      'due': 'Due',
-                      'no_due': 'No Outstanding',
-                    },
-                    onChanged: (v) => setState(() => _paymentFilter = v),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 290,
+                child: _buildMonthNavigator(),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 190,
+                child: ComboBox<String>(
+                  value: _labFilter,
+                  items: labs
+                      .map(
+                        (v) => ComboBoxItem<String>(
+                          value: v,
+                          child: Text(
+                            v == 'all'
+                                ? 'All Labs'
+                                : v == '__unassigned__'
+                                    ? 'Unassigned Lab'
+                                    : v,
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() => _labFilter = v);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              _dropFilter(
+                width: 150,
+                value: _rangeFilter,
+                items: const {
+                  'all': 'All Dates',
+                  'today': 'Today',
+                  'week': 'This Week',
+                  'last_month': 'Last Month',
+                  'month': 'This Month',
+                  'custom': 'Custom Date',
+                },
+                onChanged: (v) {
+                  if (v == 'custom') {
+                    _openDateRangePicker();
+                    return;
+                  }
+                  setState(() {
+                    _rangeFilter = v;
+                    if (v != 'custom') {
+                      _fromDate = null;
+                      _toDate = null;
+                    }
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              _dropFilter(
+                width: 120,
+                value: _paymentFilter,
+                items: const {
+                  'all': 'All',
+                  'paid': 'Paid',
+                  'due': 'Due',
+                  'no_due': 'No Due',
+                },
+                onChanged: (v) => setState(() => _paymentFilter = v),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         Row(
@@ -357,42 +355,37 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
             _monthAnchor.month < DateTime.now().month);
     final monthModeActive = _rangeFilter == 'month';
 
-    return Center(
-      child: Opacity(
-        opacity: monthModeActive ? 1 : 0.45,
-        child: IgnorePointer(
-          ignoring: !monthModeActive,
-          child: SizedBox(
-            width: 420,
-            child: MonthNavigatorBar(
-              selectedMonth: _monthAnchor,
-              onPrevious: () {
-                setState(() {
-                  _monthAnchor = DateTime(
-                    _monthAnchor.year,
-                    _monthAnchor.month - 1,
-                    1,
-                  );
-                });
-              },
-              onNext: canGoNext
-                  ? () {
-                      setState(() {
-                        _monthAnchor = DateTime(
-                          _monthAnchor.year,
-                          _monthAnchor.month + 1,
-                          1,
-                        );
-                      });
-                    }
-                  : null,
-              onPick: (value) {
-                setState(() {
-                  _monthAnchor = value;
-                });
-              },
-            ),
-          ),
+    return Opacity(
+      opacity: monthModeActive ? 1 : 0.45,
+      child: IgnorePointer(
+        ignoring: !monthModeActive,
+        child: MonthNavigatorBar(
+          selectedMonth: _monthAnchor,
+          onPrevious: () {
+            setState(() {
+              _monthAnchor = DateTime(
+                _monthAnchor.year,
+                _monthAnchor.month - 1,
+                1,
+              );
+            });
+          },
+          onNext: canGoNext
+              ? () {
+                  setState(() {
+                    _monthAnchor = DateTime(
+                      _monthAnchor.year,
+                      _monthAnchor.month + 1,
+                      1,
+                    );
+                  });
+                }
+              : null,
+          onPick: (value) {
+            setState(() {
+              _monthAnchor = value;
+            });
+          },
         ),
       ),
     );
