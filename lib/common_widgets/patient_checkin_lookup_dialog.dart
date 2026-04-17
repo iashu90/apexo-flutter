@@ -17,33 +17,113 @@ Future<DateTime?> _pickScheduleDateTime(
   DateTime selectedDate,
 ) async {
   final now = DateTime.now();
-  final initialDate = selectedDate.isBefore(now)
+  DateTime pickedDate = selectedDate.isBefore(now)
       ? DateTime(now.year, now.month, now.day)
       : DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+  material.TimeOfDay pickedTime = const material.TimeOfDay(
+    hour: 10,
+    minute: 0,
+  );
 
-  final pickedDate = await material.showDatePicker(
+  DateTime? result;
+
+  await showDialog<void>(
     context: context,
-    initialDate: initialDate,
-    firstDate: DateTime(now.year - 1, 1, 1),
-    lastDate: DateTime(now.year + 5, 12, 31),
-    helpText: 'Select appointment date',
-  );
-  if (pickedDate == null) return null;
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setStateDialog) {
+        final updatedDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
 
-  final pickedTime = await material.showTimePicker(
-    context: context,
-    initialTime: const material.TimeOfDay(hour: 10, minute: 0),
-    helpText: 'Select appointment time',
+        return ContentDialog(
+          title: const Text('Schedule Appointment'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Date:',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 8),
+                    Button(
+                      onPressed: () async {
+                        final next = await material.showDatePicker(
+                          context: context,
+                          initialDate: pickedDate,
+                          firstDate: DateTime(now.year - 1, 1, 1),
+                          lastDate: DateTime(now.year + 5, 12, 31),
+                          helpText: 'Select appointment date',
+                        );
+                        if (next == null) return;
+                        setStateDialog(() {
+                          pickedDate = DateTime(next.year, next.month, next.day);
+                        });
+                      },
+                      child: Text(DateFormat('dd MMM yyyy').format(pickedDate)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text(
+                      'Time:',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 8),
+                    Button(
+                      onPressed: () async {
+                        final next = await material.showTimePicker(
+                          context: context,
+                          initialTime: pickedTime,
+                          helpText: 'Select appointment time',
+                        );
+                        if (next == null) return;
+                        setStateDialog(() => pickedTime = next);
+                      },
+                      child: Text(pickedTime.format(context)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Scheduled: ${DateFormat('dd MMM yyyy, h:mm a').format(updatedDateTime)}',
+                  style: const TextStyle(
+                    color: Color(0xFF1459AD),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                result = updatedDateTime;
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Schedule'),
+            ),
+          ],
+        );
+      },
+    ),
   );
-  if (pickedTime == null) return null;
 
-  return DateTime(
-    pickedDate.year,
-    pickedDate.month,
-    pickedDate.day,
-    pickedTime.hour,
-    pickedTime.minute,
-  );
+  return result;
 }
 
 Future<DateTime?> _scheduleAppointmentForPatient(

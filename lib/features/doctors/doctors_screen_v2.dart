@@ -5,12 +5,14 @@ import 'dart:math' as math;
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/appointment_financials.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
+import 'package:apexo/utils/appointment_analytics.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -246,7 +248,7 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                       rows: doneRows,
                       selectedRange: _doneRange,
                       monthAnchor: _doneMonthAnchor,
-                      monthOptions: _monthOptions(allAppointments),
+                      monthOptions: monthOptionsFromAppointments(allAppointments),
                       onMonthChanged: (month) =>
                           setState(() => _doneMonthAnchor = month),
                       onSelectRange: (value) =>
@@ -291,14 +293,6 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
       ],
     );
   }
-}
-
-List<DateTime> _monthOptions(List<Appointment> rows) {
-  return rows
-      .map((a) => DateTime(a.date.year, a.date.month, 1))
-      .toSet()
-      .toList(growable: false)
-    ..sort((a, b) => b.compareTo(a));
 }
 
 String _doctorTitleCase(String input) {
@@ -489,7 +483,8 @@ List<
           if (pid != null && pid.isNotEmpty) uniquePatients.add(pid);
         }
 
-        final earned = doctorRows.fold<double>(0, (s, a) => s + a.paidToDoctor);
+        final earned =
+          doctorRows.fold<double>(0, (s, a) => s + a.doctorPayableAmount);
 
         return (
           doctor: doctor,
@@ -1204,8 +1199,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     );
     final doctorsFee = widget.todaysAppointments.fold<double>(
       0,
-      (sum, a) => sum + (a.priceToPayDoctor > 0 ? a.priceToPayDoctor : a.paidToDoctor),
+      (sum, a) => sum + a.doctorPayableAmount,
     );
+    final netProfit = revenue - doctorsFee;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -1268,6 +1264,16 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                     const Color(0xFFD6455D),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _topMetric(
+                    'Net Profit',
+                    formatIndianShortCurrency(netProfit),
+                    netProfit >= 0
+                        ? const Color(0xFF2BA58D)
+                        : const Color(0xFFD6455D),
+                  ),
+                ),
               ],
             ),
             if (doctorEntries.isEmpty)
@@ -1290,8 +1296,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                 );
                 final doctorFee = doctorAppts.fold<double>(
                   0,
-                  (sum, a) => sum + (a.priceToPayDoctor > 0 ? a.priceToPayDoctor : a.paidToDoctor),
+                  (sum, a) => sum + a.doctorPayableAmount,
                 );
+                final doctorNet = earned - doctorFee;
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -1344,6 +1351,14 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                               formatIndianShortCurrency(earned),
                             const Color(0xFF2BA58D),
                           ),
+                          const SizedBox(width: 8),
+                          _inlineMetric(
+                            'Net Profit',
+                              formatIndianShortCurrency(doctorNet),
+                            doctorNet >= 0
+                                ? const Color(0xFF2BA58D)
+                                : const Color(0xFFD6455D),
+                          ),
                         ],
                       ),
                     ),
@@ -1369,6 +1384,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                   SizedBox(width: 110, child: Text('Stage', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 110, child: Text('Paid', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 120, child: Text('Fee', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: 120, child: Text('Net', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 90, child: Text('Status', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                   SizedBox(width: 110),
                                 ],
@@ -1385,9 +1401,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                               final stage = _stageLabel(appointment);
                               final stageColor = _stageColor(stage);
                               final paid = appointment.paid + appointment.prescriptionPaid;
-                                final consultantFee = appointment.priceToPayDoctor > 0
-                                  ? appointment.priceToPayDoctor
-                                  : appointment.paidToDoctor;
+                              final consultantFee =
+                                  appointment.doctorPayableAmount;
+                                final appointmentNet = paid - consultantFee;
 
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 0),
@@ -1474,10 +1490,28 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                     ),
                                     SizedBox(
                                       width: 120,
+                                      child: NumberBox(
+                                        value: consultantFee,
+                                        mode: SpinButtonPlacementMode.none,
+                                        clearButton: false,
+                                        min: 0,
+                                        smallChange: 50,
+                                        onChanged: (value) {
+                                          final next = value ?? 0;
+                                          appointment.priceToPayDoctor = next;
+                                          appointments.set(appointment);
+                                          setState(() {});
+                                        },
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 120,
                                       child: Text(
-                                        '₹${consultantFee.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFFD6455D),
+                                        formatIndianShortCurrency(appointmentNet),
+                                        style: TextStyle(
+                                          color: appointmentNet >= 0
+                                              ? const Color(0xFF2BA58D)
+                                              : const Color(0xFFD6455D),
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -1751,7 +1785,7 @@ List<({
         );
         final consultFee = rows.fold<double>(
           0,
-          (sum, a) => sum + a.priceToPayDoctor,
+          (sum, a) => sum + a.doctorPayableAmount,
         );
         final revenue = rows.fold<double>(
           0,
@@ -2711,9 +2745,9 @@ class _DoctorDrilldownCard extends StatelessWidget {
     };
 
     final currentEarnings =
-        currentRows.fold<double>(0, (s, a) => s + a.paidToDoctor);
+      currentRows.fold<double>(0, (s, a) => s + a.doctorPayableAmount);
     final compareEarnings =
-        compareRows.fold<double>(0, (s, a) => s + a.paidToDoctor);
+      compareRows.fold<double>(0, (s, a) => s + a.doctorPayableAmount);
 
     return DecoratedBox(
       decoration: BoxDecoration(

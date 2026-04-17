@@ -2,11 +2,13 @@ import 'dart:math' as math;
 
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/appointment_financials.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/utils/appointment_analytics.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -107,7 +109,15 @@ class ReportV2Screen extends StatelessWidget {
                         ),
                         SizedBox(
                           width: twoColWidth,
-                          child: _AppointmentMetricsCard(rows: allAppointments),
+                          child: _DoctorActivityReportCard(rows: allAppointments),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _ReportGenderDistributionCard(rows: allAppointments),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _ReportAgeDistributionCard(rows: allAppointments),
                         ),
                         SizedBox(
                           width: twoColWidth,
@@ -214,6 +224,218 @@ List<MapEntry<String, int>> _treatmentDistributionRows(
   final rows = counts.entries.toList(growable: false)
     ..sort((a, b) => b.value.compareTo(a.value));
   return rows.take(8).toList(growable: false);
+}
+
+class _DoctorActivityReportCard extends StatelessWidget {
+  final List<Appointment> rows;
+
+  const _DoctorActivityReportCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final todayRows = rows
+        .where((a) => !a.date.isBefore(today) && a.date.isBefore(tomorrow))
+        .toList(growable: false);
+
+    final patients = <String>{
+      for (final appointment in todayRows)
+        if (appointment.patientID != null && appointment.patientID!.isNotEmpty)
+          appointment.patientID!,
+    }.length;
+
+    final gained =
+        todayRows.fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
+    final fee = todayRows.fold<double>(
+      0,
+      (sum, a) => sum + a.doctorPayableAmount,
+    );
+    final net = gained - fee;
+
+    return _ReportContainer(
+      title: 'Doctor Activity (Today)',
+      subtitle: DateFormat('dd MMM yyyy').format(today),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _metricPill('Patients', '$patients', const Color(0xFF2D7BD8)),
+          _metricPill(
+            'Gained',
+            formatIndianShortCurrency(gained),
+            const Color(0xFF2BA58D),
+          ),
+          _metricPill(
+            'Doctor Fee',
+            formatIndianShortCurrency(fee),
+            const Color(0xFFD6455D),
+          ),
+          _metricPill(
+            'Net',
+            formatIndianShortCurrency(net),
+            net >= 0 ? const Color(0xFF2BA58D) : const Color(0xFFD6455D),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metricPill(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6FAFF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDCE8F6)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+class _ReportGenderDistributionCard extends StatelessWidget {
+  final List<Appointment> rows;
+
+  const _ReportGenderDistributionCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    int male = 0;
+    int female = 0;
+    for (final row in rows) {
+      final rawGender = row.patient?.gender;
+      final normalizedGender = rawGender == null ? '' : rawGender.toString();
+      final value = normalizedGender.trim().toLowerCase();
+      if (value == 'female') {
+        female += 1;
+      } else if (value == 'male') {
+        male += 1;
+      }
+    }
+
+    final total = male + female;
+    final malePct = total == 0 ? 0.0 : male / total;
+    final femalePct = total == 0 ? 0.0 : female / total;
+
+    return _ReportContainer(
+      title: 'Gender Distribution',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Total: $total', style: const TextStyle(color: Color(0xFF5A7397))),
+          const SizedBox(height: 8),
+          _distributionLine('Male', male, malePct, const Color(0xFF2D7BD8)),
+          const SizedBox(height: 8),
+          _distributionLine(
+            'Female',
+            female,
+            femalePct,
+            const Color(0xFF2BA58D),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _distributionLine(String label, int value, double ratio, Color color) {
+    return Row(
+      children: [
+        SizedBox(width: 70, child: Text(label)),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 8,
+              color: const Color(0xFFEAF2FC),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: ratio.clamp(0.0, 1.0),
+                child: Container(color: color),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text('$value'),
+      ],
+    );
+  }
+}
+
+class _ReportAgeDistributionCard extends StatelessWidget {
+  final List<Appointment> rows;
+
+  const _ReportAgeDistributionCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    final buckets = <String, int>{
+      '<18': 0,
+      '18-30': 0,
+      '31-45': 0,
+      '46-60': 0,
+      '60+': 0,
+    };
+
+    for (final row in rows) {
+      final age = row.patient?.age ?? 0;
+      if (age < 18) {
+        buckets['<18'] = (buckets['<18'] ?? 0) + 1;
+      } else if (age <= 30) {
+        buckets['18-30'] = (buckets['18-30'] ?? 0) + 1;
+      } else if (age <= 45) {
+        buckets['31-45'] = (buckets['31-45'] ?? 0) + 1;
+      } else if (age <= 60) {
+        buckets['46-60'] = (buckets['46-60'] ?? 0) + 1;
+      } else {
+        buckets['60+'] = (buckets['60+'] ?? 0) + 1;
+      }
+    }
+
+    final maxValue = buckets.values.fold<int>(0, math.max).toDouble();
+
+    return _ReportContainer(
+      title: 'Age Distribution',
+      child: Column(
+        children: buckets.entries.map((entry) {
+          final ratio = maxValue == 0 ? 0.0 : entry.value / maxValue;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                SizedBox(width: 60, child: Text(entry.key)),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      height: 8,
+                      color: const Color(0xFFEAF2FC),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: ratio.clamp(0.0, 1.0),
+                        child: Container(color: const Color(0xFF2D7BD8)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text('${entry.value}'),
+              ],
+            ),
+          );
+        }).toList(growable: false),
+      ),
+    );
+  }
 }
 
 class _NewVsReturningCard extends StatelessWidget {
@@ -619,14 +841,8 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
-List<DateTime> _monthOptions(List<Appointment> rows) {
-  final months = rows
-      .map((a) => DateTime(a.date.year, a.date.month, 1))
-      .toSet()
-      .toList(growable: false)
-    ..sort((a, b) => b.compareTo(a));
-  return months;
-}
+List<DateTime> _monthOptions(List<Appointment> rows) =>
+    monthOptionsFromAppointments(rows);
 
 class _DailyAppointmentsTrendWindowCard extends StatefulWidget {
   final List<Appointment> rows;
@@ -1460,148 +1676,6 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _AppointmentMetricsCard extends StatefulWidget {
-  final List<Appointment> rows;
-
-  const _AppointmentMetricsCard({required this.rows});
-
-  @override
-  State<_AppointmentMetricsCard> createState() =>
-      _AppointmentMetricsCardState();
-}
-
-class _AppointmentMetricsCardState extends State<_AppointmentMetricsCard> {
-  _RangeFilter _range = _RangeFilter.today;
-  DateTime _monthAnchor =
-      DateTime(DateTime.now().year, DateTime.now().month, 1);
-
-  @override
-  Widget build(BuildContext context) {
-    final scoped = _rangeRows(widget.rows, _range, monthAnchor: _monthAnchor);
-    final data = <({String doctor, int appointments, double earned})>[];
-
-    for (final doctor in doctors.present.values) {
-      final rows = scoped
-          .where((a) => a.operatorsIDs.contains(doctor.id))
-          .toList(growable: false);
-      if (rows.isEmpty) continue;
-
-      final earned = rows.fold<double>(
-        0,
-        (sum, a) => sum + a.paid + a.prescriptionPaid,
-      );
-      data.add((
-        doctor: doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title,
-        appointments: rows.length,
-        earned: earned,
-      ));
-    }
-
-    data.sort((a, b) => b.appointments.compareTo(a.appointments));
-
-    final totalAppointments =
-        data.fold<int>(0, (sum, row) => sum + row.appointments);
-    final totalEarned = data.fold<double>(0, (sum, row) => sum + row.earned);
-
-    return SizedBox(
-      width: 560,
-      child: _ReportContainer(
-        title: 'Appointment Metrics',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _FilterChips(
-              selected: _range,
-              onChanged: (v) => setState(() => _range = v),
-              monthAnchor: _monthAnchor,
-              monthOptions: _monthOptions(widget.rows),
-              onMonthChanged: (value) => setState(() => _monthAnchor = value),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              children: [
-                _metricPill('Appointments', '$totalAppointments'),
-                _metricPill(
-                    'Money Earned', formatIndianShortCurrency(totalEarned)),
-                _metricPill('Active Doctors', '${data.length}'),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (data.isEmpty)
-              const Text(
-                'No appointment metrics for selected range.',
-                style: TextStyle(color: Color(0xFF6D84A8)),
-              )
-            else
-              ...data.take(10).map(
-                    (row) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              row.doctor,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF1F446E),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '${row.appointments} appts • ${formatIndianShortCurrency(row.earned)}',
-                            style: const TextStyle(
-                              color: Color(0xFF5B789F),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _metricPill(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6FAFF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFDCE8F6)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              color: Color(0xFF36557C),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Color(0xFF1459AD),
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-          ),
-        ],
       ),
     );
   }
