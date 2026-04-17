@@ -9,7 +9,6 @@ import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
@@ -2116,7 +2115,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                         .add(const Duration(days: 7))
                         .millisecondsSinceEpoch,
                   });
-                  openAppointment(nextAppointment);
+                  openCheckinAppointmentModal(context, nextAppointment);
                 },
                 child: const Text('New Appointment'),
               ),
@@ -3315,24 +3314,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               valueColor: const Color(0xFF203A61)),
           const SizedBox(height: 10),
           const Divider(size: 1),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8F2EA),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Text(
-              'Saved just now',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: Color(0xFF2F4B66),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
         ],
       ),
     );

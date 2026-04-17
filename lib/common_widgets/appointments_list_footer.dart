@@ -1,7 +1,7 @@
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
-import 'package:apexo/features/labwork/open_labwork_panel.dart';
+import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -46,8 +46,8 @@ class AppointmentsListFooter extends StatelessWidget {
                 ],
               ),
               onPressed: () {
-                // Replace with your actual labwork panel opening logic
-                openLabwork(
+                openLabworkV2Dialog(
+                  context,
                    Labwork.fromJson({
                     if (forPatientID != null) "patientID": forPatientID,
                     if (forDoctorID != null) "operatorsIDs": [forDoctorID],

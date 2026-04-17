@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:apexo/features/labwork/labworks_store.dart';
-import 'package:apexo/features/labwork/open_labwork_panel.dart';
+import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:apexo/features/labwork/labwork_model.dart';
@@ -160,7 +160,7 @@ class LabworkCard extends StatelessWidget {
                                 IconButton(
                                   icon: const Icon(FluentIcons.edit, size: 17),
                                   onPressed: () {
-                                    openLabwork(labwork);
+                                    openLabworkV2Dialog(context, labwork);
                                   },
                                   iconButtonMode: IconButtonMode.large,
                                 ),
