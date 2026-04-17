@@ -4054,7 +4054,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                             .map(
                               (v) => Button(
                                 style: _pillStyle(
-                                  selected: true,
+                                  selected: false,
                                   accent: const Color(0xFF2D7BD8),
                                 ),
                                 onPressed: () {
@@ -4074,7 +4074,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                             .map(
                               (v) => Button(
                                 style: _pillStyle(
-                                  selected: true,
+                                  selected: false,
                                   accent: const Color(0xFF2D7BD8),
                                 ),
                                 onPressed: () {
@@ -4142,9 +4142,9 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           child: Text('₹$v'),
                         ),
                       ),
-                      FilledButton(
+                      Button(
                         style: _pillStyle(
-                          selected: true,
+                          selected: false,
                           accent: const Color(0xFF2D7BD8),
                         ),
                         onPressed: widget.onCollectFullBalance,
