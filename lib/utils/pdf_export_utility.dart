@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:apexo/utils/pdf_export_layout.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Data carrier for isolate (must be serializable)
@@ -32,17 +33,14 @@ Future<Uint8List> _buildPdfInIsolate(_PdfBuildParams params) async {
   doc.addPage(
     pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
+      header: (context) => exportPdfHeader(
+        context,
+        title: params.title,
+        subtitle: params.subtitle,
+      ),
+      footer: exportPdfFooter,
       build: (context) => [
-        pw.Text(
-          params.title,
-          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
-        ),
-        if ((params.subtitle ?? '').trim().isNotEmpty) ...[
-          pw.SizedBox(height: 4),
-          pw.Text(params.subtitle!.trim(),
-              style: const pw.TextStyle(fontSize: 11)),
-        ],
-        pw.SizedBox(height: 8),
+        pw.SizedBox(height: 2),
         if (hasRows)
           pw.TableHelper.fromTextArray(
             cellAlignment: pw.Alignment.centerLeft,

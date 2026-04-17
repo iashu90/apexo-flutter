@@ -4,6 +4,13 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
+import 'package:flutter/services.dart';
+
+String _normalizePhoneDigits(String input) {
+  final digits = input.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.length <= 10) return digits;
+  return digits.substring(0, 10);
+}
 
 String _toTitleCaseForPatientPopup(String input) {
   final cleaned = input.trim();
@@ -220,6 +227,10 @@ Future<Patient?> openAddPatientPopup({
                   controller: phoneController,
                   placeholder: 'Phone',
                   keyboardType: material.TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   onChanged: (_) {
                     if (phoneError != null) {
                       setStateDialog(() => phoneError = null);
@@ -334,14 +345,18 @@ Future<Patient?> openAddPatientPopup({
             onPressed: () {
               final rawName = nameController.text.trim();
               final parsedAge = int.tryParse(ageController.text.trim()) ?? 0;
-              final rawPhone = phoneController.text.trim();
+              final rawPhone = _normalizePhoneDigits(phoneController.text);
 
               final computedNameError =
                   rawName.isEmpty ? 'Patient name is required.' : null;
               final computedAgeError =
                   parsedAge <= 0 ? 'Age is required.' : null;
               final computedPhoneError =
-                  rawPhone.isEmpty ? 'Phone number is required.' : null;
+                  rawPhone.isEmpty
+                    ? 'Phone number is required.'
+                    : rawPhone.length != 10
+                      ? 'Invalid phone number.'
+                      : null;
 
               setStateDialog(() {
                 nameError = computedNameError;

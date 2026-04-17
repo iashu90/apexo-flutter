@@ -3291,7 +3291,7 @@ class _AllPatientsListCard extends StatelessWidget {
                 onPressed: (totalItems == 0 || isExportingCsv || isExportingPdf)
                     ? null
                     : onExportCsv,
-                child: Text(isExportingCsv ? 'Exporting CSV...' : 'CSV'),
+                child: Text(isExportingCsv ? 'Exporting CSVs...' : 'CSVs'),
               ),
               const SizedBox(width: 6),
               FilledButton(
