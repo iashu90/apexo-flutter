@@ -345,17 +345,33 @@ class _CheckinScreenState extends State<CheckinScreen> {
 
             final waiting = filtered
                 .where((a) =>
-                    a.checkinStage == 'waiting' || a.checkinStage == 'pending')
-                .toList(growable: false);
+                    a.checkinStage == 'waiting' ||
+                    a.checkinStage == 'pending' ||
+                    a.checkinStage == 'scheduled')
+                .toList(growable: true)
+              ..sort((a, b) {
+                final aScheduled =
+                    (a.checkinStage == 'pending' || a.checkinStage == 'scheduled')
+                        ? 1
+                        : 0;
+                final bScheduled =
+                    (b.checkinStage == 'pending' || b.checkinStage == 'scheduled')
+                        ? 1
+                        : 0;
+                if (aScheduled != bScheduled) return aScheduled - bScheduled;
+                return a.date.compareTo(b.date);
+              });
             final withDoctor = filtered
                 .where((a) =>
                     a.checkinStage == 'with_doctor' ||
                     a.checkinStage == 'treatment')
-                .toList(growable: false);
+                .toList(growable: true)
+              ..sort((a, b) => a.date.compareTo(b.date));
             final billingAndCompleted = filtered
                 .where(
                   (a) =>
                       a.checkinStage == 'checkout' ||
+                      a.checkinStage == 'billing' ||
                       a.checkinStage == 'completed' ||
                       a.isDone,
                 )
@@ -567,9 +583,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             _expandedStages['waiting'] =
                                 !(_expandedStages['waiting'] ?? true);
                           }),
-                          rowStageBuilder: (a) => a.checkinStage == 'pending'
-                              ? 'scheduled'
-                              : 'waiting',
+                          rowStageBuilder: (a) =>
+                              (a.checkinStage == 'pending' ||
+                                      a.checkinStage == 'scheduled')
+                                  ? 'scheduled'
+                                  : 'waiting',
                         );
 
                         final withDoctorColumn = _WorkflowColumn(
@@ -1995,7 +2013,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   }
                   if (mounted) setState(() {});
                 },
-                child: const Text('Billing'),
+                child: const Text('Proceed to Billing'),
               ),
             ),
           ],
@@ -2778,7 +2796,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
 
     final topTreatments = _topTreatmentsForPatient();
     final globalTopTreatments = _topTreatmentsAcrossClinic();
-    final mergedTopTreatments = <dynamic>{
+    final mergedTopTreatments = <String>{
       ...topTreatments,
       ...globalTopTreatments,
     }.take(10).toList(growable: false);
@@ -2852,6 +2870,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             (diagnosis) => _quickChip(
                               label: diagnosis,
                               selected: a.diagnosis.contains(diagnosis),
+                              selectedColor: const Color(0xFF2D7BD8),
+                              selectedTextColor: Colors.white,
+                              normalColor: const Color(0xFFF3F4F6),
+                              normalTextColor: const Color(0xFF2D3F58),
+                              radius: 7,
+                              selectedBorderColor: const Color(0xFF2D7BD8),
+                              normalBorderColor: const Color(0xFFDBE1EA),
                               onTap: () {
                                 setState(() {
                                   final updated =
@@ -2893,50 +2918,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         setState(() {});
                       },
                     ),
-                    if (_hasConsultationSelected()) ...[
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Consultation Type:',
-                        style: TextStyle(
-                          color: Color(0xFF5A7397),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: _consultationSubTypes
-                            .map(
-                              (type) => _quickChip(
-                                label: type,
-                                selected:
-                                    _selectedConsultationTypes.contains(type),
-                                selectedColor: const Color(0xFFE2EEFf),
-                                selectedTextColor: const Color(0xFF124E95),
-                                normalColor: const Color(0xFFF1F6FD),
-                                normalTextColor: const Color(0xFF355A84),
-                                onTap: () {
-                                  setState(() {
-                                    if (_selectedConsultationTypes
-                                        .contains(type)) {
-                                      _selectedConsultationTypes.remove(type);
-                                    } else {
-                                      _selectedConsultationTypes.add(type);
-                                    }
-                                    a.subTreatments =
-                                        _selectedConsultationTypes.toList(
-                                      growable: false,
-                                    );
-                                    appointments.set(a);
-                                  });
-                                },
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ],
                     if (mergedTopTreatments.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       Text(
@@ -2958,6 +2939,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               (t) => _quickChip(
                                 label: t,
                                 selected: _selectedTreatments.contains(t),
+                                selectedColor: const Color(0xFF2D7BD8),
+                                selectedTextColor: Colors.white,
+                                normalColor: const Color(0xFFF3F4F6),
+                                normalTextColor: const Color(0xFF2D3F58),
+                                selectedBorderColor: const Color(0xFF2D7BD8),
+                                normalBorderColor: const Color(0xFFDBE1EA),
+                                radius: 7,
                                 onTap: () {
                                   setState(() {
                                     if (_selectedTreatments.contains(t)) {
@@ -2976,6 +2964,53 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                         growable: false,
                                       );
                                     }
+                                    appointments.set(a);
+                                  });
+                                },
+                              ),
+                            )
+                            .toList(growable: false),
+                      ),
+                    ],
+                    if (_hasConsultationSelected()) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Consultation Type Suggestions:',
+                        style: TextStyle(
+                          color: Color(0xFF5A7397),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: _consultationSubTypes
+                            .map(
+                              (type) => _quickChip(
+                                label: type,
+                                selected:
+                                    _selectedConsultationTypes.contains(type),
+                                selectedColor: const Color(0xFFFFDDBB),
+                                selectedTextColor: const Color(0xFF8B4500),
+                                normalColor: const Color(0xFFFFF3E6),
+                                normalTextColor: const Color(0xFF8B5C2E),
+                                selectedBorderColor: const Color(0xFFFFB36C),
+                                normalBorderColor: const Color(0xFFF3D9BD),
+                                radius: 7,
+                                onTap: () {
+                                  setState(() {
+                                    if (_selectedConsultationTypes
+                                        .contains(type)) {
+                                      _selectedConsultationTypes.remove(type);
+                                    } else {
+                                      _selectedConsultationTypes.add(type);
+                                    }
+                                    a.subTreatments =
+                                        _selectedConsultationTypes.toList(
+                                      growable: false,
+                                    );
                                     appointments.set(a);
                                   });
                                 },
@@ -3054,10 +3089,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             (parent) => _quickChip(
                               label: parent,
                               selected: _selectedPostOpParent == parent,
-                              selectedColor: const Color(0xFFDCEBFF),
-                              selectedTextColor: const Color(0xFF134F9D),
-                              normalColor: const Color(0xFFEFF5FF),
-                              normalTextColor: const Color(0xFF355A84),
+                              selectedColor: const Color(0xFF2D7BD8),
+                              selectedTextColor: Colors.white,
+                              normalColor: const Color(0xFFF3F4F6),
+                              normalTextColor: const Color(0xFF2D3F58),
+                              selectedBorderColor: const Color(0xFF2D7BD8),
+                              normalBorderColor: const Color(0xFFDBE1EA),
+                              radius: 7,
                               onTap: () {
                                 setState(() => _selectedPostOpParent = parent);
                               },
@@ -3075,10 +3113,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             .map(
                               (child) => _quickChip(
                                 label: child,
-                                selectedColor: const Color(0xFFFFEAD8),
-                                selectedTextColor: const Color(0xFF9A4A00),
-                                normalColor: const Color(0xFFFFF4E8),
-                                normalTextColor: const Color(0xFF8A5B2F),
+                                selectedColor: const Color(0xFF2D7BD8),
+                                selectedTextColor: Colors.white,
+                                normalColor: const Color(0xFFF3F4F6),
+                                normalTextColor: const Color(0xFF2D3F58),
+                                selectedBorderColor: const Color(0xFF2D7BD8),
+                                normalBorderColor: const Color(0xFFDBE1EA),
+                                radius: 7,
                                 onTap: () {
                                   final parent = _selectedPostOpParent;
                                   if (parent == null) return;
@@ -3117,8 +3158,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 foregroundColor:
                                     WidgetStateProperty.all(Colors.white),
                               ),
-                              onPressed: () {
-                                showDialog<bool>(
+                              onPressed: () async {
+                                final navigator = Navigator.of(context);
+                                final confirmed = await showDialog<bool>(
                                   context: context,
                                   builder: (dialogContext) => ContentDialog(
                                     title: const Text('Move to Billing?'),
@@ -3134,21 +3176,19 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                       FilledButton(
                                         onPressed: () =>
                                             Navigator.pop(dialogContext, true),
-                                        child: const Text('Billing'),
+                                        child: const Text('Proceed'),
                                       ),
                                     ],
                                   ),
-                                ).then((confirmed) {
-                                  if (confirmed != true) return;
-                                  a.checkinStage = 'checkout';
-                                  a.isDone = false;
-                                  appointments.set(a);
-                                  if (mounted) {
-                                    Navigator.of(context).maybePop();
-                                  }
-                                });
+                                );
+                                if (confirmed != true) return;
+                                a.checkinStage = 'checkout';
+                                a.isDone = false;
+                                appointments.set(a);
+                                if (!mounted) return;
+                                navigator.maybePop();
                               },
-                              child: const Text('Billing'),
+                              child: const Text('Proceed to Billing'),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -3164,11 +3204,28 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   ],
                 );
 
+                final todaySummary = _buildTodaySummaryCard(a);
+
+                if (constraints.maxWidth >= 1180) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 42, child: firstColumn),
+                      const SizedBox(width: 12),
+                      Expanded(flex: 42, child: secondColumn),
+                      const SizedBox(width: 12),
+                      SizedBox(width: 260, child: todaySummary),
+                    ],
+                  );
+                }
+
                 return Column(
                   children: [
                     firstColumn,
                     const SizedBox(height: 16),
                     secondColumn,
+                    const SizedBox(height: 16),
+                    todaySummary,
                   ],
                 );
               },
@@ -3185,6 +3242,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     Color normalColor = const Color(0xFFEAF2FC),
     Color selectedTextColor = const Color(0xFF1459AD),
     Color normalTextColor = const Color(0xFF2F5B88),
+    Color selectedBorderColor = const Color(0xFF2D7BD8),
+    Color normalBorderColor = const Color(0xFFD5E5F7),
+    double radius = 999,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -3193,9 +3253,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: selected ? selectedColor : normalColor,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(radius),
           border: Border.all(
-            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD5E5F7),
+            color: selected ? selectedBorderColor : normalBorderColor,
           ),
         ),
         child: Text(
@@ -3206,6 +3266,106 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
             fontWeight: FontWeight.w700,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTodaySummaryCard(Appointment a) {
+    final treatedTeeth = _selectedTeeth.toList(growable: false)
+      ..sort((x, y) => x.compareTo(y));
+    final diagnosisLabel = a.diagnosis
+            .where((d) => d.trim().isNotEmpty)
+            .join(', ')
+            .trim()
+            .isEmpty
+        ? '-'
+        : a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ');
+    final treatmentLabel = a.selectedTreatments
+            .where((t) => t.trim().isNotEmpty)
+            .join(', ')
+            .trim()
+            .isEmpty
+        ? 'Consultation'
+        : a.selectedTreatments.where((t) => t.trim().isNotEmpty).join(', ');
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F7FC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E0EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Today Summary',
+            style: TextStyle(
+              color: Color(0xFF223B5E),
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _summaryLine('Teeth treated',
+              treatedTeeth.isEmpty ? '-' : treatedTeeth.join(', ')),
+          _summaryLine('Diagnosis', diagnosisLabel),
+          _summaryLine('Treatment', treatmentLabel),
+          _summaryLine('Cost', '₹${a.price.toStringAsFixed(0)}',
+              valueColor: const Color(0xFF203A61)),
+          const SizedBox(height: 10),
+          const Divider(size: 1),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F2EA),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text(
+              'Saved just now',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: Color(0xFF2F4B66),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryLine(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                color: Color(0xFF5A6B7F),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: valueColor ?? const Color(0xFF2A3F5E),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -3982,10 +4142,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           child: Text('₹$v'),
                         ),
                       ),
-                      Button(
+                      FilledButton(
                         style: _pillStyle(
-                          selected: false,
-                          accent: const Color(0xFF16A34A),
+                          selected: true,
+                          accent: const Color(0xFF2D7BD8),
                         ),
                         onPressed: widget.onCollectFullBalance,
                         child: const Text('Full'),
@@ -4147,6 +4307,11 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                 ],
               );
 
+              final doctorNames = a.operators
+                  .map((doctor) => doctor.title.trim())
+                  .where((name) => name.isNotEmpty)
+                  .toList(growable: false);
+
               final right = Padding(
                 padding: const EdgeInsets.all(4),
                 child: Column(
@@ -4222,6 +4387,15 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         color: Color(0xFF6D84A8),
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Doctor: ${doctorNames.isEmpty ? 'Unassigned' : doctorNames.join(', ')}',
+                      style: const TextStyle(
+                        color: Color(0xFFD6455D),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 10),
