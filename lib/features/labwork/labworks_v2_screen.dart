@@ -923,7 +923,6 @@ class _LabworkBoardColumn extends StatelessWidget {
   final List<Labwork> items;
   final bool collapsed;
   final VoidCallback onToggle;
-  final bool useInnerScroll;
   final void Function(Labwork?) onOpen;
   final void Function(Labwork) onHistory;
 
@@ -934,7 +933,6 @@ class _LabworkBoardColumn extends StatelessWidget {
     required this.items,
     required this.collapsed,
     required this.onToggle,
-    this.useInnerScroll = false,
     required this.onOpen,
     required this.onHistory,
   });
@@ -998,27 +996,6 @@ class _LabworkBoardColumn extends StatelessWidget {
                 style: TextStyle(color: Color(0xFF6D84A8)),
               ),
             )
-          else if (useInnerScroll)
-            Expanded(
-              child: Scrollbar(
-                child: ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) => Column(
-                    children: [
-                      _LabworkRow(
-                        item: items[index],
-                        onOpen: onOpen,
-                        onHistory: onHistory,
-                      ),
-                      if (index < items.length - 1)
-                        const Divider(size: 1),
-                    ],
-                  ),
-                ),
-              ),
-            )
           else
             ...items.asMap().entries.map(
                   (entry) => Column(
@@ -1029,7 +1006,11 @@ class _LabworkBoardColumn extends StatelessWidget {
                         onHistory: onHistory,
                       ),
                       if (entry.key < items.length - 1)
-                        const Divider(size: 1),
+                        Container(
+                          height: 1,
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          color: const Color(0xFFDCE8F6),
+                        ),
                     ],
                   ),
                 ),
@@ -1250,11 +1231,15 @@ class _LabworkRow extends StatelessWidget {
               children: [
                 SizedBox(
                   width: compact ? 62 : 68,
-                  child: Text(
-                    DateFormat('dd MMM').format(item.date),
-                    style: const TextStyle(
-                      color: Color(0xFF4C5C77),
-                      fontWeight: FontWeight.w600,
+                  child: FittedBox(
+                    alignment: Alignment.centerLeft,
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      DateFormat('dd MMM').format(item.date),
+                      style: const TextStyle(
+                        color: Color(0xFF4C5C77),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
