@@ -1220,7 +1220,7 @@ class _LabworkRow extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => onOpen(item),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
         color: Colors.white,
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -1230,7 +1230,7 @@ class _LabworkRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: compact ? 62 : 68,
+                  width: compact ? 70 : 76,
                   child: FittedBox(
                     alignment: Alignment.centerLeft,
                     fit: BoxFit.scaleDown,
@@ -1238,31 +1238,14 @@ class _LabworkRow extends StatelessWidget {
                       DateFormat('dd MMM').format(item.date),
                       style: const TextStyle(
                         color: Color(0xFF4C5C77),
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
                       ),
                     ),
                   ),
                 ),
                 Container(width: 1, height: 34, color: const Color(0xFFE7ECF5)),
                 const SizedBox(width: 10),
-                Container(
-                  width: 30,
-                  height: 30,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFD8E5F8),
-                  ),
-                  child: Text(
-                    _initials(item.patient?.title ?? ''),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF32537F),
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1273,7 +1256,7 @@ class _LabworkRow extends StatelessWidget {
                             ? _lwTitleCase(item.patient!.title)
                             : 'Unknown patient',
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF1F2B40),
                         ),
@@ -1305,7 +1288,7 @@ class _LabworkRow extends StatelessWidget {
                 ),
                 if (hasDueLabel)
                   SizedBox(
-                    width: 148,
+                    width: compact ? 112 : 132,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -1313,9 +1296,11 @@ class _LabworkRow extends StatelessWidget {
                           '₹${NumberFormat('#,##0').format(item.price)}',
                           style: TextStyle(
                             color: dueColor,
-                            fontSize: 20,
+                            fontSize: compact ? 16 : 18,
                             fontWeight: FontWeight.w800,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           item.paid ? 'PAID' : 'DUE',
@@ -1328,7 +1313,7 @@ class _LabworkRow extends StatelessWidget {
                       ],
                     ),
                   ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 2),
                 if (item.patient != null)
                   IconButton(
                     icon: const Icon(FluentIcons.history, size: 15),
