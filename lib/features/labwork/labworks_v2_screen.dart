@@ -1220,7 +1220,7 @@ class _LabworkRow extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => onOpen(item),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
         color: Colors.white,
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -1244,7 +1244,7 @@ class _LabworkRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(width: 1, height: 34, color: const Color(0xFFE7ECF5)),
+                Container(width: 1, height: 30, color: const Color(0xFFE7ECF5)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -1324,7 +1324,7 @@ class _LabworkRow extends StatelessWidget {
 
             final meta = Wrap(
               spacing: 8,
-              runSpacing: 8,
+              runSpacing: 6,
               children: [
                 _Tag(text: item.typeOfWork.isEmpty ? 'Type N/A' : item.typeOfWork),
                 _Tag(text: item.shade.isEmpty ? 'Shade -' : 'Shade ${item.shade}'),
@@ -1342,24 +1342,12 @@ class _LabworkRow extends StatelessWidget {
                       : 'Teeth ${item.selectedTeeth.take(6).join(', ')}${item.selectedTeeth.length > 6 ? '...' : ''}',
                   bg: const Color(0xFFF0EDF9),
                 ),
-                _Tag(
-                  text: item.deliveredToDoctor ? 'Ready' : 'In Lab',
-                  bg: item.deliveredToDoctor
-                      ? const Color(0xFFE7F6EC)
-                      : const Color(0xFFFAF1E7),
-                ),
-                _Tag(
-                  text: item.deliveredToPatient ? 'Delivered' : 'Not Delivered',
-                  bg: item.deliveredToPatient
-                      ? const Color(0xFFE7F6EC)
-                      : const Color(0xFFFAF1E7),
-                ),
               ],
             );
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [head, const SizedBox(height: 8), meta],
+              children: [head, const SizedBox(height: 6), meta],
             );
           },
         ),
@@ -1391,7 +1379,7 @@ class _Tag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(7),
