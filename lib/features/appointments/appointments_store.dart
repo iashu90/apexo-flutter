@@ -214,7 +214,7 @@ final List<Treatment> allTreatments = [
   Treatment(name: 'RCT', price: 3000, multiplier: true),
   Treatment(name: 'PFM Crowns', price: 3000, multiplier: true),
   Treatment(name: 'Zirconia Crowns', price: 6000, multiplier: true),
-  Treatment(name: 'Normal Extraction', price: 800, multiplier: true),
+  Treatment(name: 'Extraction', price: 800, multiplier: true),
   Treatment(name: 'Wisdom Teeth Extraction', price: 1000, multiplier: true),
   Treatment(name: 'Impaction', price: 2500, multiplier: true),
   Treatment(name: 'Ortho', price: 0),

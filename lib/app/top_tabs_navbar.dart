@@ -68,6 +68,7 @@ class TopTabsNavBar extends StatelessWidget {
                   onPressed: () => showDailyReminderModal(context),
                 ),
               ),
+              const SizedBox(width: 8),
               Tooltip(
                 message: 'Bulk Update',
                 child: IconButton(
@@ -79,7 +80,7 @@ class TopTabsNavBar extends StatelessWidget {
                   onPressed: () => showBulkUpdateDialog(context),
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
               const NetworkActions(),
               if (!veryCompact) ...[
                 const SizedBox(width: 6),

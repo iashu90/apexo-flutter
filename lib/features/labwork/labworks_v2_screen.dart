@@ -15,7 +15,8 @@ String _lwTitleCase(String input) {
   if (cleaned.isEmpty) return cleaned;
   return cleaned.split(RegExp(r'\s+')).map((w) {
     if (w.isEmpty) return w;
-    return w[0].toUpperCase() + (w.length > 1 ? w.substring(1).toLowerCase() : '');
+    return w[0].toUpperCase() +
+        (w.length > 1 ? w.substring(1).toLowerCase() : '');
   }).join(' ');
 }
 
@@ -33,7 +34,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   String _paymentFilter = 'all';
   String _rangeFilter = 'month';
   String _labFilter = 'all';
-  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _monthAnchor =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _fromDate;
   DateTime? _toDate;
   bool _inLabCollapsed = false;
@@ -126,10 +128,10 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     return Row(
       children: [
         const Text(
-          'Labworks',
+          'Labwork',
           style: TextStyle(
             color: Color(0xFF233B5F),
-            fontSize: 22,
+            fontSize: 34,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -154,32 +156,16 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   }
 
   Widget _buildStatStrip(List<Labwork> all, List<Labwork> filtered) {
-    final today = DateTime.now();
-    final todayItems =
-        all.where((l) => _isSameDay(l.date, today)).toList(growable: false);
     final inLab = all.where((l) => !l.deliveredToDoctor).length;
     final ready =
         all.where((l) => l.deliveredToDoctor && !l.deliveredToPatient).length;
-    final delivered = all.where((l) => l.deliveredToPatient).length;
-    final dues = all.where((l) => !l.paid).toList(growable: false);
-    final paymentDue = dues.fold<double>(0, (sum, l) => sum + l.price);
     final filteredDues = filtered.where((l) => !l.paid).toList(growable: false);
     final filteredDueAmount =
-      filteredDues.fold<double>(0, (sum, l) => sum + l.price);
+        filteredDues.fold<double>(0, (sum, l) => sum + l.price);
 
     final cards = [
-      _StatCardData('TODAY', '${todayItems.length}', 'orders'),
       _StatCardData('IN LAB', '$inLab', 'cases'),
       _StatCardData('READY', '$ready', 'ready'),
-      _StatCardData('DELIVERED', '$delivered', 'done'),
-      _StatCardData(
-        'PAYMENT DUE',
-        paymentDue <= 0 ? 'None' : '₹${NumberFormat('#,##0').format(paymentDue)}',
-        dues.isEmpty ? '' : '${dues.length} due${dues.length == 1 ? '' : 's'}',
-        valueColor: dues.isEmpty
-            ? const Color(0xFF1D3E67)
-            : const Color(0xFFD6455D),
-      ),
       _StatCardData(
         'FILTERED DUE',
         filteredDueAmount <= 0
@@ -195,7 +181,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     ];
 
     return SizedBox(
-      height: 112,
+      height: 122,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemBuilder: (context, i) => _StatCard(data: cards[i]),
@@ -218,7 +204,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 340,
+              width: 420,
               child: TextBox(
                 textAlign: TextAlign.left,
                 controller: _searchCtrl,
@@ -341,9 +327,11 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
         const SizedBox(height: 8),
         Row(
           children: [
-            if (_rangeFilter == 'custom' && (_fromDate != null || _toDate != null))
+            if (_rangeFilter == 'custom' &&
+                (_fromDate != null || _toDate != null))
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(color: const Color(0xFFD2E1F6)),
@@ -600,7 +588,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     if (range == null || !mounted) return;
     setState(() {
       _rangeFilter = 'custom';
-      _fromDate = DateTime(range.start.year, range.start.month, range.start.day);
+      _fromDate =
+          DateTime(range.start.year, range.start.month, range.start.day);
       _toDate = DateTime(range.end.year, range.end.month, range.end.day);
     });
   }
@@ -670,7 +659,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     final yesterday = today.subtract(const Duration(days: 1));
 
     for (final labwork in list) {
-      final d = DateTime(labwork.date.year, labwork.date.month, labwork.date.day);
+      final d =
+          DateTime(labwork.date.year, labwork.date.month, labwork.date.day);
       final label = d == today
           ? 'TODAY'
           : d == yesterday
@@ -679,9 +669,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       grouped.putIfAbsent(label, () => []).add(labwork);
     }
 
-    return grouped.entries
-        .map((e) => (e.key, e.value))
-        .toList(growable: false);
+    return grouped.entries.map((e) => (e.key, e.value)).toList(growable: false);
   }
 
   bool _isMonthSection(String title) {
@@ -1317,10 +1305,15 @@ class _LabworkRow extends StatelessWidget {
               spacing: 8,
               runSpacing: 6,
               children: [
-                _Tag(text: item.typeOfWork.isEmpty ? 'Type N/A' : item.typeOfWork),
-                _Tag(text: item.shade.isEmpty ? 'Shade -' : 'Shade ${item.shade}'),
                 _Tag(
-                  text: item.noOfUnits > 0 ? '${item.noOfUnits} Unit' : '0 Unit',
+                    text:
+                        item.typeOfWork.isEmpty ? 'Type N/A' : item.typeOfWork),
+                _Tag(
+                    text:
+                        item.shade.isEmpty ? 'Shade -' : 'Shade ${item.shade}'),
+                _Tag(
+                  text:
+                      item.noOfUnits > 0 ? '${item.noOfUnits} Unit' : '0 Unit',
                   bg: const Color(0xFFE8F2FD),
                 ),
                 _Tag(

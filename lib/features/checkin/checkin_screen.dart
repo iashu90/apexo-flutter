@@ -1029,7 +1029,7 @@ class _WorkflowRow extends StatelessWidget {
           final hasChanged = updatedDateTime != originalDate;
 
           return ContentDialog(
-            title: const Text('Edit Scheduled Appointment'),
+            title: const Text('Edit Appointment'),
             content: SizedBox(
               width: 520,
               child: Column(
@@ -1043,6 +1043,7 @@ class _WorkflowRow extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF183A67),
+                      fontSize: 20,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -1100,12 +1101,12 @@ class _WorkflowRow extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   Text(
                     'Current: ${DateFormat('dd MMM yyyy, h:mm a').format(originalDate)}',
                     style: const TextStyle(
                       color: Color(0xFF5F789B),
-                      fontSize: 12,
+                      fontSize: 16                                                                            ,
                     ),
                   ),
                   Text(
@@ -1114,7 +1115,7 @@ class _WorkflowRow extends StatelessWidget {
                       color: hasChanged
                           ? const Color(0xFF1459AD)
                           : const Color(0xFF5F789B),
-                      fontSize: 12,
+                      fontSize: 16,
                       fontWeight: hasChanged ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
@@ -1148,8 +1149,18 @@ class _WorkflowRow extends StatelessWidget {
               ),
               FilledButton(
                 style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                  backgroundColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.disabled)) {
+                      return const Color(0xFFD0D5DD);
+                    }
+                    return const Color(0xFF2D7BD8);
+                  }),
+                  foregroundColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.disabled)) {
+                      return const Color(0xFF667085);
+                    }
+                    return Colors.white;
+                  }),
                 ),
                 onPressed: hasChanged
                     ? () {
@@ -1503,37 +1514,12 @@ class _WorkflowRow extends StatelessWidget {
                   ),
                 if (stage == 'scheduled')
                   const SizedBox(width: 8),
-                if (stage == 'scheduled')
+                if (stage == 'checkout')
                   Tooltip(
-                    message: 'Check In',
+                    message: 'Complete',
                     child: IconButton(
-                      icon: const Icon(material.Icons.person_add_rounded,
-                          size: 18),
-                      style: ButtonStyle(
-                        padding: WidgetStateProperty.all(
-                          const EdgeInsets.all(8),
-                        ),
-                        shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFFF1D992)),
-                        foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFF91721C)),
-                      ),
-                      onPressed: () => _moveStage(context),
-                    ),
-                  ),
-                if (stage == 'waiting' || stage == 'checkout')
-                  Tooltip(
-                    message: stage == 'waiting' ? 'Check-in' : 'Complete',
-                    child: IconButton(
-                      icon: Icon(
-                        stage == 'waiting'
-                            ? material.Icons.login_rounded
-                            : material.Icons.task_alt_rounded,
+                      icon: const Icon(
+                        material.Icons.task_alt_rounded,
                         size: 18,
                       ),
                       style: ButtonStyle(
@@ -1546,14 +1532,10 @@ class _WorkflowRow extends StatelessWidget {
                           ),
                         ),
                         backgroundColor: WidgetStateProperty.all(
-                          stage == 'waiting'
-                              ? const Color(0xFFEAF2FF)
-                              : const Color(0xFFE8F8ED),
+                          const Color(0xFFE8F8ED),
                         ),
                         foregroundColor: WidgetStateProperty.all(
-                          stage == 'waiting'
-                              ? const Color(0xFF2D7BD8)
-                              : const Color(0xFF2A8D3F),
+                          const Color(0xFF2A8D3F),
                         ),
                       ),
                       onPressed: () => _moveStage(context),

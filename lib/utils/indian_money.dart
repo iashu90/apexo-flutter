@@ -15,10 +15,10 @@ String formatIndianCompactNumber(
     return '$sign$formatted L';
   }
 
-  if (absValue >= 1000) {
-    final formatted = (absValue / 1000).toStringAsFixed(fractionDigits);
-    return '$sign$formatted K';
-  }
+  // if (absValue >= 1000) {
+  //   final formatted = (absValue / 1000).toStringAsFixed(fractionDigits);
+  //   return '$sign$formatted K';
+  // }
 
   if (absValue == absValue.roundToDouble()) {
     return '$sign${absValue.toStringAsFixed(0)}';

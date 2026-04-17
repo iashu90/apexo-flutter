@@ -76,6 +76,8 @@ class Labworks extends Store<Labwork> {
       'Denco Lab',
       'CS Lab',
       'Deivamani Lab',
+      'MSA',
+      'Ortho Aligners',
     };
     labs.addAll(
       localSettings.savedLabs.keys
@@ -97,6 +99,8 @@ class Labworks extends Store<Labwork> {
       'Denco Lab',
       'CS Lab',
       'Deivamani Lab',
+      'MSA',
+      'Ortho Aligners',
     };
     labs.addAll(
       localSettings.savedLabs.keys
