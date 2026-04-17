@@ -1254,6 +1254,14 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                     const Color(0xFF2BA58D),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _topMetric(
+                    'Doctors Fee',
+                    formatIndianShortCurrency(doctorsFee),
+                    const Color(0xFFD6455D),
+                  ),
+                ),
               ],
             ),
             if (doctorEntries.isEmpty)
