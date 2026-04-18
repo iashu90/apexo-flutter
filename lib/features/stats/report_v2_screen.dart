@@ -146,15 +146,16 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                           ),
                           SizedBox(
                             width: twoColWidth,
-                            child: _ReportGenderDistributionCard(rows: allAppointments),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _ReportAgeDistributionCard(rows: allAppointments),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _NewVsReturningCard(rows: allAppointments),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _ReportGenderDistributionCard(rows: allAppointments),
+                                const SizedBox(height: 8),
+                                _NewVsReturningCard(rows: allAppointments),
+                                const SizedBox(height: 8),
+                                _ReportAgeDistributionCard(rows: allAppointments),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -321,6 +322,27 @@ List<MapEntry<String, int>> _treatmentDistributionRows(
   return rows.take(8).toList(growable: false);
 }
 
+String _genderBucket(dynamic rawGender) {
+  if (rawGender == null) return '';
+  final normalized = rawGender is num
+      ? rawGender.toInt().toString()
+      : rawGender.toString().trim().toLowerCase();
+  if (normalized == 'male' || normalized == 'm' || normalized == '1') {
+    return 'male';
+  }
+  if (normalized == 'female' || normalized == 'f' || normalized == '0') {
+    return 'female';
+  }
+  return '';
+}
+
+class _AgeGenderCount {
+  int male = 0;
+  int female = 0;
+
+  int get total => male + female;
+}
+
 class _ReportGenderDistributionCard extends StatelessWidget {
   final List<Appointment> rows;
 
@@ -331,15 +353,10 @@ class _ReportGenderDistributionCard extends StatelessWidget {
     int male = 0;
     int female = 0;
     for (final row in rows) {
-      final rawGender = row.patient?.gender;
-      final normalizedGender = rawGender == null
-          ? ''
-          : rawGender is num
-              ? rawGender.toInt().toString()
-              : rawGender.toString().trim().toLowerCase();
-      if (normalizedGender == 'female' || normalizedGender == 'f' || normalizedGender == '0') {
+      final bucket = _genderBucket(row.patient?.gender);
+      if (bucket == 'female') {
         female += 1;
-      } else if (normalizedGender == 'male' || normalizedGender == 'm' || normalizedGender == '1') {
+      } else if (bucket == 'male') {
         male += 1;
       }
     }
@@ -400,45 +417,57 @@ class _ReportAgeDistributionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final buckets = <String, int>{
-      '<13': 0,
-      '13-17': 0,
-      '18-24': 0,
-      '25-34': 0,
-      '35-44': 0,
-      '45-54': 0,
-      '55-64': 0,
-      '65+': 0,
+    final buckets = <String, _AgeGenderCount>{
+      '<13': _AgeGenderCount(),
+      '13-17': _AgeGenderCount(),
+      '18-24': _AgeGenderCount(),
+      '25-34': _AgeGenderCount(),
+      '35-44': _AgeGenderCount(),
+      '45-54': _AgeGenderCount(),
+      '55-64': _AgeGenderCount(),
+      '65+': _AgeGenderCount(),
     };
 
     for (final row in rows) {
       final age = row.patient?.age ?? 0;
+      final gender = _genderBucket(row.patient?.gender);
+      String key;
       if (age < 13) {
-        buckets['<13'] = (buckets['<13'] ?? 0) + 1;
+        key = '<13';
       } else if (age <= 17) {
-        buckets['13-17'] = (buckets['13-17'] ?? 0) + 1;
+        key = '13-17';
       } else if (age <= 24) {
-        buckets['18-24'] = (buckets['18-24'] ?? 0) + 1;
+        key = '18-24';
       } else if (age <= 34) {
-        buckets['25-34'] = (buckets['25-34'] ?? 0) + 1;
+        key = '25-34';
       } else if (age <= 44) {
-        buckets['35-44'] = (buckets['35-44'] ?? 0) + 1;
+        key = '35-44';
       } else if (age <= 54) {
-        buckets['45-54'] = (buckets['45-54'] ?? 0) + 1;
+        key = '45-54';
       } else if (age <= 64) {
-        buckets['55-64'] = (buckets['55-64'] ?? 0) + 1;
+        key = '55-64';
       } else {
-        buckets['65+'] = (buckets['65+'] ?? 0) + 1;
+        key = '65+';
+      }
+
+      final bucket = buckets[key];
+      if (bucket == null) continue;
+      if (gender == 'male') {
+        bucket.male += 1;
+      } else if (gender == 'female') {
+        bucket.female += 1;
       }
     }
 
-    final maxValue = buckets.values.fold<int>(0, math.max).toDouble();
+    final maxValue = buckets.values
+        .fold<int>(0, (max, bucket) => math.max(max, bucket.total))
+        .toDouble();
 
     return _ReportContainer(
       title: 'Age Distribution',
       child: Column(
         children: buckets.entries.map((entry) {
-          final ratio = maxValue == 0 ? 0.0 : entry.value / maxValue;
+          final ratio = maxValue == 0 ? 0.0 : entry.value.total / maxValue;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
@@ -453,13 +482,32 @@ class _ReportAgeDistributionCard extends StatelessWidget {
                       child: FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: ratio.clamp(0.0, 1.0),
-                        child: Container(color: const Color(0xFF2D7BD8)),
+                        child: entry.value.total == 0
+                            ? const SizedBox.shrink()
+                            : Row(
+                                children: [
+                                  if (entry.value.male > 0)
+                                    Expanded(
+                                      flex: entry.value.male,
+                                      child: Container(
+                                        color: const Color(0xFF2D7BD8),
+                                      ),
+                                    ),
+                                  if (entry.value.female > 0)
+                                    Expanded(
+                                      flex: entry.value.female,
+                                      child: Container(
+                                        color: const Color(0xFF2BA58D),
+                                      ),
+                                    ),
+                                ],
+                              ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text('${entry.value}'),
+                Text('M ${entry.value.male}  F ${entry.value.female}'),
               ],
             ),
           );
@@ -507,6 +555,7 @@ class _ReportDoctorAppointmentDoneCardState
             (sum, a) => sum + a.paid + a.prescriptionPaid,
           );
           final hospitalGained = revenue - fee;
+          final feePct = revenue <= 0 ? 0.0 : (fee / revenue) * 100;
           return (
             doctor: doctor,
             done: done,
@@ -514,6 +563,7 @@ class _ReportDoctorAppointmentDoneCardState
             fee: fee,
             revenue: revenue,
             hospitalGained: hospitalGained,
+            feePct: feePct,
           );
         })
         .whereType<({
@@ -523,13 +573,15 @@ class _ReportDoctorAppointmentDoneCardState
           double fee,
           double revenue,
           double hospitalGained,
+          double feePct,
         })>()
         .toList(growable: false)
       ..sort((a, b) => b.done.compareTo(a.done));
 
     final totalDone = rows.fold<int>(0, (s, r) => s + r.done);
     final totalFee = rows.fold<double>(0, (s, r) => s + r.fee);
-    final totalHospital = rows.fold<double>(0, (s, r) => s + r.hospitalGained);
+    final totalRevenue = rows.fold<double>(0, (s, r) => s + r.revenue);
+    final totalFeePct = totalRevenue <= 0 ? 0.0 : (totalFee / totalRevenue) * 100;
 
     return _ReportContainer(
       title: 'Appointments Done By Doctor',
@@ -560,16 +612,16 @@ class _ReportDoctorAppointmentDoneCardState
               Expanded(
                 child: _summaryTile(
                   value: formatIndianShortCurrency(totalFee),
-                  label: 'Doctors Earned',
-                  color: const Color(0xFF2BA58D),
+                  label: 'Doctor Fee',
+                  color: const Color(0xFFD6455D),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _summaryTile(
-                  value: formatIndianShortCurrency(totalHospital),
-                  label: 'Hospital Gained',
-                  color: const Color(0xFF2D7BD8),
+                  value: '${totalFeePct.toStringAsFixed(1)}%',
+                  label: 'Percentage',
+                  color: const Color(0xFF355279),
                 ),
               ),
             ],
@@ -660,7 +712,7 @@ class _ReportDoctorAppointmentDoneCardState
                         ),
                         Expanded(
                           child: Text(
-                            'Doctors Earned',
+                            'Doctor Fee',
                             style: TextStyle(
                               color: Color(0xFF355279),
                               fontWeight: FontWeight.w700,
@@ -669,7 +721,25 @@ class _ReportDoctorAppointmentDoneCardState
                         ),
                         Expanded(
                           child: Text(
-                            'Hospital Gained',
+                            'Patient Fee',
+                            style: TextStyle(
+                              color: Color(0xFF355279),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'Net',
+                            style: TextStyle(
+                              color: Color(0xFF355279),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'Percentage',
                             style: TextStyle(
                               color: Color(0xFF355279),
                               fontWeight: FontWeight.w700,
@@ -716,7 +786,16 @@ class _ReportDoctorAppointmentDoneCardState
                             child: Text(
                               formatIndianShortCurrency(row.fee),
                               style: const TextStyle(
-                                color: Color(0xFF2BA58D),
+                                color: Color(0xFFD6455D),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              formatIndianShortCurrency(row.revenue),
+                              style: const TextStyle(
+                                color: Color(0xFF2D7BD8),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -724,8 +803,19 @@ class _ReportDoctorAppointmentDoneCardState
                           Expanded(
                             child: Text(
                               formatIndianShortCurrency(row.hospitalGained),
+                              style: TextStyle(
+                                color: row.hospitalGained < 0
+                                    ? const Color(0xFFD6455D)
+                                    : const Color(0xFF2BA58D),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              '${row.feePct.toStringAsFixed(1)}%',
                               style: const TextStyle(
-                                color: Color(0xFF2D7BD8),
+                                color: Color(0xFF355279),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -838,36 +928,33 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
     final newPct = total == 0 ? 0.0 : (newCount / total) * 100;
     final returningPct = total == 0 ? 0.0 : (returningCount / total) * 100;
 
-    return SizedBox(
-      width: 560,
-      child: _ReportContainer(
-        title: 'New vs Returning',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _FilterChips(
-              selected: _range,
-              onChanged: (v) => setState(() => _range = v),
-              monthAnchor: _monthAnchor,
-              monthOptions: _monthOptions(widget.rows),
-              onMonthChanged: (value) => setState(() => _monthAnchor = value),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              children: [
-                _pill('New', '$newCount', const Color(0xFF2D7BD8)),
-                _pill('Returning', '$returningCount', const Color(0xFF2BA58D)),
-                _pill('Total', '$total', const Color(0xFF5A7397)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _ratioBar('New', newPct, const Color(0xFF2D7BD8)),
-            const SizedBox(height: 8),
-            _ratioBar('Returning', returningPct, const Color(0xFF2BA58D)),
-          ],
-        ),
+    return _ReportContainer(
+      title: 'New vs Returning',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _FilterChips(
+            selected: _range,
+            onChanged: (v) => setState(() => _range = v),
+            monthAnchor: _monthAnchor,
+            monthOptions: _monthOptions(widget.rows),
+            onMonthChanged: (value) => setState(() => _monthAnchor = value),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              _pill('New', '$newCount', const Color(0xFF2D7BD8)),
+              _pill('Returning', '$returningCount', const Color(0xFF2BA58D)),
+              _pill('Total', '$total', const Color(0xFF5A7397)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _ratioBar('New', newPct, const Color(0xFF2D7BD8)),
+          const SizedBox(height: 8),
+          _ratioBar('Returning', returningPct, const Color(0xFF2BA58D)),
+        ],
       ),
     );
   }

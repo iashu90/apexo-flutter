@@ -96,7 +96,6 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                         inLab: inLab,
                         ready: ready,
                         delivered: delivered,
-                    paymentFilter: _paymentFilter,
                         inLabCollapsed: _inLabCollapsed,
                         readyCollapsed: _readyCollapsed,
                         deliveredCollapsed: _deliveredCollapsed,
@@ -720,7 +719,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
 
       if (_paymentFilter == 'paid' && !l.paid) return false;
       if (_paymentFilter == 'due' && (l.paid || l.price <= 0)) return false;
-      if (_paymentFilter == 'no_due' && (!l.paid && l.price > 0)) return false;
+      if (_paymentFilter == 'no_due' && (l.paid || l.price > 0)) return false;
 
       if (from != null || to != null) {
         final d = DateTime(l.date.year, l.date.month, l.date.day);
@@ -854,7 +853,6 @@ class _LabworkBoard extends StatelessWidget {
   final List<Labwork> inLab;
   final List<Labwork> ready;
   final List<Labwork> delivered;
-  final String paymentFilter;
   final bool inLabCollapsed;
   final bool readyCollapsed;
   final bool deliveredCollapsed;
@@ -868,7 +866,6 @@ class _LabworkBoard extends StatelessWidget {
     required this.inLab,
     required this.ready,
     required this.delivered,
-    required this.paymentFilter,
     required this.inLabCollapsed,
     required this.readyCollapsed,
     required this.deliveredCollapsed,
@@ -890,7 +887,6 @@ class _LabworkBoard extends StatelessWidget {
           count: inLab.length,
           color: const Color(0xFFE4A11B),
           items: inLab,
-          hidePaymentStateLabel: paymentFilter == 'no_due',
           collapsed: inLabCollapsed,
           onToggle: onToggleInLab,
           onOpen: onOpen,
@@ -901,7 +897,6 @@ class _LabworkBoard extends StatelessWidget {
           count: ready.length,
           color: const Color(0xFF2D7BD8),
           items: ready,
-          hidePaymentStateLabel: paymentFilter == 'no_due',
           collapsed: readyCollapsed,
           onToggle: onToggleReady,
           onOpen: onOpen,
@@ -912,7 +907,6 @@ class _LabworkBoard extends StatelessWidget {
           count: delivered.length,
           color: const Color(0xFF2BA58D),
           items: delivered,
-          hidePaymentStateLabel: paymentFilter == 'no_due',
           collapsed: deliveredCollapsed,
           onToggle: onToggleDelivered,
           onOpen: onOpen,
@@ -941,7 +935,6 @@ class _LabworkBoard extends StatelessWidget {
                 count: inLab.length,
                 color: const Color(0xFFE4A11B),
                 items: inLab,
-                hidePaymentStateLabel: paymentFilter == 'no_due',
                 collapsed: inLabCollapsed,
                 onToggle: onToggleInLab,
                 onOpen: onOpen,
@@ -955,7 +948,6 @@ class _LabworkBoard extends StatelessWidget {
                 count: ready.length,
                 color: const Color(0xFF2D7BD8),
                 items: ready,
-                hidePaymentStateLabel: paymentFilter == 'no_due',
                 collapsed: readyCollapsed,
                 onToggle: onToggleReady,
                 onOpen: onOpen,
@@ -969,7 +961,6 @@ class _LabworkBoard extends StatelessWidget {
                 count: delivered.length,
                 color: const Color(0xFF2BA58D),
                 items: delivered,
-                hidePaymentStateLabel: paymentFilter == 'no_due',
                 collapsed: deliveredCollapsed,
                 onToggle: onToggleDelivered,
                 onOpen: onOpen,
@@ -988,7 +979,6 @@ class _LabworkBoardColumn extends StatelessWidget {
   final int count;
   final Color color;
   final List<Labwork> items;
-  final bool hidePaymentStateLabel;
   final bool collapsed;
   final VoidCallback onToggle;
   final void Function(Labwork?) onOpen;
@@ -999,7 +989,6 @@ class _LabworkBoardColumn extends StatelessWidget {
     required this.count,
     required this.color,
     required this.items,
-    required this.hidePaymentStateLabel,
     required this.collapsed,
     required this.onToggle,
     required this.onOpen,
@@ -1071,7 +1060,6 @@ class _LabworkBoardColumn extends StatelessWidget {
                     children: [
                       _LabworkRow(
                         item: entry.value,
-                        hidePaymentStateLabel: hidePaymentStateLabel,
                         onOpen: onOpen,
                         onHistory: onHistory,
                       ),
@@ -1258,7 +1246,6 @@ class _DateSection extends StatelessWidget {
             ...items.map(
               (item) => _LabworkRow(
                 item: item,
-                hidePaymentStateLabel: false,
                 onOpen: onOpen,
                 onHistory: onHistory,
               ),
@@ -1271,13 +1258,11 @@ class _DateSection extends StatelessWidget {
 
 class _LabworkRow extends StatelessWidget {
   final Labwork item;
-  final bool hidePaymentStateLabel;
   final void Function(Labwork?) onOpen;
   final void Function(Labwork) onHistory;
 
   const _LabworkRow({
     required this.item,
-    required this.hidePaymentStateLabel,
     required this.onOpen,
     required this.onHistory,
   });
@@ -1378,15 +1363,14 @@ class _LabworkRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (!hidePaymentStateLabel)
-                          Text(
-                            item.paid ? 'PAID' : 'DUE',
-                            style: TextStyle(
-                              color: dueColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        Text(
+                          item.paid ? 'PAID' : 'DUE',
+                          style: TextStyle(
+                            color: dueColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
                           ),
+                        ),
                       ],
                     ),
                   ),

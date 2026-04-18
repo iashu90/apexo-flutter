@@ -162,6 +162,13 @@ Future<void> showPatientCheckinLookupDialog({
 
       return StatefulBuilder(
         builder: (context, setDialogState) {
+          final waitingCount = todaysAppointments
+              .where((a) =>
+                  a.checkinStage == 'waiting' ||
+                  a.checkinStage == 'pending' ||
+                  a.checkinStage == 'scheduled')
+              .length;
+
           final matches = allPatients
               .where((p) {
                 if (query.isEmpty) return true;
@@ -179,10 +186,220 @@ Future<void> showPatientCheckinLookupDialog({
                 return name == query || phone == query;
               });
 
+          final recentToday = allPatients
+              .where((p) => todaysAppointments.any((a) => a.patientID == p.id))
+              .take(6)
+              .toList(growable: false);
+
+          Appointment? _todayAppointment(Patient patient) {
+            final rows = todaysAppointments
+                .where((a) => a.patientID == patient.id)
+                .toList(growable: false);
+            if (rows.isEmpty) return null;
+            return rows.last;
+          }
+
+          String _statusLabel(Appointment? existing) {
+            if (existing == null) return 'No Appointment';
+            final stage = existing.checkinStage.trim().toLowerCase();
+            if (stage == 'waiting') return 'Waiting';
+            if (stage == 'scheduled' || stage == 'pending') {
+              return 'Appointment ${DateFormat('h:mm a').format(existing.date)}';
+            }
+            if (stage == 'with_doctor' || stage == 'treatment') {
+              return 'With Doctor';
+            }
+            if (stage == 'checkout') return 'Billing';
+            if (stage == 'completed' || existing.isDone) return 'Completed';
+            return _toTitleCase(stage);
+          }
+
+          Widget _statusChip(Appointment? existing) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F7EE),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                _statusLabel(existing),
+                style: const TextStyle(
+                  color: Color(0xFF1F3B57),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
+            );
+          }
+
+          Widget _patientCard(Patient patient) {
+            final existing = _todayAppointment(patient);
+            final displayName = patient.title.trim().isEmpty
+                ? 'Unnamed patient'
+                : patient.title;
+            final phone = patient.phone.trim().isEmpty ? '-' : patient.phone;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD8E3EF)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x120D2F5B),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8EA7C1),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          _initials(displayName),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF1F2B40),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$phone • ${patient.age}y',
+                              style: const TextStyle(
+                                color: Color(0xFF637A99),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _statusChip(existing),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(size: 1),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      if (existing != null)
+                        Button(
+                          onPressed: () async {
+                            final navigator = Navigator.of(dialogContext);
+                            if (navigator.mounted) {
+                              navigator.pop();
+                            }
+                            await onOpenExisting(existing);
+                          },
+                          child: const Text('Open'),
+                        ),
+                      if (existing != null) const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () async {
+                          final navigator = Navigator.of(dialogContext);
+                          await onCheckInPatient(patient);
+                          if (navigator.mounted) {
+                            navigator.pop();
+                          }
+                        },
+                        child: const Text('Check-in'),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () async {
+                          final scheduledAt = await _scheduleAppointmentForPatient(
+                            context,
+                            patient,
+                            selectedDate,
+                          );
+                          if (scheduledAt == null || !context.mounted) return;
+                          displayInfoBar(
+                            context,
+                            builder: (context, close) => InfoBar(
+                              title: const Text('Appointment scheduled'),
+                              content: Text(
+                                'Scheduled for ${DateFormat('dd MMM yyyy, hh:mm a').format(scheduledAt)}',
+                              ),
+                              severity: InfoBarSeverity.success,
+                            ),
+                          );
+                        },
+                        child: const Text('Schedule'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }
+
           return ContentDialog(
             title: Row(
               children: [
-                Expanded(child: Text(title)),
+                Expanded(
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 10,
+                    runSpacing: 6,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1F2B40),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEDEFF2),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '$waitingCount waiting',
+                          style: const TextStyle(
+                            color: Color(0xFF1F2B40),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(FluentIcons.chrome_close, size: 12),
                   onPressed: () => Navigator.pop(dialogContext),
@@ -190,14 +407,14 @@ Future<void> showPatientCheckinLookupDialog({
               ],
             ),
             content: SizedBox(
-              width: 700,
+              width: 760,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   TextBox(
                     controller: queryController,
-                    placeholder: 'Search by patient name or phone',
+                    placeholder: 'Search name or phone...',
                     autofocus: true,
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
@@ -207,139 +424,137 @@ Future<void> showPatientCheckinLookupDialog({
                         color: Color(0xFF6D84A8),
                       ),
                     ),
+                    onSubmitted: (_) async {
+                      if (matches.isEmpty) return;
+                      final navigator = Navigator.of(dialogContext);
+                      await onCheckInPatient(matches.first);
+                      if (navigator.mounted) {
+                        navigator.pop();
+                      }
+                    },
                     onChanged: (value) {
                       setDialogState(() => query = value.trim().toLowerCase());
                     },
                   ),
-                  if (query.isNotEmpty && !hasExactMatch) ...[
-                    const SizedBox(height: 8),
-                    FilledButton(
-                      onPressed: () async {
-                        final navigator = Navigator.of(dialogContext);
-                        final created = await onAddPatient(queryController.text);
-                        if (created == null) return;
-                        await onCheckInPatient(created);
-                        if (navigator.mounted) {
-                          navigator.pop();
-                        }
-                      },
-                      child: Text(
-                        'Add "$query" as new patient',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 10),
+                  const Text(
+                    'Type name or phone • Press Enter to check-in instantly',
+                    style: TextStyle(
+                      color: Color(0xFF5A6E89),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () async {
+                            final navigator = Navigator.of(dialogContext);
+                            final created = await onAddPatient(queryController.text);
+                            if (created == null) return;
+                            await onCheckInPatient(created);
+                            if (navigator.mounted) {
+                              navigator.pop();
+                            }
+                          },
+                          child: const Text('New Patient'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Button(
+                          onPressed: matches.isEmpty
+                              ? null
+                              : () async {
+                                  final scheduledAt = await _scheduleAppointmentForPatient(
+                                    context,
+                                    matches.first,
+                                    selectedDate,
+                                  );
+                                  if (scheduledAt == null || !context.mounted) {
+                                    return;
+                                  }
+                                  displayInfoBar(
+                                    context,
+                                    builder: (context, close) => InfoBar(
+                                      title: const Text('Appointment scheduled'),
+                                      content: Text(
+                                        'Scheduled for ${DateFormat('dd MMM yyyy, hh:mm a').format(scheduledAt)}',
+                                      ),
+                                      severity: InfoBarSeverity.success,
+                                    ),
+                                  );
+                                },
+                          child: const Text('Schedule Appointment'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 420),
-                    child: matches.isEmpty
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 30),
+                    constraints: const BoxConstraints(maxHeight: 520),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Recent Today',
+                            style: TextStyle(
+                              color: Color(0xFF4D5C77),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (recentToday.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                'No recent patients today.',
+                                style: TextStyle(color: Color(0xFF6D84A8)),
+                              ),
+                            )
+                          else
+                            ...recentToday.map(_patientCard),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Search Results',
+                            style: TextStyle(
+                              color: Color(0xFF4D5C77),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (matches.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 18),
                               child: Text(
                                 'No matching patients.',
                                 style: TextStyle(color: Color(0xFF6D84A8)),
                               ),
+                            )
+                          else
+                            ...matches.map(_patientCard),
+                          if (query.isNotEmpty && !hasExactMatch)
+                            FilledButton(
+                              onPressed: () async {
+                                final navigator = Navigator.of(dialogContext);
+                                final created = await onAddPatient(queryController.text);
+                                if (created == null) return;
+                                await onCheckInPatient(created);
+                                if (navigator.mounted) {
+                                  navigator.pop();
+                                }
+                              },
+                              child: Text(
+                                'Add "${queryController.text.trim()}" as new patient',
+                              ),
                             ),
-                          )
-                        : ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: matches.length,
-                            separatorBuilder: (_, __) => const Divider(size: 1),
-                            itemBuilder: (context, index) {
-                              final patient = matches[index];
-                              final existing = todaysAppointments
-                                  .where((a) => a.patientID == patient.id)
-                                  .toList(growable: false)
-                                  .lastOrNull;
-
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 2,
-                                  vertical: 6,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            patient.title.trim().isEmpty
-                                                ? 'Unnamed patient'
-                                                : patient.title,
-                                            style: const TextStyle(
-                                              color: Color(0xFF1F446E),
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            '${patient.phone} • ${patient.age}y',
-                                            style: const TextStyle(
-                                              color: Color(0xFF6D84A8),
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    if (existing != null)
-                                      Button(
-                                        onPressed: () async {
-                                          final navigator =
-                                              Navigator.of(dialogContext);
-                                          if (navigator.mounted) {
-                                            navigator.pop();
-                                          }
-                                          await onOpenExisting(existing);
-                                        },
-                                        child: const Text('Open'),
-                                      )
-                                    else
-                                      FilledButton(
-                                        onPressed: () async {
-                                          final navigator =
-                                              Navigator.of(dialogContext);
-                                          await onCheckInPatient(patient);
-                                          if (navigator.mounted) {
-                                            navigator.pop();
-                                          }
-                                        },
-                                        child: const Text('Check-in'),
-                                      ),
-                                    const SizedBox(width: 8),
-                                    Button(
-                                      onPressed: () async {
-                                        final scheduledAt =
-                                            await _scheduleAppointmentForPatient(
-                                          context,
-                                          patient,
-                                          selectedDate,
-                                        );
-                                        if (scheduledAt == null || !context.mounted) {
-                                          return;
-                                        }
-                                        displayInfoBar(
-                                          context,
-                                          builder: (context, close) => InfoBar(
-                                            title: const Text('Appointment scheduled'),
-                                            content: Text(
-                                              'Scheduled for ${DateFormat('dd MMM yyyy, hh:mm a').format(scheduledAt)}',
-                                            ),
-                                            severity: InfoBarSeverity.success,
-                                          ),
-                                        );
-                                      },
-                                      child: const Text('Schedule'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -355,4 +570,27 @@ Future<void> showPatientCheckinLookupDialog({
       );
     },
   );
+}
+
+String _initials(String name) {
+  final cleaned = name.trim();
+  if (cleaned.isEmpty) return 'U';
+  final parts = cleaned
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList(growable: false);
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+  return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
+}
+
+String _toTitleCase(String input) {
+  final cleaned = input.trim();
+  if (cleaned.isEmpty) return cleaned;
+  final words = cleaned.split(RegExp(r'\s+'));
+  return words
+      .map((word) => word.isEmpty
+          ? word
+          : word.substring(0, 1).toUpperCase() +
+              (word.length > 1 ? word.substring(1).toLowerCase() : ''))
+      .join(' ');
 }

@@ -43,6 +43,8 @@ class _LabBulkUpdateDialog extends StatefulWidget {
 
 class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
   String _labFilter = 'all';
+  final TextEditingController _labNameCtrl = TextEditingController();
+  String _labNameQuery = '';
   DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   bool _finding = false;
@@ -76,8 +78,28 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
   }
 
   bool _isMatchingLab(Labwork item) {
-    if (_labFilter == 'all') return true;
-    return item.lab.trim() == _labFilter;
+    final lab = item.lab.trim();
+    if (_labFilter != 'all' && lab != _labFilter) return false;
+    if (_labNameQuery.isEmpty) return true;
+    return lab.toLowerCase().contains(_labNameQuery);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _labNameCtrl.addListener(() {
+      setState(() {
+        _labNameQuery = _labNameCtrl.text.trim().toLowerCase();
+        _matches = const [];
+        _result = null;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _labNameCtrl.dispose();
+    super.dispose();
   }
 
   bool _isDue(Labwork item) {
@@ -226,6 +248,19 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            TextBox(
+              controller: _labNameCtrl,
+              placeholder: 'Lab name contains... (optional)',
+              prefix: const Padding(
+                padding: EdgeInsets.only(left: 10),
+                child: Icon(
+                  FluentIcons.filter,
+                  size: 12,
+                  color: Color(0xFF6D84A8),
+                ),
+              ),
             ),
             const SizedBox(height: 8),
             Row(
