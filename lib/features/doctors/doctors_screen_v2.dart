@@ -8,6 +8,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/checkin/checkin_stage_modals.dart';
+import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -1267,6 +1268,28 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                 final doctorNet = earned - doctorFee;
                 final doctorNetPct =
                   earned <= 0 ? 0.0 : (doctorNet / earned) * 100;
+                final screenWidth = MediaQuery.of(context).size.width;
+                final compact = screenWidth < 1440;
+                final patientWidth = compact ? 170.0 : 210.0;
+                final timeWidth = compact ? 120.0 : 140.0;
+                final treatmentWidth = compact ? 170.0 : 200.0;
+                final toothWidth = compact ? 90.0 : 110.0;
+                final stageWidth = compact ? 90.0 : 110.0;
+                final paidWidth = compact ? 100.0 : 110.0;
+                final feeWidth = compact ? 100.0 : 120.0;
+                final netWidth = compact ? 100.0 : 120.0;
+                final statusWidth = compact ? 82.0 : 90.0;
+                final actionWidth = compact ? 72.0 : 82.0;
+                final minTableWidth = patientWidth +
+                    timeWidth +
+                    treatmentWidth +
+                    toothWidth +
+                    stageWidth +
+                    paidWidth +
+                    feeWidth +
+                    netWidth +
+                    statusWidth +
+                    actionWidth;
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -1334,7 +1357,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                     content: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(minWidth: 1180),
+                        constraints: BoxConstraints(minWidth: minTableWidth),
                         child: Column(
                           children: [
                             Container(
@@ -1344,18 +1367,18 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                 color: const Color(0xFFEFF5FF),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  SizedBox(width: 210, child: Text('Patient', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 140, child: Text('Time', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 200, child: Text('Treatment', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 110, child: Text('Tooth/Area', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 110, child: Text('Stage', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 110, child: Text('Paid', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 120, child: Text('Fee', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 120, child: Text('Net', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 90, child: Text('Status', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: 110),
+                                  SizedBox(width: patientWidth, child: const Text('Patient', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: timeWidth, child: const Text('Time', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: treatmentWidth, child: const Text('Treatment', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: toothWidth, child: const Text('Tooth/Area', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: stageWidth, child: const Text('Stage', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: paidWidth, child: const Text('Paid', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: feeWidth, child: const Text('Fee', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: netWidth, child: const Text('Net', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: statusWidth, child: const Text('Status', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
+                                  SizedBox(width: actionWidth, child: const Text('Edit', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
                                 ],
                               ),
                             ),
@@ -1392,7 +1415,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                 child: Row(
                                   children: [
                                     SizedBox(
-                                      width: 210,
+                                      width: patientWidth,
                                       child: Text(
                                         appointment.title.trim().isEmpty
                                             ? 'Unnamed patient'
@@ -1405,7 +1428,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 140,
+                                      width: timeWidth,
                                       child: Text(
                                         '${DateFormat('hh:mm a').format(appointment.date)} - ${DateFormat('hh:mm a').format(end)}',
                                         style: const TextStyle(
@@ -1416,7 +1439,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 200,
+                                      width: treatmentWidth,
                                       child: Text(
                                         treatment.isEmpty ? '-' : treatment,
                                         overflow: TextOverflow.ellipsis,
@@ -1428,7 +1451,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 110,
+                                      width: toothWidth,
                                       child: Text(
                                         tooth,
                                         style: const TextStyle(
@@ -1438,7 +1461,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 110,
+                                      width: stageWidth,
                                       child: Text(
                                         stage,
                                         style: TextStyle(
@@ -1448,7 +1471,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 110,
+                                      width: paidWidth,
                                       child: Text(
                                         '₹${paid.toStringAsFixed(0)}',
                                         style: const TextStyle(
@@ -1458,23 +1481,17 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 120,
-                                      child: NumberBox(
-                                        value: consultantFee,
-                                        mode: SpinButtonPlacementMode.none,
-                                        clearButton: false,
-                                        min: 0,
-                                        smallChange: 50,
-                                        onChanged: (value) {
-                                          final next = value ?? 0;
-                                          appointment.priceToPayDoctor = next;
-                                          appointments.set(appointment);
-                                          setState(() {});
-                                        },
+                                      width: feeWidth,
+                                      child: Text(
+                                        '₹${consultantFee.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF34567D),
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 120,
+                                      width: netWidth,
                                       child: Text(
                                         formatIndianShortCurrency(appointmentNet),
                                         style: TextStyle(
@@ -1486,21 +1503,26 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 90,
+                                      width: statusWidth,
                                       child: _statusPill(
                                         paid > 0 ? 'Paid' : 'Free',
                                         paid > 0,
                                       ),
                                     ),
                                     SizedBox(
-                                      width: 110,
-                                      child: Button(
-                                        onPressed: () {},
-                                        child: Text(
-                                          appointment.isDone
-                                              ? 'View Details'
-                                              : 'Open',
+                                      width: actionWidth,
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          FluentIcons.edit,
+                                          size: 14,
                                         ),
+                                        onPressed: () {
+                                          openNextCheckinStepperDialog(
+                                            context,
+                                            appointment,
+                                            initialStep: 2,
+                                          );
+                                        },
                                       ),
                                     ),
                                   ],
