@@ -1306,15 +1306,15 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           ),
                           const SizedBox(width: 8),
                           _inlineMetric(
-                            'Doctors Fee',
-                              formatIndianShortCurrency(doctorFee),
-                            const Color(0xFFD6455D),
-                          ),
-                          const SizedBox(width: 8),
-                          _inlineMetric(
                             'Revenue',
                               formatIndianShortCurrency(earned),
                             const Color(0xFF2BA58D),
+                          ),
+                          const SizedBox(width: 8),
+                          _inlineMetric(
+                            'Doctors Fee',
+                              formatIndianShortCurrency(doctorFee),
+                            const Color(0xFFD6455D),
                           ),
                           const SizedBox(width: 8),
                           _inlineMetric(
