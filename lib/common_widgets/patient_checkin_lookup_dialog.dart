@@ -41,17 +41,24 @@ Future<DateTime?> _pickScheduleDateTime(
         );
 
         return ContentDialog(
-          title: Text(
-            patient == null
-                ? 'Schedule Appointment'
-                : 'Schedule Appointment • ${patient.title.trim().isEmpty ? 'Unnamed patient' : _toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
-          ),
+          title: const Text('Schedule Appointment'),
           content: SizedBox(
             width: 460,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (patient != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      '${patient.title.trim().isEmpty ? 'Unnamed patient' : _toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+                      style: const TextStyle(
+                        color: Color(0xFF355279),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 Row(
                   children: [
                     const Text(
