@@ -51,7 +51,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   bool _isExportingPatientsCsv = false;
   bool _isExportingPatientsPdf = false;
 
-  static const int _pageSize = 200;
+  static const int _pageSize = 100;
 
   static const List<String> _focusRanges = [
     '1W',

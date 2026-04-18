@@ -1517,7 +1517,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                           size: 14,
                                         ),
                                         onPressed: () {
-                                          openNextCheckinStepperDialog(
+                                          openAppointmentJourneyDialog(
                                             context,
                                             appointment,
                                             initialStep: 2,

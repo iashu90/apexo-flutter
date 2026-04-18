@@ -10,7 +10,9 @@ import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/appointment_analytics.dart';
+import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/indian_money.dart';
+import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 
@@ -532,6 +534,129 @@ class _ReportDoctorAppointmentDoneCardState
   _RangeFilter _range = _RangeFilter.month;
   DateTime _monthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
+  bool _isExportingCsv = false;
+  bool _isExportingPdf = false;
+
+  String _fileStem() {
+    final stamp = DateFormat('dd_MMM_yyyy_HH_mm').format(DateTime.now());
+    return 'appointments_done_by_doctor_$stamp';
+  }
+
+  Future<void> _exportCsv(
+    List<({
+      Doctor doctor,
+      int done,
+      int appointments,
+      double fee,
+      double revenue,
+      double hospitalGained,
+      double feePct,
+    })> rows,
+  ) async {
+    if (_isExportingCsv || _isExportingPdf || rows.isEmpty) return;
+    setState(() => _isExportingCsv = true);
+    try {
+      final csvRows = <List<String>>[
+        const [
+          'Doctor',
+          'Appointments Done',
+          'Total Appointments',
+          'Revenue',
+          'Doctor Fee',
+          'Net Profit',
+          'Fee %',
+        ],
+        ...rows.map((row) => [
+              row.doctor.title.trim().isEmpty ? 'Unnamed doctor' : row.doctor.title,
+              '${row.done}',
+              '${row.appointments}',
+              row.revenue.toStringAsFixed(2),
+              row.fee.toStringAsFixed(2),
+              row.hospitalGained.toStringAsFixed(2),
+              row.feePct.toStringAsFixed(2),
+            ]),
+      ];
+      await CsvExportUtility.saveCsv(
+        rows: csvRows,
+        fileName: '${_fileStem()}.csv',
+      );
+    } catch (error) {
+      if (!mounted) return;
+      displayInfoBar(
+        context,
+        builder: (ctx, close) => InfoBar(
+          title: const Text('CSV export failed'),
+          content: Text('$error'),
+          severity: InfoBarSeverity.error,
+          action: IconButton(
+            icon: const Icon(FluentIcons.clear),
+            onPressed: close,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingCsv = false);
+    }
+  }
+
+  Future<void> _exportPdf(
+    List<({
+      Doctor doctor,
+      int done,
+      int appointments,
+      double fee,
+      double revenue,
+      double hospitalGained,
+      double feePct,
+    })> rows,
+  ) async {
+    if (_isExportingCsv || _isExportingPdf || rows.isEmpty) return;
+    setState(() => _isExportingPdf = true);
+    try {
+      final tableRows = <List<String>>[
+        const [
+          'Doctor',
+          'Done',
+          'Appointments',
+          'Revenue',
+          'Doctor Fee',
+          'Net Profit',
+          'Fee %',
+        ],
+        ...rows.map((row) => [
+              row.doctor.title.trim().isEmpty ? 'Unnamed doctor' : row.doctor.title,
+              '${row.done}',
+              '${row.appointments}',
+              row.revenue.toStringAsFixed(2),
+              row.fee.toStringAsFixed(2),
+              row.hospitalGained.toStringAsFixed(2),
+              '${row.feePct.toStringAsFixed(1)}%',
+            ]),
+      ];
+      await PdfExportUtility.savePdf(
+        title: 'Appointments Done By Doctor',
+        subtitle: 'Total rows: ${rows.length}',
+        data: tableRows,
+        fileName: '${_fileStem()}.pdf',
+      );
+    } catch (error) {
+      if (!mounted) return;
+      displayInfoBar(
+        context,
+        builder: (ctx, close) => InfoBar(
+          title: const Text('PDF export failed'),
+          content: Text('$error'),
+          severity: InfoBarSeverity.error,
+          action: IconButton(
+            icon: const Icon(FluentIcons.clear),
+            onPressed: close,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingPdf = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -586,16 +711,23 @@ class _ReportDoctorAppointmentDoneCardState
 
     return _ReportContainer(
       title: 'Appointments Done By Doctor',
-      trailing: Button(
-        onPressed: null,
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(FluentIcons.download, size: 12),
-            SizedBox(width: 6),
-            Text('Export'),
-          ],
-        ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Button(
+            onPressed: (_isExportingCsv || _isExportingPdf || rows.isEmpty)
+                ? null
+                : () => _exportPdf(rows),
+            child: const Icon(FluentIcons.pdf, size: 12),
+          ),
+          const SizedBox(width: 6),
+          Button(
+            onPressed: (_isExportingCsv || _isExportingPdf || rows.isEmpty)
+                ? null
+                : () => _exportCsv(rows),
+            child: const Icon(FluentIcons.download, size: 12),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
