@@ -11,6 +11,12 @@ typedef AppointmentJourneyAssignHandler = Future<void> Function(
   void Function(int step) setStep,
 );
 
+typedef AppointmentJourneyBeforeAdvance = Future<void> Function(
+  BuildContext context,
+  int currentStep,
+  int nextStep,
+);
+
 Future<void> showAppointmentJourneyDialog({
   required BuildContext context,
   required String title,
@@ -19,6 +25,7 @@ Future<void> showAppointmentJourneyDialog({
   required int initialStep,
   required AppointmentJourneyStepBuilder stepBuilder,
   AppointmentJourneyAssignHandler? onAssignFromWaiting,
+  AppointmentJourneyBeforeAdvance? onBeforeStepAdvance,
 }) async {
   var currentStep = initialStep.clamp(0, 3);
   const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4'];
@@ -125,6 +132,10 @@ Future<void> showAppointmentJourneyDialog({
           }
 
           if (currentStep < 3) {
+            final beforeAdvance = onBeforeStepAdvance;
+            if (beforeAdvance != null) {
+              await beforeAdvance(context, currentStep, currentStep + 1);
+            }
             setStateDialog(() {
               currentStep += 1;
             });

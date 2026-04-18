@@ -830,7 +830,7 @@ class _SearchAndActionsBar extends StatelessWidget {
             children: [
               const Icon(FluentIcons.download, size: 14),
               const SizedBox(width: 6),
-              Text(isExportingCsv ? 'CSVs...' : 'CSVs'),
+              Text(isExportingCsv ? 'CSV...' : 'CSV'),
             ],
           ),
         ),
