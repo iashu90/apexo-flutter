@@ -5,6 +5,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -110,6 +111,12 @@ class ReportV2Screen extends StatelessWidget {
                         SizedBox(
                           width: twoColWidth,
                           child: _DoctorActivityReportCard(rows: allAppointments),
+                        ),
+                        SizedBox(
+                          width: twoColWidth,
+                          child: _ReportDoctorAppointmentDoneCard(
+                            rows: allAppointments,
+                          ),
                         ),
                         SizedBox(
                           width: twoColWidth,
@@ -313,11 +320,14 @@ class _ReportGenderDistributionCard extends StatelessWidget {
     int female = 0;
     for (final row in rows) {
       final rawGender = row.patient?.gender;
-      final normalizedGender = rawGender == null ? '' : rawGender.toString();
-      final value = normalizedGender.trim().toLowerCase();
-      if (value == 'female') {
+      final normalizedGender = rawGender == null
+          ? ''
+          : rawGender is num
+              ? rawGender.toInt().toString()
+              : rawGender.toString().trim().toLowerCase();
+      if (normalizedGender == 'female' || normalizedGender == 'f' || normalizedGender == '0') {
         female += 1;
-      } else if (value == 'male') {
+      } else if (normalizedGender == 'male' || normalizedGender == 'm' || normalizedGender == '1') {
         male += 1;
       }
     }
@@ -379,25 +389,34 @@ class _ReportAgeDistributionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final buckets = <String, int>{
-      '<18': 0,
-      '18-30': 0,
-      '31-45': 0,
-      '46-60': 0,
-      '60+': 0,
+      '<13': 0,
+      '13-17': 0,
+      '18-24': 0,
+      '25-34': 0,
+      '35-44': 0,
+      '45-54': 0,
+      '55-64': 0,
+      '65+': 0,
     };
 
     for (final row in rows) {
       final age = row.patient?.age ?? 0;
-      if (age < 18) {
-        buckets['<18'] = (buckets['<18'] ?? 0) + 1;
-      } else if (age <= 30) {
-        buckets['18-30'] = (buckets['18-30'] ?? 0) + 1;
-      } else if (age <= 45) {
-        buckets['31-45'] = (buckets['31-45'] ?? 0) + 1;
-      } else if (age <= 60) {
-        buckets['46-60'] = (buckets['46-60'] ?? 0) + 1;
+      if (age < 13) {
+        buckets['<13'] = (buckets['<13'] ?? 0) + 1;
+      } else if (age <= 17) {
+        buckets['13-17'] = (buckets['13-17'] ?? 0) + 1;
+      } else if (age <= 24) {
+        buckets['18-24'] = (buckets['18-24'] ?? 0) + 1;
+      } else if (age <= 34) {
+        buckets['25-34'] = (buckets['25-34'] ?? 0) + 1;
+      } else if (age <= 44) {
+        buckets['35-44'] = (buckets['35-44'] ?? 0) + 1;
+      } else if (age <= 54) {
+        buckets['45-54'] = (buckets['45-54'] ?? 0) + 1;
+      } else if (age <= 64) {
+        buckets['55-64'] = (buckets['55-64'] ?? 0) + 1;
       } else {
-        buckets['60+'] = (buckets['60+'] ?? 0) + 1;
+        buckets['65+'] = (buckets['65+'] ?? 0) + 1;
       }
     }
 
@@ -433,6 +452,135 @@ class _ReportAgeDistributionCard extends StatelessWidget {
             ),
           );
         }).toList(growable: false),
+      ),
+    );
+  }
+}
+
+class _ReportDoctorAppointmentDoneCard extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _ReportDoctorAppointmentDoneCard({required this.rows});
+
+  @override
+  State<_ReportDoctorAppointmentDoneCard> createState() =>
+      _ReportDoctorAppointmentDoneCardState();
+}
+
+class _ReportDoctorAppointmentDoneCardState
+    extends State<_ReportDoctorAppointmentDoneCard> {
+  _RangeFilter _range = _RangeFilter.month;
+  DateTime _monthAnchor =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+  @override
+  Widget build(BuildContext context) {
+    final scoped = _rangeRows(widget.rows, _range, monthAnchor: _monthAnchor);
+    final doctorsList = doctors.present.values.toList(growable: false)
+      ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+
+    final rows = doctorsList
+        .map((doctor) {
+          final doctorRows = scoped
+              .where((a) => a.operatorsIDs.contains(doctor.id))
+              .toList(growable: false);
+          if (doctorRows.isEmpty) return null;
+          final done = doctorRows.where((a) => a.isDone).length;
+          final fee = doctorRows.fold<double>(
+            0,
+            (sum, a) => sum + a.doctorPayableAmount,
+          );
+          final revenue = doctorRows.fold<double>(
+            0,
+            (sum, a) => sum + a.paid + a.prescriptionPaid,
+          );
+          return (
+            doctor: doctor,
+            appointments: doctorRows.length,
+            done: done,
+            fee: fee,
+            revenue: revenue,
+          );
+        })
+        .whereType<({
+          Doctor doctor,
+          int appointments,
+          int done,
+          double fee,
+          double revenue,
+        })>()
+        .toList(growable: false)
+      ..sort((a, b) => b.done.compareTo(a.done));
+
+    return _ReportContainer(
+      title: 'Appointments Done By Doctor',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _FilterChips(
+            selected: _range,
+            onChanged: (v) => setState(() => _range = v),
+            monthAnchor: _monthAnchor,
+            monthOptions: _monthOptions(widget.rows),
+            onMonthChanged: (value) => setState(() => _monthAnchor = value),
+          ),
+          const SizedBox(height: 10),
+          if (rows.isEmpty)
+            const Text(
+              'No completion data in selected range.',
+              style: TextStyle(color: Color(0xFF6D84A8)),
+            )
+          else
+            Column(
+              children: rows.take(12).map((row) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 4,
+                        child: Text(
+                          row.doctor.title,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF1F446E),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          '${row.done}/${row.appointments}',
+                          style: const TextStyle(
+                            color: Color(0xFF1F2B40),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          formatIndianShortCurrency(row.fee),
+                          style: const TextStyle(
+                            color: Color(0xFFD6455D),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          formatIndianShortCurrency(row.revenue),
+                          style: const TextStyle(
+                            color: Color(0xFF2BA58D),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(growable: false),
+            ),
+        ],
       ),
     );
   }

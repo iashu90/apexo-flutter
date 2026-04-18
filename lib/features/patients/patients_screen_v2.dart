@@ -822,58 +822,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   },
                 ),
                 const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final useHorizontalStrip = constraints.maxWidth >= 1240;
-                    final cardWidth =
-                        useHorizontalStrip ? 460.0 : constraints.maxWidth;
-
-                    final cards = [
-                      SizedBox(
-                        width: cardWidth,
-                        child: _TopPatientsCard(
-                          rows: topPatientsByVisits,
-                          visitsByPatient: visitsByPatient,
-                          selectedRange: _topRange,
-                          ranges: _focusRanges,
-                          onSelectRange: (v) => setState(() {
-                            _topRange = v;
-                          }),
-                          onOpenHistory: _openPatientHistoryDialog,
-                          visibleCount: _topPatientsVisibleCount,
-                          onViewMore: () => _showTopPatientsDialog(
-                            title: 'Top Patients by Visits',
-                            rows: topPatientsByVisits,
-                            metricLabel: 'visits',
-                            visitsByPatient: visitsByPatient,
-                          ),
-                        ),
-                      ),
-                    ];
-
-                    if (useHorizontalStrip) {
-                      return SizedBox(
-                        height: 420,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              cards[0],
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-
-                    return Column(
-                      children: [
-                        cards[0],
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 2),
                 _AllPatientsListCard(
                   patientsList: pagedPatients,
                   visitsByPatient: visitsByPatient,
@@ -884,10 +833,17 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   }),
                   behaviorFilter: _listBehaviorFilter,
                   onBehaviorFilterChanged: (v) => setState(() {
+                    final previousFilter = _listBehaviorFilter;
                     _listBehaviorFilter = v;
                     if (v == 'focused') {
                       _sortBy = 'lastVisit';
                       _sortAscending = false;
+                    } else if (v == 'outstandingOnly') {
+                      _sortBy = 'outstanding';
+                      _sortAscending = false;
+                    } else if (previousFilter == 'outstandingOnly') {
+                      _sortBy = 'name';
+                      _sortAscending = true;
                     }
                     _currentPage = 1;
                   }),
@@ -3639,20 +3595,6 @@ class _AllPatientsListCard extends StatelessWidget {
                                       ),
                                     ),
                                     Expanded(
-                                      flex: 18,
-                                      child: Text(
-                                        treatments.length > 3
-                                            ? '$treatmentSummary +${treatments.length - 3}'
-                                            : treatmentSummary,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF355279),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
                                       flex: 16,
                                       child: Text(
                                         lastVisit,
@@ -3669,6 +3611,26 @@ class _AllPatientsListCard extends StatelessWidget {
                                         style: const TextStyle(
                                           color: Color(0xFF1459AD),
                                           fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 16,
+                                      child: Tooltip(
+                                        message: treatments.isEmpty
+                                            ? 'No treatments'
+                                            : treatments.join(', '),
+                                        child: Text(
+                                          treatments.length > 3
+                                              ? '$treatmentSummary +${treatments.length - 3}'
+                                              : treatmentSummary,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Color(0xFF355279),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                     ),

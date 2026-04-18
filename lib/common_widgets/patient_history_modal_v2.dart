@@ -12,7 +12,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 Future<void> showPatientHistoryDialogV2({
   required BuildContext context,
@@ -836,75 +835,6 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     );
   }
 
-  Future<void> _openPrintOptions([_LedgerRowData? row]) async {
-    final stateContext = context; // capture before StatefulBuilder shadows it
-    String invoiceType = 'Full Invoice';
-    bool showBranding = true;
-    bool showSignature = true;
-
-    await showDialog<void>(
-      context: stateContext,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (ctx, setStateDialog) => ContentDialog(
-          title: const Text('Print Options'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Invoice Type'),
-              const SizedBox(height: 8),
-              ComboBox<String>(
-                value: invoiceType,
-                items: const [
-                  ComboBoxItem(value: 'Full Invoice', child: Text('Full Invoice')),
-                  ComboBoxItem(value: 'Payment Receipt', child: Text('Payment Receipt')),
-                  ComboBoxItem(value: 'Treatment Report', child: Text('Treatment Report')),
-                ],
-                onChanged: (v) {
-                  if (v == null) return;
-                  setStateDialog(() => invoiceType = v);
-                },
-              ),
-              const SizedBox(height: 10),
-              const Text('Paper: A4'),
-              const SizedBox(height: 10),
-              Checkbox(
-                checked: showBranding,
-                content: const Text('Show clinic branding'),
-                onChanged: (v) => setStateDialog(() => showBranding = v ?? true),
-              ),
-              Checkbox(
-                checked: showSignature,
-                content: const Text('Show signature'),
-                onChanged: (v) => setStateDialog(() => showSignature = v ?? true),
-              ),
-            ],
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                final rows = row == null ? _visibleRows : [row];
-                if (rows.isEmpty) return;
-                final doc = _buildPdfDocument(rows);
-                try {
-                  await Printing.layoutPdf(onLayout: (_) async => doc.save());
-                } catch (_) {
-                  // Print cancelled or virtual printer error – ignore
-                }
-              },
-              child: const Text('Print'),
-            ),
-            Button(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
@@ -915,8 +845,11 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
         : 1360.0;
     final modalHeight = screen.height * 0.92;
 
-    final totalCost = _allRows.fold<double>(0, (s, r) => s + r.cost);
-    final totalPaid = _allRows.fold<double>(0, (s, r) => s + r.paid);
+    final summaryRows = _allRows
+      .where((row) => !row.treatment.toLowerCase().startsWith('labwork:'))
+      .toList(growable: false);
+    final totalCost = summaryRows.fold<double>(0, (s, r) => s + r.cost);
+    final totalPaid = summaryRows.fold<double>(0, (s, r) => s + r.paid);
     final totalBalance = totalCost - totalPaid;
 
     final lastVisit = _allRows.isEmpty
@@ -1032,14 +965,13 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                       child: const Text('Collect Payment'),
                     ),
                     Button(onPressed: _openShareOptions, child: const Text('Share')),
-                    Button(onPressed: _openPrintOptions, child: const Text('Print')),
                     Button(
                       onPressed: _isExportingCsv || _isExportingPdf ? null : _exportCsv,
-                      child: const Text('Download CSVs'),
+                      child: const Text('CSV'),
                     ),
                     Button(
                       onPressed: _isExportingCsv || _isExportingPdf ? null : _exportPdf,
-                      child: const Text('Download PDF'),
+                      child: const Text('PDF'),
                     ),
                   ],
                 ),
@@ -1048,29 +980,6 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   icon: const Icon(FluentIcons.chrome_close, size: 10),
                   onPressed: () => Navigator.pop(context),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x120D2F5B),
-                  blurRadius: 10,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                _tabChip('treatments', 'Treatments'),
-                const SizedBox(width: 8),
-                _tabChip('labs', 'Labs'),
               ],
             ),
           ),
@@ -1127,6 +1036,27 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                       padding: EdgeInsets.only(left: 8),
                       child: Icon(FluentIcons.search, size: 12),
                     ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 170,
+                  child: ComboBox<String>(
+                    isExpanded: true,
+                    value: _historyTab,
+                    items: const [
+                      ComboBoxItem(value: 'treatments', child: Text('Treatments')),
+                      ComboBoxItem(value: 'labs', child: Text('Labs')),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setState(() {
+                        _historyTab = v;
+                        _expandedRowId = null;
+                        _sortBy = 'date';
+                        _sortAscending = false;
+                      });
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1321,11 +1251,6 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                               icon: FluentIcons.share,
                                               tooltip: 'Share Invoice',
                                               onTap: () => _openShareOptions(row),
-                                            ),
-                                            _actionIcon(
-                                              icon: FluentIcons.print,
-                                              tooltip: 'Print Receipt',
-                                              onTap: () => _openPrintOptions(row),
                                             ),
                                           ],
                                         ),
