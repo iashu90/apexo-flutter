@@ -154,6 +154,11 @@ Future<void> showPatientCheckinLookupDialog({
   await showDialog<void>(
     context: context,
     builder: (dialogContext) {
+      final screen = MediaQuery.of(dialogContext).size;
+      final dialogWidth = (screen.width - 24).clamp(340.0, 1320.0);
+      final twoColumn = dialogWidth >= 1000;
+      final maxBodyHeight = (screen.height - 250).clamp(320.0, 680.0);
+
       final queryController = TextEditingController(text: '');
       String query = queryController.text.trim().toLowerCase();
 
@@ -216,6 +221,7 @@ Future<void> showPatientCheckinLookupDialog({
 
           Widget _statusChip(Appointment? existing) {
             return Container(
+              constraints: const BoxConstraints(maxWidth: 138),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: const Color(0xFFE8F7EE),
@@ -223,6 +229,8 @@ Future<void> showPatientCheckinLookupDialog({
               ),
               child: Text(
                 _statusLabel(existing),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
                 style: const TextStyle(
                   color: Color(0xFF1F3B57),
                   fontWeight: FontWeight.w700,
@@ -364,6 +372,7 @@ Future<void> showPatientCheckinLookupDialog({
           }
 
           return ContentDialog(
+            constraints: BoxConstraints(maxWidth: dialogWidth),
             title: Row(
               children: [
                 Expanded(
@@ -407,7 +416,7 @@ Future<void> showPatientCheckinLookupDialog({
               ],
             ),
             content: SizedBox(
-              width: 760,
+              width: dialogWidth - 22,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -486,75 +495,121 @@ Future<void> showPatientCheckinLookupDialog({
                                     ),
                                   );
                                 },
-                          child: const Text('Schedule Appointment'),
+                          child: const Text('Schedule'),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 520),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Recent Today',
-                            style: TextStyle(
-                              color: Color(0xFF4D5C77),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
+                  SizedBox(
+                    height: maxBodyHeight,
+                    child: twoColumn
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _LookupColumn(
+                                  title: 'Recent Today',
+                                  children: recentToday.isEmpty
+                                      ? const [
+                                          Padding(
+                                            padding: EdgeInsets.only(bottom: 8),
+                                            child: Text(
+                                              'No recent patients today.',
+                                              style: TextStyle(
+                                                color: Color(0xFF6D84A8),
+                                              ),
+                                            ),
+                                          ),
+                                        ]
+                                      : recentToday.map(_patientCard).toList(growable: false),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _LookupColumn(
+                                  title: 'Search Results',
+                                  children: [
+                                    if (matches.isEmpty)
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 18),
+                                        child: Text(
+                                          'No matching patients.',
+                                          style: TextStyle(color: Color(0xFF6D84A8)),
+                                        ),
+                                      )
+                                    else
+                                      ...matches.map(_patientCard),
+                                    if (query.isNotEmpty && !hasExactMatch)
+                                      FilledButton(
+                                        onPressed: () async {
+                                          final navigator = Navigator.of(dialogContext);
+                                          final created = await onAddPatient(queryController.text);
+                                          if (created == null) return;
+                                          await onCheckInPatient(created);
+                                          if (navigator.mounted) {
+                                            navigator.pop();
+                                          }
+                                        },
+                                        child: Text(
+                                          'Add "${queryController.text.trim()}" as new patient',
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        : _LookupColumn(
+                            title: 'Recent Today',
+                            children: [
+                              if (recentToday.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    'No recent patients today.',
+                                    style: TextStyle(color: Color(0xFF6D84A8)),
+                                  ),
+                                )
+                              else
+                                ...recentToday.map(_patientCard),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Search Results',
+                                style: TextStyle(
+                                  color: Color(0xFF4D5C77),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              if (matches.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 18),
+                                  child: Text(
+                                    'No matching patients.',
+                                    style: TextStyle(color: Color(0xFF6D84A8)),
+                                  ),
+                                )
+                              else
+                                ...matches.map(_patientCard),
+                              if (query.isNotEmpty && !hasExactMatch)
+                                FilledButton(
+                                  onPressed: () async {
+                                    final navigator = Navigator.of(dialogContext);
+                                    final created = await onAddPatient(queryController.text);
+                                    if (created == null) return;
+                                    await onCheckInPatient(created);
+                                    if (navigator.mounted) {
+                                      navigator.pop();
+                                    }
+                                  },
+                                  child: Text(
+                                    'Add "${queryController.text.trim()}" as new patient',
+                                  ),
+                                ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          if (recentToday.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 8),
-                              child: Text(
-                                'No recent patients today.',
-                                style: TextStyle(color: Color(0xFF6D84A8)),
-                              ),
-                            )
-                          else
-                            ...recentToday.map(_patientCard),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Search Results',
-                            style: TextStyle(
-                              color: Color(0xFF4D5C77),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (matches.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 18),
-                              child: Text(
-                                'No matching patients.',
-                                style: TextStyle(color: Color(0xFF6D84A8)),
-                              ),
-                            )
-                          else
-                            ...matches.map(_patientCard),
-                          if (query.isNotEmpty && !hasExactMatch)
-                            FilledButton(
-                              onPressed: () async {
-                                final navigator = Navigator.of(dialogContext);
-                                final created = await onAddPatient(queryController.text);
-                                if (created == null) return;
-                                await onCheckInPatient(created);
-                                if (navigator.mounted) {
-                                  navigator.pop();
-                                }
-                              },
-                              child: Text(
-                                'Add "${queryController.text.trim()}" as new patient',
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -570,6 +625,37 @@ Future<void> showPatientCheckinLookupDialog({
       );
     },
   );
+}
+
+class _LookupColumn extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _LookupColumn({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: Color(0xFF4D5C77),
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 String _initials(String name) {
