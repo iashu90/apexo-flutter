@@ -363,23 +363,15 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             ),
           ),
           pw.SizedBox(height: 12),
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey300),
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text('Bill To:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 6),
-                pw.Text(widget.patient.title.trim().isEmpty ? 'Unnamed patient' : widget.patient.title),
-                pw.Text('Phone: ${widget.patient.phone.trim().isEmpty ? '-' : widget.patient.phone}'),
-                pw.Text('Doctor: Dr Nowfar'),
-              ],
-            ),
+          exportPdfBillToSection(
+            patientName: widget.patient.title.trim().isEmpty
+                ? 'Unnamed patient'
+                : widget.patient.title,
+            patientId: widget.patient.id,
+            phone: widget.patient.phone.trim().isEmpty
+                ? '-'
+                : widget.patient.phone,
+            doctor: 'Dr Nowfar',
           ),
           pw.SizedBox(height: 12),
           pw.TableHelper.fromTextArray(

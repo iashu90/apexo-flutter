@@ -461,17 +461,33 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final doctorFilterChip = _doctorFilterChipLabel();
         final treatmentFilterChip = _treatmentFilterChipLabel();
 
-        final paymentModeAmounts = <String, double>{'Cash': 0, 'UPI': 0};
+        double morningCash = 0;
+        double morningUpi = 0;
+        double eveningCash = 0;
+        double eveningUpi = 0;
 
         for (final a in todaysAppointments) {
           final totalPayment = a.paid + a.prescriptionPaid;
+          if (totalPayment <= 0) continue;
+
+          final hour = a.date.hour;
+          final isMorningSession = hour >= 8 && hour < 15;
+          final isEveningSession = hour >= 15 && hour < 24;
+          if (!isMorningSession && !isEveningSession) continue;
+
           final isDigital = a.treatmentGpayPaid || a.prescriptionGpayPaid;
-          if (isDigital) {
-            paymentModeAmounts['UPI'] =
-                (paymentModeAmounts['UPI'] ?? 0) + totalPayment;
+          if (isMorningSession) {
+            if (isDigital) {
+              morningUpi += totalPayment;
+            } else {
+              morningCash += totalPayment;
+            }
           } else {
-            paymentModeAmounts['Cash'] =
-                (paymentModeAmounts['Cash'] ?? 0) + totalPayment;
+            if (isDigital) {
+              eveningUpi += totalPayment;
+            } else {
+              eveningCash += totalPayment;
+            }
           }
         }
 
@@ -526,22 +542,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         title: 'Revenue Today',
                         value: _money(revenueToday),
                       ),
-                      _TopDonutMetricCard(
-                        title: 'Payment Mode',
-                        centerValue: '',
-                        valueFormatter: (value) => _money(value.toDouble()),
-                        segments: [
-                          _TopDonutSegment(
-                            label: 'Cash',
-                            value: (paymentModeAmounts['Cash'] ?? 0).round(),
-                            color: const Color(0xFF7D8FA7),
-                          ),
-                          _TopDonutSegment(
-                            label: 'UPI',
-                            value: (paymentModeAmounts['UPI'] ?? 0).round(),
-                            color: const Color(0xFF2D7BD8),
-                          ),
-                        ],
+                      _PaymentSessionCard(
+                        selectedDate: selectedDate,
+                        onPreviousDate: () => _changeDate(-1),
+                        onNextDate: () => _changeDate(1),
+                        morningCash: morningCash,
+                        morningUpi: morningUpi,
+                        eveningCash: eveningCash,
+                        eveningUpi: eveningUpi,
                       ),
                       _TopDailyTreatmentCard(
                         rows: dailyTreatmentDistribution,
@@ -3515,6 +3523,163 @@ class _TopDonutMetricCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentSessionCard extends StatelessWidget {
+  final DateTime selectedDate;
+  final VoidCallback onPreviousDate;
+  final VoidCallback onNextDate;
+  final double morningCash;
+  final double morningUpi;
+  final double eveningCash;
+  final double eveningUpi;
+
+  const _PaymentSessionCard({
+    required this.selectedDate,
+    required this.onPreviousDate,
+    required this.onNextDate,
+    required this.morningCash,
+    required this.morningUpi,
+    required this.eveningCash,
+    required this.eveningUpi,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final morningTotal = morningCash + morningUpi;
+    final eveningTotal = eveningCash + eveningUpi;
+
+    Widget sessionRow({
+      required String title,
+      required String range,
+      required double total,
+      required double cash,
+      required double upi,
+      required Color chipColor,
+      required Color chipTextColor,
+    }) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF4F8FF),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFDCE7F6)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '$title ($range)',
+                    style: const TextStyle(
+                      color: Color(0xFF2E4E76),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: chipColor,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    _DashboardScreenV2State._money(total),
+                    style: TextStyle(
+                      color: chipTextColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Cash ${_DashboardScreenV2State._money(cash)} • UPI ${_DashboardScreenV2State._money(upi)}',
+              style: const TextStyle(
+                color: Color(0xFF5B7498),
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 250, maxWidth: 320),
+      child: SizedBox(
+        height: 140,
+        child: _CardShell(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Payment Sessions',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF496489),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(FluentIcons.chevron_left, size: 10),
+                    onPressed: onPreviousDate,
+                  ),
+                  Text(
+                    DateFormat('dd MMM').format(selectedDate),
+                    style: const TextStyle(
+                      color: Color(0xFF355279),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(FluentIcons.chevron_right, size: 10),
+                    onPressed: onNextDate,
+                  ),
+                ],
+              ),
+              Expanded(
+                child: sessionRow(
+                  title: 'Morning',
+                  range: '8 AM - 3 PM',
+                  total: morningTotal,
+                  cash: morningCash,
+                  upi: morningUpi,
+                  chipColor: const Color(0xFFE5EEF9),
+                  chipTextColor: const Color(0xFF234C7B),
+                ),
+              ),
+              Expanded(
+                child: sessionRow(
+                  title: 'Evening',
+                  range: '3 PM - 12 AM',
+                  total: eveningTotal,
+                  cash: eveningCash,
+                  upi: eveningUpi,
+                  chipColor: const Color(0xFFE9F8EF),
+                  chipTextColor: const Color(0xFF1F7A4A),
+                ),
               ),
             ],
           ),

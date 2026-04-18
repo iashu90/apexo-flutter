@@ -33,7 +33,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
 
   String _query = '';
   String _paymentFilter = 'all';
-  String _rangeFilter = 'month';
+  String _rangeFilter = 'monthly';
   String _labFilter = 'all';
   DateTime _monthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
@@ -237,8 +237,10 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    SizedBox(width: 290, child: _buildMonthNavigator()),
+                    if (_rangeFilter == 'monthly') ...[
+                      const SizedBox(width: 12),
+                      SizedBox(width: 290, child: _buildMonthNavigator()),
+                    ],
                     const SizedBox(width: 12),
                     SizedBox(
                       width: 190,
@@ -270,10 +272,10 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                       value: _rangeFilter,
                       items: const {
                         'all': 'All Dates',
+                        'monthly': 'Monthly',
                         'today': 'Today',
                         'week': 'This Week',
                         'last_month': 'Last Month',
-                        'month': 'This Month',
                         'custom': 'Custom Date',
                       },
                       onChanged: (v) {
@@ -326,15 +328,16 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                     ),
                   ),
                 ),
-                Expanded(
-                  flex: 3,
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: SizedBox(width: 290, child: _buildMonthNavigator()),
+                if (_rangeFilter == 'monthly')
+                  Expanded(
+                    flex: 3,
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: SizedBox(width: 290, child: _buildMonthNavigator()),
+                    ),
                   ),
-                ),
                 Expanded(
-                  flex: 4,
+                  flex: _rangeFilter == 'monthly' ? 4 : 7,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -368,10 +371,10 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                         value: _rangeFilter,
                         items: const {
                           'all': 'All Dates',
+                          'monthly': 'Monthly',
                           'today': 'Today',
                           'week': 'This Week',
                           'last_month': 'Last Month',
-                          'month': 'This Month',
                           'custom': 'Custom Date',
                         },
                         onChanged: (v) {
@@ -455,7 +458,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     final canGoNext = _monthAnchor.year < DateTime.now().year ||
         (_monthAnchor.year == DateTime.now().year &&
             _monthAnchor.month < DateTime.now().month);
-    final monthModeActive = _rangeFilter == 'month';
+    final monthModeActive = _rangeFilter == 'monthly';
 
     return Opacity(
       opacity: monthModeActive ? 1 : 0.45,
@@ -496,7 +499,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   bool _hasActiveFilter() {
     return _query.isNotEmpty ||
         _paymentFilter != 'all' ||
-        _rangeFilter != 'all' ||
+        _rangeFilter != 'monthly' ||
         _labFilter != 'all';
   }
 
@@ -689,7 +692,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     } else if (_rangeFilter == 'last_month') {
       from = DateTime(today.year, today.month - 1, 1);
       to = DateTime(today.year, today.month, 0);
-    } else if (_rangeFilter == 'month') {
+    } else if (_rangeFilter == 'monthly' || _rangeFilter == 'month') {
       from = DateTime(_monthAnchor.year, _monthAnchor.month, 1);
       to = DateTime(_monthAnchor.year, _monthAnchor.month + 1, 0);
     } else if (_rangeFilter == 'custom') {
@@ -764,7 +767,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       _query = '';
       _searchCtrl.text = '';
       _paymentFilter = 'all';
-      _rangeFilter = 'month';
+      _rangeFilter = 'monthly';
       _labFilter = 'all';
       _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
       _fromDate = null;
