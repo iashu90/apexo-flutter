@@ -303,6 +303,9 @@ Future<void> openAppointmentJourneyDialog(
     initialStep: startStep,
     stepBuilder: stageBody,
     onAssignFromWaiting: assignDoctor,
+    onBeforeStepAdvance: (dialogContext, currentStep, nextStep) async {
+      appointments.set(appointment);
+    },
   );
 }
 
@@ -2799,6 +2802,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   late final TextEditingController _priceController;
   late final TextEditingController _paidController;
   late final TextEditingController _discountController;
+  Timer? _autosaveDebounce;
+  bool _hasPendingAutosave = false;
 
   bool _discountEnabled = false;
   Set<String> _selectedTreatments = {};
@@ -2962,8 +2967,30 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         .any((t) => t.trim().toLowerCase() == 'consultation');
   }
 
+  void _scheduleAutosave({bool immediate = false}) {
+    final appointment = widget.appointment;
+    if (immediate) {
+      _autosaveDebounce?.cancel();
+      _autosaveDebounce = null;
+      _hasPendingAutosave = false;
+      appointments.set(appointment);
+      return;
+    }
+
+    _hasPendingAutosave = true;
+    _autosaveDebounce?.cancel();
+    _autosaveDebounce = Timer(const Duration(milliseconds: 900), () {
+      _hasPendingAutosave = false;
+      appointments.set(appointment);
+    });
+  }
+
   @override
   void dispose() {
+    _autosaveDebounce?.cancel();
+    if (_hasPendingAutosave) {
+      appointments.set(widget.appointment);
+    }
     _postOpController.dispose();
     _priceController.dispose();
     _paidController.dispose();
@@ -3004,7 +3031,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     if (a.isDone) {
       a.checkinStage = 'checkout';
       setState(() => a.isDone = false);
-      appointments.set(a);
+      _scheduleAutosave(immediate: true);
       return;
     }
 
@@ -3017,7 +3044,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     if (!shouldComplete) return;
     a.checkinStage = 'completed';
     setState(() => a.isDone = true);
-    appointments.set(a);
+    _scheduleAutosave(immediate: true);
     await _openNextAppointmentPrompt(a);
   }
 
@@ -3229,7 +3256,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     a.operatorsIDs = [];
     a.checkinStage = 'waiting';
     a.isDone = false;
-    appointments.set(a);
+    _scheduleAutosave(immediate: true);
   }
 
   Future<void> _moveBackToWithDoctor() async {
@@ -3256,7 +3283,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     final a = widget.appointment;
     a.checkinStage = 'with_doctor';
     a.isDone = false;
-    appointments.set(a);
+    _scheduleAutosave(immediate: true);
   }
 
   @override
@@ -3338,7 +3365,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               );
                             }
                             a.selectedTeeth = teeth.toList(growable: false);
-                            appointments.set(a);
+                            _scheduleAutosave();
                           });
                         },
                       ),
@@ -3353,7 +3380,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       onChanged: (values) {
                         setState(() {
                           a.diagnosis = values;
-                          appointments.set(a);
+                          _scheduleAutosave();
                         });
                       },
                     ),
@@ -3384,7 +3411,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                     updated.add(diagnosis);
                                   }
                                   a.diagnosis = updated;
-                                  appointments.set(a);
+                                  _scheduleAutosave();
                                 });
                               },
                             ),
@@ -3411,7 +3438,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           a.subTreatments = _selectedConsultationTypes
                               .toList(growable: false);
                         }
-                        appointments.set(a);
+                        _scheduleAutosave();
                         setState(() {});
                       },
                     ),
@@ -3461,7 +3488,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                         growable: false,
                                       );
                                     }
-                                    appointments.set(a);
+                                    _scheduleAutosave();
                                   });
                                 },
                               ),
@@ -3508,7 +3535,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                         _selectedConsultationTypes.toList(
                                       growable: false,
                                     );
-                                    appointments.set(a);
+                                    _scheduleAutosave();
                                   });
                                 },
                               ),
@@ -3533,7 +3560,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       placeholder: 'Treatment price',
                       onChanged: (value) {
                         a.price = double.tryParse(value) ?? 0;
-                        appointments.set(a);
+                        _scheduleAutosave();
                       },
                     ),
                     const SizedBox(height: 8),
@@ -3551,7 +3578,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               onPressed: () {
                                 _priceController.text = '$v';
                                 a.price = v.toDouble();
-                                appointments.set(a);
+                                _scheduleAutosave();
                                 setState(() {});
                               },
                               child: Text('₹$v'),
@@ -3573,7 +3600,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       maxLines: 8,
                       onChanged: (value) {
                         a.postOpNotes = value;
-                        appointments.set(a);
+                        _scheduleAutosave();
                       },
                       placeholder: 'Post-operative notes',
                     ),
@@ -3635,7 +3662,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                           ? '$parentLine\n$childLine'
                                           : '$current\n$parentLine\n$childLine');
                                   a.postOpNotes = _postOpController.text;
-                                  appointments.set(a);
+                                  _scheduleAutosave();
                                 },
                               ),
                             )
@@ -3684,7 +3711,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 if (confirmed != true) return;
                                 a.checkinStage = 'checkout';
                                 a.isDone = false;
-                                appointments.set(a);
+                                _scheduleAutosave(immediate: true);
                                 if (!mounted) return;
                                 navigator.maybePop();
                               },
@@ -3881,6 +3908,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   String _paymentMode = 'Cash';
   final TextEditingController _consultantChargeController =
       TextEditingController();
+  Timer? _autosaveDebounce;
+  bool _hasPendingAutosave = false;
   DateTime _paymentDate = DateTime.now();
   int _receiptExportSequence = 0;
   String _discountMode = 'flat';
@@ -3901,8 +3930,30 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
 
   @override
   void dispose() {
+    _autosaveDebounce?.cancel();
+    if (_hasPendingAutosave) {
+      appointments.set(widget.appointment);
+    }
     _consultantChargeController.dispose();
     super.dispose();
+  }
+
+  void _scheduleAutosave({bool immediate = false}) {
+    final appointment = widget.appointment;
+    if (immediate) {
+      _autosaveDebounce?.cancel();
+      _autosaveDebounce = null;
+      _hasPendingAutosave = false;
+      appointments.set(appointment);
+      return;
+    }
+
+    _hasPendingAutosave = true;
+    _autosaveDebounce?.cancel();
+    _autosaveDebounce = Timer(const Duration(milliseconds: 900), () {
+      _hasPendingAutosave = false;
+      appointments.set(appointment);
+    });
   }
 
   void _recalculatePrice() {
@@ -3914,7 +3965,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     a.discount = discount;
     a.discountType = _discountMode;
     a.price = _basePrice;
-    appointments.set(a);
+    _scheduleAutosave();
     setState(() {});
   }
 
@@ -4429,7 +4480,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       a.discount = discount;
                       a.discountType = _discountMode;
                       a.price = _basePrice;
-                      appointments.set(a);
+                      _scheduleAutosave();
                       setState(() {});
                     },
                     prefix: const Padding(
@@ -4584,7 +4635,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     ],
                     onChanged: (value) {
                       a.paid = double.tryParse(value) ?? 0;
-                      appointments.set(a);
+                      _scheduleAutosave();
                     },
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
@@ -4616,7 +4667,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           onPressed: () {
                             widget.paidController.text = '$v';
                             a.paid = v.toDouble();
-                            appointments.set(a);
+                            _scheduleAutosave();
                             setState(() {});
                           },
                           child: Text('₹$v'),
@@ -4660,7 +4711,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                                     final isDigital = mode == 'UPI';
                                     a.treatmentGpayPaid = isDigital;
                                     a.prescriptionGpayPaid = isDigital;
-                                    appointments.set(a);
+                                    _scheduleAutosave();
                                   },
                                   child: Text(
                                     mode,
@@ -4756,7 +4807,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                                 a.consultantDoctorID = value;
                               }
                             });
-                            appointments.set(a);
+                            _scheduleAutosave();
                           },
                         ),
                       ),
@@ -4778,7 +4829,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           placeholder: 'Consultant charge',
                           onChanged: (value) {
                             a.priceToPayDoctor = double.tryParse(value) ?? 0;
-                            appointments.set(a);
+                            _scheduleAutosave();
                           },
                         ),
                       ),
