@@ -2084,6 +2084,14 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Text(
+                                _patientFocusSummary(appointment),
+                                style: const TextStyle(
+                                  color: Color(0xFF355279),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
                               if (selectedRows.isNotEmpty) ...[
                                 const Text(
                                   'Selected Doctors',
@@ -2793,7 +2801,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                         .add(const Duration(days: 7))
                         .millisecondsSinceEpoch,
                   });
-                  openCheckinAppointmentModal(context, nextAppointment);
+                  _openNextAppointmentPrompt(appointment);
                 },
                 child: const Text('New Appointment'),
               ),
@@ -3171,6 +3179,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(_patientFocusSummary(a)),
+            const SizedBox(height: 8),
             Text('Price: Rs ${a.price.toStringAsFixed(0)}'),
             Text('Paid: Rs ${a.paid.toStringAsFixed(0)}'),
             Text(
@@ -3841,12 +3851,15 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               ),
                               onPressed: () async {
                                 final navigator = Navigator.of(context);
+                                final patientName = _patientDisplayName(a);
                                 final confirmed = await showDialog<bool>(
                                   context: context,
                                   builder: (dialogContext) => ContentDialog(
-                                    title: const Text('Move to Billing?'),
-                                    content: const Text(
-                                      'This appointment will be moved to Billing stage.',
+                                    title: Text(
+                                      'Move "$patientName" to Billing?',
+                                    ),
+                                    content: Text(
+                                      'This appointment will be moved to Billing stage for $patientName.',
                                     ),
                                     actions: [
                                       Button(
