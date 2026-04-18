@@ -629,7 +629,7 @@ class _ReportDoctorAppointmentDoneCardState
               Expanded(
                 child: _summaryTile(
                   value: formatIndianShortCurrency(totalNet),
-                  label: 'Net',
+                  label: 'Net Profit',
                   color: const Color(0xFF2BA58D),
                 ),
               ),
@@ -747,7 +747,7 @@ class _ReportDoctorAppointmentDoneCardState
                         ),
                         Expanded(
                           child: Text(
-                            'Net',
+                            'Net Profit',
                             style: TextStyle(
                               color: Color(0xFF355279),
                               fontWeight: FontWeight.w700,

@@ -497,13 +497,47 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 
             final now = DateTime.now();
 
-            final spentByPatient = <String, double>{};
-            for (final appointment in allAppointments) {
-              final pid = appointment.patientID;
-              if (pid == null || pid.isEmpty) continue;
-              spentByPatient[pid] = (spentByPatient[pid] ?? 0) +
-                  appointment.paid +
-                  appointment.prescriptionPaid;
+            final patientAnalytics = <String,
+                ({
+              int visits,
+              DateTime? firstVisit,
+              DateTime? lastVisit,
+              double totalSpent,
+              bool hasProcedureFocus,
+              bool visitedToday,
+              bool visitedThisMonth,
+            })>{};
+            for (final patient in allPatients) {
+              final rows = visitsByPatient[patient.id] ?? const <Appointment>[];
+              final firstVisit = rows.isEmpty ? null : rows.first.date;
+              final lastVisit = rows.isEmpty ? null : rows.last.date;
+              final totalSpent = rows.fold<double>(
+                0,
+                (sum, visit) => sum + visit.paid + visit.prescriptionPaid,
+              );
+              final hasProcedureFocus = rows.any((appointment) {
+                return appointment.selectedTreatments.any((treatment) {
+                  final normalized = treatment.toLowerCase();
+                  return normalized.contains('rct') ||
+                      normalized.contains('ortho') ||
+                      normalized.contains('crown');
+                });
+              });
+              final visitedToday = rows.any((a) =>
+                  a.date.year == now.year &&
+                  a.date.month == now.month &&
+                  a.date.day == now.day);
+              final visitedThisMonth =
+                  rows.any((a) => a.date.year == now.year && a.date.month == now.month);
+              patientAnalytics[patient.id] = (
+                visits: rows.length,
+                firstVisit: firstVisit,
+                lastVisit: lastVisit,
+                totalSpent: totalSpent,
+                hasProcedureFocus: hasProcedureFocus,
+                visitedToday: visitedToday,
+                visitedThisMonth: visitedThisMonth,
+              );
             }
 
             final ageBuckets = _ageGenderBuckets(allPatients);
@@ -576,58 +610,45 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               return firstLetter == _selectedAlphabet;
             }).where((patient) {
               if (_listBehaviorFilter == 'all') return true;
-              final visits =
-                  visitsByPatient[patient.id] ?? const <Appointment>[];
-              final totalSpent = spentByPatient[patient.id] ?? 0;
-              final daysSinceLast = visits.isEmpty
-                  ? 99999
-                  : now.difference(visits.last.date).inDays;
-              final daysSinceFirst = visits.isEmpty
-                  ? 99999
-                  : now.difference(visits.first.date).inDays;
-              final hasProcedureFocus = visits.any((appointment) {
-                return appointment.selectedTreatments.any((treatment) {
-                  final normalized = treatment.toLowerCase();
-                  return normalized.contains('rct') ||
-                      normalized.contains('ortho') ||
-                      normalized.contains('crown');
-                });
-              });
+              final analytics = patientAnalytics[patient.id];
+              final visits = analytics?.visits ?? 0;
+              final totalSpent = analytics?.totalSpent ?? 0;
+              final lastVisit = analytics?.lastVisit;
+              final firstVisit = analytics?.firstVisit;
+              final daysSinceLast =
+                  lastVisit == null ? 99999 : now.difference(lastVisit).inDays;
+              final hasProcedureFocus = analytics?.hasProcedureFocus ?? false;
 
               switch (_listBehaviorFilter) {
                 case 'highValue':
                   return totalSpent >= _highValueThreshold;
                 case 'frequent':
-                  return visits.length >= 5;
+                  return visits >= 5;
                 case 'inactive':
-                  return visits.isNotEmpty && daysSinceLast > 180;
+                  return visits > 0 && daysSinceLast > 180;
                 case 'new':
-                  return visits.isNotEmpty &&
-                      visits.first.date.year == now.year &&
-                      visits.first.date.month == now.month &&
-                      visits.first.date.day == now.day;
+                  return firstVisit != null &&
+                      firstVisit.year == now.year &&
+                      firstVisit.month == now.month &&
+                      firstVisit.day == now.day;
                 case 'focused':
-                  return visits.isNotEmpty && daysSinceLast <= 90;
+                  return visits > 0 && daysSinceLast <= 90;
                 case 'outstandingOnly':
                   return patient.outstandingPayments > 0;
                 case 'procedureFocus':
                   return hasProcedureFocus;
                 case 'visitedThisMonth':
-                  return visits.any((a) =>
-                      a.date.year == now.year && a.date.month == now.month);
+                  return analytics?.visitedThisMonth ?? false;
                 case 'oneTimer':
-                  return visits.length == 1;
+                  return visits == 1;
                 case 'invalidPhone':
                   final digits =
                       patient.phone.replaceAll(RegExp(r'[^0-9]'), '');
                   return digits.length != 10;
                 case 'noVisit':
-                  return visits.isEmpty;
+                  return visits == 0;
                 case 'todayVisited':
-                  return visits.any((a) =>
-                      a.date.year == now.year &&
-                      a.date.month == now.month &&
-                      a.date.day == now.day);
+                  return analytics?.visitedToday ?? false;
                 default:
                   return true;
               }
@@ -635,14 +656,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 
             if (_listBehaviorFilter == 'focused') {
               filteredPatients.sort((a, b) {
-                final aRows = visitsByPatient[a.id] ?? const <Appointment>[];
-                final bRows = visitsByPatient[b.id] ?? const <Appointment>[];
-                final aLast = aRows.isEmpty
-                    ? DateTime.fromMillisecondsSinceEpoch(0)
-                    : aRows.last.date;
-                final bLast = bRows.isEmpty
-                    ? DateTime.fromMillisecondsSinceEpoch(0)
-                    : bRows.last.date;
+                final aLast = patientAnalytics[a.id]?.lastVisit ??
+                    DateTime.fromMillisecondsSinceEpoch(0);
+                final bLast = patientAnalytics[b.id]?.lastVisit ??
+                    DateTime.fromMillisecondsSinceEpoch(0);
                 return bLast.compareTo(aLast);
               });
             } else {
@@ -657,26 +674,18 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                   case 'age':
                     return a.age.compareTo(b.age);
                   case 'lastVisit':
-                    final aRows =
-                        visitsByPatient[a.id] ?? const <Appointment>[];
-                    final bRows =
-                        visitsByPatient[b.id] ?? const <Appointment>[];
-                    final aLast = aRows.isEmpty
-                        ? DateTime.fromMillisecondsSinceEpoch(0)
-                        : aRows.last.date;
-                    final bLast = bRows.isEmpty
-                        ? DateTime.fromMillisecondsSinceEpoch(0)
-                        : bRows.last.date;
+                    final aLast = patientAnalytics[a.id]?.lastVisit ??
+                      DateTime.fromMillisecondsSinceEpoch(0);
+                    final bLast = patientAnalytics[b.id]?.lastVisit ??
+                      DateTime.fromMillisecondsSinceEpoch(0);
                     return aLast.compareTo(bLast);
                   case 'paidSoFar':
-                    final aPaid = spentByPatient[a.id] ?? 0;
-                    final bPaid = spentByPatient[b.id] ?? 0;
+                    final aPaid = patientAnalytics[a.id]?.totalSpent ?? 0;
+                    final bPaid = patientAnalytics[b.id]?.totalSpent ?? 0;
                     return aPaid.compareTo(bPaid);
                   case 'visits':
-                    final aVisits =
-                        (visitsByPatient[a.id] ?? const <Appointment>[]).length;
-                    final bVisits =
-                        (visitsByPatient[b.id] ?? const <Appointment>[]).length;
+                    final aVisits = patientAnalytics[a.id]?.visits ?? 0;
+                    final bVisits = patientAnalytics[b.id]?.visits ?? 0;
                     return aVisits.compareTo(bVisits);
                   case 'outstanding':
                     return a.outstandingPayments

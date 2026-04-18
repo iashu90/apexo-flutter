@@ -5,6 +5,8 @@ import '../../features/doctors/doctors_store.dart';
 Future<List<String>?> pickDoctorDialog(
   BuildContext context, {
   List<String> initialSelected = const <String>[],
+  String title = 'Assign Doctor(s)',
+  String? subtitle,
 }) async {
   return showDialog<List<String>>(
     context: context,
@@ -16,8 +18,8 @@ Future<List<String>?> pickDoctorDialog(
         builder: (context, setDialogState) => ContentDialog(
           title: Row(
             children: [
-              const Expanded(
-                child: Text('Assign Doctor(s)'),
+              Expanded(
+                child: Text(title),
               ),
               IconButton(
                 icon: const Icon(FluentIcons.chrome_close, size: 12),
@@ -33,6 +35,16 @@ Future<List<String>?> pickDoctorDialog(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (subtitle != null && subtitle.trim().isNotEmpty) ...[
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            color: Color(0xFF355279),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                       if (selected.isEmpty)
                         const Text(
                           'No doctors selected',

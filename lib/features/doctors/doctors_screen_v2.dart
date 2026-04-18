@@ -1167,6 +1167,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
       (sum, a) => sum + a.doctorPayableAmount,
     );
     final netProfit = revenue - doctorsFee;
+    final netProfitPct = revenue <= 0 ? 0.0 : (netProfit / revenue) * 100;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -1233,7 +1234,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                 Expanded(
                   child: _topMetric(
                     'Net Profit',
-                    formatIndianShortCurrency(netProfit),
+                    '${formatIndianShortCurrency(netProfit)} (${netProfitPct.toStringAsFixed(1)}%)',
                     netProfit >= 0
                         ? const Color(0xFF2BA58D)
                         : const Color(0xFFD6455D),
@@ -1264,6 +1265,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                   (sum, a) => sum + a.doctorPayableAmount,
                 );
                 final doctorNet = earned - doctorFee;
+                final doctorNetPct =
+                  earned <= 0 ? 0.0 : (doctorNet / earned) * 100;
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -1319,10 +1322,11 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           const SizedBox(width: 8),
                           _inlineMetric(
                             'Net Profit',
-                              formatIndianShortCurrency(doctorNet),
+                            '${formatIndianShortCurrency(doctorNet)} (${doctorNetPct.toStringAsFixed(1)}%)',
                             doctorNet >= 0
                                 ? const Color(0xFF2BA58D)
                                 : const Color(0xFFD6455D),
+                            width: 186,
                           ),
                         ],
                       ),
@@ -1584,9 +1588,10 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     );
   }
 
-  Widget _inlineMetric(String label, String value, Color color) {
+  Widget _inlineMetric(String label, String value, Color color,
+      {double width = 132}) {
     return SizedBox(
-      width: 132,
+      width: width,
       child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Column(
