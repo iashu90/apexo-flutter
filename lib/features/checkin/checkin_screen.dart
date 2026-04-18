@@ -261,36 +261,38 @@ Future<void> openAppointmentJourneyDialog(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFD7E5F6)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _patientDisplayName(appointment),
-            style: const TextStyle(
-              color: Color(0xFF163F70),
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _patientDisplayName(appointment),
+              style: const TextStyle(
+                color: Color(0xFF163F70),
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _patientFocusSummary(appointment),
-            style: const TextStyle(
-              color: Color(0xFF4F6C90),
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 6),
+            Text(
+              _patientFocusSummary(appointment),
+              style: const TextStyle(
+                color: Color(0xFF4F6C90),
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          TodayAppointmentInsightCard(appointment: appointment),
-          const SizedBox(height: 8),
-          _LastAppointmentInsightCard(lastAppointment: lastVisit),
-          const SizedBox(height: 12),
-          _CheckoutBillingSummaryPanel(
-            appointment: appointment,
-            discountEnabled: appointment.discount > 0,
-            totalPaidOverride: appointment.paid,
-          ),
-        ],
+            const SizedBox(height: 12),
+            TodayAppointmentInsightCard(appointment: appointment),
+            const SizedBox(height: 8),
+            _LastAppointmentInsightCard(lastAppointment: lastVisit),
+            const SizedBox(height: 12),
+            _CheckoutBillingSummaryPanel(
+              appointment: appointment,
+              discountEnabled: appointment.discount > 0,
+              totalPaidOverride: appointment.paid,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1786,9 +1788,9 @@ class _WorkflowRow extends StatelessWidget {
                   ),
                 if (stage != 'waiting' && stage != 'scheduled')
                   const SizedBox(width: 8),
-                if (stage == 'scheduled')
+                if (stage == 'scheduled' || stage == 'waiting')
                   Tooltip(
-                    message: 'Edit Appointment',
+                    message: 'Edit or Delete Appointment',
                     child: IconButton(
                       icon:
                           const Icon(material.Icons.edit, size: 18),
@@ -1801,15 +1803,13 @@ class _WorkflowRow extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFFEAF2FF)),
                         foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                            WidgetStateProperty.all(const Color(0xFF91721C)),
                       ),
                       onPressed: () => _openScheduleActions(context, appointment),
                     ),
                   ),
-                if (stage == 'scheduled')
+                if (stage == 'scheduled' || stage == 'waiting')
                   const SizedBox(width: 8),
                 if (stage == 'checkout')
                   Tooltip(
@@ -4155,25 +4155,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             ),
           ),
           pw.SizedBox(height: 12),
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey300),
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text('Bill To:',
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 6),
-                pw.Text(a.title.trim().isEmpty ? 'Unnamed patient' : a.title),
-                pw.Text(
-                    'Phone: ${patient?.phone ?? '-'} | Age: ${patient?.age ?? 0}'),
-                pw.Text('Doctor: Dr Nowfar'),
-              ],
-            ),
+          exportPdfBillToSection(
+            patientName: a.title.trim().isEmpty ? 'Unnamed patient' : a.title,
+            patientId: a.patientID ?? '-',
+            phone: patient?.phone.trim().isEmpty ?? true
+                ? '-'
+                : patient!.phone.trim(),
+            doctor: 'Dr Nowfar',
           ),
           pw.SizedBox(height: 12),
           pw.TableHelper.fromTextArray(

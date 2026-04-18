@@ -15,6 +15,7 @@ typedef PatientLookupCheckInPatient = Future<void> Function(Patient patient);
 Future<DateTime?> _pickScheduleDateTime(
   BuildContext context,
   DateTime selectedDate,
+  Patient? patient,
 ) async {
   final now = DateTime.now();
   DateTime pickedDate = selectedDate.isBefore(now)
@@ -40,7 +41,11 @@ Future<DateTime?> _pickScheduleDateTime(
         );
 
         return ContentDialog(
-          title: const Text('Schedule Appointment'),
+          title: Text(
+            patient == null
+                ? 'Schedule Appointment'
+                : 'Schedule Appointment • ${patient.title.trim().isEmpty ? 'Unnamed patient' : _toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+          ),
           content: SizedBox(
             width: 460,
             child: Column(
@@ -131,7 +136,8 @@ Future<DateTime?> _scheduleAppointmentForPatient(
   Patient patient,
   DateTime selectedDate,
 ) async {
-  final scheduledAt = await _pickScheduleDateTime(context, selectedDate);
+  final scheduledAt =
+      await _pickScheduleDateTime(context, selectedDate, patient);
   if (scheduledAt == null) return null;
 
   final appointment = Appointment.fromJson({});
@@ -191,9 +197,8 @@ Future<void> showPatientCheckinLookupDialog({
                 return name == query || phone == query;
               });
 
-          final recentToday = allPatients
+            final recentToday = allPatients
               .where((p) => todaysAppointments.any((a) => a.patientID == p.id))
-              .take(6)
               .toList(growable: false);
 
           Appointment? _todayAppointment(Patient patient) {
@@ -220,19 +225,50 @@ Future<void> showPatientCheckinLookupDialog({
           }
 
           Widget _statusChip(Appointment? existing) {
+            final stage = existing?.checkinStage.trim().toLowerCase() ?? '';
+            final isCompleted = stage == 'completed' || existing?.isDone == true;
+            final isWaiting = stage == 'waiting';
+            final isScheduled = stage == 'scheduled' || stage == 'pending';
+            final isTreatment = stage == 'with_doctor' || stage == 'treatment';
+            final isBilling = stage == 'checkout' || stage == 'billing';
+
+            final background = isCompleted
+                ? const Color(0xFFE8F7EE)
+                : isWaiting
+                    ? const Color(0xFFFFF4D9)
+                    : isScheduled
+                        ? const Color(0xFFEAF2FF)
+                        : isTreatment
+                            ? const Color(0xFFEAF0FF)
+                            : isBilling
+                                ? const Color(0xFFF1EBFF)
+                                : const Color(0xFFEEF2F7);
+
+            final foreground = isCompleted
+                ? const Color(0xFF166534)
+                : isWaiting
+                    ? const Color(0xFF8A5A00)
+                    : isScheduled
+                        ? const Color(0xFF1459AD)
+                        : isTreatment
+                            ? const Color(0xFF1E40AF)
+                            : isBilling
+                                ? const Color(0xFF5B2FA8)
+                                : const Color(0xFF1F3B57);
+
             return Container(
               constraints: const BoxConstraints(maxWidth: 138),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8F7EE),
+                color: background,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
                 _statusLabel(existing),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
-                style: const TextStyle(
-                  color: Color(0xFF1F3B57),
+                style: TextStyle(
+                  color: foreground,
                   fontWeight: FontWeight.w700,
                   fontSize: 11,
                 ),
@@ -248,8 +284,8 @@ Future<void> showPatientCheckinLookupDialog({
             final phone = patient.phone.trim().isEmpty ? '-' : patient.phone;
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: 0),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
@@ -269,8 +305,8 @@ Future<void> showPatientCheckinLookupDialog({
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 34,
+                        height: 34,
                         decoration: BoxDecoration(
                           color: const Color(0xFF8EA7C1),
                           borderRadius: BorderRadius.circular(999),
@@ -281,11 +317,11 @@ Future<void> showPatientCheckinLookupDialog({
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
-                            fontSize: 18,
+                            fontSize: 14,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,16 +333,15 @@ Future<void> showPatientCheckinLookupDialog({
                               style: const TextStyle(
                                 color: Color(0xFF1F2B40),
                                 fontWeight: FontWeight.w700,
-                                fontSize: 15,
+                                fontSize: 13,
                               ),
                             ),
-                            const SizedBox(height: 2),
                             Text(
                               '$phone • ${patient.age}y',
                               style: const TextStyle(
                                 color: Color(0xFF637A99),
                                 fontWeight: FontWeight.w600,
-                                fontSize: 12,
+                                fontSize: 11,
                               ),
                             ),
                           ],
@@ -315,9 +350,9 @@ Future<void> showPatientCheckinLookupDialog({
                       _statusChip(existing),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   const Divider(size: 1),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       if (existing != null)
@@ -331,7 +366,7 @@ Future<void> showPatientCheckinLookupDialog({
                           },
                           child: const Text('Open'),
                         ),
-                      if (existing != null) const SizedBox(width: 8),
+                      if (existing != null) const SizedBox(width: 6),
                       FilledButton(
                         onPressed: () async {
                           final navigator = Navigator.of(dialogContext);
@@ -342,7 +377,7 @@ Future<void> showPatientCheckinLookupDialog({
                         },
                         child: const Text('Check-in'),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Button(
                         onPressed: () async {
                           final scheduledAt = await _scheduleAppointmentForPatient(
@@ -368,6 +403,21 @@ Future<void> showPatientCheckinLookupDialog({
                   ),
                 ],
               ),
+            );
+          }
+
+          Widget _patientGrid(List<Patient> patientsList, {required int columns}) {
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: patientsList.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 2.25,
+              ),
+              itemBuilder: (_, index) => _patientCard(patientsList[index]),
             );
           }
 
@@ -522,7 +572,12 @@ Future<void> showPatientCheckinLookupDialog({
                                             ),
                                           ),
                                         ]
-                                      : recentToday.map(_patientCard).toList(growable: false),
+                                      : [
+                                          _patientGrid(
+                                            recentToday,
+                                            columns: 2,
+                                          ),
+                                        ],
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -572,7 +627,10 @@ Future<void> showPatientCheckinLookupDialog({
                                   ),
                                 )
                               else
-                                ...recentToday.map(_patientCard),
+                                _patientGrid(
+                                  recentToday,
+                                  columns: dialogWidth >= 760 ? 2 : 1,
+                                ),
                               const SizedBox(height: 6),
                               const Text(
                                 'Search Results',

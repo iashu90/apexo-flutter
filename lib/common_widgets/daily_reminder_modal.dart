@@ -33,9 +33,13 @@ void showDailyReminderIfNeeded(BuildContext context) {
 Future<void> showDailyReminderModal(BuildContext context) async {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
+  final tomorrow = today.add(const Duration(days: 1));
 
   final todaysAppointments = appointments.forDate(today).toList(growable: false)
     ..sort((a, b) => a.date.compareTo(b.date));
+  final tomorrowAppointments =
+      appointments.forDate(tomorrow).toList(growable: false)
+        ..sort((a, b) => a.date.compareTo(b.date));
   final pendingLabworks = labworks.present.values
       .where((l) => !l.deliveredToPatient)
       .toList(growable: false)
@@ -119,6 +123,9 @@ Future<void> showDailyReminderModal(BuildContext context) async {
     ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
   final greetingStrip = () {
+    if (waitingCount > 0) {
+      return 'Next patient queue is active: $waitingCount waiting';
+    }
     if (nextPatient == null) return 'No scheduled patients for today';
     final diff = nextPatient.date.difference(now).inMinutes;
     if (diff > 0) return 'Clinic opens in $diff minutes';
@@ -211,7 +218,8 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                     Expanded(
                       child: _LabFollowUpsCard(
                         labRows:
-                            pendingLabworks.take(2).toList(growable: false),
+                            pendingLabworks.take(3).toList(growable: false),
+                        totalPending: pendingLabworks.length,
                         onOpenLabOrders: () {
                           _navigateToRouteById('labworks_v2');
                           Navigator.pop(dialogContext);
@@ -221,6 +229,11 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                   ],
                 ),
                 const SizedBox(height: 14),
+                _TomorrowScheduleCard(
+                  tomorrow: tomorrow,
+                  appointments: tomorrowAppointments,
+                ),
+                const SizedBox(height: 14),
                 const _SectionTitle(
                     icon: FluentIcons.warning,
                     title: 'Attention Needed',
@@ -228,10 +241,10 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                 const SizedBox(height: 8),
                 _AttentionList(
                   rows: [
-                    '$noShowRiskCount no-show risk patient${noShowRiskCount == 1 ? '' : 's'}',
+                    '$noShowRiskCount no-show risk patient${noShowRiskCount == 1 ? '' : 's'} (past slot, not completed)',
                     '$waitingOver15Count patient${waitingOver15Count == 1 ? '' : 's'} waiting > 15 min',
                     '$missingPhoneCount patient${missingPhoneCount == 1 ? '' : 's'} missing phone number',
-                    '$treatmentPlanMissingCount treatment plan${treatmentPlanMissingCount == 1 ? '' : 's'} not scheduled',
+                    '$treatmentPlanMissingCount patient${treatmentPlanMissingCount == 1 ? '' : 's'} without a treatment plan',
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -779,10 +792,12 @@ class _DoctorsAndChairsCard extends StatelessWidget {
 
 class _LabFollowUpsCard extends StatelessWidget {
   final List<dynamic> labRows;
+  final int totalPending;
   final VoidCallback onOpenLabOrders;
 
   const _LabFollowUpsCard({
     required this.labRows,
+    required this.totalPending,
     required this.onOpenLabOrders,
   });
 
@@ -794,6 +809,18 @@ class _LabFollowUpsCard extends StatelessWidget {
       titleColor: const Color(0xFFC75A4A),
       child: Column(
         children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Showing ${labRows.length} of $totalPending pending follow-ups (ordered by oldest first)',
+              style: const TextStyle(
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           if (labRows.isEmpty)
             const Align(
               alignment: Alignment.centerLeft,
@@ -847,6 +874,102 @@ class _LabFollowUpsCard extends StatelessWidget {
               child: const Text('Open Lab Orders'),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TomorrowScheduleCard extends StatelessWidget {
+  final DateTime tomorrow;
+  final List<Appointment> appointments;
+
+  const _TomorrowScheduleCard({
+    required this.tomorrow,
+    required this.appointments,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = appointments
+        .where((a) {
+          final stage = normalizeCheckinStage(a.checkinStage);
+          return stage == 'scheduled' || stage == 'waiting';
+        })
+        .take(5)
+        .toList(growable: false);
+
+    return _SimplePanel(
+      titleIcon: FluentIcons.calendar_work_week,
+      title: 'Tomorrow Schedule',
+      titleColor: const Color(0xFF355A84),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            DateFormat('EEEE, dd MMM yyyy').format(tomorrow),
+            style: const TextStyle(
+              color: Color(0xFF4B5563),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (rows.isEmpty)
+            const Text(
+              'No scheduled appointments for tomorrow.',
+              style: TextStyle(color: Color(0xFF6B7280)),
+            )
+          else
+            ...rows.map((appointment) {
+              final title = appointment.title.trim().isEmpty
+                  ? 'Unnamed patient'
+                  : appointment.title.trim();
+              final treatment = appointment.selectedTreatments
+                  .where((t) => t.trim().isNotEmpty)
+                  .join(', ');
+              return Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F7FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFDCE7F6)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      DateFormat('hh:mm a').format(appointment.date),
+                      style: const TextStyle(
+                        color: Color(0xFF1F446E),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        treatment.isEmpty ? title : '$title • $treatment',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF1F2937),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          if (appointments.length > rows.length)
+            Text(
+              '+${appointments.length - rows.length} more tomorrow',
+              style: const TextStyle(
+                color: Color(0xFF5E738F),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
         ],
       ),
     );

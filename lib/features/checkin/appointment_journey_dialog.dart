@@ -44,6 +44,19 @@ Future<void> showAppointmentJourneyDialog({
     }
   }
 
+  Color stepColor(int step) {
+    switch (step) {
+      case 1:
+        return const Color(0xFF2D7BD8);
+      case 2:
+        return const Color(0xFF6D3FD2);
+      case 3:
+        return const Color(0xFF1D8D77);
+      default:
+        return const Color(0xFFD28C02);
+    }
+  }
+
   await showDialog<void>(
     context: context,
     barrierColor: const Color(0x660A1B33),
@@ -57,6 +70,7 @@ Future<void> showAppointmentJourneyDialog({
         Widget stepNode(int index) {
           final selected = index == currentStep;
           final complete = index < currentStep;
+          final nodeColor = stepColor(index);
           return GestureDetector(
             onTap: () {
               setStateDialog(() {
@@ -70,12 +84,12 @@ Future<void> showAppointmentJourneyDialog({
                   height: 44,
                   decoration: BoxDecoration(
                     color: selected || complete
-                        ? const Color(0xFF0A78F0)
+                        ? nodeColor
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(
                       color: selected || complete
-                          ? const Color(0xFF0A78F0)
+                          ? nodeColor
                           : const Color(0xFFB8C2D1),
                     ),
                   ),
@@ -98,9 +112,7 @@ Future<void> showAppointmentJourneyDialog({
                     Text(
                       labels[index],
                       style: TextStyle(
-                        color: selected
-                            ? const Color(0xFF0A78F0)
-                            : const Color(0xFF233B5F),
+                        color: selected ? nodeColor : const Color(0xFF233B5F),
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
@@ -226,6 +238,7 @@ Future<void> showAppointmentJourneyDialog({
                               width: dialogWidth - 28,
                               child: Row(
                                 children: List.generate(labels.length, (index) {
+                                  final connectorDone = index < currentStep;
                                   return Row(
                                     children: [
                                       stepNode(index),
@@ -234,7 +247,9 @@ Future<void> showAppointmentJourneyDialog({
                                           margin: const EdgeInsets.symmetric(horizontal: 12),
                                           width: 38,
                                           height: 1,
-                                          color: const Color(0xFFC9D3E0),
+                                          color: connectorDone
+                                              ? stepColor(index)
+                                              : const Color(0xFFC9D3E0),
                                         ),
                                     ],
                                   );

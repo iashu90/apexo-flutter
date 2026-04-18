@@ -1485,7 +1485,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       child: Text(
                                         '₹${consultantFee.toStringAsFixed(0)}',
                                         style: const TextStyle(
-                                          color: Color(0xFF34567D),
+                                          color: Color(0xFFD6455D),
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
