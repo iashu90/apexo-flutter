@@ -19,6 +19,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
+DateTime doctorPersistedDate = DateTime.now();
+
 class DoctorsScreenV2 extends StatefulWidget {
   const DoctorsScreenV2({super.key});
 
@@ -27,7 +29,11 @@ class DoctorsScreenV2 extends StatefulWidget {
 }
 
 class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = DateTime(
+    doctorPersistedDate.year,
+    doctorPersistedDate.month,
+    doctorPersistedDate.day,
+  );
   String _handledRange = 'today';
   String _performanceRange = 'month';
   String _doneRange = 'month';
@@ -44,12 +50,13 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = _dateOnly(DateTime.now());
+    _selectedDate = _dateOnly(doctorPersistedDate);
   }
 
   void _changeDate(int days) {
     setState(() {
       _selectedDate = _dateOnly(_selectedDate.add(Duration(days: days)));
+      doctorPersistedDate = _selectedDate;
     });
   }
 
@@ -64,7 +71,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
     );
 
     if (picked == null) return;
-    setState(() => _selectedDate = _dateOnly(picked));
+    setState(() {
+      _selectedDate = _dateOnly(picked);
+      doctorPersistedDate = _selectedDate;
+    });
   }
 
   Future<void> _pickCustomRange(BuildContext context) async {
@@ -175,18 +185,6 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                     !a.date.isBefore(startOfDay) && a.date.isBefore(endOfDay))
                 .toList(growable: false);
 
-            final doneRows = _doctorDoneMetrics(
-              doctorsList: allDoctors,
-              scoped: _scopedForRange(
-                allAppointments: allAppointments,
-                selectedDate: _selectedDate,
-                range: _doneRange,
-                monthAnchor: _doneRange == 'month' ? _doneMonthAnchor : null,
-                customRangeStart: _customRangeStart,
-                customRangeEnd: _customRangeEnd,
-              ),
-            );
-
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -214,7 +212,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                           onNext: () => _changeDate(1),
                           onPick: () => _pickDate(context),
                           onToday: () =>
-                              setState(() => _selectedDate = _dateOnly(DateTime.now())),
+                              setState(() {
+                                _selectedDate = _dateOnly(DateTime.now());
+                                doctorPersistedDate = _selectedDate;
+                              }),
                         ),
                       ),
                       Align(
@@ -243,46 +244,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                 const SizedBox(height: 10),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final twoCol = constraints.maxWidth >= 1260;
-                    final doneCard = _DoctorAppointmentDoneChartCard(
-                      rows: doneRows,
-                      selectedRange: _doneRange,
-                      monthAnchor: _doneMonthAnchor,
-                      monthOptions: monthOptionsFromAppointments(allAppointments),
-                      onMonthChanged: (month) =>
-                          setState(() => _doneMonthAnchor = month),
-                      onSelectRange: (value) =>
-                          setState(() => _doneRange = value),
-                    );
-
-                    if (!twoCol) {
-                      return Column(
-                        children: [
-                          _DoctorTodayDetailCard(
-                            doctors: allDoctors,
-                            todaysAppointments: todaysAppointments,
-                            selectedDate: _selectedDate,
-                          ),
-                          const SizedBox(height: 10),
-                          doneCard,
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 7,
-                          child: _DoctorTodayDetailCard(
-                            doctors: allDoctors,
-                            todaysAppointments: todaysAppointments,
-                            selectedDate: _selectedDate,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(flex: 6, child: doneCard),
-                      ],
+                    return _DoctorTodayDetailCard(
+                      doctors: allDoctors,
+                      todaysAppointments: todaysAppointments,
+                      selectedDate: _selectedDate,
                     );
                   },
                 ),
@@ -1243,7 +1208,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
               children: [
                 Expanded(
                   child: _topMetric(
-                    'Total Patients',
+                    'Patients Seen',
                     NumberFormat.compact(locale: 'en_IN').format(totalPatients),
                     const Color(0xFF1B3557),
                   ),

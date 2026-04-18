@@ -2,12 +2,13 @@ import 'package:apexo/common_widgets/password_guard_dialog.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:intl/intl.dart';
 
 Future<void> showLabBulkUpdateDialog(BuildContext context) async {
   await runPasswordProtectedAction(
     context,
     title: 'Lab Bulk Update Access',
-    message: 'Enter password to edit labwork names in bulk.',
+    message: 'Enter password to settle due lab payments in bulk.',
     onAuthorized: () async {
       await showDialog<void>(
         context: context,
@@ -20,14 +21,16 @@ Future<void> showLabBulkUpdateDialog(BuildContext context) async {
 class _LabBulkMatch {
   final String id;
   final String patientLabel;
-  final String oldValue;
-  final String newValue;
+  final String labLabel;
+  final DateTime date;
+  final double dueAmount;
 
   const _LabBulkMatch({
     required this.id,
     required this.patientLabel,
-    required this.oldValue,
-    required this.newValue,
+    required this.labLabel,
+    required this.date,
+    required this.dueAmount,
   });
 }
 
@@ -39,12 +42,9 @@ class _LabBulkUpdateDialog extends StatefulWidget {
 }
 
 class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
-  final _currentController = TextEditingController();
-  final _replaceController = TextEditingController();
+  String _labFilter = 'all';
+  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
-  String _targetField = 'Type Of Work';
-  String _matchMode = 'Exact';
-  bool _caseSensitive = false;
   bool _finding = false;
   bool _updating = false;
   String? _result;
@@ -53,56 +53,38 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
 
   List<_LabBulkMatch> _matches = const [];
 
-  @override
-  void dispose() {
-    _currentController.dispose();
-    _replaceController.dispose();
-    super.dispose();
+  List<DateTime> get _monthOptions {
+    final months = <DateTime>{
+      for (final item in labworks.present.values) DateTime(item.date.year, item.date.month, 1),
+      DateTime(DateTime.now().year, DateTime.now().month, 1),
+    }.toList(growable: false)
+      ..sort((a, b) => b.compareTo(a));
+    return months;
   }
 
-  String _normalized(String value) {
-    return _caseSensitive ? value : value.toLowerCase();
+  List<String> get _labOptions {
+    final labs = <String>{
+      for (final item in labworks.present.values)
+        if (item.lab.trim().isNotEmpty) item.lab.trim(),
+    }.toList(growable: false)
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return ['all', ...labs];
   }
 
-  String _sourceFieldValue(Labwork item) {
-    if (_targetField == 'Lab Name') return item.lab;
-    return item.typeOfWork;
+  bool _isInSelectedMonth(Labwork item) {
+    return item.date.year == _monthAnchor.year && item.date.month == _monthAnchor.month;
   }
 
-  String _replaceText(String value, String findText, String replaceText) {
-    if (findText.isEmpty) return value;
-    if (_matchMode == 'Exact') {
-      return _normalized(value.trim()) == _normalized(findText.trim())
-          ? replaceText
-          : value;
-    }
-
-    final pattern = RegExp(
-      RegExp.escape(findText),
-      caseSensitive: _caseSensitive,
-    );
-    return value.replaceAll(pattern, replaceText);
+  bool _isMatchingLab(Labwork item) {
+    if (_labFilter == 'all') return true;
+    return item.lab.trim() == _labFilter;
   }
 
-  bool _matchesRule(Labwork item, String findText, String replaceText) {
-    final current = _sourceFieldValue(item);
-    final next = _replaceText(current, findText, replaceText);
-    return next != current;
-  }
-
-  void _applyUpdate(Labwork item, String findText, String replaceText) {
-    if (_targetField == 'Lab Name') {
-      item.lab = _replaceText(item.lab, findText, replaceText);
-    } else {
-      item.typeOfWork = _replaceText(item.typeOfWork, findText, replaceText);
-    }
-    labworks.set(item);
+  bool _isDue(Labwork item) {
+    return !item.paid && item.price > 0;
   }
 
   Future<void> _findMatches() async {
-    final findText = _currentController.text.trim();
-    final replaceText = _replaceController.text.trim();
-
     setState(() {
       _finding = true;
       _result = null;
@@ -111,38 +93,35 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
       _progressTotal = 0;
     });
 
-    if (findText.isEmpty) {
-      setState(() {
-        _finding = false;
-        _result = 'Find text is required.';
-      });
-      return;
-    }
-
     final found = <_LabBulkMatch>[];
     for (final item in labworks.present.values) {
-      if (!_matchesRule(item, findText, replaceText)) continue;
-      final oldValue = _sourceFieldValue(item);
+      if (!_isInSelectedMonth(item) || !_isMatchingLab(item) || !_isDue(item)) {
+        continue;
+      }
       found.add(
         _LabBulkMatch(
           id: item.id,
           patientLabel: item.patient?.title.trim().isNotEmpty == true
               ? item.patient!.title
               : 'Unnamed patient',
-          oldValue: oldValue,
-          newValue: _replaceText(oldValue, findText, replaceText),
+          labLabel: item.lab.trim().isEmpty ? 'Unassigned Lab' : item.lab.trim(),
+          date: item.date,
+          dueAmount: item.price,
         ),
       );
     }
 
+    found.sort((a, b) => b.date.compareTo(a.date));
+
     setState(() {
       _finding = false;
       _matches = found;
-      _result = '${found.length} matching labwork record(s) found.';
+      final total = found.fold<double>(0, (sum, m) => sum + m.dueAmount);
+      _result = '${found.length} due record(s) found • Total due ₹${NumberFormat('#,##0').format(total)}';
     });
   }
 
-  Future<void> _updateAll() async {
+  Future<void> _markAllPaid() async {
     if (_matches.isEmpty) return;
 
     setState(() {
@@ -152,14 +131,14 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
       _progressTotal = _matches.length;
     });
 
-    final findText = _currentController.text.trim();
-    final replaceText = _replaceController.text.trim();
     var updated = 0;
-
     for (final match in _matches) {
       final item = labworks.get(match.id);
       if (item == null) continue;
-      _applyUpdate(item, findText, replaceText);
+      if (!item.paid) {
+        item.paid = true;
+        labworks.set(item);
+      }
       updated += 1;
       if (mounted) {
         setState(() => _progressDone = updated);
@@ -171,14 +150,19 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
     if (!mounted) return;
     setState(() {
       _updating = false;
-      _result = 'Updated $updated labwork record(s).';
+      _result = 'Marked $updated record(s) as paid.';
       _progressDone = _progressTotal;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final targetLabel = _targetField == 'Lab Name' ? 'Lab Name' : 'Type Of Work';
+    final monthOptions = _monthOptions;
+    if (!monthOptions.any((m) => m.year == _monthAnchor.year && m.month == _monthAnchor.month)) {
+      _monthAnchor = monthOptions.first;
+    }
+
+    final totalDue = _matches.fold<double>(0, (sum, m) => sum + m.dueAmount);
 
     return ContentDialog(
       constraints: const BoxConstraints(maxWidth: 860),
@@ -190,71 +174,55 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Replace labwork names in one click after previewing all affected records.',
+              'Mark all due labwork records as paid at month-end.',
               style: TextStyle(color: Color(0xFF5A7397)),
             ),
             const SizedBox(height: 10),
-            ComboBox<String>(
-              value: _targetField,
-              isExpanded: true,
-              items: const [
-                ComboBoxItem(value: 'Type Of Work', child: Text('Type Of Work')),
-                ComboBoxItem(value: 'Lab Name', child: Text('Lab Name')),
-              ],
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() {
-                  _targetField = value;
-                  _matches = const [];
-                  _result = null;
-                });
-              },
-            ),
-            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
-                  child: TextBox(
-                    controller: _currentController,
-                    placeholder: 'Find $targetLabel',
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextBox(
-                    controller: _replaceController,
-                    placeholder: 'Replace with',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ComboBox<String>(
-                    value: _matchMode,
+                  child: ComboBox<DateTime>(
+                    value: _monthAnchor,
                     isExpanded: true,
-                    items: const [
-                      ComboBoxItem(value: 'Exact', child: Text('Exact match')),
-                      ComboBoxItem(
-                        value: 'Contains',
-                        child: Text('Contains / replace all'),
-                      ),
-                    ],
+                    items: monthOptions
+                        .map(
+                          (month) => ComboBoxItem<DateTime>(
+                            value: month,
+                            child: Text(DateFormat('MMMM yyyy').format(month)),
+                          ),
+                        )
+                        .toList(growable: false),
                     onChanged: (value) {
                       if (value == null) return;
-                      setState(() => _matchMode = value);
+                      setState(() {
+                        _monthAnchor = value;
+                        _matches = const [];
+                        _result = null;
+                      });
                     },
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Checkbox(
-                    checked: _caseSensitive,
-                    content: const Text('Case sensitive'),
-                    onChanged: (value) =>
-                        setState(() => _caseSensitive = value ?? false),
+                  child: ComboBox<String>(
+                    value: _labFilter,
+                    isExpanded: true,
+                    items: _labOptions
+                        .map(
+                          (lab) => ComboBoxItem<String>(
+                            value: lab,
+                            child: Text(lab == 'all' ? 'All Labs' : lab),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _labFilter = value;
+                        _matches = const [];
+                        _result = null;
+                      });
+                    },
                   ),
                 ),
               ],
@@ -264,12 +232,12 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
               children: [
                 FilledButton(
                   onPressed: _finding || _updating ? null : _findMatches,
-                  child: Text(_finding ? 'Finding...' : 'Find'),
+                  child: Text(_finding ? 'Finding...' : 'Find Due Records'),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
-                  onPressed: _updating || _matches.isEmpty ? null : _updateAll,
-                  child: Text(_updating ? 'Updating...' : 'Update All'),
+                  onPressed: _updating || _matches.isEmpty ? null : _markAllPaid,
+                  child: Text(_updating ? 'Updating...' : 'Mark All As Paid'),
                 ),
               ],
             ),
@@ -297,12 +265,21 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
               ),
             ],
             const SizedBox(height: 10),
+            if (_matches.isNotEmpty)
+              Text(
+                'Selected due total: ₹${NumberFormat('#,##0').format(totalDue)}',
+                style: const TextStyle(
+                  color: Color(0xFFD6455D),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            const SizedBox(height: 8),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 320),
               child: _matches.isEmpty
                   ? const Center(
                       child: Text(
-                        'No matching labwork records found yet.',
+                        'No due labwork records found for current selection.',
                         style: TextStyle(color: Color(0xFF6D84A8)),
                       ),
                     )
@@ -313,12 +290,8 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
                         final item = _matches[index];
                         return ListTile.selectable(
                           title: Text(item.patientLabel),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Current: ${item.oldValue}'),
-                              Text('New: ${item.newValue}'),
-                            ],
+                          subtitle: Text(
+                            '${DateFormat('dd MMM yyyy').format(item.date)} • ${item.labLabel} • Due ₹${item.dueAmount.toStringAsFixed(0)}',
                           ),
                         );
                       },

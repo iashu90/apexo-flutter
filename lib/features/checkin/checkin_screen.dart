@@ -30,7 +30,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:apexo/common_widgets/pick_doctor_dialog.dart';
 
 DateTime checkinPersistedDate = DateTime.now();
@@ -315,6 +314,135 @@ class _CheckinScreenState extends State<CheckinScreen> {
     );
   }
 
+  int _stepIndexFromStage(String stage) {
+    final normalized = stage.trim().toLowerCase();
+    if (normalized == 'with_doctor' || normalized == 'treatment') {
+      return 1;
+    }
+    if (normalized == 'checkout' || normalized == 'billing') {
+      return 2;
+    }
+    if (normalized == 'completed') {
+      return 3;
+    }
+    return 0;
+  }
+
+  Future<void> _openNextCheckinStepper(Appointment appointment) async {
+    var currentStep = _stepIndexFromStage(appointment.checkinStage);
+    const stages = ['waiting', 'with_doctor', 'checkout', 'completed'];
+    const labels = ['Scheduled / Waiting', 'Treatment', 'Billing', 'Completed'];
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return ContentDialog(
+            title: const Text('Next Checkin (Stepper)'),
+            content: SizedBox(
+              width: 560,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appointment.title.trim().isEmpty
+                        ? 'Unnamed patient'
+                        : appointment.title,
+                    style: const TextStyle(
+                      color: Color(0xFF183A67),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ...List.generate(labels.length, (index) {
+                    final selected = index == currentStep;
+                    final complete = index < currentStep;
+                    return GestureDetector(
+                      onTap: () => setStateDialog(() => currentStep = index),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? const Color(0xFFEAF2FF)
+                              : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: selected
+                                ? const Color(0xFF2D7BD8)
+                                : const Color(0xFFD7E3F0),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              complete
+                                  ? FluentIcons.completed
+                                  : selected
+                                      ? FluentIcons.radio_btn_on
+                                      : FluentIcons.radio_btn_off,
+                              size: 12,
+                              color: complete
+                                  ? const Color(0xFF16A34A)
+                                  : selected
+                                      ? const Color(0xFF2D7BD8)
+                                      : const Color(0xFF7A8FAE),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                labels[index],
+                                style: TextStyle(
+                                  color: const Color(0xFF27466F),
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            actions: [
+              Button(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  appointment.checkinStage = stages[currentStep];
+                  if (currentStep == 3) {
+                    appointment.isDone = true;
+                  }
+                  appointments.set(appointment);
+                  Navigator.pop(dialogContext);
+                  await CheckinStageModalRouter.openForStage(
+                    context: this.context,
+                    appointment: appointment,
+                    openTreatmentModal: openCheckinAppointmentModal,
+                    openBillingModal: openCheckinAppointmentModal,
+                    openCompleteModal: openCheckinAppointmentModal,
+                  );
+                },
+                child: const Text('Open Selected Section'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
@@ -530,6 +658,28 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 Text('Check-in'),
                               ],
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: filtered.isEmpty
+                                ? null
+                                : () {
+                                    final target = _selectedAppointment ?? filtered.first;
+                                    _openNextCheckinStepper(target);
+                                  },
+                            style: ButtonStyle(
+                              backgroundColor: WidgetStateProperty.all(
+                                const Color(0xFF1D8D77),
+                              ),
+                              foregroundColor: WidgetStateProperty.all(Colors.white),
+                              padding: WidgetStateProperty.all(
+                                const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 11,
+                                ),
+                              ),
+                            ),
+                            child: const Text('Next Checkin'),
                           ),
                         ],
                       ),
@@ -1167,7 +1317,7 @@ class _WorkflowRow extends StatelessWidget {
                         appointment.date = updatedDateTime;
                         appointments.set(appointment);
                         onSelect?.call(appointment);
-                        Navigator.pop(dialogContext);
+                        Navigator.of(dialogContext, rootNavigator: true).pop();
                       }
                     : null,
                 child: const Text('Update'),
@@ -3991,15 +4141,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     }
   }
 
-  Future<void> _printReceipt() async {
-    final doc = _buildReceiptPdf();
-    try {
-      await Printing.layoutPdf(onLayout: (_) async => doc.save());
-    } catch (_) {
-      // Print cancelled or virtual printer error – ignore
-    }
-  }
-
   String _composeReceiptShareMessage() {
     final a = widget.appointment;
     final patientName =
@@ -4550,17 +4691,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                               color: Color(0xFF7C3AED),
                             ),
                             onPressed: _openShareOptions,
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Print',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.print,
-                              size: 18,
-                              color: Color(0xFF2BA58D),
-                            ),
-                            onPressed: _printReceipt,
                           ),
                         ),
                       ],
