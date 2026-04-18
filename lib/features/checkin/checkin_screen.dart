@@ -46,12 +46,77 @@ String _toTitleCase(String input) {
   }).join(' ');
 }
 
-Future<bool> _confirmMoveToCompleted(BuildContext context) async {
+String _patientDisplayName(Appointment appointment) {
+  final name = appointment.title.trim();
+  return name.isEmpty ? 'Unnamed patient' : _toTitleCase(name);
+}
+
+String _patientGenderShort(Appointment appointment) {
+  final gender = appointment.patient?.gender;
+  if (gender == 1) return 'M';
+  if (gender == 0) return 'F';
+  return '-';
+}
+
+String _patientFocusSummary(Appointment appointment) {
+  final age = appointment.patient?.age ?? 0;
+  final gender = _patientGenderShort(appointment);
+  final phone = appointment.patient?.phone.trim() ?? '';
+  final safePhone = phone.isEmpty ? '-' : phone;
+  return '${_patientDisplayName(appointment)} • ${age}y • $gender • $safePhone';
+}
+
+List<Widget> _buildBillingSummaryLines(
+  Appointment appointment, {
+  double? paidOverride,
+}) {
+  final discount = appointment.discount;
+  final discountedTotal = appointment.discountType == 'percent'
+      ? (appointment.price - (appointment.price * discount / 100))
+          .clamp(0, double.infinity)
+      : (appointment.price - discount).clamp(0, double.infinity);
+  final paid = (paidOverride ?? appointment.paid).clamp(0, double.infinity);
+  final balance = (discountedTotal - paid).clamp(0, double.infinity);
+  final status = balance <= 0 ? 'PAID' : 'DUE';
+
+  return [
+    Text('Treatment Cost: Rs ${appointment.price.toStringAsFixed(0)}'),
+    Text(
+      'Discount: ${discount <= 0 ? '-' : (appointment.discountType == 'percent' ? '-${discount.toStringAsFixed(0)}%' : '-Rs ${discount.toStringAsFixed(0)}')}',
+    ),
+    Text('Net Total: Rs ${discountedTotal.toStringAsFixed(0)}'),
+    Text('Paid: Rs ${paid.toStringAsFixed(0)}'),
+    Text('Balance: Rs ${balance.toStringAsFixed(0)}'),
+    Text('Status: $status'),
+  ];
+}
+
+Future<bool> _confirmMoveToCompleted(
+  BuildContext context,
+  Appointment appointment, {
+  double? paidOverride,
+}) async {
+  final patientSummary = _patientFocusSummary(appointment);
   final shouldComplete = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => ContentDialog(
       title: const Text('Move to Completed?'),
-      content: const Text('This appointment will be moved to Completed.'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(patientSummary),
+          const SizedBox(height: 8),
+          const Text(
+            'Billing Summary',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          ..._buildBillingSummaryLines(appointment, paidOverride: paidOverride),
+          const SizedBox(height: 10),
+          const Text('This appointment will be moved to Completed.'),
+        ],
+      ),
       actions: [
         Button(
           onPressed: () => Navigator.pop(dialogContext, false),
@@ -333,6 +398,20 @@ class _CheckinScreenState extends State<CheckinScreen> {
     const stages = ['waiting', 'with_doctor', 'checkout', 'completed'];
     const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4'];
     const subtitles = ['Waiting', 'Treatment', 'Billing', 'Completed'];
+    final allAppointmentsForPatient = appointments.present.values
+        .where((row) => row.patientID == appointment.patientID)
+        .toList(growable: false)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    void applyStep(int index) {
+      final stage = stages[index];
+      appointment.checkinStage = stage;
+      appointment.isDone = stage == 'completed';
+      if (stage == 'with_doctor' || stage == 'checkout') {
+        appointment.isDone = false;
+      }
+      appointments.set(appointment);
+    }
 
     await showDialog<void>(
       context: context,
@@ -340,13 +419,19 @@ class _CheckinScreenState extends State<CheckinScreen> {
         builder: (context, setStateDialog) {
           final screen = MediaQuery.of(context).size;
           final dialogWidth = (screen.width - 30).clamp(760.0, 1020.0);
-          final panelHeight = (screen.height * 0.30).clamp(170.0, 280.0);
+          final panelHeight = (screen.height * 0.62).clamp(320.0, 620.0);
+          final patientSummary = _patientFocusSummary(appointment);
 
           Widget stepNode(int index) {
             final selected = index == currentStep;
             final complete = index < currentStep;
             return GestureDetector(
-              onTap: () => setStateDialog(() => currentStep = index),
+              onTap: () {
+                setStateDialog(() {
+                  currentStep = index;
+                  applyStep(currentStep);
+                });
+              },
               child: Row(
                 children: [
                   Container(
@@ -406,28 +491,180 @@ class _CheckinScreenState extends State<CheckinScreen> {
             );
           }
 
-          Future<void> openSelectedStepModal() async {
-            appointment.checkinStage = stages[currentStep];
-            appointment.isDone = currentStep == 3;
-            appointments.set(appointment);
-            await CheckinStageModalRouter.openForStage(
-              context: this.context,
-              appointment: appointment,
-              openTreatmentModal: openCheckinAppointmentModal,
-              openBillingModal: openCheckinAppointmentModal,
-              openCompleteModal: openCheckinAppointmentModal,
+          Future<void> assignDoctor() async {
+            final pickedDoctorIds = await pickDoctorDialog(
+              context,
+              initialSelected: appointment.operatorsIDs,
+              subtitle: patientSummary,
             );
-            if (!mounted) return;
+            if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
             setStateDialog(() {
-              currentStep = _stepIndexFromStage(appointment.checkinStage);
+              appointment.operatorsIDs = pickedDoctorIds;
+              currentStep = 1;
+              applyStep(currentStep);
             });
+          }
+
+          Widget stageBody() {
+            if (currentStep == 0) {
+              final doctorNames = appointment.operators
+                  .map((doctor) => doctor.title.trim())
+                  .where((name) => name.isNotEmpty)
+                  .join(', ');
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF6FAFF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFD7E5F6)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _patientDisplayName(appointment),
+                      style: const TextStyle(
+                        color: Color(0xFF163F70),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      patientSummary,
+                      style: const TextStyle(
+                        color: Color(0xFF4F6C90),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Assigned Doctor: ${doctorNames.isEmpty ? 'Unassigned' : doctorNames}',
+                      style: const TextStyle(
+                        color: Color(0xFF355279),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: assignDoctor,
+                      child: Text(
+                        appointment.operatorsIDs.isEmpty
+                            ? 'Assign Doctor and Continue'
+                            : 'Reassign Doctor',
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            if (currentStep == 1 || currentStep == 2) {
+              return Container(
+                width: double.infinity,
+                height: panelHeight,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFD7E5F6)),
+                ),
+                padding: const EdgeInsets.all(10),
+                child: SingleChildScrollView(
+                  child: _CheckinOperativeForm(
+                    appointment: appointment,
+                    allAppointmentsForPatient: allAppointmentsForPatient,
+                    showInlineBottomActions: false,
+                  ),
+                ),
+              );
+            }
+
+            final previousVisits = allAppointmentsForPatient
+              .where((row) => row.id != appointment.id)
+              .toList(growable: false);
+            final Appointment? lastVisit =
+              previousVisits.isEmpty ? null : previousVisits.first;
+
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD7E5F6)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _patientDisplayName(appointment),
+                    style: const TextStyle(
+                      color: Color(0xFF163F70),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    patientSummary,
+                    style: const TextStyle(
+                      color: Color(0xFF4F6C90),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TodayAppointmentInsightCard(appointment: appointment),
+                  const SizedBox(height: 8),
+                  _LastAppointmentInsightCard(lastAppointment: lastVisit),
+                  const SizedBox(height: 12),
+                  _CheckoutBillingSummaryPanel(
+                    appointment: appointment,
+                    discountEnabled: appointment.discount > 0,
+                    totalPaidOverride: appointment.paid,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          Future<void> nextStep() async {
+            if (currentStep == 0) {
+              await assignDoctor();
+              return;
+            }
+
+            if (currentStep == 1) {
+              setStateDialog(() {
+                currentStep = 2;
+                applyStep(currentStep);
+              });
+              return;
+            }
+
+            if (currentStep == 2) {
+              final paid = double.tryParse(appointment.paid.toString()) ?? 0;
+              final shouldComplete = await _confirmMoveToCompleted(
+                context,
+                appointment,
+                paidOverride: paid,
+              );
+              if (!shouldComplete) return;
+              setStateDialog(() {
+                currentStep = 3;
+                applyStep(currentStep);
+              });
+              return;
+            }
+
+            Navigator.pop(dialogContext);
           }
 
           return ContentDialog(
             constraints: BoxConstraints(maxWidth: dialogWidth),
             title: const Align(
               alignment: Alignment.center,
-              child: Text('CupertinoStepper for Flutter'),
+              child: Text('Next Check-in Flow'),
             ),
             content: SizedBox(
               width: dialogWidth - 40,
@@ -455,61 +692,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    height: panelHeight,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8F9098),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appointment.title.trim().isEmpty
-                              ? 'Unnamed patient'
-                              : _toTitleCase(appointment.title),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Selected: ${subtitles[currentStep]}',
-                          style: const TextStyle(
-                            color: Color(0xFFF5F8FE),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'This is the new check-in flow UI (parallel testing). Continue to open the selected section with the existing flow logic.',
-                          style: TextStyle(
-                            color: Color(0xFFE3ECF7),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Button(
-                          onPressed: openSelectedStepModal,
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(
-                              const Color(0xFFEAF2FF),
-                            ),
-                            foregroundColor: WidgetStateProperty.all(
-                              const Color(0xFF0A78F0),
-                            ),
-                          ),
-                          child: const Text('Open Selected Step Modal'),
-                        ),
-                      ],
-                    ),
-                  ),
+                  stageBody(),
                 ],
               ),
             ),
@@ -518,14 +701,19 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('Cancel'),
               ),
+              if (currentStep > 0)
+                Button(
+                  onPressed: () {
+                    setStateDialog(() {
+                      currentStep -= 1;
+                      applyStep(currentStep);
+                    });
+                  },
+                  child: const Text('Back'),
+                ),
               FilledButton(
-                onPressed: () async {
-                  appointment.checkinStage = stages[currentStep];
-                  appointment.isDone = currentStep == 3;
-                  appointments.set(appointment);
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('Save Stage'),
+                onPressed: nextStep,
+                child: Text(currentStep == 3 ? 'Done' : 'Continue'),
               ),
             ],
           );
@@ -1463,12 +1651,16 @@ class _WorkflowRow extends StatelessWidget {
   }
 
   Future<void> _undoStage(BuildContext context) async {
+    final patientName = _patientDisplayName(appointment);
+
     if (stage == 'with_doctor') {
       final shouldMove = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => ContentDialog(
-          title: const Text('Move back to Waiting?'),
-          content: const Text('Doctor assignment will be removed.'),
+          title: Text('Move "$patientName" back to Waiting?'),
+          content: Text(
+            'Doctor assignment will be removed for $patientName.',
+          ),
           actions: [
             Button(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -1493,9 +1685,10 @@ class _WorkflowRow extends StatelessWidget {
       final shouldMove = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => ContentDialog(
-          title: const Text('Move back to Treatment?'),
-          content:
-              const Text('This appointment will be moved back to Treatment.'),
+          title: Text('Move "$patientName" back to Treatment?'),
+          content: Text(
+            'This appointment will be moved back to Treatment for $patientName.',
+          ),
           actions: [
             Button(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -1519,9 +1712,10 @@ class _WorkflowRow extends StatelessWidget {
       final shouldMove = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => ContentDialog(
-          title: const Text('Move back to Billing?'),
-          content:
-              const Text('This appointment will be moved back to Billing.'),
+          title: Text('Move "$patientName" back to Billing?'),
+          content: Text(
+            'This appointment will be moved back to Billing for $patientName.',
+          ),
           actions: [
             Button(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -1684,6 +1878,7 @@ class _WorkflowRow extends StatelessWidget {
                               final pickedDoctorIds = await pickDoctorDialog(
                                 context,
                                 initialSelected: appointment.operatorsIDs,
+                                subtitle: _patientFocusSummary(appointment),
                               );
                               if (pickedDoctorIds == null ||
                                   pickedDoctorIds.isEmpty) {
@@ -2009,12 +2204,14 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
   }
 
   Future<void> _moveCompletedToBilling(Appointment appointment) async {
+    final patientName = _patientDisplayName(appointment);
     final shouldMove = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => ContentDialog(
-        title: const Text('Move back to Billing?'),
-        content:
-            const Text('This appointment will be moved back to Billing stage.'),
+        title: Text('Move "$patientName" back to Billing?'),
+        content: Text(
+          'This appointment will be moved back to Billing stage for $patientName.',
+        ),
         actions: [
           Button(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -2369,6 +2566,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
 
   Widget _buildFixedFooterActions(Appointment appointment) {
     final stage = appointment.checkinStage.trim().toLowerCase();
+    final patientName = _patientDisplayName(appointment);
     if (stage == 'waiting' || stage == 'pending') {
       return Container(
         width: double.infinity,
@@ -2387,6 +2585,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               final pickedDoctorIds = await pickDoctorDialog(
                 widget.rootContext,
                 initialSelected: appointment.operatorsIDs,
+                subtitle: _patientFocusSummary(appointment),
               );
               if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
               appointment.operatorsIDs = pickedDoctorIds;
@@ -2422,9 +2621,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   final shouldMove = await showDialog<bool>(
                     context: context,
                     builder: (dialogContext) => ContentDialog(
-                      title: const Text('Move back to Waiting?'),
-                      content: const Text(
-                        'This patient will be moved back to Waiting and doctor assignment will be removed.',
+                      title: Text('Move "$patientName" back to Waiting?'),
+                      content: Text(
+                        '$patientName will be moved back to Waiting and doctor assignment will be removed.',
                       ),
                       actions: [
                         Button(
@@ -2487,7 +2686,27 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
           children: [
             Expanded(
               child: Button(
-                onPressed: () {
+                onPressed: () async {
+                  final shouldMove = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => ContentDialog(
+                      title: Text('Move "$patientName" back to Treatment?'),
+                      content: Text(
+                        'This appointment will be moved back to Treatment for $patientName.',
+                      ),
+                      actions: [
+                        Button(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('Move to Treatment'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (shouldMove != true) return;
                   appointment.checkinStage = 'with_doctor';
                   appointment.isDone = false;
                   appointments.set(appointment);
@@ -2507,7 +2726,10 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                       WidgetStateProperty.all(const Color(0xFF3B9A42)),
                 ),
                 onPressed: () async {
-                  final shouldComplete = await _confirmMoveToCompleted(context);
+                  final shouldComplete = await _confirmMoveToCompleted(
+                    context,
+                    appointment,
+                  );
                   if (!shouldComplete) return;
                   appointment.checkinStage = 'completed';
                   appointment.isDone = true;
@@ -3167,12 +3389,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   }
 
   Future<void> _moveBackToWaiting() async {
+    final patientName = _patientDisplayName(widget.appointment);
     final shouldMove = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
-        title: const Text('Move back to Waiting?'),
-        content: const Text(
-          'This patient will be moved back to Waiting and doctor assignment will be removed.',
+        title: Text('Move "$patientName" back to Waiting?'),
+        content: Text(
+          '$patientName will be moved back to Waiting and doctor assignment will be removed.',
         ),
         actions: [
           Button(
@@ -3195,12 +3418,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   }
 
   Future<void> _moveBackToWithDoctor() async {
+    final patientName = _patientDisplayName(widget.appointment);
     final shouldMove = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
-        title: const Text('Move back to Treatment?'),
+        title: Text('Move "$patientName" back to Treatment?'),
         content:
-            const Text('This patient will be moved back to Treatment stage.'),
+            Text('This patient will be moved back to Treatment stage for $patientName.'),
         actions: [
           Button(
             onPressed: () => Navigator.pop(context, false),
@@ -4331,7 +4555,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final status = outstanding <= 0 ? 'PAID' : 'DUE';
     final totalAfter =
         (double.tryParse(widget.paidController.text.trim()) ?? a.paid)
-            .clamp(0, double.infinity);
+        .clamp(0, double.infinity)
+        .toDouble();
     final visitDay = DateTime(a.date.year, a.date.month, a.date.day);
     final seenDoctorIds = appointments.present.values
         .where((row) {
@@ -4750,182 +4975,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
 
               final right = Padding(
                 padding: const EdgeInsets.all(4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Patient',
-                      style: TextStyle(
-                        color: Color(0xFF5A7397),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            a.title.trim().isEmpty
-                                ? 'Unnamed patient'
-                                : a.title,
-                            style: const TextStyle(
-                              color: Color(0xFF2D476D),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Download PDF',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.download,
-                              size: 18,
-                              color: Color(0xFF1459AD),
-                            ),
-                            onPressed: _downloadReceiptPdf,
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Share',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.share,
-                              size: 18,
-                              color: Color(0xFF7C3AED),
-                            ),
-                            onPressed: _openShareOptions,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Patient ID: ${a.patientID ?? '-'}',
-                      style: const TextStyle(color: Color(0xFF5A7397)),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Age: ${a.patient?.age ?? 0}${(a.patient?.gender == 1 ? 'M' : a.patient?.gender == 0 ? 'F' : '')}  • ${a.patient?.phone ?? ''}',
-                      style: const TextStyle(
-                        color: Color(0xFF6D84A8),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Doctor: ${doctorNames.isEmpty ? 'Unassigned' : doctorNames.join(', ')}',
-                      style: const TextStyle(
-                        color: Color(0xFFD6455D),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Divider(),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Treatment',
-                      style: TextStyle(
-                        color: Color(0xFF2D476D),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      a.selectedTreatments
-                              .where((t) => t.trim().isNotEmpty)
-                              .join(', ')
-                              .trim()
-                              .isEmpty
-                          ? '-'
-                          : a.selectedTreatments
-                              .where((t) => t.trim().isNotEmpty)
-                              .join(', '),
-                      style: const TextStyle(
-                        color: Color(0xFF5A7397),
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Divider(),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Billing Summary',
-                      style: TextStyle(
-                        color: Color(0xFF2D476D),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _summaryLine(
-                        'Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
-                    const SizedBox(height: 6),
-                    if (widget.discountEnabled) ...[
-                      _summaryLine(
-                        'Discount Applied',
-                        a.discount <= 0
-                            ? '-'
-                            : a.discountType == 'percent'
-                                ? '-${a.discount.toStringAsFixed(0)}%'
-                                : '-₹${a.discount.toStringAsFixed(0)}',
-                        valueColor: const Color(0xFFD6455D),
-                      ),
-                      _summaryLine(
-                        'Discounted Total',
-                        '₹${discountedTotal.toStringAsFixed(0)}',
-                        valueColor: const Color(0xFF1459AD),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    _summaryLine(
-                        'Already Paid', '₹${a.paid.toStringAsFixed(0)}'),
-                    _summaryLine(
-                      'Remaining Balance',
-                      '₹${outstanding.toStringAsFixed(0)}',
-                      valueColor: const Color(0xFFD6455D),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'After Payment',
-                      style: TextStyle(
-                        color: Color(0xFF2D476D),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _summaryLine(
-                        'Total Paid', '₹${totalAfter.toStringAsFixed(0)}'),
-                    _summaryLine(
-                      'Balance',
-                      '₹${(discountedTotal - totalAfter).clamp(0, double.infinity).toStringAsFixed(0)}',
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: status == 'PAID'
-                            ? const Color(0xFFDCFCE7)
-                            : const Color(0xFFFFF1F2),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          color: status == 'PAID'
-                              ? const Color(0xFF16A34A)
-                              : const Color(0xFFD6455D),
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: _CheckoutBillingSummaryPanel(
+                  appointment: a,
+                  discountEnabled: widget.discountEnabled,
+                  totalPaidOverride: totalAfter,
+                  onDownloadPdf: _downloadReceiptPdf,
+                  onShare: _openShareOptions,
+                  doctorNames: doctorNames,
                 ),
               );
 
@@ -4986,6 +5042,239 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       ),
     );
   }
+}
+
+class _CheckoutBillingSummaryPanel extends StatelessWidget {
+  final Appointment appointment;
+  final bool discountEnabled;
+  final double? totalPaidOverride;
+  final VoidCallback? onDownloadPdf;
+  final VoidCallback? onShare;
+  final List<String>? doctorNames;
+
+  const _CheckoutBillingSummaryPanel({
+    required this.appointment,
+    required this.discountEnabled,
+    this.totalPaidOverride,
+    this.onDownloadPdf,
+    this.onShare,
+    this.doctorNames,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final a = appointment;
+    final discountedTotal = a.discountType == 'percent'
+        ? (a.price - (a.price * a.discount / 100)).clamp(0, double.infinity)
+        : (a.price - a.discount).clamp(0, double.infinity);
+    final outstanding = (discountedTotal - a.paid).clamp(0, double.infinity);
+    final totalAfter =
+        (totalPaidOverride ?? a.paid).clamp(0, double.infinity).toDouble();
+    final status = outstanding <= 0 ? 'PAID' : 'DUE';
+    final resolvedDoctorNames = doctorNames ??
+        a.operators
+            .map((doctor) => doctor.title.trim())
+            .where((name) => name.isNotEmpty)
+            .toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Patient',
+          style: TextStyle(
+            color: Color(0xFF5A7397),
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                a.title.trim().isEmpty ? 'Unnamed patient' : a.title,
+                style: const TextStyle(
+                  color: Color(0xFF2D476D),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+            if (onDownloadPdf != null)
+              Tooltip(
+                message: 'Download PDF',
+                child: IconButton(
+                  icon: const Icon(
+                    FluentIcons.download,
+                    size: 18,
+                    color: Color(0xFF1459AD),
+                  ),
+                  onPressed: onDownloadPdf,
+                ),
+              ),
+            if (onShare != null)
+              Tooltip(
+                message: 'Share',
+                child: IconButton(
+                  icon: const Icon(
+                    FluentIcons.share,
+                    size: 18,
+                    color: Color(0xFF7C3AED),
+                  ),
+                  onPressed: onShare,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Patient ID: ${a.patientID ?? '-'}',
+          style: const TextStyle(color: Color(0xFF5A7397)),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Age: ${a.patient?.age ?? 0}${(a.patient?.gender == 1 ? 'M' : a.patient?.gender == 0 ? 'F' : '')}  • ${a.patient?.phone ?? ''}',
+          style: const TextStyle(
+            color: Color(0xFF6D84A8),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Doctor: ${resolvedDoctorNames.isEmpty ? 'Unassigned' : resolvedDoctorNames.join(', ')}',
+          style: const TextStyle(
+            color: Color(0xFFD6455D),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Divider(),
+        const SizedBox(height: 10),
+        const Text(
+          'Treatment',
+          style: TextStyle(
+            color: Color(0xFF2D476D),
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          a.selectedTreatments
+                  .where((t) => t.trim().isNotEmpty)
+                  .join(', ')
+                  .trim()
+                  .isEmpty
+              ? '-'
+              : a.selectedTreatments
+                  .where((t) => t.trim().isNotEmpty)
+                  .join(', '),
+          style: const TextStyle(
+            color: Color(0xFF5A7397),
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Divider(),
+        const SizedBox(height: 10),
+        const Text(
+          'Billing Summary',
+          style: TextStyle(
+            color: Color(0xFF2D476D),
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _checkoutSummaryLine('Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
+        const SizedBox(height: 6),
+        if (discountEnabled) ...[
+          _checkoutSummaryLine(
+            'Discount Applied',
+            a.discount <= 0
+                ? '-'
+                : a.discountType == 'percent'
+                    ? '-${a.discount.toStringAsFixed(0)}%'
+                    : '-₹${a.discount.toStringAsFixed(0)}',
+            valueColor: const Color(0xFFD6455D),
+          ),
+          _checkoutSummaryLine(
+            'Discounted Total',
+            '₹${discountedTotal.toStringAsFixed(0)}',
+            valueColor: const Color(0xFF1459AD),
+          ),
+          const SizedBox(height: 10),
+        ],
+        _checkoutSummaryLine('Already Paid', '₹${a.paid.toStringAsFixed(0)}'),
+        _checkoutSummaryLine(
+          'Remaining Balance',
+          '₹${outstanding.toStringAsFixed(0)}',
+          valueColor: const Color(0xFFD6455D),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'After Payment',
+          style: TextStyle(
+            color: Color(0xFF2D476D),
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _checkoutSummaryLine('Total Paid', '₹${totalAfter.toStringAsFixed(0)}'),
+        _checkoutSummaryLine(
+          'Balance',
+          '₹${(discountedTotal - totalAfter).clamp(0, double.infinity).toStringAsFixed(0)}',
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color:
+                status == 'PAID' ? const Color(0xFFDCFCE7) : const Color(0xFFFFF1F2),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            status,
+            style: TextStyle(
+              color: status == 'PAID'
+                  ? const Color(0xFF16A34A)
+                  : const Color(0xFFD6455D),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Widget _checkoutSummaryLine(String label, String value, {Color? valueColor}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF5A7397),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor ?? const Color(0xFF2D476D),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class EnhancedTeethPickerCard extends StatelessWidget {

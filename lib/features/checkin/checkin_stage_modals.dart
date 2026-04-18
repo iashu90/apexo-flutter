@@ -30,6 +30,20 @@ String normalizeCheckinStage(String rawStage) {
   }
 }
 
+String _stagePatientSummary(Appointment appointment) {
+  final name = appointment.title.trim().isEmpty
+      ? 'Unnamed patient'
+      : appointment.title.trim();
+  final age = appointment.patient?.age ?? 0;
+  final gender = appointment.patient?.gender == 1
+      ? 'M'
+      : appointment.patient?.gender == 0
+          ? 'F'
+          : '-';
+  final phone = appointment.patient?.phone.trim() ?? '';
+  return '$name • ${age}y • $gender • ${phone.isEmpty ? '-' : phone}';
+}
+
 class AssignDoctorModal {
   static Future<bool> show(
     BuildContext context,
@@ -39,6 +53,7 @@ class AssignDoctorModal {
     final pickedDoctorIds = await pickDoctorDialog(
       context,
       initialSelected: appointment.operatorsIDs,
+      subtitle: _stagePatientSummary(appointment),
     );
     if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return false;
 
