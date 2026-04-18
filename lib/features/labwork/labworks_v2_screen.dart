@@ -96,6 +96,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                         inLab: inLab,
                         ready: ready,
                         delivered: delivered,
+                    paymentFilter: _paymentFilter,
                         inLabCollapsed: _inLabCollapsed,
                         readyCollapsed: _readyCollapsed,
                         deliveredCollapsed: _deliveredCollapsed,
@@ -213,97 +214,199 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 390,
-                child: TextBox(
-                  textAlign: TextAlign.left,
-                  controller: _searchCtrl,
-                  placeholder: 'Search patient / phone / teeth / doctor',
-                  prefix: const Padding(
-                    padding: EdgeInsets.only(left: 10),
-                    child: Icon(
-                      FluentIcons.search,
-                      size: 12,
-                      color: Color(0xFF6B778C),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 1180) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 390,
+                      child: TextBox(
+                        textAlign: TextAlign.left,
+                        controller: _searchCtrl,
+                        placeholder: 'Search patient / phone / teeth / doctor',
+                        prefix: const Padding(
+                          padding: EdgeInsets.only(left: 10),
+                          child: Icon(
+                            FluentIcons.search,
+                            size: 12,
+                            color: Color(0xFF6B778C),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(width: 290, child: _buildMonthNavigator()),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 190,
+                      child: ComboBox<String>(
+                        value: _labFilter,
+                        items: labs
+                            .map(
+                              (v) => ComboBoxItem<String>(
+                                value: v,
+                                child: Text(
+                                  v == 'all'
+                                      ? 'All Labs'
+                                      : v == '__unassigned__'
+                                          ? 'Unassigned Lab'
+                                          : v,
+                                ),
+                              ),
+                            )
+                            .toList(growable: false),
+                        onChanged: (v) {
+                          if (v == null) return;
+                          setState(() => _labFilter = v);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _dropFilter(
+                      width: 150,
+                      value: _rangeFilter,
+                      items: const {
+                        'all': 'All Dates',
+                        'today': 'Today',
+                        'week': 'This Week',
+                        'last_month': 'Last Month',
+                        'month': 'This Month',
+                        'custom': 'Custom Date',
+                      },
+                      onChanged: (v) {
+                        if (v == 'custom') {
+                          _openDateRangePicker();
+                          return;
+                        }
+                        setState(() {
+                          _rangeFilter = v;
+                          if (v != 'custom') {
+                            _fromDate = null;
+                            _toDate = null;
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _dropFilter(
+                      width: 120,
+                      value: _paymentFilter,
+                      items: const {
+                        'all': 'All',
+                        'paid': 'Paid',
+                        'due': 'Due',
+                        'no_due': 'No Due',
+                      },
+                      onChanged: (v) => setState(() => _paymentFilter = v),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  flex: 4,
+                  child: TextBox(
+                    textAlign: TextAlign.left,
+                    controller: _searchCtrl,
+                    placeholder: 'Search patient / phone / teeth / doctor',
+                    prefix: const Padding(
+                      padding: EdgeInsets.only(left: 10),
+                      child: Icon(
+                        FluentIcons.search,
+                        size: 12,
+                        color: Color(0xFF6B778C),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 290,
-                child: _buildMonthNavigator(),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 190,
-                child: ComboBox<String>(
-                  value: _labFilter,
-                  items: labs
-                      .map(
-                        (v) => ComboBoxItem<String>(
-                          value: v,
-                          child: Text(
-                            v == 'all'
-                                ? 'All Labs'
-                                : v == '__unassigned__'
-                                    ? 'Unassigned Lab'
-                                    : v,
-                          ),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (v) {
-                    if (v == null) return;
-                    setState(() => _labFilter = v);
-                  },
+                Expanded(
+                  flex: 3,
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: SizedBox(width: 290, child: _buildMonthNavigator()),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              _dropFilter(
-                width: 150,
-                value: _rangeFilter,
-                items: const {
-                  'all': 'All Dates',
-                  'today': 'Today',
-                  'week': 'This Week',
-                  'last_month': 'Last Month',
-                  'month': 'This Month',
-                  'custom': 'Custom Date',
-                },
-                onChanged: (v) {
-                  if (v == 'custom') {
-                    _openDateRangePicker();
-                    return;
-                  }
-                  setState(() {
-                    _rangeFilter = v;
-                    if (v != 'custom') {
-                      _fromDate = null;
-                      _toDate = null;
-                    }
-                  });
-                },
-              ),
-              const SizedBox(width: 8),
-              _dropFilter(
-                width: 120,
-                value: _paymentFilter,
-                items: const {
-                  'all': 'All',
-                  'paid': 'Paid',
-                  'due': 'Due',
-                  'no_due': 'No Due',
-                },
-                onChanged: (v) => setState(() => _paymentFilter = v),
-              ),
-            ],
-          ),
+                Expanded(
+                  flex: 4,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        width: 190,
+                        child: ComboBox<String>(
+                          value: _labFilter,
+                          items: labs
+                              .map(
+                                (v) => ComboBoxItem<String>(
+                                  value: v,
+                                  child: Text(
+                                    v == 'all'
+                                        ? 'All Labs'
+                                        : v == '__unassigned__'
+                                            ? 'Unassigned Lab'
+                                            : v,
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: (v) {
+                            if (v == null) return;
+                            setState(() => _labFilter = v);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _dropFilter(
+                        width: 150,
+                        value: _rangeFilter,
+                        items: const {
+                          'all': 'All Dates',
+                          'today': 'Today',
+                          'week': 'This Week',
+                          'last_month': 'Last Month',
+                          'month': 'This Month',
+                          'custom': 'Custom Date',
+                        },
+                        onChanged: (v) {
+                          if (v == 'custom') {
+                            _openDateRangePicker();
+                            return;
+                          }
+                          setState(() {
+                            _rangeFilter = v;
+                            if (v != 'custom') {
+                              _fromDate = null;
+                              _toDate = null;
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      _dropFilter(
+                        width: 120,
+                        value: _paymentFilter,
+                        items: const {
+                          'all': 'All',
+                          'paid': 'Paid',
+                          'due': 'Due',
+                          'no_due': 'No Due',
+                        },
+                        onChanged: (v) => setState(() => _paymentFilter = v),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 8),
         Row(
@@ -751,6 +854,7 @@ class _LabworkBoard extends StatelessWidget {
   final List<Labwork> inLab;
   final List<Labwork> ready;
   final List<Labwork> delivered;
+  final String paymentFilter;
   final bool inLabCollapsed;
   final bool readyCollapsed;
   final bool deliveredCollapsed;
@@ -764,6 +868,7 @@ class _LabworkBoard extends StatelessWidget {
     required this.inLab,
     required this.ready,
     required this.delivered,
+    required this.paymentFilter,
     required this.inLabCollapsed,
     required this.readyCollapsed,
     required this.deliveredCollapsed,
@@ -785,6 +890,7 @@ class _LabworkBoard extends StatelessWidget {
           count: inLab.length,
           color: const Color(0xFFE4A11B),
           items: inLab,
+          hidePaymentStateLabel: paymentFilter == 'no_due',
           collapsed: inLabCollapsed,
           onToggle: onToggleInLab,
           onOpen: onOpen,
@@ -795,6 +901,7 @@ class _LabworkBoard extends StatelessWidget {
           count: ready.length,
           color: const Color(0xFF2D7BD8),
           items: ready,
+          hidePaymentStateLabel: paymentFilter == 'no_due',
           collapsed: readyCollapsed,
           onToggle: onToggleReady,
           onOpen: onOpen,
@@ -805,6 +912,7 @@ class _LabworkBoard extends StatelessWidget {
           count: delivered.length,
           color: const Color(0xFF2BA58D),
           items: delivered,
+          hidePaymentStateLabel: paymentFilter == 'no_due',
           collapsed: deliveredCollapsed,
           onToggle: onToggleDelivered,
           onOpen: onOpen,
@@ -833,6 +941,7 @@ class _LabworkBoard extends StatelessWidget {
                 count: inLab.length,
                 color: const Color(0xFFE4A11B),
                 items: inLab,
+                hidePaymentStateLabel: paymentFilter == 'no_due',
                 collapsed: inLabCollapsed,
                 onToggle: onToggleInLab,
                 onOpen: onOpen,
@@ -846,6 +955,7 @@ class _LabworkBoard extends StatelessWidget {
                 count: ready.length,
                 color: const Color(0xFF2D7BD8),
                 items: ready,
+                hidePaymentStateLabel: paymentFilter == 'no_due',
                 collapsed: readyCollapsed,
                 onToggle: onToggleReady,
                 onOpen: onOpen,
@@ -859,6 +969,7 @@ class _LabworkBoard extends StatelessWidget {
                 count: delivered.length,
                 color: const Color(0xFF2BA58D),
                 items: delivered,
+                hidePaymentStateLabel: paymentFilter == 'no_due',
                 collapsed: deliveredCollapsed,
                 onToggle: onToggleDelivered,
                 onOpen: onOpen,
@@ -877,6 +988,7 @@ class _LabworkBoardColumn extends StatelessWidget {
   final int count;
   final Color color;
   final List<Labwork> items;
+  final bool hidePaymentStateLabel;
   final bool collapsed;
   final VoidCallback onToggle;
   final void Function(Labwork?) onOpen;
@@ -887,6 +999,7 @@ class _LabworkBoardColumn extends StatelessWidget {
     required this.count,
     required this.color,
     required this.items,
+    required this.hidePaymentStateLabel,
     required this.collapsed,
     required this.onToggle,
     required this.onOpen,
@@ -958,6 +1071,7 @@ class _LabworkBoardColumn extends StatelessWidget {
                     children: [
                       _LabworkRow(
                         item: entry.value,
+                        hidePaymentStateLabel: hidePaymentStateLabel,
                         onOpen: onOpen,
                         onHistory: onHistory,
                       ),
@@ -1142,8 +1256,12 @@ class _DateSection extends StatelessWidget {
           ),
           if (!collapsed)
             ...items.map(
-              (item) =>
-                  _LabworkRow(item: item, onOpen: onOpen, onHistory: onHistory),
+              (item) => _LabworkRow(
+                item: item,
+                hidePaymentStateLabel: false,
+                onOpen: onOpen,
+                onHistory: onHistory,
+              ),
             ),
         ],
       ),
@@ -1153,11 +1271,13 @@ class _DateSection extends StatelessWidget {
 
 class _LabworkRow extends StatelessWidget {
   final Labwork item;
+  final bool hidePaymentStateLabel;
   final void Function(Labwork?) onOpen;
   final void Function(Labwork) onHistory;
 
   const _LabworkRow({
     required this.item,
+    required this.hidePaymentStateLabel,
     required this.onOpen,
     required this.onHistory,
   });
@@ -1258,14 +1378,15 @@ class _LabworkRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        Text(
-                          item.paid ? 'PAID' : 'DUE',
-                          style: TextStyle(
-                            color: dueColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                        if (!hidePaymentStateLabel)
+                          Text(
+                            item.paid ? 'PAID' : 'DUE',
+                            style: TextStyle(
+                              color: dueColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),

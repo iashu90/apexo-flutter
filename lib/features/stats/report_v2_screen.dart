@@ -14,8 +14,24 @@ import 'package:apexo/utils/indian_money.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 
-class ReportV2Screen extends StatelessWidget {
+class ReportV2Screen extends StatefulWidget {
   const ReportV2Screen({super.key});
+
+  @override
+  State<ReportV2Screen> createState() => _ReportV2ScreenState();
+}
+
+class _ReportV2ScreenState extends State<ReportV2Screen> {
+  bool _showHeavyCards = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(const Duration(milliseconds: 80), () {
+      if (!mounted) return;
+      setState(() => _showHeavyCards = true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,75 +79,85 @@ class ReportV2Screen extends StatelessWidget {
                     const SizedBox(height: 10),
                     _DailyRevenueTrendWindowCard(rows: allAppointments),
                     const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _MonthlyAppointmentsTrendWindowCard(
-                            rows: allAppointments,
+                    if (!_showHeavyCards)
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: List<Widget>.generate(
+                          10,
+                          (_) => SizedBox(
+                            width: twoColWidth,
+                            child: _ReportSkeletonCard(width: twoColWidth),
                           ),
+                          growable: false,
                         ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _MonthlyRevenueTrendWindowCard(
-                              rows: allAppointments),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _MonthlyExpensesTrendWindowCard(
-                              rows: allExpenses),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _MonthlyNetRevenueTrendWindowCard(
-                            appointmentsRows: allAppointments,
-                            expenseRows: allExpenses,
+                      )
+                    else
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _MonthlyAppointmentsTrendWindowCard(
+                              rows: allAppointments,
+                            ),
                           ),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _ReferralSourceDistributionCard(),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _MonthlyTreatmentDistributionCard(
-                            rows: allAppointments,
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _MonthlyRevenueTrendWindowCard(
+                                rows: allAppointments),
                           ),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _TrafficByTimeCard(rows: allAppointments),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _TrafficByDayCard(rows: allAppointments),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _DoctorActivityReportCard(rows: allAppointments),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _ReportDoctorAppointmentDoneCard(
-                            rows: allAppointments,
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _MonthlyExpensesTrendWindowCard(
+                                rows: allExpenses),
                           ),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _ReportGenderDistributionCard(rows: allAppointments),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _ReportAgeDistributionCard(rows: allAppointments),
-                        ),
-                        SizedBox(
-                          width: twoColWidth,
-                          child: _NewVsReturningCard(rows: allAppointments),
-                        ),
-                      ],
-                    ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _MonthlyNetRevenueTrendWindowCard(
+                              appointmentsRows: allAppointments,
+                              expenseRows: allExpenses,
+                            ),
+                          ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _ReferralSourceDistributionCard(),
+                          ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _MonthlyTreatmentDistributionCard(
+                              rows: allAppointments,
+                            ),
+                          ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _TrafficByTimeCard(rows: allAppointments),
+                          ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _TrafficByDayCard(rows: allAppointments),
+                          ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _ReportDoctorAppointmentDoneCard(
+                              rows: allAppointments,
+                            ),
+                          ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _ReportGenderDistributionCard(rows: allAppointments),
+                          ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _ReportAgeDistributionCard(rows: allAppointments),
+                          ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _NewVsReturningCard(rows: allAppointments),
+                          ),
+                        ],
+                      ),
                   ],
                 );
               },
@@ -139,6 +165,68 @@ class ReportV2Screen extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _ReportSkeletonCard extends StatelessWidget {
+  final double width;
+
+  const _ReportSkeletonCard({required this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: 220,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F7FC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 180,
+              height: 14,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE4ECF7),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              height: 10,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8EEF8),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              height: 10,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8EEF8),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: width * 0.5,
+              height: 10,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8EEF8),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -231,82 +319,6 @@ List<MapEntry<String, int>> _treatmentDistributionRows(
   final rows = counts.entries.toList(growable: false)
     ..sort((a, b) => b.value.compareTo(a.value));
   return rows.take(8).toList(growable: false);
-}
-
-class _DoctorActivityReportCard extends StatelessWidget {
-  final List<Appointment> rows;
-
-  const _DoctorActivityReportCard({required this.rows});
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-    final todayRows = rows
-        .where((a) => !a.date.isBefore(today) && a.date.isBefore(tomorrow))
-        .toList(growable: false);
-
-    final patients = <String>{
-      for (final appointment in todayRows)
-        if (appointment.patientID != null && appointment.patientID!.isNotEmpty)
-          appointment.patientID!,
-    }.length;
-
-    final gained =
-        todayRows.fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
-    final fee = todayRows.fold<double>(
-      0,
-      (sum, a) => sum + a.doctorPayableAmount,
-    );
-    final net = gained - fee;
-
-    return _ReportContainer(
-      title: 'Doctor Activity (Today)',
-      subtitle: DateFormat('dd MMM yyyy').format(today),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _metricPill('Patients', '$patients', const Color(0xFF2D7BD8)),
-          _metricPill(
-            'Gained',
-            formatIndianShortCurrency(gained),
-            const Color(0xFF2BA58D),
-          ),
-          _metricPill(
-            'Doctor Fee',
-            formatIndianShortCurrency(fee),
-            const Color(0xFFD6455D),
-          ),
-          _metricPill(
-            'Net',
-            formatIndianShortCurrency(net),
-            net >= 0 ? const Color(0xFF2BA58D) : const Color(0xFFD6455D),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _metricPill(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6FAFF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFDCE8F6)),
-      ),
-      child: Text(
-        '$label: $value',
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
 }
 
 class _ReportGenderDistributionCard extends StatelessWidget {
@@ -494,35 +506,114 @@ class _ReportDoctorAppointmentDoneCardState
             0,
             (sum, a) => sum + a.paid + a.prescriptionPaid,
           );
+          final hospitalGained = revenue - fee;
           return (
             doctor: doctor,
-            appointments: doctorRows.length,
             done: done,
+            appointments: doctorRows.length,
             fee: fee,
             revenue: revenue,
+            hospitalGained: hospitalGained,
           );
         })
         .whereType<({
           Doctor doctor,
-          int appointments,
           int done,
+          int appointments,
           double fee,
           double revenue,
+          double hospitalGained,
         })>()
         .toList(growable: false)
       ..sort((a, b) => b.done.compareTo(a.done));
 
+    final totalDone = rows.fold<int>(0, (s, r) => s + r.done);
+    final totalFee = rows.fold<double>(0, (s, r) => s + r.fee);
+    final totalHospital = rows.fold<double>(0, (s, r) => s + r.hospitalGained);
+
     return _ReportContainer(
       title: 'Appointments Done By Doctor',
+      trailing: Button(
+        onPressed: null,
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(FluentIcons.download, size: 12),
+            SizedBox(width: 6),
+            Text('Export'),
+          ],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _FilterChips(
-            selected: _range,
-            onChanged: (v) => setState(() => _range = v),
-            monthAnchor: _monthAnchor,
-            monthOptions: _monthOptions(widget.rows),
-            onMonthChanged: (value) => setState(() => _monthAnchor = value),
+          Row(
+            children: [
+              Expanded(
+                child: _summaryTile(
+                  value: '$totalDone',
+                  label: 'Appointments',
+                  color: const Color(0xFF2D7BD8),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _summaryTile(
+                  value: formatIndianShortCurrency(totalFee),
+                  label: 'Doctors Earned',
+                  color: const Color(0xFF2BA58D),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _summaryTile(
+                  value: formatIndianShortCurrency(totalHospital),
+                  label: 'Hospital Gained',
+                  color: const Color(0xFF2D7BD8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              SizedBox(
+                width: 200,
+                child: ComboBox<DateTime>(
+                  isExpanded: true,
+                  value: _monthAnchor,
+                  items: _monthOptions(widget.rows)
+                      .map(
+                        (m) => ComboBoxItem<DateTime>(
+                          value: m,
+                          child: Text(DateFormat('MMMM yyyy').format(m)),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() {
+                      _monthAnchor = v;
+                      _range = _RangeFilter.month;
+                    });
+                  },
+                ),
+              ),
+              const Spacer(),
+              Button(
+                onPressed: () => setState(() {
+                  _range = _range == _RangeFilter.month
+                      ? _RangeFilter.today
+                      : _RangeFilter.month;
+                }),
+                child: Icon(
+                  _range == _RangeFilter.month
+                      ? FluentIcons.chevron_up
+                      : FluentIcons.chevron_down,
+                  size: 12,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           if (rows.isEmpty)
@@ -531,55 +622,159 @@ class _ReportDoctorAppointmentDoneCardState
               style: TextStyle(color: Color(0xFF6D84A8)),
             )
           else
-            Column(
-              children: rows.take(12).map((row) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 4,
-                        child: Text(
-                          row.doctor.title,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF1F446E),
-                            fontWeight: FontWeight.w700,
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFDCE8F6)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEFF5FF),
+                    ),
+                    child: const Row(
+                      children: [
+                        Expanded(
+                          flex: 4,
+                          child: Text(
+                            'Doctor',
+                            style: TextStyle(
+                              color: Color(0xFF355279),
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          '${row.done}/${row.appointments}',
-                          style: const TextStyle(
-                            color: Color(0xFF1F2B40),
-                            fontWeight: FontWeight.w700,
+                        Expanded(
+                          child: Text(
+                            'Appointments',
+                            style: TextStyle(
+                              color: Color(0xFF355279),
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          formatIndianShortCurrency(row.fee),
-                          style: const TextStyle(
-                            color: Color(0xFFD6455D),
-                            fontWeight: FontWeight.w700,
+                        Expanded(
+                          child: Text(
+                            'Doctors Earned',
+                            style: TextStyle(
+                              color: Color(0xFF355279),
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          formatIndianShortCurrency(row.revenue),
-                          style: const TextStyle(
-                            color: Color(0xFF2BA58D),
-                            fontWeight: FontWeight.w700,
+                        Expanded(
+                          child: Text(
+                            'Hospital Gained',
+                            style: TextStyle(
+                              color: Color(0xFF355279),
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                );
-              }).toList(growable: false),
+                  ...rows.take(12).map((row) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 9,
+                      ),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Color(0xFFE2ECF8)),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 4,
+                            child: Text(
+                              row.doctor.title,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF1F446E),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              '${row.done}',
+                              style: const TextStyle(
+                                color: Color(0xFF1F2B40),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              formatIndianShortCurrency(row.fee),
+                              style: const TextStyle(
+                                color: Color(0xFF2BA58D),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              formatIndianShortCurrency(row.hospitalGained),
+                              style: const TextStyle(
+                                color: Color(0xFF2D7BD8),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryTile({
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F7FF),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDCE8F6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF4D6488),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );
