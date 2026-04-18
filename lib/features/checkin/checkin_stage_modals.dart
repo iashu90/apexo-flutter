@@ -109,12 +109,9 @@ class CheckinStageModalRouter {
     final stage = normalizeCheckinStage(appointment.checkinStage);
 
     if (stage == 'scheduled') {
-      final patientName = appointment.title.trim().isEmpty
-          ? 'Patient'
-          : appointment.title.trim();
       final shouldCheckin = await _showScheduledCheckinDialog(
         context,
-        patientName,
+        appointment,
       );
       if (shouldCheckin != true) return;
       appointment.checkinStage = 'waiting';
@@ -166,12 +163,16 @@ class CheckinStageModalRouter {
 
   static Future<bool?> _showScheduledCheckinDialog(
     BuildContext context,
-    String patientName,
+    Appointment appointment,
   ) {
+    final patientName = appointment.title.trim().isEmpty
+        ? 'Patient'
+        : appointment.title.trim();
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) => ContentDialog(
         title: Text('Checkin $patientName'),
+        content: Text(_stagePatientSummary(appointment)),
         actions: [
           Button(
             onPressed: () => Navigator.pop(dialogContext, false),
