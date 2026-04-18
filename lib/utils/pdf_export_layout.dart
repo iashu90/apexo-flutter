@@ -1,20 +1,51 @@
+import 'dart:typed_data';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+
+// PDF theme palette (single place for future color changes)
+final PdfColor pdfAccentColor = PdfColor.fromInt(0xFF1F4C86);
+final PdfColor pdfPrimaryTextColor = PdfColor.fromInt(0xFF2A405F);
+final PdfColor pdfSecondaryTextColor = PdfColor.fromInt(0xFF5E6B7A);
+final PdfColor pdfPageGrey = PdfColor.fromInt(0xFFF3F4F6);
+final PdfColor pdfCardGrey = PdfColor.fromInt(0xFFF7F8FA);
+final PdfColor pdfMutedGrey = PdfColor.fromInt(0xFFE8EBEF);
+
+pw.BoxDecoration exportPdfCardDecoration({
+  PdfColor? color,
+  double radius = 8,
+}) {
+  return pw.BoxDecoration(
+    color: color ?? pdfCardGrey,
+    borderRadius: pw.BorderRadius.circular(radius),
+  );
+}
+
+final pw.BoxDecoration exportPdfTableHeaderDecoration =
+    const pw.BoxDecoration(color: PdfColor.fromInt(0xFFEFF2F6));
+
+final pw.TextStyle exportPdfTableHeaderTextStyle = pw.TextStyle(
+  fontSize: 9,
+  color: PdfColor.fromInt(0xFF4C5B6B),
+  fontWeight: pw.FontWeight.bold,
+);
+
+final pw.TextStyle exportPdfTableCellTextStyle = const pw.TextStyle(
+  fontSize: 9,
+  color: PdfColor.fromInt(0xFF4C5B6B),
+);
 
 pw.Widget exportPdfHeader(
   pw.Context context, {
   required String title,
   String? subtitle,
+  Uint8List? logoBytes,
 }) {
   final safeSubtitle = (subtitle ?? '').trim();
   return pw.Container(
     margin: const pw.EdgeInsets.only(bottom: 12),
-    padding: const pw.EdgeInsets.only(bottom: 10),
-    decoration: const pw.BoxDecoration(
-      border: pw.Border(
-        bottom: pw.BorderSide(color: PdfColors.blueGrey300, width: 0.8),
-      ),
-    ),
+    padding: const pw.EdgeInsets.fromLTRB(10, 9, 10, 10),
+    decoration: exportPdfCardDecoration(color: pdfCardGrey, radius: 10),
     child: pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -23,24 +54,35 @@ pw.Widget exportPdfHeader(
           child: pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Container(
-                width: 30,
-                height: 30,
-                alignment: pw.Alignment.center,
-                decoration: pw.BoxDecoration(
-                  color: PdfColor.fromInt(0xFFEAF2FF),
-                  borderRadius: pw.BorderRadius.circular(6),
-                  border: pw.Border.all(color: PdfColor.fromInt(0xFFD0E0F7)),
-                ),
-                child: pw.Text(
-                  'DN',
-                  style: pw.TextStyle(
-                    fontSize: 11,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColor.fromInt(0xFF1D4D8A),
+              if (logoBytes != null)
+                pw.ClipRRect(
+                  horizontalRadius: 6,
+                  verticalRadius: 6,
+                  child: pw.Image(
+                    pw.MemoryImage(logoBytes),
+                    width: 32,
+                    height: 32,
+                    fit: pw.BoxFit.cover,
+                  ),
+                )
+              else
+                pw.Container(
+                  width: 32,
+                  height: 32,
+                  alignment: pw.Alignment.center,
+                  decoration: pw.BoxDecoration(
+                    color: pdfMutedGrey,
+                    borderRadius: pw.BorderRadius.circular(6),
+                  ),
+                  child: pw.Text(
+                    'DN',
+                    style: pw.TextStyle(
+                      fontSize: 11,
+                      fontWeight: pw.FontWeight.bold,
+                      color: pdfAccentColor,
+                    ),
                   ),
                 ),
-              ),
               pw.SizedBox(width: 8),
               pw.Expanded(
                 child: pw.Column(
@@ -51,22 +93,22 @@ pw.Widget exportPdfHeader(
                       style: pw.TextStyle(
                         fontSize: 13,
                         fontWeight: pw.FontWeight.bold,
-                        color: PdfColor.fromInt(0xFF1F4C86),
+                        color: pdfAccentColor,
                       ),
                     ),
                     pw.SizedBox(height: 2),
                     pw.Text(
                       '15, Kamaraj St, Senthamarai Nagar, Muthialpet, Puducherry - 605003',
-                      style: const pw.TextStyle(
+                      style: pw.TextStyle(
                         fontSize: 8,
-                        color: PdfColors.blueGrey700,
+                        color: pdfSecondaryTextColor,
                       ),
                     ),
                     pw.Text(
                       'drnowfardental.in  |  +91 89035 61075',
-                      style: const pw.TextStyle(
+                      style: pw.TextStyle(
                         fontSize: 8,
-                        color: PdfColors.blueGrey700,
+                        color: pdfSecondaryTextColor,
                       ),
                     ),
                   ],
@@ -83,16 +125,16 @@ pw.Widget exportPdfHeader(
               title,
               style: pw.TextStyle(
                 fontSize: 9,
-                color: PdfColors.blueGrey700,
+                color: pdfSecondaryTextColor,
                 fontWeight: pw.FontWeight.bold,
               ),
             ),
             if (safeSubtitle.isNotEmpty)
               pw.Text(
                 safeSubtitle,
-                style: const pw.TextStyle(
+                style: pw.TextStyle(
                   fontSize: 8,
-                  color: PdfColors.blueGrey500,
+                  color: pdfSecondaryTextColor,
                 ),
               ),
           ],
@@ -111,11 +153,7 @@ pw.Widget exportPdfBillToSection({
   return pw.Container(
     width: double.infinity,
     padding: const pw.EdgeInsets.all(12),
-    decoration: pw.BoxDecoration(
-      border: pw.Border.all(color: PdfColors.grey300),
-      borderRadius: pw.BorderRadius.circular(8),
-      color: PdfColor.fromInt(0xFFF8FAFD),
-    ),
+    decoration: exportPdfCardDecoration(color: pdfCardGrey),
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -126,21 +164,21 @@ pw.Widget exportPdfBillToSection({
               'Bill To:',
               style: pw.TextStyle(
                 fontWeight: pw.FontWeight.bold,
-                color: PdfColor.fromInt(0xFF1F4C86),
+                color: pdfAccentColor,
                 fontSize: 12,
               ),
             ),
             pw.Container(
               padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: pw.BoxDecoration(
-                color: PdfColor.fromInt(0xFFEAF0FA),
+                color: pdfMutedGrey,
                 borderRadius: pw.BorderRadius.circular(10),
               ),
               child: pw.Text(
                 'Patient ID: $patientId',
-                style: const pw.TextStyle(
+                style: pw.TextStyle(
                   fontSize: 8,
-                  color: PdfColors.blueGrey700,
+                  color: pdfSecondaryTextColor,
                 ),
               ),
             ),
@@ -151,20 +189,20 @@ pw.Widget exportPdfBillToSection({
           patientName,
           style: pw.TextStyle(
             fontSize: 11,
-            color: PdfColor.fromInt(0xFF2A405F),
+            color: pdfPrimaryTextColor,
             fontWeight: pw.FontWeight.bold,
           ),
         ),
         pw.SizedBox(height: 2),
         pw.Text('Phone: $phone',
-            style: const pw.TextStyle(
+            style: pw.TextStyle(
               fontSize: 9,
-              color: PdfColors.blueGrey700,
+              color: pdfSecondaryTextColor,
             )),
         pw.Text('Doctor: $doctor',
-            style: const pw.TextStyle(
+            style: pw.TextStyle(
               fontSize: 9,
-              color: PdfColors.blueGrey700,
+              color: pdfSecondaryTextColor,
             )),
       ],
     ),
@@ -176,12 +214,8 @@ pw.Widget exportPdfFooter(pw.Context context) {
   final total = context.pagesCount;
   return pw.Container(
     margin: const pw.EdgeInsets.only(top: 12),
-    padding: const pw.EdgeInsets.only(top: 8),
-    decoration: const pw.BoxDecoration(
-      border: pw.Border(
-        top: pw.BorderSide(color: PdfColors.blueGrey300, width: 0.8),
-      ),
-    ),
+    padding: const pw.EdgeInsets.fromLTRB(10, 8, 10, 8),
+    decoration: exportPdfCardDecoration(color: pdfCardGrey, radius: 10),
     child: pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       crossAxisAlignment: pw.CrossAxisAlignment.end,
@@ -191,29 +225,38 @@ pw.Widget exportPdfFooter(pw.Context context) {
           children: [
             pw.Text(
               'Generated on ${DateTime.now().toIso8601String().substring(0, 10)}',
-              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+              style: pw.TextStyle(fontSize: 8, color: pdfSecondaryTextColor),
             ),
             pw.Text(
               'Page $page / $total',
-              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+              style: pw.TextStyle(fontSize: 8, color: pdfSecondaryTextColor),
             ),
           ],
         ),
         pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.end,
           children: [
+            pw.Text(
+              'Dr Nowfar Dental Clinic',
+              style: pw.TextStyle(
+                fontSize: 8,
+                color: pdfSecondaryTextColor,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 2),
             pw.Container(
               width: 130,
-              decoration: const pw.BoxDecoration(
+              decoration: pw.BoxDecoration(
                 border: pw.Border(
-                  bottom: pw.BorderSide(color: PdfColors.blueGrey300, width: 0.8),
+                  bottom: pw.BorderSide(color: pdfSecondaryTextColor, width: 0.6),
                 ),
               ),
             ),
             pw.SizedBox(height: 2),
             pw.Text(
-              'Clinic Signature',
-              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+              'Signature Pad',
+              style: pw.TextStyle(fontSize: 8, color: pdfSecondaryTextColor),
             ),
           ],
         ),

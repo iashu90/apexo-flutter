@@ -543,7 +543,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         value: _money(revenueToday),
                       ),
                       _PaymentSessionCard(
-                        selectedDate: selectedDate,
                         onPreviousDate: () => _changeDate(-1),
                         onNextDate: () => _changeDate(1),
                         morningCash: morningCash,
@@ -1979,6 +1978,39 @@ class _NewReturningPatientsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget statLine(String label, int value, Color color) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF4F8FF),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFDCE7F6)),
+        ),
+        child: Row(
+          children: [
+            Text(
+              '$value',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: ConstrainedBox(
@@ -1996,45 +2028,16 @@ class _NewReturningPatientsCard extends StatelessWidget {
                       color: Color(0xFF496489),
                       fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      '$newPatients',
-                      style: const TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF2D7BD8)),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'New',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF2D7BD8),
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ],
+                const SizedBox(height: 6),
+                Expanded(
+                  child: statLine('New', newPatients, const Color(0xFF2D7BD8)),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      '$returningPatients',
-                      style: const TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF2BA58D)),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Returning',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF2BA58D),
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ],
+                Expanded(
+                  child: statLine(
+                    'Returning',
+                    returningPatients,
+                    const Color(0xFF2BA58D),
+                  ),
                 ),
               ],
             ),
@@ -3533,7 +3536,6 @@ class _TopDonutMetricCard extends StatelessWidget {
 }
 
 class _PaymentSessionCard extends StatelessWidget {
-  final DateTime selectedDate;
   final VoidCallback onPreviousDate;
   final VoidCallback onNextDate;
   final double morningCash;
@@ -3542,7 +3544,6 @@ class _PaymentSessionCard extends StatelessWidget {
   final double eveningUpi;
 
   const _PaymentSessionCard({
-    required this.selectedDate,
     required this.onPreviousDate,
     required this.onNextDate,
     required this.morningCash,
@@ -3644,14 +3645,6 @@ class _PaymentSessionCard extends StatelessWidget {
                   IconButton(
                     icon: const Icon(FluentIcons.chevron_left, size: 10),
                     onPressed: onPreviousDate,
-                  ),
-                  Text(
-                    DateFormat('dd MMM').format(selectedDate),
-                    style: const TextStyle(
-                      color: Color(0xFF355279),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
                   ),
                   IconButton(
                     icon: const Icon(FluentIcons.chevron_right, size: 10),

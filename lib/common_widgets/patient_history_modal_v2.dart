@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patient_report.dart';
@@ -9,6 +10,7 @@ import 'package:apexo/utils/pdf_export_layout.dart';
 import 'package:apexo/utils/share_actions.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -78,6 +80,11 @@ class PatientHistoryDialogV2 extends StatefulWidget {
 class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   static const int _maxRowsPerPdfExport = 120;
   static const Duration _pdfBuildTimeout = Duration(seconds: 45);
+  static const List<String> _pdfLogoPaths = [
+    'assets/images/drnowdentallogo.png',
+    'assets/drnowdentallogo.png',
+    'assets/images/logo.png',
+  ];
   final TextEditingController _searchController = TextEditingController();
   int _exportLogSequence = 0;
   String _query = '';
@@ -91,6 +98,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   bool _sortAscending = false;
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
+  Uint8List? _pdfLogoBytes;
 
   double _toAmount(String source) {
     return double.tryParse(source.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
@@ -323,32 +331,34 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
           subtitle: widget.patient.title.trim().isEmpty
               ? widget.patient.id
               : widget.patient.title,
+          logoBytes: _pdfLogoBytes,
         ),
         footer: exportPdfFooter,
         build: (context) => [
-          pw.Text(
-            'INVOICE / PAYMENT RECEIPT',
-            style: pw.TextStyle(fontSize: 21, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: exportPdfCardDecoration(color: pdfCardGrey),
+            child: pw.Text(
+              'INVOICE / PAYMENT RECEIPT',
+              style: pw.TextStyle(
+                fontSize: 17,
+                fontWeight: pw.FontWeight.bold,
+                color: pdfAccentColor,
+              ),
+            ),
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
           pw.Container(
             width: double.infinity,
             padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey300),
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
+            decoration: exportPdfCardDecoration(color: pdfCardGrey),
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text(
-                      'Dr. Nowfar Dental Clinic',
-                      style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
-                    ),
-                    pw.SizedBox(height: 4),
                     pw.Text('Patient ID: ${widget.patient.id}'),
                   ],
                 ),
@@ -362,7 +372,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
               ],
             ),
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
           exportPdfBillToSection(
             patientName: widget.patient.title.trim().isEmpty
                 ? 'Unnamed patient'
@@ -373,9 +383,11 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                 : widget.patient.phone,
             doctor: 'Dr Nowfar',
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            headerDecoration: exportPdfTableHeaderDecoration,
+            headerStyle: exportPdfTableHeaderTextStyle,
+            cellStyle: exportPdfTableCellTextStyle,
             headers: const [
               'Date',
               'Tooth',
@@ -403,21 +415,18 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                 )
                 .toList(growable: false),
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Expanded(
                 child: pw.Container(
                   padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.green50,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
+                  decoration: exportPdfCardDecoration(color: pdfCardGrey),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Payment Summary', style: pw.TextStyle(color: PdfColors.green800, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('Payment Summary', style: pw.TextStyle(color: pdfAccentColor, fontWeight: pw.FontWeight.bold)),
                       pw.SizedBox(height: 6),
                       pw.Text('Amount Paid: Rs ${totalPaid.toStringAsFixed(0)}'),
                       pw.Text('Outstanding: Rs ${outstanding.toStringAsFixed(0)}'),
@@ -430,10 +439,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
               pw.Expanded(
                 child: pw.Container(
                   padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.grey100,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
+                  decoration: exportPdfCardDecoration(color: pdfCardGrey),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
@@ -446,11 +452,13 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
               ),
             ],
           ),
-          pw.SizedBox(height: 12),
-          pw.Text('Payment History', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Text('Payment History', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: pdfPrimaryTextColor)),
           pw.SizedBox(height: 6),
           pw.TableHelper.fromTextArray(
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            headerDecoration: exportPdfTableHeaderDecoration,
+            headerStyle: exportPdfTableHeaderTextStyle,
+            cellStyle: exportPdfTableCellTextStyle,
             headers: const ['Date', 'For Service', 'Mode', 'Amount'],
             data: rows
                 .map(
@@ -730,9 +738,25 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   @override
   void initState() {
     super.initState();
+    _loadPdfLogoBytes();
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });
+  }
+
+  Future<void> _loadPdfLogoBytes() async {
+    for (final assetPath in _pdfLogoPaths) {
+      try {
+        final byteData = await rootBundle.load(assetPath);
+        if (!mounted) return;
+        setState(() {
+          _pdfLogoBytes = byteData.buffer.asUint8List();
+        });
+        return;
+      } catch (_) {
+        // Try next path.
+      }
+    }
   }
 
   @override

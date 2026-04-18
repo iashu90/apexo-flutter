@@ -183,14 +183,14 @@ Future<void> showDailyReminderModal(BuildContext context) async {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _InfoStrip(text: greetingStrip),
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 _SectionTitle(
                   icon: FluentIcons.calendar,
                   title: "Today's Appointments",
                   color: const Color(0xFFE8B242),
                   trailing: _CounterPill(value: '${todaysAppointments.length}'),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 _AppointmentsSummaryGrid(
                   complete: completeCount,
                   treatment: treatmentCount,
@@ -204,18 +204,20 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                     Navigator.pop(dialogContext);
                   },
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: 340,
                       child: _DoctorsAndChairsCard(
                         doctorsList: doctorCards,
                         todaysAppointments: todaysAppointments,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
+                    SizedBox(
+                      width: 340,
                       child: _LabFollowUpsCard(
                         labRows:
                             pendingLabworks.take(3).toList(growable: false),
@@ -226,28 +228,27 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                         },
                       ),
                     ),
+                    SizedBox(
+                      width: 340,
+                      child: _TomorrowScheduleCard(
+                        tomorrow: tomorrow,
+                        appointments: tomorrowAppointments,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 340,
+                      child: _AttentionList(
+                        rows: [
+                          '$noShowRiskCount no-show risk patient${noShowRiskCount == 1 ? '' : 's'} (past slot, not completed)',
+                          '$waitingOver15Count patient${waitingOver15Count == 1 ? '' : 's'} waiting > 15 min',
+                          '$missingPhoneCount patient${missingPhoneCount == 1 ? '' : 's'} missing phone number',
+                          '$treatmentPlanMissingCount patient${treatmentPlanMissingCount == 1 ? '' : 's'} without a treatment plan',
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                _TomorrowScheduleCard(
-                  tomorrow: tomorrow,
-                  appointments: tomorrowAppointments,
-                ),
-                const SizedBox(height: 14),
-                const _SectionTitle(
-                    icon: FluentIcons.warning,
-                    title: 'Attention Needed',
-                    color: Color(0xFFE8B242)),
-                const SizedBox(height: 8),
-                _AttentionList(
-                  rows: [
-                    '$noShowRiskCount no-show risk patient${noShowRiskCount == 1 ? '' : 's'} (past slot, not completed)',
-                    '$waitingOver15Count patient${waitingOver15Count == 1 ? '' : 's'} waiting > 15 min',
-                    '$missingPhoneCount patient${missingPhoneCount == 1 ? '' : 's'} missing phone number',
-                    '$treatmentPlanMissingCount patient${treatmentPlanMissingCount == 1 ? '' : 's'} without a treatment plan',
-                  ],
-                ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     const Spacer(),

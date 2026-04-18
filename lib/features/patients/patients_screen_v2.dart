@@ -3449,18 +3449,6 @@ class _AllPatientsListCard extends StatelessWidget {
                           ),
                         ),
                         Expanded(
-                          flex: 16,
-                          child: _SortableHead(
-                            flex: 16,
-                            label: 'Paid So Far',
-                            keyName: 'paidSoFar',
-                            current: sortBy,
-                            ascending: sortAscending,
-                            onSort: onSort,
-                            onDark: isHeaderHighlighted,
-                          ),
-                        ),
-                        Expanded(
                           flex: 18,
                           child: Text(
                             'Treatments',
@@ -3470,6 +3458,18 @@ class _AllPatientsListCard extends StatelessWidget {
                                   ? Colors.white
                                   : const Color(0xFF2C4468),
                             ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 16,
+                          child: _SortableHead(
+                            flex: 16,
+                            label: 'Paid So Far',
+                            keyName: 'paidSoFar',
+                            current: sortBy,
+                            ascending: sortAscending,
+                            onSort: onSort,
+                            onDark: isHeaderHighlighted,
                           ),
                         ),
                         _SortableHead(
@@ -3615,16 +3615,6 @@ class _AllPatientsListCard extends StatelessWidget {
                                     ),
                                     Expanded(
                                       flex: 16,
-                                      child: Text(
-                                        '₹${paidSoFar.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF1459AD),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 16,
                                       child: Tooltip(
                                         message: treatments.isEmpty
                                             ? 'No treatments'
@@ -3640,6 +3630,16 @@ class _AllPatientsListCard extends StatelessWidget {
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                           ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 16,
+                                      child: Text(
+                                        '₹${paidSoFar.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF1459AD),
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ),

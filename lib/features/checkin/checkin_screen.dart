@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
@@ -3905,6 +3906,13 @@ class _CheckoutPaymentCard extends StatefulWidget {
 
 class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   static const Duration _receiptPdfBuildTimeout = Duration(seconds: 30);
+  static const String _preferredPdfLogoPath =
+      'assets/images/drnowdentallogo.png';
+  static const List<String> _pdfLogoFallbackPaths = [
+    _preferredPdfLogoPath,
+    'assets/drnowdentallogo.png',
+    'assets/images/logo.png',
+  ];
   String _paymentMode = 'Cash';
   final TextEditingController _consultantChargeController =
       TextEditingController();
@@ -3915,6 +3923,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   String _discountMode = 'flat';
   double _basePrice = 0;
   String? _selectedConsultantDoctorId;
+  Uint8List? _pdfLogoBytes;
 
   @override
   void initState() {
@@ -3926,6 +3935,22 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     _selectedConsultantDoctorId = a.consultantDoctorID;
     _consultantChargeController.text =
         a.priceToPayDoctor <= 0 ? '' : a.priceToPayDoctor.toStringAsFixed(0);
+    _loadPdfLogoBytes();
+  }
+
+  Future<void> _loadPdfLogoBytes() async {
+    for (final assetPath in _pdfLogoFallbackPaths) {
+      try {
+        final byteData = await rootBundle.load(assetPath);
+        if (!mounted) return;
+        setState(() {
+          _pdfLogoBytes = byteData.buffer.asUint8List();
+        });
+        return;
+      } catch (_) {
+        // Try next configured path.
+      }
+    }
   }
 
   @override
@@ -4106,40 +4131,34 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
           context,
           title: 'Payment Receipt',
           subtitle: 'Check-in billing export',
+          logoBytes: _pdfLogoBytes,
         ),
         footer: exportPdfFooter,
         build: (context) => [
-          pw.Text(
-            'INVOICE / PAYMENT RECEIPT',
-            style: pw.TextStyle(
-              fontSize: 21,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.blue900,
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: exportPdfCardDecoration(color: pdfCardGrey),
+            child: pw.Text(
+              'INVOICE / PAYMENT RECEIPT',
+              style: pw.TextStyle(
+                fontSize: 17,
+                fontWeight: pw.FontWeight.bold,
+                color: pdfAccentColor,
+              ),
             ),
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
           pw.Container(
             width: double.infinity,
             padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey300),
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
+            decoration: exportPdfCardDecoration(color: pdfCardGrey),
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text(
-                      'Dr Nowfar Dental Clinic',
-                      style: pw.TextStyle(
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue900,
-                      ),
-                    ),
-                    pw.SizedBox(height: 3),
                     pw.Text('Patient ID: ${a.patientID ?? '-'}'),
                   ],
                 ),
@@ -4154,7 +4173,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               ],
             ),
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
           exportPdfBillToSection(
             patientName: a.title.trim().isEmpty ? 'Unnamed patient' : a.title,
             patientId: a.patientID ?? '-',
@@ -4163,10 +4182,11 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                 : patient!.phone.trim(),
             doctor: 'Dr Nowfar',
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
-            headerDecoration:
-                const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            headerDecoration: exportPdfTableHeaderDecoration,
+            headerStyle: exportPdfTableHeaderTextStyle,
+            cellStyle: exportPdfTableCellTextStyle,
             cellAlignment: pw.Alignment.centerLeft,
             headers: const ['Details', 'Description', 'Cost', 'Amount'],
             data: [
@@ -4178,24 +4198,21 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               ],
             ],
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Expanded(
                 child: pw.Container(
                   padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.green50,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
+                  decoration: exportPdfCardDecoration(color: pdfCardGrey),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(
                         'Payment Summary',
                         style: pw.TextStyle(
-                          color: PdfColors.green800,
+                          color: pdfAccentColor,
                           fontSize: 14,
                           fontWeight: pw.FontWeight.bold,
                         ),
@@ -4213,10 +4230,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               pw.Expanded(
                 child: pw.Container(
                   padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.grey100,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
+                  decoration: exportPdfCardDecoration(color: pdfCardGrey),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
@@ -4236,13 +4250,17 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               ),
             ],
           ),
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 8),
           pw.Text('Payment History',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              style: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+                color: pdfPrimaryTextColor,
+              )),
           pw.SizedBox(height: 6),
           pw.TableHelper.fromTextArray(
-            headerDecoration:
-                const pw.BoxDecoration(color: PdfColors.blueGrey50),
+            headerDecoration: exportPdfTableHeaderDecoration,
+            headerStyle: exportPdfTableHeaderTextStyle,
+            cellStyle: exportPdfTableCellTextStyle,
             headers: const ['Date', 'Reference', 'Mode', 'Amount'],
             data: [
               [
@@ -4263,8 +4281,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               pw.Text('Device: Reception',
                   style: const pw.TextStyle(fontSize: 10)),
               pw.Text('Dentice Regemens',
-                  style: const pw.TextStyle(fontSize: 10)),
-              pw.Text('Dr Nowfar Dental Clinic',
                   style: const pw.TextStyle(fontSize: 10)),
             ],
           ),

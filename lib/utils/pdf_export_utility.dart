@@ -44,10 +44,11 @@ Future<Uint8List> _buildPdfInIsolate(_PdfBuildParams params) async {
         if (hasRows)
           pw.TableHelper.fromTextArray(
             cellAlignment: pw.Alignment.centerLeft,
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            headerDecoration: exportPdfTableHeaderDecoration,
+            headerStyle: exportPdfTableHeaderTextStyle,
             headers: params.rows.first,
             data: params.rows.skip(1).toList(growable: false),
-            cellStyle: const pw.TextStyle(fontSize: 9),
+            cellStyle: exportPdfTableCellTextStyle,
           )
         else
           pw.Text('No data', style: const pw.TextStyle(fontSize: 10)),
