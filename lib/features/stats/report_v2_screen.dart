@@ -581,6 +581,7 @@ class _ReportDoctorAppointmentDoneCardState
     final totalDone = rows.fold<int>(0, (s, r) => s + r.done);
     final totalFee = rows.fold<double>(0, (s, r) => s + r.fee);
     final totalRevenue = rows.fold<double>(0, (s, r) => s + r.revenue);
+    final totalNet = rows.fold<double>(0, (s, r) => s + r.hospitalGained);
     final totalFeePct = totalRevenue <= 0 ? 0.0 : (totalFee / totalRevenue) * 100;
 
     return _ReportContainer(
@@ -611,6 +612,14 @@ class _ReportDoctorAppointmentDoneCardState
               const SizedBox(width: 8),
               Expanded(
                 child: _summaryTile(
+                  value: formatIndianShortCurrency(totalRevenue),
+                  label: 'Revenue',
+                  color: const Color(0xFF2D7BD8),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _summaryTile(
                   value: formatIndianShortCurrency(totalFee),
                   label: 'Doctor Fee',
                   color: const Color(0xFFD6455D),
@@ -619,8 +628,16 @@ class _ReportDoctorAppointmentDoneCardState
               const SizedBox(width: 8),
               Expanded(
                 child: _summaryTile(
+                  value: formatIndianShortCurrency(totalNet),
+                  label: 'Net',
+                  color: const Color(0xFF2BA58D),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _summaryTile(
                   value: '${totalFeePct.toStringAsFixed(1)}%',
-                  label: 'Percentage',
+                  label: '%',
                   color: const Color(0xFF355279),
                 ),
               ),
@@ -712,7 +729,7 @@ class _ReportDoctorAppointmentDoneCardState
                         ),
                         Expanded(
                           child: Text(
-                            'Doctor Fee',
+                            'Revenue',
                             style: TextStyle(
                               color: Color(0xFF355279),
                               fontWeight: FontWeight.w700,
@@ -721,7 +738,7 @@ class _ReportDoctorAppointmentDoneCardState
                         ),
                         Expanded(
                           child: Text(
-                            'Patient Fee',
+                            'Doctor Fee',
                             style: TextStyle(
                               color: Color(0xFF355279),
                               fontWeight: FontWeight.w700,
@@ -739,7 +756,7 @@ class _ReportDoctorAppointmentDoneCardState
                         ),
                         Expanded(
                           child: Text(
-                            'Percentage',
+                            '%',
                             style: TextStyle(
                               color: Color(0xFF355279),
                               fontWeight: FontWeight.w700,
@@ -784,18 +801,18 @@ class _ReportDoctorAppointmentDoneCardState
                           ),
                           Expanded(
                             child: Text(
-                              formatIndianShortCurrency(row.fee),
+                              formatIndianShortCurrency(row.revenue),
                               style: const TextStyle(
-                                color: Color(0xFFD6455D),
+                                color: Color(0xFF2D7BD8),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
                           Expanded(
                             child: Text(
-                              formatIndianShortCurrency(row.revenue),
+                              formatIndianShortCurrency(row.fee),
                               style: const TextStyle(
-                                color: Color(0xFF2D7BD8),
+                                color: Color(0xFFD6455D),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),

@@ -305,7 +305,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
       onAddPatient: _openAddPatientPopup,
       onOpenExisting: (existing) async {
         if (!mounted) return;
-        setState(() => _selectedAppointment = existing);
+        _selectAndOpenAppointment(existing);
       },
       onCheckInPatient: (patient) async {
         if (!mounted) return;
@@ -331,110 +331,201 @@ class _CheckinScreenState extends State<CheckinScreen> {
   Future<void> _openNextCheckinStepper(Appointment appointment) async {
     var currentStep = _stepIndexFromStage(appointment.checkinStage);
     const stages = ['waiting', 'with_doctor', 'checkout', 'completed'];
-    const labels = ['Scheduled / Waiting', 'Treatment', 'Billing', 'Completed'];
+    const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4'];
+    const subtitles = ['Waiting', 'Treatment', 'Billing', 'Completed'];
 
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setStateDialog) {
+          final screen = MediaQuery.of(context).size;
+          final dialogWidth = (screen.width - 30).clamp(760.0, 1020.0);
+          final panelHeight = (screen.height * 0.30).clamp(170.0, 280.0);
+
+          Widget stepNode(int index) {
+            final selected = index == currentStep;
+            final complete = index < currentStep;
+            return GestureDetector(
+              onTap: () => setStateDialog(() => currentStep = index),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? const Color(0xFF0A78F0)
+                          : complete
+                              ? const Color(0xFF0A78F0)
+                              : Colors.transparent,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: selected || complete
+                            ? const Color(0xFF0A78F0)
+                            : const Color(0xFFB8C2D1),
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        color: selected || complete
+                            ? Colors.white
+                            : const Color(0xFF5E6E85),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        labels[index],
+                        style: TextStyle(
+                          color: selected
+                              ? const Color(0xFF0A78F0)
+                              : const Color(0xFF233B5F),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        subtitles[index],
+                        style: const TextStyle(
+                          color: Color(0xFF7E8795),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }
+
+          Future<void> openSelectedStepModal() async {
+            appointment.checkinStage = stages[currentStep];
+            appointment.isDone = currentStep == 3;
+            appointments.set(appointment);
+            await CheckinStageModalRouter.openForStage(
+              context: this.context,
+              appointment: appointment,
+              openTreatmentModal: openCheckinAppointmentModal,
+              openBillingModal: openCheckinAppointmentModal,
+              openCompleteModal: openCheckinAppointmentModal,
+            );
+            if (!mounted) return;
+            setStateDialog(() {
+              currentStep = _stepIndexFromStage(appointment.checkinStage);
+            });
+          }
+
           return ContentDialog(
-            title: const Text('Next Checkin (Stepper)'),
+            constraints: BoxConstraints(maxWidth: dialogWidth),
+            title: const Align(
+              alignment: Alignment.center,
+              child: Text('CupertinoStepper for Flutter'),
+            ),
             content: SizedBox(
-              width: 560,
+              width: dialogWidth - 40,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    appointment.title.trim().isEmpty
-                        ? 'Unnamed patient'
-                        : appointment.title,
-                    style: const TextStyle(
-                      color: Color(0xFF183A67),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: List.generate(labels.length, (index) {
+                        return Row(
+                          children: [
+                            stepNode(index),
+                            if (index < labels.length - 1)
+                              Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 12),
+                                width: 42,
+                                height: 1,
+                                color: const Color(0xFFC9D3E0),
+                              ),
+                          ],
+                        );
+                      }),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  ...List.generate(labels.length, (index) {
-                    final selected = index == currentStep;
-                    final complete = index < currentStep;
-                    return GestureDetector(
-                      onTap: () => setStateDialog(() => currentStep = index),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? const Color(0xFFEAF2FF)
-                              : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: selected
-                                ? const Color(0xFF2D7BD8)
-                                : const Color(0xFFD7E3F0),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    height: panelHeight,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8F9098),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          appointment.title.trim().isEmpty
+                              ? 'Unnamed patient'
+                              : _toTitleCase(appointment.title),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              complete
-                                  ? FluentIcons.completed
-                                  : selected
-                                      ? FluentIcons.radio_btn_on
-                                      : FluentIcons.radio_btn_off,
-                              size: 12,
-                              color: complete
-                                  ? const Color(0xFF16A34A)
-                                  : selected
-                                      ? const Color(0xFF2D7BD8)
-                                      : const Color(0xFF7A8FAE),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                labels[index],
-                                style: TextStyle(
-                                  color: const Color(0xFF27466F),
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 8),
+                        Text(
+                          'Selected: ${subtitles[currentStep]}',
+                          style: const TextStyle(
+                            color: Color(0xFFF5F8FE),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'This is the new check-in flow UI (parallel testing). Continue to open the selected section with the existing flow logic.',
+                          style: TextStyle(
+                            color: Color(0xFFE3ECF7),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Button(
+                          onPressed: openSelectedStepModal,
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateProperty.all(
+                              const Color(0xFFEAF2FF),
+                            ),
+                            foregroundColor: WidgetStateProperty.all(
+                              const Color(0xFF0A78F0),
+                            ),
+                          ),
+                          child: const Text('Open Selected Step Modal'),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
             actions: [
               Button(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Close'),
+                child: const Text('Cancel'),
               ),
               FilledButton(
                 onPressed: () async {
                   appointment.checkinStage = stages[currentStep];
-                  if (currentStep == 3) {
-                    appointment.isDone = true;
-                  }
+                  appointment.isDone = currentStep == 3;
                   appointments.set(appointment);
                   Navigator.pop(dialogContext);
-                  await CheckinStageModalRouter.openForStage(
-                    context: this.context,
-                    appointment: appointment,
-                    openTreatmentModal: openCheckinAppointmentModal,
-                    openBillingModal: openCheckinAppointmentModal,
-                    openCompleteModal: openCheckinAppointmentModal,
-                  );
                 },
-                child: const Text('Open Selected Section'),
+                child: const Text('Save Stage'),
               ),
             ],
           );
@@ -579,6 +670,20 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                   Text('Check-in'),
                                 ],
                               ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: Button(
+                              onPressed: filtered.isEmpty
+                                  ? null
+                                  : () {
+                                      final target =
+                                          _selectedAppointment ?? filtered.first;
+                                      _openNextCheckinStepper(target);
+                                    },
+                              child: const Text('New Checkin Flow'),
                             ),
                           ),
                         ],
