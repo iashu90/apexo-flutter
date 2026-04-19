@@ -3430,13 +3430,11 @@ class _TopDonutMetricCard extends StatelessWidget {
   final String title;
   final String centerValue;
   final List<_TopDonutSegment> segments;
-  final String Function(int value)? valueFormatter;
 
   const _TopDonutMetricCard({
     required this.title,
     required this.centerValue,
     required this.segments,
-    this.valueFormatter,
   });
 
   @override
@@ -3500,7 +3498,7 @@ class _TopDonutMetricCard extends StatelessWidget {
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      '${s.label} (${valueFormatter == null ? s.value.toString() : valueFormatter!(s.value)})',
+                                      '${s.label} (${s.value})',
                                       style: const TextStyle(
                                         color: Color(0xFF36557C),
                                         fontWeight: FontWeight.w600,

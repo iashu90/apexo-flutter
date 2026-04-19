@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:apexo/utils/pdf_export_layout.dart';
 
@@ -32,14 +31,14 @@ Future<Uint8List> _buildPdfInIsolate(_PdfBuildParams params) async {
   final hasRows = params.rows.length > 1;
   doc.addPage(
     pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
+      pageTheme: exportPdfPageTheme(),
       header: (context) => exportPdfHeader(
         context,
         title: params.title,
         subtitle: params.subtitle,
       ),
       footer: exportPdfFooter,
-      build: (context) => [
+      build: (context) => exportPdfBodyWithMargins([
         pw.SizedBox(height: 2),
         if (hasRows)
           pw.TableHelper.fromTextArray(
@@ -49,10 +48,14 @@ Future<Uint8List> _buildPdfInIsolate(_PdfBuildParams params) async {
             headers: params.rows.first,
             data: params.rows.skip(1).toList(growable: false),
             cellStyle: exportPdfTableCellTextStyle,
+            border: exportPdfTableBorder(),
+            rowDecoration: exportPdfTableRowDecoration,
           )
         else
           pw.Text('No data', style: const pw.TextStyle(fontSize: 10)),
-      ],
+        pw.SizedBox(height: 12),
+        exportPdfDoctorSignatureSection(),
+      ]),
     ),
   );
   return doc.save();
@@ -67,10 +70,10 @@ class PdfExportUtility {
     required String title,
     dynamic data,
     String? subtitle,
-  }) {
+  }) async {
+    await ensureExportPdfAssetsLoaded();
     final rows = _normalizeToRows(data);
-    return compute(
-      _buildPdfInIsolate,
+    return _buildPdfInIsolate(
       _PdfBuildParams(title: title, subtitle: subtitle, rows: rows),
     );
   }

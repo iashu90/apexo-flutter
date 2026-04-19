@@ -1,24 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:apexo/utils/pdf_export_layout.dart';
-import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-
-Future<Uint8List?> _loadLogoBytes() async {
-  const paths = [
-    'assets/images/drnowdentallogo.png',
-    'assets/drnowdentallogo.png',
-    'assets/images/logo.png',
-  ];
-  for (final path in paths) {
-    final file = File(path);
-    if (await file.exists()) {
-      return file.readAsBytes();
-    }
-  }
-  return null;
-}
 
 pw.Widget _summaryLine(String label, String value, {bool bold = false}) {
   return pw.Padding(
@@ -48,23 +31,22 @@ pw.Widget _summaryLine(String label, String value, {bool bold = false}) {
 }
 
 Future<void> main(List<String> args) async {
-  final logoBytes = await _loadLogoBytes();
   final now = DateTime.now();
   final invoiceId = 'VC-${now.millisecondsSinceEpoch % 10000}';
+  await ensureExportPdfAssetsLoaded();
 
   final doc = pw.Document();
+  final myPageTheme = exportPdfPageTheme(margin: const pw.EdgeInsets.all(0));
   doc.addPage(
     pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
-      margin: const pw.EdgeInsets.all(24),
+      pageTheme: myPageTheme,
       header: (context) => exportPdfHeader(
         context,
         title: 'Patient ID: DP-046',
         subtitle: 'Invoice ID: $invoiceId',
-        logoBytes: logoBytes,
       ),
       footer: exportPdfFooter,
-      build: (context) => [
+      build: (context) => exportPdfBodyWithMargins([
         pw.Container(
           width: double.infinity,
           padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -87,9 +69,12 @@ Future<void> main(List<String> args) async {
         ),
         pw.SizedBox(height: 8),
         pw.TableHelper.fromTextArray(
+          border: exportPdfTableBorder(width: 0.5),
+          headerPadding: const pw.EdgeInsets.symmetric(vertical: 16),
           headerDecoration: exportPdfTableHeaderDecoration,
           headerStyle: exportPdfTableHeaderTextStyle,
           cellStyle: exportPdfTableCellTextStyle,
+          rowDecoration: exportPdfTableRowDecoration,
           cellAlignment: pw.Alignment.centerLeft,
           headers: const ['Details', 'Description', 'Cost', 'Amount'],
           data: [
@@ -118,8 +103,8 @@ Future<void> main(List<String> args) async {
                     ),
                     pw.SizedBox(height: 6),
                     pw.Text('Amount Paid',
-                        style:
-                            pw.TextStyle(fontSize: 10, color: pdfSecondaryTextColor)),
+                        style: pw.TextStyle(
+                            fontSize: 10, color: pdfSecondaryTextColor)),
                     pw.Text('Rs 2250',
                         style: pw.TextStyle(
                             fontSize: 14,
@@ -127,8 +112,8 @@ Future<void> main(List<String> args) async {
                             color: pdfPrimaryTextColor)),
                     pw.SizedBox(height: 4),
                     pw.Text('Outstanding',
-                        style:
-                            pw.TextStyle(fontSize: 10, color: pdfSecondaryTextColor)),
+                        style: pw.TextStyle(
+                            fontSize: 10, color: pdfSecondaryTextColor)),
                     pw.Text('Rs 0',
                         style: pw.TextStyle(
                             fontSize: 12, color: pdfPrimaryTextColor)),
@@ -148,7 +133,7 @@ Future<void> main(List<String> args) async {
                           'PAID',
                           style: pw.TextStyle(
                             fontSize: 9,
-                            color: PdfColors.white,
+                            color: pdfWhiteColor,
                             fontWeight: pw.FontWeight.bold,
                           ),
                         ),
@@ -183,7 +168,7 @@ Future<void> main(List<String> args) async {
                             'Rs 2500',
                             style: pw.TextStyle(
                               fontSize: 11,
-                              color: PdfColors.white,
+                              color: pdfWhiteColor,
                               fontWeight: pw.FontWeight.bold,
                             ),
                           ),
@@ -211,6 +196,11 @@ Future<void> main(List<String> args) async {
         ),
         pw.SizedBox(height: 6),
         pw.TableHelper.fromTextArray(
+          border: exportPdfTableBorder(width: 0.7),
+          headerPadding: const pw.EdgeInsets.symmetric(vertical: 18),
+          cellPadding: const pw.EdgeInsets.symmetric(vertical: 10),
+          rowDecoration: exportPdfTableRowDecoration,
+          cellAlignment: pw.Alignment.center,
           headerDecoration: exportPdfTableHeaderDecoration,
           headerStyle: exportPdfTableHeaderTextStyle,
           cellStyle: exportPdfTableCellTextStyle,
@@ -246,7 +236,9 @@ Future<void> main(List<String> args) async {
             ],
           ),
         ),
-      ],
+        pw.SizedBox(height: 12),
+        exportPdfDoctorSignatureSection(),
+      ]),
     ),
   );
 
