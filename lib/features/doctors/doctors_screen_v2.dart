@@ -1136,9 +1136,10 @@ class _DoctorTodayDetailCard extends StatefulWidget {
 
 class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   final Set<String> _expandedDoctorIds = {};
+  bool _isExportingCsv = false;
+  bool _isExportingPdf = false;
 
-  @override
-  Widget build(BuildContext context) {
+  List<MapEntry<Doctor, List<Appointment>>> _doctorEntries() {
     final rowsByDoctor = <Doctor, List<Appointment>>{};
     for (final doctor in widget.doctors) {
       final doctorRows = widget.todaysAppointments
@@ -1159,6 +1160,144 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
             .toLowerCase()
             .compareTo(b.key.title.toLowerCase());
       });
+    return doctorEntries;
+  }
+
+  Future<void> _exportVisibleCsv() async {
+    if (_isExportingCsv) return;
+    final doctorEntries = _doctorEntries();
+    if (doctorEntries.isEmpty) return;
+
+    setState(() => _isExportingCsv = true);
+    try {
+      final rows = <List<String>>[
+        [
+          'Date',
+          'Doctor',
+          'Patient',
+          'Time',
+          'Treatment',
+          'Tooth/Area',
+          'Stage',
+          'Paid',
+          'Doctor Fee',
+          'Net',
+          'Status',
+        ],
+      ];
+
+      for (final entry in doctorEntries) {
+        final doctor = entry.key;
+        for (final appointment in entry.value) {
+          final end = appointment.date.add(const Duration(minutes: 40));
+          final treatment = appointment.selectedTreatments
+              .where((t) => t.trim().isNotEmpty)
+              .join(', ');
+          final tooth =
+              appointment.selectedTeeth.isEmpty ? '-' : appointment.selectedTeeth.first;
+          final stage = _stageLabel(appointment);
+          final paid = appointment.paid + appointment.prescriptionPaid;
+          final fee = appointment.doctorPayableAmount;
+          final net = paid - fee;
+
+          rows.add([
+            DateFormat('yyyy-MM-dd').format(appointment.date),
+            doctor.title.trim().isEmpty ? 'Unnamed doctor' : _doctorTitleCase(doctor.title),
+            appointment.title.trim().isEmpty
+                ? 'Unnamed patient'
+                : _doctorTitleCase(appointment.title),
+            '${DateFormat('hh:mm a').format(appointment.date)} - ${DateFormat('hh:mm a').format(end)}',
+            treatment.isEmpty ? '-' : treatment,
+            tooth,
+            stage,
+            paid.toStringAsFixed(0),
+            fee.toStringAsFixed(0),
+            net.toStringAsFixed(0),
+            paid > 0 ? 'Paid' : 'Free',
+          ]);
+        }
+      }
+
+      await CsvExportUtility.saveCsv(
+        rows: rows,
+        fileName:
+            'doctor_activity_${DateFormat('yyyyMMdd').format(widget.selectedDate)}.csv',
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingCsv = false);
+    }
+  }
+
+  Future<void> _exportVisiblePdf() async {
+    if (_isExportingPdf) return;
+    final doctorEntries = _doctorEntries();
+    if (doctorEntries.isEmpty) return;
+
+    setState(() => _isExportingPdf = true);
+    try {
+      final rows = <List<String>>[
+        [
+          'Date',
+          'Doctor',
+          'Patient',
+          'Time',
+          'Treatment',
+          'Tooth/Area',
+          'Stage',
+          'Paid',
+          'Doctor Fee',
+          'Net',
+          'Status',
+        ],
+      ];
+
+      for (final entry in doctorEntries) {
+        final doctor = entry.key;
+        for (final appointment in entry.value) {
+          final end = appointment.date.add(const Duration(minutes: 40));
+          final treatment = appointment.selectedTreatments
+              .where((t) => t.trim().isNotEmpty)
+              .join(', ');
+          final tooth =
+              appointment.selectedTeeth.isEmpty ? '-' : appointment.selectedTeeth.first;
+          final stage = _stageLabel(appointment);
+          final paid = appointment.paid + appointment.prescriptionPaid;
+          final fee = appointment.doctorPayableAmount;
+          final net = paid - fee;
+
+          rows.add([
+            DateFormat('yyyy-MM-dd').format(appointment.date),
+            doctor.title.trim().isEmpty ? 'Unnamed doctor' : _doctorTitleCase(doctor.title),
+            appointment.title.trim().isEmpty
+                ? 'Unnamed patient'
+                : _doctorTitleCase(appointment.title),
+            '${DateFormat('hh:mm a').format(appointment.date)} - ${DateFormat('hh:mm a').format(end)}',
+            treatment.isEmpty ? '-' : treatment,
+            tooth,
+            stage,
+            'Rs ${paid.toStringAsFixed(0)}',
+            'Rs ${fee.toStringAsFixed(0)}',
+            'Rs ${net.toStringAsFixed(0)}',
+            paid > 0 ? 'Paid' : 'Free',
+          ]);
+        }
+      }
+
+      await PdfExportUtility.savePdf(
+        title: 'Doctor Activity Export',
+        subtitle: DateFormat('dd MMM yyyy').format(widget.selectedDate),
+        data: rows,
+        fileName:
+            'doctor_activity_${DateFormat('yyyyMMdd').format(widget.selectedDate)}.pdf',
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingPdf = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final doctorEntries = _doctorEntries();
 
     final totalPatients = widget.todaysAppointments.length;
     final revenue = widget.todaysAppointments.fold<double>(
@@ -1204,6 +1343,20 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
+                ),
+                const SizedBox(width: 8),
+                Button(
+                  onPressed: (_isExportingCsv || doctorEntries.isEmpty)
+                      ? null
+                      : _exportVisibleCsv,
+                  child: Text(_isExportingCsv ? 'CSV...' : 'CSV'),
+                ),
+                const SizedBox(width: 8),
+                Button(
+                  onPressed: (_isExportingPdf || doctorEntries.isEmpty)
+                      ? null
+                      : _exportVisiblePdf,
+                  child: Text(_isExportingPdf ? 'PDF...' : 'PDF'),
                 ),
               ],
             ),
