@@ -10,6 +10,7 @@ final PdfColor pdfSecondaryTextColor = PdfColor.fromInt(0xFF5E6B7A);
 final PdfColor pdfPageGrey = PdfColor.fromInt(0xFFF3F4F6);
 final PdfColor pdfCardGrey = PdfColor.fromInt(0xFFF7F8FA);
 final PdfColor pdfMutedGrey = PdfColor.fromInt(0xFFE8EBEF);
+final PdfColor pdfGreenColor = PdfColor.fromInt(0xFF2B8B4A);
 
 pw.BoxDecoration exportPdfCardDecoration({
   PdfColor? color,
@@ -21,16 +22,16 @@ pw.BoxDecoration exportPdfCardDecoration({
   );
 }
 
-final pw.BoxDecoration exportPdfTableHeaderDecoration =
-    const pw.BoxDecoration(color: PdfColor.fromInt(0xFFEFF2F6));
+const pw.BoxDecoration exportPdfTableHeaderDecoration =
+    pw.BoxDecoration(color: PdfColor.fromInt(0xFFEFF2F6));
 
 final pw.TextStyle exportPdfTableHeaderTextStyle = pw.TextStyle(
   fontSize: 9,
-  color: PdfColor.fromInt(0xFF4C5B6B),
+  color: const PdfColor.fromInt(0xFF4C5B6B),
   fontWeight: pw.FontWeight.bold,
 );
 
-final pw.TextStyle exportPdfTableCellTextStyle = const pw.TextStyle(
+const pw.TextStyle exportPdfTableCellTextStyle = pw.TextStyle(
   fontSize: 9,
   color: PdfColor.fromInt(0xFF4C5B6B),
 );
@@ -252,11 +253,6 @@ pw.Widget exportPdfFooter(pw.Context context) {
                   bottom: pw.BorderSide(color: pdfSecondaryTextColor, width: 0.6),
                 ),
               ),
-            ),
-            pw.SizedBox(height: 2),
-            pw.Text(
-              'Signature Pad',
-              style: pw.TextStyle(fontSize: 8, color: pdfSecondaryTextColor),
             ),
           ],
         ),
