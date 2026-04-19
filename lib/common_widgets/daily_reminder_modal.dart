@@ -183,14 +183,14 @@ Future<void> showDailyReminderModal(BuildContext context) async {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _InfoStrip(text: greetingStrip),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 _SectionTitle(
                   icon: FluentIcons.calendar,
                   title: "Today's Appointments",
                   color: const Color(0xFFE8B242),
                   trailing: _CounterPill(value: '${todaysAppointments.length}'),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 2),
                 _AppointmentsSummaryGrid(
                   complete: completeCount,
                   treatment: treatmentCount,
@@ -204,10 +204,10 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                     Navigator.pop(dialogContext);
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 4,
+                  runSpacing: 4,
                   children: [
                     SizedBox(
                       width: 340,
@@ -248,7 +248,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     const Spacer(),

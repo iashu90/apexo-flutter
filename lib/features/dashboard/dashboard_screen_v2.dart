@@ -3625,7 +3625,7 @@ class _PaymentSessionCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 250, maxWidth: 320),
       child: SizedBox(
-        height: 140,
+        height: 170,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
