@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patient_report.dart';
@@ -10,9 +9,7 @@ import 'package:apexo/utils/pdf_export_layout.dart';
 import 'package:apexo/utils/share_actions.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 Future<void> showPatientHistoryDialogV2({
@@ -80,11 +77,6 @@ class PatientHistoryDialogV2 extends StatefulWidget {
 class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   static const int _maxRowsPerPdfExport = 120;
   static const Duration _pdfBuildTimeout = Duration(seconds: 45);
-  static const List<String> _pdfLogoPaths = [
-    'assets/images/drnowdentallogo.png',
-    'assets/drnowdentallogo.png',
-    'assets/images/logo.png',
-  ];
   final TextEditingController _searchController = TextEditingController();
   int _exportLogSequence = 0;
   String _query = '';
@@ -98,7 +90,6 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   bool _sortAscending = false;
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
-  Uint8List? _pdfLogoBytes;
 
   double _toAmount(String source) {
     return double.tryParse(source.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
@@ -126,7 +117,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     return '$prefix-${DateTime.now().millisecondsSinceEpoch}-$_exportLogSequence';
   }
 
-  void _logExport(String tag, String message, [Object? error, StackTrace? stackTrace]) {
+  void _logExport(String tag, String message,
+      [Object? error, StackTrace? stackTrace]) {
     debugPrint('[Export][$tag] $message');
     if (error != null) {
       debugPrint('[Export][$tag] ERROR: $error');
@@ -195,7 +187,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
 
         sink = tempFile.openWrite();
         final encodedLines = <List<int>>[
-          utf8.encode('Date,Tooth,Treatment,Doctor,Cost,Paid,Balance,Status,Mode\n'),
+          utf8.encode(
+              'Date,Tooth,Treatment,Doctor,Cost,Paid,Balance,Status,Mode\n'),
         ];
 
         for (var i = 0; i < rows.length; i++) {
@@ -223,7 +216,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
         }
         return;
       } catch (error, stackTrace) {
-        _logExport(logTag, 'CSV write attempt $attempt failed', error, stackTrace);
+        _logExport(
+            logTag, 'CSV write attempt $attempt failed', error, stackTrace);
         await sink?.close();
         if (attempt == maxAttempts) rethrow;
         await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
@@ -248,13 +242,15 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       IOSink? sink;
       try {
-        _logExport(logTag, 'PDF write attempt $attempt started: $target (${bytes.length} bytes)');
+        _logExport(logTag,
+            'PDF write attempt $attempt started: $target (${bytes.length} bytes)');
         if (await tempFile.exists()) {
           await tempFile.delete();
         }
 
         sink = tempFile.openWrite();
-        final stream = Stream<List<int>>.fromIterable(_chunkBytes(bytes, 128 * 1024));
+        final stream =
+            Stream<List<int>>.fromIterable(_chunkBytes(bytes, 128 * 1024));
         await sink.addStream(stream);
         if (progress.isCancelled) {
           _logExport(logTag, 'PDF write cancelled before flush');
@@ -274,7 +270,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
         }
         return;
       } catch (error, stackTrace) {
-        _logExport(logTag, 'PDF write attempt $attempt failed', error, stackTrace);
+        _logExport(
+            logTag, 'PDF write attempt $attempt failed', error, stackTrace);
         await sink?.close();
         if (attempt == maxAttempts) rethrow;
         await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
@@ -293,85 +290,42 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
       return 'Patient ${widget.patient.title} invoice details are currently unavailable.';
     }
     final patientName = widget.patient.title.trim().isEmpty
-      ? widget.patient.id
-      : widget.patient.title;
+        ? widget.patient.id
+        : widget.patient.title;
     final date = DateFormat('dd MMM yyyy').format(target.date);
 
-    return 
-      'Hello $patientName,\n\n'
-      'This is a message from Dr. Nowfar Dental Clinic. We are reaching out to provide a summary of your recent visit and confirm your next scheduled appointment.\n'
-      'Treatment Summary\n\n'
-      'Last Visit: $date ${DateFormat('hh:mm a').format(target.date)}\n'
-      'Treatment: ${target.treatment}\n'
-      'Notes/Follow-up: ${target.notes}\n\n'
-      'Cost: Rs ${target.cost.toStringAsFixed(0)}\n'
+    return 'Hello $patientName,\n\n'
+        'This is a message from Dr. Nowfar Dental Clinic. We are reaching out to provide a summary of your recent visit and confirm your next scheduled appointment.\n'
+        'Treatment Summary\n\n'
+        'Last Visit: $date ${DateFormat('hh:mm a').format(target.date)}\n'
+        'Treatment: ${target.treatment}\n'
+        'Notes/Follow-up: ${target.notes}\n\n'
+        'Cost: Rs ${target.cost.toStringAsFixed(0)}\n'
         'Paid: Rs ${target.paid.toStringAsFixed(0)}\n'
         'Balance: Rs ${target.balance.toStringAsFixed(0)}\n\n'
-      'Dr. Nowfar Dental Clinic\n'
-      'Address: 15, Kamaraj St, Senthamarai Nagar, Muthialpet, Puducherry, 605003, India\n'
-      'Phone: +91 89035 61075\n'
-      'Website: drnowfardental.in\n'
-      'Google Maps: https://maps.app.goo.gl/KJNqKbk3U9VujcCKA';
+        'Dr. Nowfar Dental Clinic\n'
+        'Address: 15, Kamaraj St, Senthamarai Nagar, Muthialpet, Puducherry, 605003, India\n'
+        'Phone: +91 89035 61075\n'
+        'Website: drnowfardental.in\n'
+        'Google Maps: https://maps.app.goo.gl/KJNqKbk3U9VujcCKA';
   }
 
   pw.Document _buildPdfDocument(List<_LedgerRowData> rows) {
-    final totalCost = rows.fold<double>(0, (sum, r) => sum + r.cost);
-    final totalPaid = rows.fold<double>(0, (sum, r) => sum + r.paid);
-    final outstanding = (totalCost - totalPaid).clamp(0, double.infinity);
     final firstRow = rows.isEmpty ? null : rows.first;
 
     final doc = pw.Document();
     doc.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        pageTheme: exportPdfPageTheme(),
         header: (context) => exportPdfHeader(
           context,
-          title: 'Patient Invoice / Payment Receipt',
+          title: 'Patient Invoice',
           subtitle: widget.patient.title.trim().isEmpty
               ? widget.patient.id
               : widget.patient.title,
-          logoBytes: _pdfLogoBytes,
         ),
         footer: exportPdfFooter,
-        build: (context) => [
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: exportPdfCardDecoration(color: pdfCardGrey),
-            child: pw.Text(
-              'INVOICE / PAYMENT RECEIPT',
-              style: pw.TextStyle(
-                fontSize: 17,
-                fontWeight: pw.FontWeight.bold,
-                color: pdfAccentColor,
-              ),
-            ),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.all(12),
-            decoration: exportPdfCardDecoration(color: pdfCardGrey),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('Patient ID: ${widget.patient.id}'),
-                  ],
-                ),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text('Invoice ID: VC-${DateTime.now().millisecondsSinceEpoch % 10000}'),
-                    pw.Text('Date: ${DateFormat('dd MMM yyyy').format(DateTime.now())}'),
-                  ],
-                ),
-              ],
-            ),
-          ),
+        build: (context) => exportPdfBodyWithMargins([
           pw.SizedBox(height: 8),
           exportPdfBillToSection(
             patientName: widget.patient.title.trim().isEmpty
@@ -388,15 +342,16 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             headerDecoration: exportPdfTableHeaderDecoration,
             headerStyle: exportPdfTableHeaderTextStyle,
             cellStyle: exportPdfTableCellTextStyle,
+            headerPadding: headerPadding,
+            cellPadding: cellPadding,
+            cellAlignment: pw.Alignment.center,
+            border: exportPdfTableBorder(),
+            rowDecoration: exportPdfTableRowDecoration,
             headers: const [
               'Date',
               'Tooth',
               'Treatment',
-              'Doctor',
               'Cost',
-              'Paid',
-              'Balance',
-              'Status',
               'Mode',
             ],
             data: rows
@@ -405,110 +360,48 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                     DateFormat('dd MMM yyyy').format(r.date),
                     r.tooth,
                     r.treatment,
-                    r.doctor,
                     'Rs ${r.cost.toStringAsFixed(0)}',
-                    'Rs ${r.paid.toStringAsFixed(0)}',
-                    'Rs ${r.balance.toStringAsFixed(0)}',
-                    r.status,
                     r.mode,
-                  ],
-                )
-                .toList(growable: false),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                child: pw.Container(
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: exportPdfCardDecoration(color: pdfCardGrey),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('Payment Summary', style: pw.TextStyle(color: pdfAccentColor, fontWeight: pw.FontWeight.bold)),
-                      pw.SizedBox(height: 6),
-                      pw.Text('Amount Paid: Rs ${totalPaid.toStringAsFixed(0)}'),
-                      pw.Text('Outstanding: Rs ${outstanding.toStringAsFixed(0)}'),
-                      pw.Text('Payment Status: ${outstanding <= 0 ? 'PAID' : 'DUE'}'),
-                    ],
-                  ),
-                ),
-              ),
-              pw.SizedBox(width: 10),
-              pw.Expanded(
-                child: pw.Container(
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: exportPdfCardDecoration(color: pdfCardGrey),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('Treatment Cost: Rs ${totalCost.toStringAsFixed(0)}'),
-                      pw.Text('Paid: Rs ${totalPaid.toStringAsFixed(0)}'),
-                      pw.Text('TOTAL: Rs ${totalCost.toStringAsFixed(0)}'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          pw.SizedBox(height: 8),
-          pw.Text('Payment History', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: pdfPrimaryTextColor)),
-          pw.SizedBox(height: 6),
-          pw.TableHelper.fromTextArray(
-            headerDecoration: exportPdfTableHeaderDecoration,
-            headerStyle: exportPdfTableHeaderTextStyle,
-            cellStyle: exportPdfTableCellTextStyle,
-            headers: const ['Date', 'For Service', 'Mode', 'Amount'],
-            data: rows
-                .map(
-                  (r) => [
-                    DateFormat('dd MMM yyyy').format(r.date),
-                    r.treatment,
-                    r.mode,
-                    'Rs ${r.paid.toStringAsFixed(0)}',
                   ],
                 )
                 .toList(growable: false),
           ),
           pw.SizedBox(height: 12),
           pw.Text('Notes: ${firstRow == null ? '-' : firstRow.notes}'),
-        ],
+          pw.SizedBox(height: 12),
+          exportPdfDoctorSignatureSection(),
+        ]),
       ),
     );
     return doc;
   }
 
   List<_LedgerRowData> get _allRows {
-    return widget.rows
-        .asMap()
-        .entries
-        .map((entry) {
-          final row = entry.value;
-            final modeRaw = row.treatmentPaymentMode.trim().isEmpty
-              ? (row.preceptionPaymentMode.trim().isEmpty
-                  ? 'Cash'
-                  : row.preceptionPaymentMode)
-              : row.treatmentPaymentMode;
-            final mode = _normalizeMode(modeRaw);
-          return _LedgerRowData(
-            id: '${row.date.millisecondsSinceEpoch}_${entry.key}',
-            date: row.date,
-            tooth: row.teeth.trim().isEmpty ? '-' : row.teeth,
-            treatment: row.treatment.trim().isEmpty ? '-' : row.treatment,
-            doctor: 'Dr Nowfar',
-            cost: _toAmount(row.cost),
-            paid: _toAmount(row.paid),
-            mode: mode,
-            notes: row.treatment.trim().isEmpty
-                ? 'No additional doctor notes.'
-                : 'Follow-up required based on treatment response.',
-            prescription: row.prescription.trim().isEmpty
-                ? 'No medicines listed.'
-                : row.prescription,
-          );
-        })
-        .toList(growable: false)
+    return widget.rows.asMap().entries.map((entry) {
+      final row = entry.value;
+      final modeRaw = row.treatmentPaymentMode.trim().isEmpty
+          ? (row.preceptionPaymentMode.trim().isEmpty
+              ? 'Cash'
+              : row.preceptionPaymentMode)
+          : row.treatmentPaymentMode;
+      final mode = _normalizeMode(modeRaw);
+      return _LedgerRowData(
+        id: '${row.date.millisecondsSinceEpoch}_${entry.key}',
+        date: row.date,
+        tooth: row.teeth.trim().isEmpty ? '-' : row.teeth,
+        treatment: row.treatment.trim().isEmpty ? '-' : row.treatment,
+        doctor: 'Dr Nowfar',
+        cost: _toAmount(row.cost),
+        paid: _toAmount(row.paid),
+        mode: mode,
+        notes: row.treatment.trim().isEmpty
+            ? 'No additional doctor notes.'
+            : 'Follow-up required based on treatment response.',
+        prescription: row.prescription.trim().isEmpty
+            ? 'No medicines listed.'
+            : row.prescription,
+      );
+    }).toList(growable: false)
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
@@ -570,7 +463,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
           result = a.tooth.toLowerCase().compareTo(b.tooth.toLowerCase());
           break;
         case 'treatment':
-          result = a.treatment.toLowerCase().compareTo(b.treatment.toLowerCase());
+          result =
+              a.treatment.toLowerCase().compareTo(b.treatment.toLowerCase());
           break;
         case 'doctor':
           result = a.doctor.toLowerCase().compareTo(b.doctor.toLowerCase());
@@ -639,7 +533,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             fileName: '${_fileStem()}.csv',
           );
 
-          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+          if (savePath == null ||
+              savePath.trim().isEmpty ||
+              progress.isCancelled) {
             _logExport(logTag, 'CSV export cancelled before write');
             return;
           }
@@ -659,7 +555,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
       );
     } catch (error, stackTrace) {
       _showExportError('CSV export failed', '$error');
-      _logExport('csv-ui', 'CSV export surfaced error to user', error, stackTrace);
+      _logExport(
+          'csv-ui', 'CSV export surfaced error to user', error, stackTrace);
     } finally {
       if (mounted) {
         setState(() => _isExportingCsv = false);
@@ -690,10 +587,13 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
               'PDF rows limited to $_maxRowsPerPdfExport from ${rows.length} to avoid memory crash',
             );
           }
+          await ensureExportPdfAssetsLoaded();
           progress.setProgress(0.2);
           List<int> bytes;
           try {
-            bytes = await _buildPdfDocument(pdfRows).save().timeout(_pdfBuildTimeout);
+            bytes = await _buildPdfDocument(pdfRows)
+                .save()
+                .timeout(_pdfBuildTimeout);
           } on TimeoutException {
             throw StateError(
               'PDF generation timed out. Please use CSV export for large histories or narrow the date range.',
@@ -707,7 +607,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             fileName: '${_fileStem()}.pdf',
           );
 
-          if (savePath == null || savePath.trim().isEmpty || progress.isCancelled) {
+          if (savePath == null ||
+              savePath.trim().isEmpty ||
+              progress.isCancelled) {
             _logExport(logTag, 'PDF export cancelled before write');
             return;
           }
@@ -727,7 +629,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
       );
     } catch (error, stackTrace) {
       _showExportError('PDF export failed', '$error');
-      _logExport('pdf-ui', 'PDF export surfaced error to user', error, stackTrace);
+      _logExport(
+          'pdf-ui', 'PDF export surfaced error to user', error, stackTrace);
     } finally {
       if (mounted) {
         setState(() => _isExportingPdf = false);
@@ -738,25 +641,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   @override
   void initState() {
     super.initState();
-    _loadPdfLogoBytes();
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });
-  }
-
-  Future<void> _loadPdfLogoBytes() async {
-    for (final assetPath in _pdfLogoPaths) {
-      try {
-        final byteData = await rootBundle.load(assetPath);
-        if (!mounted) return;
-        setState(() {
-          _pdfLogoBytes = byteData.buffer.asUint8List();
-        });
-        return;
-      } catch (_) {
-        // Try next path.
-      }
-    }
   }
 
   @override
@@ -819,7 +706,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                               displayInfoBar(
                                 dialogContext,
                                 builder: (ctx, close) => InfoBar(
-                                  title: const Text('Unable to open email client'),
+                                  title:
+                                      const Text('Unable to open email client'),
                                   severity: InfoBarSeverity.error,
                                   action: IconButton(
                                     icon: const Icon(FluentIcons.clear),
@@ -855,15 +743,15 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
     final modalWidth = screen.width < 900
-      ? screen.width * 0.99
-      : screen.width < 1500
-        ? screen.width * 0.95
-        : 1360.0;
+        ? screen.width * 0.99
+        : screen.width < 1500
+            ? screen.width * 0.95
+            : 1360.0;
     final modalHeight = screen.height * 0.92;
 
     final summaryRows = _allRows
-      .where((row) => !row.treatment.toLowerCase().startsWith('labwork:'))
-      .toList(growable: false);
+        .where((row) => !row.treatment.toLowerCase().startsWith('labwork:'))
+        .toList(growable: false);
     final totalCost = summaryRows.fold<double>(0, (s, r) => s + r.cost);
     final totalPaid = summaryRows.fold<double>(0, (s, r) => s + r.paid);
     final totalBalance = totalCost - totalPaid;
@@ -875,12 +763,11 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     final avatarText = widget.patient.title.trim().isEmpty
         ? 'P'
         : widget.patient.title.trim().substring(0, 1).toUpperCase();
-    final hasActiveFilters =
-      _statusFilter != 'All' ||
-      _modeFilter != 'All' ||
-      _dateRange != 'All' ||
-      _doctorFilter != 'All Doctors' ||
-      _query.isNotEmpty;
+    final hasActiveFilters = _statusFilter != 'All' ||
+        _modeFilter != 'All' ||
+        _dateRange != 'All' ||
+        _doctorFilter != 'All Doctors' ||
+        _query.isNotEmpty;
 
     return Container(
       width: modalWidth,
@@ -980,13 +867,19 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                       onPressed: () {},
                       child: const Text('Collect Payment'),
                     ),
-                    Button(onPressed: _openShareOptions, child: const Text('Share')),
                     Button(
-                      onPressed: _isExportingCsv || _isExportingPdf ? null : _exportCsv,
+                        onPressed: _openShareOptions,
+                        child: const Text('Share')),
+                    Button(
+                      onPressed: _isExportingCsv || _isExportingPdf
+                          ? null
+                          : _exportCsv,
                       child: const Text('CSV'),
                     ),
                     Button(
-                      onPressed: _isExportingCsv || _isExportingPdf ? null : _exportPdf,
+                      onPressed: _isExportingCsv || _isExportingPdf
+                          ? null
+                          : _exportPdf,
                       child: const Text('PDF'),
                     ),
                   ],
@@ -1018,10 +911,25 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _summaryCard('Total Treatment Cost', '₹${totalCost.toStringAsFixed(0)}', const Color(0xFF1459AD), const Color(0xFFF1F5FB)),
-                _summaryCard('Total Paid', '₹${totalPaid.toStringAsFixed(0)}', const Color(0xFF1E293B), const Color(0xFFF1FBF4)),
-                _summaryCard('Outstanding Balance', '₹${totalBalance.toStringAsFixed(0)}', const Color(0xFFDC2626), const Color(0xFFFFF3F3)),
-                _summaryCard('Payment Status', totalBalance <= 0 ? 'Paid' : 'Partially Paid', totalBalance <= 0 ? const Color(0xFF16A34A) : const Color(0xFFF59E0B), const Color(0xFFFFF8EF)),
+                _summaryCard(
+                    'Total Treatment Cost',
+                    '₹${totalCost.toStringAsFixed(0)}',
+                    const Color(0xFF1459AD),
+                    const Color(0xFFF1F5FB)),
+                _summaryCard('Total Paid', '₹${totalPaid.toStringAsFixed(0)}',
+                    const Color(0xFF1E293B), const Color(0xFFF1FBF4)),
+                _summaryCard(
+                    'Outstanding Balance',
+                    '₹${totalBalance.toStringAsFixed(0)}',
+                    const Color(0xFFDC2626),
+                    const Color(0xFFFFF3F3)),
+                _summaryCard(
+                    'Payment Status',
+                    totalBalance <= 0 ? 'Paid' : 'Partially Paid',
+                    totalBalance <= 0
+                        ? const Color(0xFF16A34A)
+                        : const Color(0xFFF59E0B),
+                    const Color(0xFFFFF8EF)),
               ],
             ),
           ),
@@ -1061,7 +969,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                     isExpanded: true,
                     value: _historyTab,
                     items: const [
-                      ComboBoxItem(value: 'treatments', child: Text('Treatments')),
+                      ComboBoxItem(
+                          value: 'treatments', child: Text('Treatments')),
                       ComboBoxItem(value: 'labs', child: Text('Labs')),
                     ],
                     onChanged: (v) {
@@ -1110,7 +1019,13 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                 const SizedBox(width: 6),
                 _combo(
                   value: _dateRange,
-                  values: const ['1 Month', '3 Months', '6 Months', '1 Year', 'All'],
+                  values: const [
+                    '1 Month',
+                    '3 Months',
+                    '6 Months',
+                    '1 Year',
+                    'All'
+                  ],
                   onChanged: (v) => setState(() => _dateRange = v),
                   width: 150,
                 ),
@@ -1153,22 +1068,40 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                         ? const Color(0xFFEAF2FF)
                         : Colors.transparent,
                     child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    child: Row(
-                      children: [
-                        Expanded(flex: 12, child: _sortableHead('Date', 'date')),
-                        Expanded(flex: 10, child: _sortableHead('Tooth', 'tooth')),
-                        Expanded(flex: 16, child: _sortableHead('Treatment', 'treatment')),
-                        Expanded(flex: 12, child: _sortableHead('Doctor', 'doctor')),
-                        Expanded(flex: 8, child: _sortableHead('Cost', 'cost')),
-                        Expanded(flex: 8, child: _sortableHead('Paid', 'paid')),
-                        Expanded(flex: 9, child: _sortableHead('Balance', 'balance')),
-                        Expanded(flex: 9, child: _sortableHead('Status', 'status')),
-                        Expanded(flex: 8, child: _sortableHead('Mode', 'mode')),
-                        const Expanded(flex: 14, child: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600))),
-                      ],
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                              flex: 12, child: _sortableHead('Date', 'date')),
+                          Expanded(
+                              flex: 10, child: _sortableHead('Tooth', 'tooth')),
+                          Expanded(
+                              flex: 16,
+                              child: _sortableHead('Treatment', 'treatment')),
+                          Expanded(
+                              flex: 12,
+                              child: _sortableHead('Doctor', 'doctor')),
+                          Expanded(
+                              flex: 8, child: _sortableHead('Cost', 'cost')),
+                          Expanded(
+                              flex: 8, child: _sortableHead('Paid', 'paid')),
+                          Expanded(
+                              flex: 9,
+                              child: _sortableHead('Balance', 'balance')),
+                          Expanded(
+                              flex: 9,
+                              child: _sortableHead('Status', 'status')),
+                          Expanded(
+                              flex: 8, child: _sortableHead('Mode', 'mode')),
+                          const Expanded(
+                              flex: 14,
+                              child: Text('Actions',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600))),
+                        ],
+                      ),
                     ),
-                  ),
                   ),
                   const Divider(size: 1),
                   Expanded(
@@ -1190,7 +1123,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                   });
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 10),
                                   color: index.isEven
                                       ? const Color(0xFFF9FBFF)
                                       : Colors.white,
@@ -1198,14 +1132,20 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                     children: [
                                       Expanded(
                                         flex: 12,
-                                        child: Text('📅 ${DateFormat('dd MMM yyyy').format(row.date)}'),
+                                        child: Text(
+                                            '📅 ${DateFormat('dd MMM yyyy').format(row.date)}'),
                                       ),
-                                      Expanded(flex: 10, child: Text('🦷 ${row.tooth}')),
-                                      Expanded(flex: 16, child: Text(row.treatment)),
-                                      Expanded(flex: 12, child: Text(row.doctor)),
+                                      Expanded(
+                                          flex: 10,
+                                          child: Text('🦷 ${row.tooth}')),
+                                      Expanded(
+                                          flex: 16, child: Text(row.treatment)),
+                                      Expanded(
+                                          flex: 12, child: Text(row.doctor)),
                                       Expanded(
                                         flex: 8,
-                                        child: Text('₹${row.cost.toStringAsFixed(0)}'),
+                                        child: Text(
+                                            '₹${row.cost.toStringAsFixed(0)}'),
                                       ),
                                       Expanded(
                                         flex: 8,
@@ -1234,11 +1174,15 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                         child: Align(
                                           alignment: Alignment.centerLeft,
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: statusColor.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(999),
-                                              border: Border.all(color: statusColor),
+                                              color: statusColor.withValues(
+                                                  alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              border: Border.all(
+                                                  color: statusColor),
                                             ),
                                             child: Text(
                                               row.status,
@@ -1266,7 +1210,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                             _actionIcon(
                                               icon: FluentIcons.share,
                                               tooltip: 'Share Invoice',
-                                              onTap: () => _openShareOptions(row),
+                                              onTap: () =>
+                                                  _openShareOptions(row),
                                             ),
                                           ],
                                         ),
@@ -1281,22 +1226,27 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                                   padding: const EdgeInsets.all(12),
                                   color: const Color(0xFFF3F7FC),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         'Treatment Details',
-                                        style: TextStyle(fontWeight: FontWeight.w700),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700),
                                       ),
                                       const SizedBox(height: 6),
                                       Text('Notes by doctor: ${row.notes}'),
                                       const SizedBox(height: 4),
-                                      Text('Medicines prescribed: ${row.prescription}'),
+                                      Text(
+                                          'Medicines prescribed: ${row.prescription}'),
                                       const SizedBox(height: 4),
-                                      const Text('Attachments: No files attached'),
+                                      const Text(
+                                          'Attachments: No files attached'),
                                       const SizedBox(height: 10),
                                       const Text(
                                         'Payment Breakdown',
-                                        style: TextStyle(fontWeight: FontWeight.w700),
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700),
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
@@ -1341,6 +1291,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     );
   }
 
+  // ignore: unused_element
   Widget _tabChip(String value, String label) {
     final selected = _historyTab == value;
     return GestureDetector(
@@ -1358,9 +1309,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
           color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected
-                ? const Color(0xFF2D7BD8)
-                : const Color(0xFFD2E1F2),
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD2E1F2),
           ),
         ),
         child: Text(
@@ -1385,7 +1334,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             label,
             style: TextStyle(
               fontWeight: FontWeight.w700,
-              color: selected ? const Color(0xFF1459AD) : const Color(0xFF334155),
+              color:
+                  selected ? const Color(0xFF1459AD) : const Color(0xFF334155),
             ),
           ),
           const SizedBox(width: 4),

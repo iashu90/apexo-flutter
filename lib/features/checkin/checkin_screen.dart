@@ -3906,13 +3906,6 @@ class _CheckoutPaymentCard extends StatefulWidget {
 
 class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   static const Duration _receiptPdfBuildTimeout = Duration(seconds: 30);
-  static const String _preferredPdfLogoPath =
-      'assets/images/drnowdentallogo.png';
-  static const List<String> _pdfLogoFallbackPaths = [
-    _preferredPdfLogoPath,
-    'assets/drnowdentallogo.png',
-    'assets/images/logo.png',
-  ];
   String _paymentMode = 'Cash';
   final TextEditingController _consultantChargeController =
       TextEditingController();
@@ -3923,7 +3916,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   String _discountMode = 'flat';
   double _basePrice = 0;
   String? _selectedConsultantDoctorId;
-  Uint8List? _pdfLogoBytes;
 
   @override
   void initState() {
@@ -3935,22 +3927,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     _selectedConsultantDoctorId = a.consultantDoctorID;
     _consultantChargeController.text =
         a.priceToPayDoctor <= 0 ? '' : a.priceToPayDoctor.toStringAsFixed(0);
-    _loadPdfLogoBytes();
-  }
-
-  Future<void> _loadPdfLogoBytes() async {
-    for (final assetPath in _pdfLogoFallbackPaths) {
-      try {
-        final byteData = await rootBundle.load(assetPath);
-        if (!mounted) return;
-        setState(() {
-          _pdfLogoBytes = byteData.buffer.asUint8List();
-        });
-        return;
-      } catch (_) {
-        // Try next configured path.
-      }
-    }
   }
 
   @override
@@ -4149,16 +4125,15 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final doc = pw.Document();
     doc.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        pageTheme: exportPdfPageTheme(),
         header: (context) => exportPdfHeader(
           context,
           title: 'Patient ID: ${a.patientID ?? "-"}',
-          subtitle: 'Invoice ID: VC-${DateTime.now().millisecondsSinceEpoch % 10000}',
-          logoBytes: _pdfLogoBytes,
+          subtitle:
+              'Invoice ID: VC-${DateTime.now().millisecondsSinceEpoch % 10000}',
         ),
         footer: exportPdfFooter,
-        build: (context) => [
+        build: (context) => exportPdfBodyWithMargins([
           pw.Container(
             width: double.infinity,
             padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -4188,6 +4163,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             headerStyle: exportPdfTableHeaderTextStyle,
             cellStyle: exportPdfTableCellTextStyle,
             cellAlignment: pw.Alignment.centerLeft,
+            border: exportPdfTableBorder(),
+            rowDecoration: exportPdfTableRowDecoration,
             headers: const ['Details', 'Description', 'Cost', 'Amount'],
             data: [
               [
@@ -4244,14 +4221,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           decoration: pw.BoxDecoration(
                             color: balance <= 0
                                 ? pdfGreenColor
-                                : PdfColor.fromInt(0xFFD4483B),
+                                : pdfDangerColor,
                             borderRadius: pw.BorderRadius.circular(4),
                           ),
                           child: pw.Text(
                             balance <= 0 ? 'PAID' : 'DUE',
                             style: pw.TextStyle(
                               fontSize: 9,
-                              color: PdfColors.white,
+                              color: pdfWhiteColor,
                               fontWeight: pw.FontWeight.bold,
                             ),
                           ),
@@ -4288,7 +4265,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                               'Rs ${discountedTotal.toStringAsFixed(0)}',
                               style: pw.TextStyle(
                                 fontSize: 11,
-                                color: PdfColors.white,
+                                color: pdfWhiteColor,
                                 fontWeight: pw.FontWeight.bold,
                               ),
                             ),
@@ -4331,6 +4308,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             headerDecoration: exportPdfTableHeaderDecoration,
             headerStyle: exportPdfTableHeaderTextStyle,
             cellStyle: exportPdfTableCellTextStyle,
+            border: exportPdfTableBorder(),
+            rowDecoration: exportPdfTableRowDecoration,
             headers: const ['Date', 'Reference', 'Mode', 'Amount'],
             data: [
               [
@@ -4377,7 +4356,9 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               ),
             ),
           ],
-        ],
+          pw.SizedBox(height: 12),
+          exportPdfDoctorSignatureSection(),
+        ]),
       ),
     );
     return doc;
@@ -4396,6 +4377,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         title: 'Preparing receipt PDF',
         task: (progress) async {
           _logReceiptExport(logTag, 'Receipt export started');
+          await ensureExportPdfAssetsLoaded();
           progress.setProgress(0.2);
           List<int> bytes;
           try {
