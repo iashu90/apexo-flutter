@@ -4,6 +4,8 @@ import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
+import 'package:apexo/utils/csv_export_utility.dart';
+import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
@@ -28,6 +30,8 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
   int _page = 1;
   String _sortBy = 'date';
   bool _sortAscending = false;
+  bool _isExportingCsv = false;
+  bool _isExportingPdf = false;
 
   static const int _pageSize = 10;
   static const List<String> _defaultExpenseCategories = [
@@ -112,7 +116,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
 
           return Column(
             children: [
-              _buildHeader(),
+              _buildHeader(filtered),
               const SizedBox(height: 10),
               _buildSummaryStrip(cards),
               const SizedBox(height: 10),
@@ -135,7 +139,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(List<Expense> rows) {
     return Row(
       children: [
         const Text(
@@ -147,6 +151,20 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
           ),
         ),
         const Spacer(),
+        Button(
+          onPressed: (_isExportingCsv || rows.isEmpty)
+              ? null
+              : () => _exportCsv(rows),
+          child: Text(_isExportingCsv ? 'CSV...' : 'CSV'),
+        ),
+        const SizedBox(width: 8),
+        Button(
+          onPressed: (_isExportingPdf || rows.isEmpty)
+              ? null
+              : () => _exportPdf(rows),
+          child: Text(_isExportingPdf ? 'PDF...' : 'PDF'),
+        ),
+        const SizedBox(width: 8),
         FilledButton(
           style: ButtonStyle(
             backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
@@ -164,6 +182,70 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
         ),
       ],
     );
+  }
+
+  Future<void> _exportCsv(List<Expense> rows) async {
+    if (_isExportingCsv || rows.isEmpty) return;
+    setState(() => _isExportingCsv = true);
+    try {
+      final csvRows = <List<String>>[
+        ['Date', 'Category', 'Amount', 'Paid', 'Doctor', 'Note'],
+        ...rows.map((expense) {
+          final category = expense.items.isEmpty ? '-' : expense.items.join(', ');
+          final doctor = expense.operators.isEmpty
+              ? '-'
+              : expense.operators.map((d) => d.title).join(', ');
+          return [
+            DateFormat('yyyy-MM-dd').format(expense.date),
+            category,
+            expense.amount.toStringAsFixed(0),
+            expense.paid ? 'Yes' : 'No',
+            doctor,
+            expense.note.trim().isEmpty ? '-' : expense.note.trim(),
+          ];
+        }),
+      ];
+
+      await CsvExportUtility.saveCsv(
+        rows: csvRows,
+        fileName: 'expenses_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv',
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingCsv = false);
+    }
+  }
+
+  Future<void> _exportPdf(List<Expense> rows) async {
+    if (_isExportingPdf || rows.isEmpty) return;
+    setState(() => _isExportingPdf = true);
+    try {
+      final pdfRows = <List<String>>[
+        ['Date', 'Category', 'Amount', 'Paid', 'Doctor', 'Note'],
+        ...rows.map((expense) {
+          final category = expense.items.isEmpty ? '-' : expense.items.join(', ');
+          final doctor = expense.operators.isEmpty
+              ? '-'
+              : expense.operators.map((d) => d.title).join(', ');
+          return [
+            DateFormat('yyyy-MM-dd').format(expense.date),
+            category,
+            'Rs ${expense.amount.toStringAsFixed(0)}',
+            expense.paid ? 'Yes' : 'No',
+            doctor,
+            expense.note.trim().isEmpty ? '-' : expense.note.trim(),
+          ];
+        }),
+      ];
+
+      await PdfExportUtility.savePdf(
+        title: 'Expenses Export',
+        subtitle: DateFormat('dd MMM yyyy').format(DateTime.now()),
+        data: pdfRows,
+        fileName: 'expenses_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingPdf = false);
+    }
   }
 
   Widget _buildSummaryStrip(List<_ExpenseSummaryCardData> cards) {
