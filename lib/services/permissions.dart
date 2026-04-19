@@ -105,21 +105,24 @@ class _Permissions extends ObservablePersistingObject {
   }
 
   bool canAccessByRouteIdentifier(String routeIdentifier) {
+    if (currentRole != UserRole.admin) {
+      return routeIdentifier == 'checkin';
+    }
+
     switch (routeIdentifier) {
       case 'doctors_v2':
-        return hasAccess(doctorsPermissionIndex);
+        return true;
       case 'labworks':
-        return hasAccess(labworksPermissionIndex) ||
-            hasAccess(doctorsPermissionIndex);
+        return true;
       case 'patients':
-        return hasAccess(patientsPermissionIndex);
+        return true;
       case 'calendar':
       case 'checkin':
-        return hasAccess(appointmentsPermissionIndex);
+        return true;
       case 'expenses':
-        return hasAccess(expensesPermissionIndex);
+        return true;
       case 'report_v2':
-        return hasAccess(statisticsPermissionIndex);
+        return true;
       default:
         return true;
     }
@@ -151,6 +154,23 @@ class _Permissions extends ObservablePersistingObject {
 
   void _refreshRoutes() {
     routes.allRoutes = routes.genAllRoutes();
+    final current = routes.currentRoute;
+    if (!current.accessible) {
+      final checkinIndex = routes.allRoutes.indexWhere(
+        (route) => route.identifier == 'checkin' && route.accessible,
+      );
+      if (checkinIndex >= 0) {
+        routes.currentRouteIndex(checkinIndex);
+        return;
+      }
+
+      final firstAccessibleIndex = routes.allRoutes.indexWhere(
+        (route) => route.accessible,
+      );
+      routes.currentRouteIndex(firstAccessibleIndex >= 0 ? firstAccessibleIndex : 0);
+      return;
+    }
+
     routes.currentRouteIndex(routes.currentRouteIndex());
   }
 

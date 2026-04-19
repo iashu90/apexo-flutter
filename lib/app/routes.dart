@@ -134,7 +134,7 @@ class _Routes {
           identifier: "dashboard",
           icon: FluentIcons.home,
           screen: DashboardScreenV2.new,
-          accessible: true,
+          accessible: permissions.canAccessByRouteIdentifier('dashboard'),
           navbarTitle: txt("home"),
           onSelect: () {
             chartsCtrl.resetSelected();
@@ -237,7 +237,7 @@ class _Routes {
           identifier: "data",
           icon: FluentIcons.database,
           screen: DataScreen.new,
-          accessible: true,
+          accessible: permissions.canAccessByRouteIdentifier('data'),
           onFooter: false,
           onSelect: () async {
             chartsCtrl.resetSelected();
@@ -252,7 +252,7 @@ class _Routes {
           identifier: "settings",
           icon: FluentIcons.settings,
           screen: SettingsScreen.new,
-          accessible: true,
+          accessible: permissions.canAccessByRouteIdentifier('settings'),
           onFooter: false,
           onSelect: () {
             globalSettings.synchronize();

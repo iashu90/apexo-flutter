@@ -7,6 +7,8 @@ import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
+import 'package:apexo/utils/csv_export_utility.dart';
+import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -42,6 +44,8 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
   bool _inLabCollapsed = false;
   bool _readyCollapsed = false;
   bool _deliveredCollapsed = false;
+  bool _isExportingCsv = false;
+  bool _isExportingPdf = false;
 
   @override
   void initState() {
@@ -84,7 +88,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
 
             return Column(
               children: [
-                _buildHeader(),
+                _buildHeader(filtered),
                 const SizedBox(height: 10),
                 _buildStatStrip(all, filtered),
                 const SizedBox(height: 10),
@@ -125,7 +129,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(List<Labwork> rows) {
     return Row(
       children: [
         const Text(
@@ -137,6 +141,20 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
           ),
         ),
         const Spacer(),
+        Button(
+          onPressed: (_isExportingCsv || rows.isEmpty)
+              ? null
+              : () => _exportCsv(rows),
+          child: Text(_isExportingCsv ? 'CSV...' : 'CSV'),
+        ),
+        const SizedBox(width: 8),
+        Button(
+          onPressed: (_isExportingPdf || rows.isEmpty)
+              ? null
+              : () => _exportPdf(rows),
+          child: Text(_isExportingPdf ? 'PDF...' : 'PDF'),
+        ),
+        const SizedBox(width: 8),
         Button(
           onPressed: () => showLabBulkUpdateDialog(context),
           child: const Row(
@@ -166,6 +184,78 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
         ),
       ],
     );
+  }
+
+  Future<void> _exportCsv(List<Labwork> rows) async {
+    if (_isExportingCsv || rows.isEmpty) return;
+    setState(() => _isExportingCsv = true);
+    try {
+      final csvRows = <List<String>>[
+        ['Date', 'Patient', 'Lab', 'Type', 'Teeth', 'Amount', 'Paid', 'Delivered'],
+        ...rows.map((item) {
+          final patient = item.patient?.title.trim().isNotEmpty == true
+              ? item.patient!.title
+              : 'Unnamed patient';
+          final delivered = item.deliveredToPatient
+              ? 'Delivered'
+              : (item.deliveredToDoctor ? 'Ready' : 'In Lab');
+          return [
+            DateFormat('yyyy-MM-dd').format(item.date),
+            patient,
+            item.lab.trim().isEmpty ? '-' : item.lab.trim(),
+            item.typeOfWork.trim().isEmpty ? '-' : item.typeOfWork.trim(),
+            item.selectedTeeth.isEmpty ? '-' : item.selectedTeeth.join(', '),
+            item.price.toStringAsFixed(0),
+            item.paid ? 'Yes' : 'No',
+            delivered,
+          ];
+        }),
+      ];
+
+      await CsvExportUtility.saveCsv(
+        rows: csvRows,
+        fileName: 'labwork_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv',
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingCsv = false);
+    }
+  }
+
+  Future<void> _exportPdf(List<Labwork> rows) async {
+    if (_isExportingPdf || rows.isEmpty) return;
+    setState(() => _isExportingPdf = true);
+    try {
+      final pdfRows = <List<String>>[
+        ['Date', 'Patient', 'Lab', 'Type', 'Teeth', 'Amount', 'Paid', 'Delivered'],
+        ...rows.map((item) {
+          final patient = item.patient?.title.trim().isNotEmpty == true
+              ? item.patient!.title
+              : 'Unnamed patient';
+          final delivered = item.deliveredToPatient
+              ? 'Delivered'
+              : (item.deliveredToDoctor ? 'Ready' : 'In Lab');
+          return [
+            DateFormat('yyyy-MM-dd').format(item.date),
+            patient,
+            item.lab.trim().isEmpty ? '-' : item.lab.trim(),
+            item.typeOfWork.trim().isEmpty ? '-' : item.typeOfWork.trim(),
+            item.selectedTeeth.isEmpty ? '-' : item.selectedTeeth.join(', '),
+            'Rs ${item.price.toStringAsFixed(0)}',
+            item.paid ? 'Yes' : 'No',
+            delivered,
+          ];
+        }),
+      ];
+
+      await PdfExportUtility.savePdf(
+        title: 'Labwork Export',
+        subtitle: DateFormat('dd MMM yyyy').format(DateTime.now()),
+        data: pdfRows,
+        fileName: 'labwork_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingPdf = false);
+    }
   }
 
   Widget _buildStatStrip(List<Labwork> all, List<Labwork> filtered) {

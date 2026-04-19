@@ -13,6 +13,8 @@ import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
+import 'package:apexo/utils/csv_export_utility.dart';
+import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:apexo/utils/appointment_analytics.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/utils/uuid.dart';
@@ -2203,6 +2205,60 @@ class _DoctorAppointmentDoneChartCardState
     extends State<_DoctorAppointmentDoneChartCard> {
   _DoctorDoneSortKey _sortKey = _DoctorDoneSortKey.appointments;
   bool _ascending = false;
+  bool _isExportingCsv = false;
+  bool _isExportingPdf = false;
+
+  Future<void> _exportCsv() async {
+    if (_isExportingCsv || widget.rows.isEmpty) return;
+    setState(() => _isExportingCsv = true);
+    try {
+      final rows = <List<String>>[
+        ['Doctor', 'Appointments', 'Doctor Fee', 'Revenue'],
+        ...widget.rows.map(
+          (row) => [
+            row.doctor.title,
+            row.totalCount.toString(),
+            row.consultFee.toStringAsFixed(0),
+            row.earned.toStringAsFixed(0),
+          ],
+        ),
+      ];
+      await CsvExportUtility.saveCsv(
+        rows: rows,
+        fileName:
+            'doctor_appointments_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv',
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingCsv = false);
+    }
+  }
+
+  Future<void> _exportPdf() async {
+    if (_isExportingPdf || widget.rows.isEmpty) return;
+    setState(() => _isExportingPdf = true);
+    try {
+      final rows = <List<String>>[
+        ['Doctor', 'Appointments', 'Doctor Fee', 'Revenue'],
+        ...widget.rows.map(
+          (row) => [
+            row.doctor.title,
+            row.totalCount.toString(),
+            'Rs ${row.consultFee.toStringAsFixed(0)}',
+            'Rs ${row.earned.toStringAsFixed(0)}',
+          ],
+        ),
+      ];
+      await PdfExportUtility.savePdf(
+        title: 'Doctor Appointments Export',
+        subtitle: DateFormat('dd MMM yyyy').format(DateTime.now()),
+        data: rows,
+        fileName:
+            'doctor_appointments_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingPdf = false);
+    }
+  }
 
   void _toggleSort(_DoctorDoneSortKey key) {
     setState(() {
@@ -2299,13 +2355,29 @@ class _DoctorAppointmentDoneChartCardState
                 ),
                 const Spacer(),
                 Button(
-                  onPressed: () {},
-                  child: const Row(
+                  onPressed: (_isExportingCsv || widget.rows.isEmpty)
+                      ? null
+                      : _exportCsv,
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(FluentIcons.download, size: 12),
-                      SizedBox(width: 6),
-                      Text('Export'),
+                      const Icon(FluentIcons.download, size: 12),
+                      const SizedBox(width: 6),
+                      Text(_isExportingCsv ? 'CSV...' : 'CSV'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Button(
+                  onPressed: (_isExportingPdf || widget.rows.isEmpty)
+                      ? null
+                      : _exportPdf,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(FluentIcons.download, size: 12),
+                      const SizedBox(width: 6),
+                      Text(_isExportingPdf ? 'PDF...' : 'PDF'),
                     ],
                   ),
                 ),
