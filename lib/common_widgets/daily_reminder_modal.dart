@@ -205,20 +205,21 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                   },
                 ),
                 const SizedBox(height: 4),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: [
-                    SizedBox(
-                      width: 340,
-                      child: _DoctorsAndChairsCard(
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isTwoColumn = constraints.maxWidth >= 660;
+                    final leftColumnChildren = [
+                      _DoctorsAndChairsCard(
                         doctorsList: doctorCards,
                         todaysAppointments: todaysAppointments,
                       ),
-                    ),
-                    SizedBox(
-                      width: 340,
-                      child: _LabFollowUpsCard(
+                      _TomorrowScheduleCard(
+                        tomorrow: tomorrow,
+                        appointments: tomorrowAppointments,
+                      ),
+                    ];
+                    final rightColumnChildren = [
+                      _LabFollowUpsCard(
                         labRows:
                             pendingLabworks.take(3).toList(growable: false),
                         totalPending: pendingLabworks.length,
@@ -227,17 +228,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                           Navigator.pop(dialogContext);
                         },
                       ),
-                    ),
-                    SizedBox(
-                      width: 340,
-                      child: _TomorrowScheduleCard(
-                        tomorrow: tomorrow,
-                        appointments: tomorrowAppointments,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 340,
-                      child: _AttentionList(
+                      _AttentionList(
                         rows: [
                           '$noShowRiskCount no-show risk patient${noShowRiskCount == 1 ? '' : 's'} (past slot, not completed)',
                           '$waitingOver15Count patient${waitingOver15Count == 1 ? '' : 's'} waiting > 15 min',
@@ -245,8 +236,55 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                           '$treatmentPlanMissingCount patient${treatmentPlanMissingCount == 1 ? '' : 's'} without a treatment plan',
                         ],
                       ),
-                    ),
-                  ],
+                    ];
+
+                    if (!isTwoColumn) {
+                      return Column(
+                        children: [
+                          ...leftColumnChildren,
+                          ...rightColumnChildren,
+                        ]
+                            .map(
+                              (child) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: child,
+                              ),
+                            )
+                            .toList(growable: false),
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: leftColumnChildren
+                                .map(
+                                  (child) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: child,
+                                  ),
+                                )
+                                .toList(growable: false),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Column(
+                            children: rightColumnChildren
+                                .map(
+                                  (child) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: child,
+                                  ),
+                                )
+                                .toList(growable: false),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 4),
                 Row(
