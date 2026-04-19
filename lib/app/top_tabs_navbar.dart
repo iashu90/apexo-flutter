@@ -199,8 +199,39 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-class _UserChip extends StatelessWidget {
+class _UserChip extends StatefulWidget {
   const _UserChip();
+
+  @override
+  State<_UserChip> createState() => _UserChipState();
+}
+
+class _UserChipState extends State<_UserChip> {
+  final FlyoutController _userMenuController = FlyoutController();
+
+  Future<void> _confirmAndLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: const Text('Logout confirmation'),
+        content: const Text('Do you want to logout from this session?'),
+        actions: [
+          Button(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(txt('logout')),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      login.logout();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -210,41 +241,69 @@ class _UserChip extends StatelessWidget {
         final mail = login.email.trim();
         final initials = _initials(mail);
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: const BoxDecoration(
-                  color: ApexoThemeColors.avatarBackground,
-                  shape: BoxShape.circle,
+        return FlyoutTarget(
+          controller: _userMenuController,
+          child: GestureDetector(
+            onTap: () {
+              _userMenuController.showFlyout(
+                dismissWithEsc: true,
+                builder: (menuContext) => MenuFlyout(
+                  items: [
+                    MenuFlyoutItem(
+                      leading: const Icon(FluentIcons.contact, size: 14),
+                      text: Text(mail.isEmpty ? 'Unknown user' : mail),
+                      onPressed: null,
+                    ),
+                    const MenuFlyoutSeparator(),
+                    MenuFlyoutItem(
+                      leading: const Icon(FluentIcons.sign_out),
+                      text: Text(txt('logout')),
+                      onPressed: () async {
+                        Flyout.of(menuContext).close();
+                        await _confirmAndLogout(context);
+                      },
+                    ),
+                  ],
                 ),
-                child: Center(
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: ApexoThemeColors.avatarForeground,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: const BoxDecoration(
+                      color: ApexoThemeColors.avatarBackground,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        initials,
+                        style: const TextStyle(
+                          color: ApexoThemeColors.avatarForeground,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    FluentIcons.chevron_down,
+                    size: 11,
+                    color: Colors.white,
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              const Icon(
-                FluentIcons.chevron_down,
-                size: 11,
-                color: Colors.white,
-              ),
-            ],
+            ),
           ),
         );
       },

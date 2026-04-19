@@ -27,17 +27,25 @@ Future<void> showAppointmentJourneyDialog({
   AppointmentJourneyAssignHandler? onAssignFromWaiting,
   AppointmentJourneyBeforeAdvance? onBeforeStepAdvance,
 }) async {
-  var currentStep = initialStep.clamp(0, 3);
-  const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4'];
-  const subtitles = ['Waiting', 'Treatment', 'Billing', 'Completed'];
+  var currentStep = initialStep.clamp(0, 4);
+  const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5'];
+  const subtitles = [
+    'Waiting',
+    'Treatment',
+    'Schedule Next',
+    'Billing',
+    'Completed'
+  ];
 
   List<Color> headerGradient(int step) {
     switch (step) {
       case 1:
         return const [Color(0xFF5A84E6), Color(0xFF3F68CC)];
       case 2:
-        return const [Color(0xFF8B5CF6), Color(0xFF6D3FD2)];
+        return const [Color(0xFF14B8A6), Color(0xFF0F9D8B)];
       case 3:
+        return const [Color(0xFF8B5CF6), Color(0xFF6D3FD2)];
+      case 4:
         return const [Color(0xFF2BA58D), Color(0xFF1D8D77)];
       default:
         return const [Color(0xFFE4A11B), Color(0xFFD28C02)];
@@ -49,8 +57,10 @@ Future<void> showAppointmentJourneyDialog({
       case 1:
         return const Color(0xFF2D7BD8);
       case 2:
-        return const Color(0xFF6D3FD2);
+        return const Color(0xFF0F9D8B);
       case 3:
+        return const Color(0xFF6D3FD2);
+      case 4:
         return const Color(0xFF1D8D77);
       default:
         return const Color(0xFFD28C02);
@@ -137,13 +147,13 @@ Future<void> showAppointmentJourneyDialog({
           if (currentStep == 0 && assignHandler != null) {
             await assignHandler(context, (step) {
               setStateDialog(() {
-                currentStep = step.clamp(0, 3);
+                currentStep = step.clamp(0, 4);
               });
             });
             return;
           }
 
-          if (currentStep < 3) {
+          if (currentStep < 4) {
             final beforeAdvance = onBeforeStepAdvance;
             if (beforeAdvance != null) {
               await beforeAdvance(context, currentStep, currentStep + 1);
@@ -290,7 +300,7 @@ Future<void> showAppointmentJourneyDialog({
                         const Spacer(),
                         FilledButton(
                           onPressed: handleContinue,
-                          child: Text(currentStep == 3 ? 'Done' : 'Continue'),
+                          child: Text(currentStep == 4 ? 'Done' : 'Continue'),
                         ),
                       ],
                     ),

@@ -42,9 +42,11 @@ Future<Uint8List> _buildPdfInIsolate(_PdfBuildParams params) async {
         pw.SizedBox(height: 2),
         if (hasRows)
           pw.TableHelper.fromTextArray(
-            cellAlignment: pw.Alignment.centerLeft,
+            cellAlignment: exportPdfTableCellAlignment,
             headerDecoration: exportPdfTableHeaderDecoration,
             headerStyle: exportPdfTableHeaderTextStyle,
+            headerPadding: headerPadding,
+            cellPadding: cellPadding,
             headers: params.rows.first,
             data: params.rows.skip(1).toList(growable: false),
             cellStyle: exportPdfTableCellTextStyle,

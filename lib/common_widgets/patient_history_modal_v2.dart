@@ -336,6 +336,8 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                 ? '-'
                 : widget.patient.phone,
             doctor: 'Dr Nowfar',
+            age: '${widget.patient.age}',
+            gender: widget.patient.gender == 1 ? 'Male' : 'Female',
           ),
           pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
@@ -344,7 +346,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             cellStyle: exportPdfTableCellTextStyle,
             headerPadding: headerPadding,
             cellPadding: cellPadding,
-            cellAlignment: pw.Alignment.center,
+            cellAlignment: exportPdfTableCellAlignment,
             border: exportPdfTableBorder(),
             rowDecoration: exportPdfTableRowDecoration,
             headers: const [

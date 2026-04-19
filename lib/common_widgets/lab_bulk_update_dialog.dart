@@ -1,6 +1,9 @@
 import 'package:apexo/common_widgets/password_guard_dialog.dart';
+import 'package:apexo/features/expenses/expense_model.dart';
+import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
+import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 
@@ -154,12 +157,17 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
     });
 
     var updated = 0;
+    var totalPaid = 0.0;
+    final labsPaid = <String>{};
     for (final match in _matches) {
       final item = labworks.get(match.id);
       if (item == null) continue;
       if (!item.paid) {
         item.paid = true;
         labworks.set(item);
+        totalPaid += item.price;
+        final labName = item.lab.trim().isEmpty ? 'Unknown Lab' : item.lab.trim();
+        labsPaid.add(labName);
       }
       updated += 1;
       if (mounted) {
@@ -167,12 +175,29 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
       }
     }
 
+    var expenseEntries = 0;
+    if (totalPaid > 0) {
+      final expense = Expense.fromJson({'id': uuid()});
+      expense.amount = totalPaid;
+      expense.paid = true;
+      expense.date = DateTime.now();
+      expense.issuer = 'Laboratory';
+      expense.items = ['Laboratory'];
+      final labsLabel = labsPaid.isEmpty ? 'Lab' : labsPaid.join(', ');
+      final amountText = NumberFormat('#,##0').format(totalPaid);
+      final monthName = DateFormat('MMMM').format(_monthAnchor);
+      expense.note = '$labsLabel $amountText paid for $monthName';
+      expenses.set(expense);
+      expenseEntries = 1;
+    }
+
     await _findMatches();
 
     if (!mounted) return;
     setState(() {
       _updating = false;
-      _result = 'Marked $updated record(s) as paid.';
+      _result =
+          'Marked $updated record(s) as paid. Logged $expenseEntries expense entr${expenseEntries == 1 ? 'y' : 'ies'}.';
       _progressDone = _progressTotal;
     });
   }
