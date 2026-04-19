@@ -1805,7 +1805,7 @@ class _WorkflowRow extends StatelessWidget {
                           ),
                         ),
                         foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFF91721C)),
+                            WidgetStateProperty.all(const Color(0xFF6B7280)),
                       ),
                       onPressed: () => _openScheduleActions(context, appointment),
                     ),

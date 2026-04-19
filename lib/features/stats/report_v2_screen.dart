@@ -550,7 +550,7 @@ class _ReportDoctorAppointmentDoneCardState
       double fee,
       double revenue,
       double hospitalGained,
-      double feePct,
+      double profitPct,
     })> rows,
   ) async {
     if (_isExportingCsv || _isExportingPdf || rows.isEmpty) return;
@@ -564,7 +564,7 @@ class _ReportDoctorAppointmentDoneCardState
           'Revenue',
           'Doctor Fee',
           'Net Profit',
-          'Fee %',
+          'Profit %',
         ],
         ...rows.map((row) => [
               row.doctor.title.trim().isEmpty ? 'Unnamed doctor' : row.doctor.title,
@@ -573,7 +573,7 @@ class _ReportDoctorAppointmentDoneCardState
               row.revenue.toStringAsFixed(2),
               row.fee.toStringAsFixed(2),
               row.hospitalGained.toStringAsFixed(2),
-              row.feePct.toStringAsFixed(2),
+              row.profitPct.toStringAsFixed(2),
             ]),
       ];
       await CsvExportUtility.saveCsv(
@@ -607,7 +607,7 @@ class _ReportDoctorAppointmentDoneCardState
       double fee,
       double revenue,
       double hospitalGained,
-      double feePct,
+      double profitPct,
     })> rows,
   ) async {
     if (_isExportingCsv || _isExportingPdf || rows.isEmpty) return;
@@ -621,7 +621,7 @@ class _ReportDoctorAppointmentDoneCardState
           'Revenue',
           'Doctor Fee',
           'Net Profit',
-          'Fee %',
+          'Profit %',
         ],
         ...rows.map((row) => [
               row.doctor.title.trim().isEmpty ? 'Unnamed doctor' : row.doctor.title,
@@ -630,7 +630,7 @@ class _ReportDoctorAppointmentDoneCardState
               row.revenue.toStringAsFixed(2),
               row.fee.toStringAsFixed(2),
               row.hospitalGained.toStringAsFixed(2),
-              '${row.feePct.toStringAsFixed(1)}%',
+              '${row.profitPct.toStringAsFixed(1)}%',
             ]),
       ];
       await PdfExportUtility.savePdf(
@@ -680,7 +680,7 @@ class _ReportDoctorAppointmentDoneCardState
             (sum, a) => sum + a.paid + a.prescriptionPaid,
           );
           final hospitalGained = revenue - fee;
-          final feePct = revenue <= 0 ? 0.0 : (fee / revenue) * 100;
+          final profitPct = revenue <= 0 ? 0.0 : (hospitalGained / revenue) * 100;
           return (
             doctor: doctor,
             done: done,
@@ -688,7 +688,7 @@ class _ReportDoctorAppointmentDoneCardState
             fee: fee,
             revenue: revenue,
             hospitalGained: hospitalGained,
-            feePct: feePct,
+            profitPct: profitPct,
           );
         })
         .whereType<({
@@ -698,7 +698,7 @@ class _ReportDoctorAppointmentDoneCardState
           double fee,
           double revenue,
           double hospitalGained,
-          double feePct,
+          double profitPct,
         })>()
         .toList(growable: false)
       ..sort((a, b) => b.done.compareTo(a.done));
@@ -707,7 +707,7 @@ class _ReportDoctorAppointmentDoneCardState
     final totalFee = rows.fold<double>(0, (s, r) => s + r.fee);
     final totalRevenue = rows.fold<double>(0, (s, r) => s + r.revenue);
     final totalNet = rows.fold<double>(0, (s, r) => s + r.hospitalGained);
-    final totalFeePct = totalRevenue <= 0 ? 0.0 : (totalFee / totalRevenue) * 100;
+    final totalProfitPct = totalRevenue <= 0 ? 0.0 : (totalNet / totalRevenue) * 100;
 
     return _ReportContainer(
       title: 'Appointments Done By Doctor',
@@ -768,7 +768,7 @@ class _ReportDoctorAppointmentDoneCardState
               const SizedBox(width: 8),
               Expanded(
                 child: _summaryTile(
-                  value: '${totalFeePct.toStringAsFixed(1)}%',
+                  value: '${totalProfitPct.toStringAsFixed(1)}%',
                   label: '%',
                   color: const Color(0xFF355279),
                 ),
@@ -962,7 +962,7 @@ class _ReportDoctorAppointmentDoneCardState
                           ),
                           Expanded(
                             child: Text(
-                              '${row.feePct.toStringAsFixed(1)}%',
+                              '${row.profitPct.toStringAsFixed(1)}%',
                               style: const TextStyle(
                                 color: Color(0xFF355279),
                                 fontWeight: FontWeight.w700,
