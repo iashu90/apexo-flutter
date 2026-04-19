@@ -37,16 +37,46 @@ class PermissionsSettings extends StatelessWidget {
                         severity: InfoBarSeverity.warning,
                         content: Txt(txt("permissionsNotice")),
                       ),
+                      InfoLabel(
+                        label: 'Current role',
+                        child: Text(permissions.currentRoleLabel),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Receptionist access',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                       ...List.generate(
-                          permissions.list.length,
-                          (index) => ToggleSwitch(
-                                checked: permissions.editingList[index],
-                                onChanged: (val) {
-                                  permissions.editingList[index] = val;
-                                  permissions.notifyAndPersist();
-                                },
-                                content: Txt("${txt("usersCanAccess")} ${txt(permissionsTitles[index])}"),
-                              )),
+                        permissions.editingList.length,
+                        (index) => ToggleSwitch(
+                          checked: permissions.editingList[index],
+                          onChanged: (val) {
+                            permissions.editingList[index] = val;
+                            permissions.notifyAndPersist();
+                          },
+                          content: Txt(
+                            "${txt("usersCanAccess")} ${txt(permissionsTitles[index])}",
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Doctor access',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      ...List.generate(
+                        permissions.editingDoctorList.length,
+                        (index) => ToggleSwitch(
+                          checked: permissions.editingDoctorList[index],
+                          onChanged: (val) {
+                            permissions.editingDoctorList[index] = val;
+                            permissions.notifyAndPersist();
+                          },
+                          content: Txt(
+                            "${txt("usersCanAccess")} ${txt(permissionsTitles[index])}",
+                          ),
+                        ),
+                      ),
                       if (permissions.edited) ...[
                         const SizedBox(),
                         Row(

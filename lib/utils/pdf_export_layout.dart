@@ -160,6 +160,8 @@ final pw.TextStyle exportPdfTableCellTextStyle = pw.TextStyle(
   color: pdfTableCellTextColor,
 );
 
+final pw.Alignment exportPdfTableCellAlignment = pw.Alignment.center;
+
 pw.Widget exportPdfHeader(
   pw.Context context, {
   required String title,
@@ -288,6 +290,8 @@ pw.Widget exportPdfBillToSection({
   required String patientId,
   required String phone,
   required String doctor,
+  String age = '-',
+  String gender = '-',
 }) {
   return pw.Container(
     width: double.infinity,
@@ -351,6 +355,16 @@ pw.Widget exportPdfBillToSection({
             ),
           ),
         ),
+        pw.SizedBox(height: 2),
+        pw.Text(
+          'Age: $age  |  Gender: $gender',
+          style: _withPdfFont(
+            pw.TextStyle(
+              fontSize: 9,
+              color: pdfSecondaryTextColor,
+            ),
+          ),
+        ),
       ],
     ),
   );
@@ -360,8 +374,8 @@ pw.Widget exportPdfFooter(pw.Context context) {
   final page = context.pageNumber;
   final total = context.pagesCount;
   return pw.Container(
-    margin: const pw.EdgeInsets.only(top: 12),
-    padding: const pw.EdgeInsets.fromLTRB(10, 8, 10, 8),
+    margin: const pw.EdgeInsets.only(top: 14),
+    padding: const pw.EdgeInsets.fromLTRB(24, 8, 24, 8),
     child: pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       crossAxisAlignment: pw.CrossAxisAlignment.end,
@@ -387,21 +401,22 @@ pw.Widget exportPdfDoctorSignatureSection() {
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.end,
       children: [
+        pw.SizedBox(height: 35),
+        pw.Container(
+          width: 170,
+          decoration: pw.BoxDecoration(
+            border: pw.Border(
+              top: pw.BorderSide(color: pdfSecondaryTextColor, width: 0.9),
+            ),
+          ),
+        ),
+        pw.SizedBox(height: 6),
         pw.Text(
           'Dr Nowfar Dental Clinic',
           style: pw.TextStyle(
-            fontSize: 8,
+            fontSize: 12,
             color: pdfSecondaryTextColor,
             fontWeight: pw.FontWeight.bold,
-          ),
-        ),
-        pw.SizedBox(height: 2),
-        pw.Container(
-          width: 130,
-          decoration: pw.BoxDecoration(
-            border: pw.Border(
-              bottom: pw.BorderSide(color: pdfSecondaryTextColor, width: 0.6),
-            ),
           ),
         ),
       ],

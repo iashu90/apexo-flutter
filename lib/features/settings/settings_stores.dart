@@ -26,7 +26,10 @@ class GlobalSettings extends Store<Setting> {
     "currency_______": "USD",
     "phone__________": "1234567890",
     "prescriptionFot": "",
-    "permissions____": jsonEncode([false, true, true, true, true, false]),
+    "permissions____": jsonEncode({
+      "receptionist": [false, true, true, false, true, false],
+      "doctor": [false, true, true, true, false, false],
+    }),
     "start_day_of_wk": "monday",
   };
 

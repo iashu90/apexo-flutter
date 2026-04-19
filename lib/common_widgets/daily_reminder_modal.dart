@@ -59,8 +59,6 @@ Future<void> showDailyReminderModal(BuildContext context) async {
   int billingCount = 0;
   int noShowRiskCount = 0;
   int waitingOver15Count = 0;
-  int missingPhoneCount = 0;
-  int treatmentPlanMissingCount = 0;
   final waitingPatients = <String>[];
   final scheduledPatients = <String>[];
 
@@ -102,15 +100,6 @@ Future<void> showDailyReminderModal(BuildContext context) async {
       if (waited > 15) waitingOver15Count++;
     }
 
-    if ((appointment.patient?.phone.trim().isEmpty ?? true)) {
-      missingPhoneCount++;
-    }
-
-    if (appointment.selectedTreatments
-        .where((t) => t.trim().isNotEmpty)
-        .isEmpty) {
-      treatmentPlanMissingCount++;
-    }
   }
 
   final activeDoctors = <String>{
@@ -183,39 +172,30 @@ Future<void> showDailyReminderModal(BuildContext context) async {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _InfoStrip(text: greetingStrip),
-                const SizedBox(height: 4),
-                _SectionTitle(
-                  icon: FluentIcons.calendar,
-                  title: "Today's Appointments",
-                  color: const Color(0xFFE8B242),
-                  trailing: _CounterPill(value: '${todaysAppointments.length}'),
-                ),
-                const SizedBox(height: 2),
-                _AppointmentsSummaryGrid(
-                  complete: completeCount,
-                  treatment: treatmentCount,
-                  waiting: waitingCount,
-                  scheduled: scheduledCount,
-                  billing: billingCount,
-                  waitingPatients: waitingPatients,
-                  scheduledPatients: scheduledPatients,
-                  onCheckin: () {
-                    _navigateToRouteById('checkin');
-                    Navigator.pop(dialogContext);
-                  },
-                ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final isTwoColumn = constraints.maxWidth >= 660;
+                    final isTwoColumn = constraints.maxWidth >= 680;
                     final leftColumnChildren = [
+                      _StatusCountPanel(
+                        total: todaysAppointments.length,
+                        scheduled: scheduledCount,
+                        waiting: waitingCount,
+                        treatment: treatmentCount,
+                        billing: billingCount,
+                        completed: completeCount,
+                        onOpenCheckin: () {
+                          _navigateToRouteById('checkin');
+                          Navigator.pop(dialogContext);
+                        },
+                      ),
                       _DoctorsAndChairsCard(
                         doctorsList: doctorCards,
                         todaysAppointments: todaysAppointments,
                       ),
-                      _TomorrowScheduleCard(
-                        tomorrow: tomorrow,
-                        appointments: tomorrowAppointments,
+                      _MetricAlertPanel(
+                        noShowRiskCount: noShowRiskCount,
+                        waitingOver15Count: waitingOver15Count,
                       ),
                     ];
                     final rightColumnChildren = [
@@ -224,17 +204,22 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                             pendingLabworks.take(3).toList(growable: false),
                         totalPending: pendingLabworks.length,
                         onOpenLabOrders: () {
-                          _navigateToRouteById('labworks_v2');
+                          _navigateToRouteById('labworks');
                           Navigator.pop(dialogContext);
                         },
                       ),
-                      _AttentionList(
-                        rows: [
-                          '$noShowRiskCount no-show risk patient${noShowRiskCount == 1 ? '' : 's'} (past slot, not completed)',
-                          '$waitingOver15Count patient${waitingOver15Count == 1 ? '' : 's'} waiting > 15 min',
-                          '$missingPhoneCount patient${missingPhoneCount == 1 ? '' : 's'} missing phone number',
-                          '$treatmentPlanMissingCount patient${treatmentPlanMissingCount == 1 ? '' : 's'} without a treatment plan',
-                        ],
+                      _QueueChipsPanel(
+                        title: 'Waiting + Scheduled Queue',
+                        waitingPatients: waitingPatients,
+                        scheduledPatients: scheduledPatients,
+                        onOpenCheckin: () {
+                          _navigateToRouteById('checkin');
+                          Navigator.pop(dialogContext);
+                        },
+                      ),
+                      _TomorrowScheduleCard(
+                        tomorrow: tomorrow,
+                        appointments: tomorrowAppointments,
                       ),
                     ];
 
@@ -352,13 +337,11 @@ class _SectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
   final Color color;
-  final Widget? trailing;
 
   const _SectionTitle({
     required this.icon,
     required this.title,
     required this.color,
-    this.trailing,
   });
 
   @override
@@ -375,10 +358,6 @@ class _SectionTitle extends StatelessWidget {
             color: Color(0xFF1F2937),
           ),
         ),
-        if (trailing != null) ...[
-          const SizedBox(width: 6),
-          trailing!,
-        ],
       ],
     );
   }
@@ -829,6 +808,213 @@ class _DoctorsAndChairsCard extends StatelessWidget {
   }
 }
 
+class _StatusCountPanel extends StatelessWidget {
+  final int total;
+  final int scheduled;
+  final int waiting;
+  final int treatment;
+  final int billing;
+  final int completed;
+  final VoidCallback onOpenCheckin;
+
+  const _StatusCountPanel({
+    required this.total,
+    required this.scheduled,
+    required this.waiting,
+    required this.treatment,
+    required this.billing,
+    required this.completed,
+    required this.onOpenCheckin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SimplePanel(
+      titleIcon: FluentIcons.calendar,
+      title: 'Scheduled & Waiting',
+      titleColor: const Color(0xFFE09C31),
+      onTitleAction: onOpenCheckin,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _metricChip('Total $total', const Color(0xFF355A84), const Color(0xFFEAF2FF)),
+              _metricChip('Scheduled $scheduled', const Color(0xFF355A84), const Color(0xFFEAF2FF)),
+              _metricChip('Waiting $waiting', const Color(0xFF8A5A00), const Color(0xFFFFF4D9)),
+              _metricChip('Treatment $treatment', const Color(0xFF1E40AF), const Color(0xFFEAF0FF)),
+              _metricChip('Billing $billing', const Color(0xFF5B2FA8), const Color(0xFFF1EBFF)),
+              _metricChip('Completed $completed', const Color(0xFF166534), const Color(0xFFE8F7EE)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metricChip(String label, Color fg, Color bg) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricAlertPanel extends StatelessWidget {
+  final int noShowRiskCount;
+  final int waitingOver15Count;
+
+  const _MetricAlertPanel({
+    required this.noShowRiskCount,
+    required this.waitingOver15Count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SimplePanel(
+      titleIcon: FluentIcons.warning,
+      title: 'Attention',
+      titleColor: const Color(0xFFE09C31),
+      child: Column(
+        children: [
+          _alertRow(
+            iconColor: const Color(0xFFD97706),
+            label:
+                '$noShowRiskCount no-show risk patient${noShowRiskCount == 1 ? '' : 's'}',
+          ),
+          const SizedBox(height: 8),
+          _alertRow(
+            iconColor: const Color(0xFFB45309),
+            label:
+                '$waitingOver15Count patient${waitingOver15Count == 1 ? '' : 's'} waiting > 15 min',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _alertRow({required String label, required Color iconColor}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFCF5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFF0E0BE)),
+      ),
+      child: Row(
+        children: [
+          Icon(FluentIcons.warning, size: 12, color: iconColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF374151),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QueueChipsPanel extends StatelessWidget {
+  final String title;
+  final List<String> waitingPatients;
+  final List<String> scheduledPatients;
+  final VoidCallback onOpenCheckin;
+
+  const _QueueChipsPanel({
+    required this.title,
+    required this.waitingPatients,
+    required this.scheduledPatients,
+    required this.onOpenCheckin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SimplePanel(
+      titleIcon: FluentIcons.people,
+      title: title,
+      titleColor: const Color(0xFF355A84),
+      onTitleAction: onOpenCheckin,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (waitingPatients.isEmpty && scheduledPatients.isEmpty)
+            const Text(
+              'No waiting or scheduled patients.',
+              style: TextStyle(color: Color(0xFF6B7280)),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ...waitingPatients.map(
+                  (name) => _queueChip(
+                    label: name,
+                    bg: const Color(0xFFFFF4D9),
+                    fg: const Color(0xFF8A5A00),
+                    prefix: 'W',
+                  ),
+                ),
+                ...scheduledPatients.map(
+                  (name) => _queueChip(
+                    label: name,
+                    bg: const Color(0xFFEAF2FF),
+                    fg: const Color(0xFF1F4B8F),
+                    prefix: 'S',
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _queueChip({
+    required String label,
+    required Color bg,
+    required Color fg,
+    required String prefix,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$prefix • $label',
+        style: TextStyle(
+          color: fg,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
 class _LabFollowUpsCard extends StatelessWidget {
   final List<dynamic> labRows;
   final int totalPending;
@@ -846,17 +1032,16 @@ class _LabFollowUpsCard extends StatelessWidget {
       titleIcon: FluentIcons.test_beaker,
       title: 'Lab Follow-ups',
       titleColor: const Color(0xFFC75A4A),
+      onTitleAction: onOpenLabOrders,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Showing ${labRows.length} of $totalPending pending follow-ups (ordered by oldest first)',
-              style: const TextStyle(
-                color: Color(0xFF6B7280),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
+          Text(
+            'Showing ${labRows.length} of $totalPending pending follow-ups',
+            style: const TextStyle(
+              color: Color(0xFF6B7280),
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
             ),
           ),
           const SizedBox(height: 8),
@@ -869,50 +1054,33 @@ class _LabFollowUpsCard extends StatelessWidget {
               ),
             )
           else
-            ...labRows.map((labwork) {
-              final age = DateTime.now().difference(labwork.date).inDays;
-              final patientName = (labwork.patient?.title ?? '').trim();
-              return Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3F3),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFF0DADA)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        patientName.isEmpty ? 'Unknown patient' : patientName,
-                        style: const TextStyle(
-                          color: Color(0xFF1F2937),
-                          fontWeight: FontWeight.w700,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: labRows.map((labwork) {
+                final age = DateTime.now().difference(labwork.date).inDays;
+                final patientName = (labwork.patient?.title ?? '').trim();
+                final label =
+                    '${patientName.isEmpty ? 'Unknown' : patientName} • ${labwork.lab.trim().isEmpty ? 'Lab' : labwork.lab.trim()} • ${age}d';
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3F3),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFF0DADA)),
+                  ),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Color(0xFF8A3A3A),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$age day${age == 1 ? '' : 's'}',
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: Button(
-              onPressed: onOpenLabOrders,
-              child: const Text('Open Lab Orders'),
+                  ),
+                );
+              }).toList(growable: false),
             ),
-          ),
         ],
       ),
     );
@@ -959,47 +1127,38 @@ class _TomorrowScheduleCard extends StatelessWidget {
               style: TextStyle(color: Color(0xFF6B7280)),
             )
           else
-            ...rows.map((appointment) {
-              final title = appointment.title.trim().isEmpty
-                  ? 'Unnamed patient'
-                  : appointment.title.trim();
-              final treatment = appointment.selectedTreatments
-                  .where((t) => t.trim().isNotEmpty)
-                  .join(', ');
-              return Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F7FF),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFDCE7F6)),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      DateFormat('hh:mm a').format(appointment.date),
-                      style: const TextStyle(
-                        color: Color(0xFF1F446E),
-                        fontWeight: FontWeight.w700,
-                      ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: rows.map((appointment) {
+                final title = appointment.title.trim().isEmpty
+                    ? 'Unnamed patient'
+                    : appointment.title.trim();
+                final stage = normalizeCheckinStage(appointment.checkinStage);
+                final isWaiting = stage == 'waiting';
+                final bg =
+                    isWaiting ? const Color(0xFFFFF4D9) : const Color(0xFFEAF2FF);
+                final fg =
+                    isWaiting ? const Color(0xFF8A5A00) : const Color(0xFF1F4B8F);
+
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${DateFormat('hh:mm a').format(appointment.date)} • ${isWaiting ? 'W' : 'S'} • $title',
+                    style: TextStyle(
+                      color: fg,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        treatment.isEmpty ? title : '$title • $treatment',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF1F2937),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+                  ),
+                );
+              }).toList(growable: false),
+            ),
           if (appointments.length > rows.length)
             Text(
               '+${appointments.length - rows.length} more tomorrow',
@@ -1234,12 +1393,14 @@ class _SimplePanel extends StatelessWidget {
   final String title;
   final Color titleColor;
   final Widget child;
+  final VoidCallback? onTitleAction;
 
   const _SimplePanel({
     required this.titleIcon,
     required this.title,
     required this.titleColor,
     required this.child,
+    this.onTitleAction,
   });
 
   @override
@@ -1266,6 +1427,12 @@ class _SimplePanel extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
+              const Spacer(),
+              if (onTitleAction != null)
+                IconButton(
+                  icon: const Icon(FluentIcons.chevron_right, size: 10),
+                  onPressed: onTitleAction,
+                ),
             ],
           ),
           const SizedBox(height: 10),

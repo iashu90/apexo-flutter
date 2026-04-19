@@ -14,6 +14,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
 import 'package:apexo/features/checkin/appointment_journey_dialog.dart';
+import 'package:apexo/features/checkin/checkin_flow_v2_screen.dart';
 import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
@@ -143,10 +144,10 @@ int _stepIndexFromStageValue(String stage) {
     return 1;
   }
   if (normalized == 'checkout' || normalized == 'billing') {
-    return 2;
+    return 3;
   }
   if (normalized == 'completed') {
-    return 3;
+    return 4;
   }
   return 0;
 }
@@ -156,8 +157,8 @@ Future<void> openAppointmentJourneyDialog(
   Appointment appointment, {
   int? initialStep,
 }) async {
-  final startStep =
-      initialStep?.clamp(0, 3) ?? _stepIndexFromStageValue(appointment.checkinStage);
+  final startStep = initialStep?.clamp(0, 4) ??
+      _stepIndexFromStageValue(appointment.checkinStage);
   final patient = appointment.patient;
   final patientContext =
       '${patient?.age ?? 0}y • ${_patientGenderShort(appointment)} • ${(patient?.phone.trim().isEmpty ?? true) ? '-' : patient!.phone.trim()}';
@@ -165,6 +166,22 @@ Future<void> openAppointmentJourneyDialog(
       .where((row) => row.patientID == appointment.patientID)
       .toList(growable: false)
     ..sort((a, b) => b.date.compareTo(a.date));
+  DateTime nextVisitDateTime = appointment.date.add(const Duration(days: 7));
+  bool scheduledNextVisit = false;
+  String? scheduledNextAppointmentId;
+  String? nextDoctorId = appointment.operatorsIDs.isNotEmpty
+      ? appointment.operatorsIDs.first
+      : null;
+  String scheduleError = '';
+  final nextDateController = TextEditingController(
+    text: DateFormat('yyyy-MM-dd').format(nextVisitDateTime),
+  );
+  final nextTimeController = TextEditingController(
+    text: DateFormat('HH:mm').format(nextVisitDateTime),
+  );
+  final nextReasonController = TextEditingController(
+    text: 'Follow-up visit',
+  );
 
   Future<void> assignDoctor(
     BuildContext dialogContext,
@@ -179,6 +196,37 @@ Future<void> openAppointmentJourneyDialog(
     appointment.operatorsIDs = pickedDoctorIds;
     appointments.set(appointment);
     setStep(1);
+  }
+
+  DateTime? parseScheduleDateTime(String dateInput, String timeInput) {
+    final safeDate = dateInput.trim();
+    final safeTime = timeInput.trim();
+    if (safeDate.isEmpty || safeTime.isEmpty) return null;
+    return DateTime.tryParse('${safeDate} ${safeTime}:00');
+  }
+
+  void saveNextAppointment({
+    required DateTime scheduledAt,
+    String? doctorId,
+    String reason = '',
+  }) {
+    nextVisitDateTime = scheduledAt;
+    final nextAppointment = scheduledNextAppointmentId != null
+        ? (appointments.get(scheduledNextAppointmentId!) ?? Appointment.fromJson({'id': scheduledNextAppointmentId!}))
+        : Appointment.fromJson({'id': uuid()});
+    nextAppointment.patientID = appointment.patientID;
+    nextAppointment.date = nextVisitDateTime;
+    nextAppointment.checkinStage = 'scheduled';
+    nextAppointment.isCheckedIn = false;
+    nextAppointment.operatorsIDs = doctorId == null
+        ? [...appointment.operatorsIDs]
+        : [doctorId];
+    if (reason.trim().isNotEmpty) {
+      nextAppointment.preOpNotes = reason.trim();
+    }
+    appointments.set(nextAppointment);
+    scheduledNextAppointmentId = nextAppointment.id;
+    scheduledNextVisit = true;
   }
 
   Widget stageBody(BuildContext context, int currentStep, double panelHeight) {
@@ -227,7 +275,7 @@ Future<void> openAppointmentJourneyDialog(
       );
     }
 
-    if (currentStep == 1 || currentStep == 2) {
+    if (currentStep == 1 || currentStep == 3) {
       return Container(
         width: double.infinity,
         height: panelHeight,
@@ -242,7 +290,170 @@ Future<void> openAppointmentJourneyDialog(
             appointment: appointment,
             allAppointmentsForPatient: allAppointmentsForPatient,
             showInlineBottomActions: false,
-            forcedStage: currentStep == 2 ? 'checkout' : 'with_doctor',
+            forcedStage: currentStep == 3 ? 'checkout' : 'with_doctor',
+          ),
+        ),
+      );
+    }
+
+    if (currentStep == 2) {
+      final doctorRows = doctors.present.values.toList(growable: false)
+        ..sort(
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        );
+
+      return StatefulBuilder(
+        builder: (context, setStepState) => Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD7E5F6)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Schedule Next Appointment',
+                style: TextStyle(
+                  color: Color(0xFF0F4B66),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                scheduledNextVisit
+                    ? 'Next appointment scheduled at ${DateFormat('dd MMM yyyy • h:mm a').format(nextVisitDateTime)}'
+                    : 'Enter next appointment details below, then schedule. Or skip with Continue.',
+                style: const TextStyle(
+                  color: Color(0xFF3E5F7D),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: InfoLabel(
+                      label: 'Date',
+                      child: TextBox(
+                        controller: nextDateController,
+                        placeholder: 'YYYY-MM-DD',
+                        onChanged: (_) {
+                          setStepState(() {
+                            scheduleError = '';
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InfoLabel(
+                      label: 'Time (24h)',
+                      child: TextBox(
+                        controller: nextTimeController,
+                        placeholder: 'HH:mm',
+                        onChanged: (_) {
+                          setStepState(() {
+                            scheduleError = '';
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ComboBox<String>(
+                isExpanded: true,
+                placeholder: const Text('Select doctor'),
+                value: doctorRows.any((d) => d.id == nextDoctorId)
+                    ? nextDoctorId
+                    : null,
+                items: doctorRows
+                    .map(
+                      (doctor) => ComboBoxItem<String>(
+                        value: doctor.id,
+                        child: Text(
+                          doctor.title.trim().isEmpty
+                              ? 'Unnamed doctor'
+                              : doctor.title,
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: (value) {
+                  setStepState(() {
+                    nextDoctorId = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 8),
+              InfoLabel(
+                label: 'Reason',
+                child: TextBox(
+                  controller: nextReasonController,
+                  placeholder: 'Reason for next appointment',
+                  onChanged: (_) {
+                    setStepState(() {
+                      scheduleError = '';
+                    });
+                  },
+                ),
+              ),
+              if (scheduleError.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  scheduleError,
+                  style: const TextStyle(
+                    color: Color(0xFFD4483B),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  FilledButton(
+                    onPressed: () {
+                      final parsed = parseScheduleDateTime(
+                        nextDateController.text,
+                        nextTimeController.text,
+                      );
+                      if (parsed == null) {
+                        setStepState(() {
+                          scheduleError =
+                              'Please enter valid date/time as YYYY-MM-DD and HH:mm.';
+                        });
+                        return;
+                      }
+                      if (parsed.isBefore(DateTime.now())) {
+                        setStepState(() {
+                          scheduleError =
+                              'Next appointment must be now or in the future.';
+                        });
+                        return;
+                      }
+                      setStepState(() {
+                        scheduleError = '';
+                      });
+                      saveNextAppointment(
+                        scheduledAt: parsed,
+                        doctorId: nextDoctorId,
+                        reason: nextReasonController.text,
+                      );
+                      setStepState(() {});
+                    },
+                    child: Text(scheduledNextVisit
+                        ? 'Update Scheduled Appointment'
+                        : 'Schedule Next Appointment'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       );
@@ -572,6 +783,34 @@ class _CheckinScreenState extends State<CheckinScreen> {
     await openAppointmentJourneyDialog(context, appointment);
   }
 
+  Future<void> _openCheckinV2Flow(Appointment appointment) async {
+    await showDialog<void>(
+      context: context,
+      barrierColor: const Color(0x660A1B33),
+      builder: (dialogContext) {
+        final size = MediaQuery.of(dialogContext).size;
+        final width = size.width < 760 ? size.width - 16 : size.width * 0.96;
+        final height =
+            size.height < 760 ? size.height - 16 : size.height * 0.94;
+
+        return ContentDialog(
+          constraints: BoxConstraints(
+            maxWidth: width,
+            maxHeight: height,
+          ),
+          content: SizedBox(
+            width: width,
+            height: height,
+            child: CheckinFlowV2Screen(
+              appointment: appointment,
+              onClose: () => Navigator.pop(dialogContext),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
@@ -607,14 +846,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     a.checkinStage == 'scheduled')
                 .toList(growable: true)
               ..sort((a, b) {
-                final aScheduled =
-                    (a.checkinStage == 'pending' || a.checkinStage == 'scheduled')
-                        ? 1
-                        : 0;
-                final bScheduled =
-                    (b.checkinStage == 'pending' || b.checkinStage == 'scheduled')
-                        ? 1
-                        : 0;
+                final aScheduled = (a.checkinStage == 'pending' ||
+                        a.checkinStage == 'scheduled')
+                    ? 1
+                    : 0;
+                final bScheduled = (b.checkinStage == 'pending' ||
+                        b.checkinStage == 'scheduled')
+                    ? 1
+                    : 0;
                 if (aScheduled != bScheduled) return aScheduled - bScheduled;
                 return a.date.compareTo(b.date);
               });
@@ -717,11 +956,25 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               onPressed: filtered.isEmpty
                                   ? null
                                   : () {
-                                      final target =
-                                          _selectedAppointment ?? filtered.first;
+                                      final target = _selectedAppointment ??
+                                          filtered.first;
                                       _openNextCheckinStepper(target);
                                     },
                               child: const Text('New Checkin Flow'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: filtered.isEmpty
+                                  ? null
+                                  : () {
+                                      final target = _selectedAppointment ??
+                                          filtered.first;
+                                      _openCheckinV2Flow(target);
+                                    },
+                              child: const Text('Open Check-in V2'),
                             ),
                           ),
                         ],
@@ -807,14 +1060,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             onPressed: filtered.isEmpty
                                 ? null
                                 : () {
-                                    final target = _selectedAppointment ?? filtered.first;
+                                    final target =
+                                        _selectedAppointment ?? filtered.first;
                                     _openNextCheckinStepper(target);
                                   },
                             style: ButtonStyle(
                               backgroundColor: WidgetStateProperty.all(
                                 const Color(0xFF1D8D77),
                               ),
-                              foregroundColor: WidgetStateProperty.all(Colors.white),
+                              foregroundColor:
+                                  WidgetStateProperty.all(Colors.white),
                               padding: WidgetStateProperty.all(
                                 const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -823,6 +1078,25 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                             ),
                             child: const Text('Next Checkin'),
+                          ),
+                          const SizedBox(width: 8),
+                          Button(
+                            onPressed: filtered.isEmpty
+                                ? null
+                                : () {
+                                    final target =
+                                        _selectedAppointment ?? filtered.first;
+                                    _openCheckinV2Flow(target);
+                                  },
+                            style: ButtonStyle(
+                              padding: WidgetStateProperty.all(
+                                const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 11,
+                                ),
+                              ),
+                            ),
+                            child: const Text('Open Check-in V2'),
                           ),
                         ],
                       ),
@@ -1399,7 +1673,7 @@ class _WorkflowRow extends StatelessWidget {
                     'Current: ${DateFormat('dd MMM yyyy, h:mm a').format(originalDate)}',
                     style: const TextStyle(
                       color: Color(0xFF5F789B),
-                      fontSize: 16                                                                            ,
+                      fontSize: 16,
                     ),
                   ),
                   Text(
@@ -1409,7 +1683,8 @@ class _WorkflowRow extends StatelessWidget {
                           ? const Color(0xFF1459AD)
                           : const Color(0xFF5F789B),
                       fontSize: 16,
-                      fontWeight: hasChanged ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight:
+                          hasChanged ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
                   if (confirmDelete) ...[
@@ -1793,8 +2068,7 @@ class _WorkflowRow extends StatelessWidget {
                   Tooltip(
                     message: 'Edit or Delete Appointment',
                     child: IconButton(
-                      icon:
-                          const Icon(material.Icons.edit, size: 18),
+                      icon: const Icon(material.Icons.edit, size: 18),
                       style: ButtonStyle(
                         padding: WidgetStateProperty.all(
                           const EdgeInsets.all(8),
@@ -1807,7 +2081,8 @@ class _WorkflowRow extends StatelessWidget {
                         foregroundColor:
                             WidgetStateProperty.all(const Color(0xFF6B7280)),
                       ),
-                      onPressed: () => _openScheduleActions(context, appointment),
+                      onPressed: () =>
+                          _openScheduleActions(context, appointment),
                     ),
                   ),
                 if (stage == 'scheduled' || stage == 'waiting')
@@ -2948,9 +3223,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         text: a.discount == 0 ? '' : a.discount.toStringAsFixed(0));
     _discountEnabled = a.discount > 0;
     _selectedTreatments = a.selectedTreatments.toSet();
-    _selectedConsultationTypes = a.subTreatments
-      .where((e) => e.trim().isNotEmpty)
-      .toSet();
+    _selectedConsultationTypes =
+        a.subTreatments.where((e) => e.trim().isNotEmpty).toSet();
     _selectedTeeth = a.selectedTeeth.toSet();
     _teethStates = {
       for (final id in _allToothIds) id: ToothState(toothId: id),
@@ -3266,8 +3540,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       context: context,
       builder: (context) => ContentDialog(
         title: Text('Move "$patientName" back to Treatment?'),
-        content:
-            Text('This patient will be moved back to Treatment stage for $patientName.'),
+        content: Text(
+            'This patient will be moved back to Treatment stage for $patientName.'),
         actions: [
           Button(
             onPressed: () => Navigator.pop(context, false),
@@ -3436,8 +3710,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           _selectedConsultationTypes.clear();
                           a.subTreatments = [];
                         } else {
-                          a.subTreatments = _selectedConsultationTypes
-                              .toList(growable: false);
+                          a.subTreatments = _selectedConsultationTypes.toList(
+                              growable: false);
                         }
                         _scheduleAutosave();
                         setState(() {});
@@ -3555,8 +3829,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       ],
                       prefix: const Padding(
                         padding: EdgeInsets.only(left: 10),
-                        child:
-                            Text('₹', style: TextStyle(color: Color(0xFF355279))),
+                        child: Text('₹',
+                            style: TextStyle(color: Color(0xFF355279))),
                       ),
                       placeholder: 'Treatment price',
                       onChanged: (value) {
@@ -3593,7 +3867,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 final secondColumn = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Post-operative Notes', style: sectionTitleStyle),
+                    const Text('Post-operative Notes',
+                        style: sectionTitleStyle),
                     const SizedBox(height: 6),
                     CupertinoTextField(
                       controller: _postOpController,
@@ -3650,9 +3925,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                   if (parent == null) return;
                                   final parentLine = '- $parent';
                                   final childLine = '  - $child';
-                                  final current =
-                                      _postOpController.text.trim();
-                                  if (current.contains('$parentLine\n$childLine') ||
+                                  final current = _postOpController.text.trim();
+                                  if (current.contains(
+                                          '$parentLine\n$childLine') ||
                                       current.contains('\n$childLine')) {
                                     return;
                                   }
@@ -3801,13 +4076,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   Widget _buildTodaySummaryCard(Appointment a) {
     final treatedTeeth = _selectedTeeth.toList(growable: false)
       ..sort((x, y) => x.compareTo(y));
-    final diagnosisLabel = a.diagnosis
-            .where((d) => d.trim().isNotEmpty)
-            .join(', ')
-            .trim()
-            .isEmpty
-        ? '-'
-        : a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ');
+    final diagnosisLabel =
+        a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ').trim().isEmpty
+            ? '-'
+            : a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ');
     final treatmentLabel = a.selectedTreatments
             .where((t) => t.trim().isNotEmpty)
             .join(', ')
@@ -4134,20 +4406,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         ),
         footer: exportPdfFooter,
         build: (context) => exportPdfBodyWithMargins([
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: exportPdfCardDecoration(color: pdfCardGrey),
-            child: pw.Text(
-              'INVOICE / PAYMENT RECEIPT',
-              style: pw.TextStyle(
-                fontSize: 17,
-                fontWeight: pw.FontWeight.bold,
-                color: pdfAccentColor,
-              ),
-            ),
-          ),
-
           pw.SizedBox(height: 8),
           exportPdfBillToSection(
             patientName: a.title.trim().isEmpty ? 'Unnamed patient' : a.title,
@@ -4156,13 +4414,17 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                 ? '-'
                 : patient!.phone.trim(),
             doctor: 'Dr Nowfar',
+            age: '${patient?.age ?? '-'}',
+            gender: patient?.gender == 1 ? 'Male' : 'Female',
           ),
           pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
             headerDecoration: exportPdfTableHeaderDecoration,
             headerStyle: exportPdfTableHeaderTextStyle,
             cellStyle: exportPdfTableCellTextStyle,
-            cellAlignment: pw.Alignment.centerLeft,
+            headerPadding: headerPadding,
+            cellPadding: cellPadding,
+            cellAlignment: exportPdfTableCellAlignment,
             border: exportPdfTableBorder(),
             rowDecoration: exportPdfTableRowDecoration,
             headers: const ['Details', 'Description', 'Cost', 'Amount'],
@@ -4175,157 +4437,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               ],
             ],
           ),
-          pw.SizedBox(height: 8),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                child: pw.Container(
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: exportPdfCardDecoration(color: pdfCardGrey),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'Payment Summary',
-                        style: pw.TextStyle(
-                          color: pdfAccentColor,
-                          fontSize: 14,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.SizedBox(height: 6),
-                      pw.Text('Amount Paid',
-                          style: pw.TextStyle(
-                              fontSize: 10, color: pdfSecondaryTextColor)),
-                      pw.Text('Rs ${paid.toStringAsFixed(0)}',
-                          style: pw.TextStyle(
-                              fontSize: 14,
-                              fontWeight: pw.FontWeight.bold,
-                              color: pdfPrimaryTextColor)),
-                      pw.SizedBox(height: 4),
-                      pw.Text('Outstanding',
-                          style: pw.TextStyle(
-                              fontSize: 10, color: pdfSecondaryTextColor)),
-                      pw.Text('Rs ${balance.toStringAsFixed(0)}',
-                          style: pw.TextStyle(
-                              fontSize: 12, color: pdfPrimaryTextColor)),
-                      pw.SizedBox(height: 6),
-                      pw.Row(children: [
-                        pw.Text('Payment Status  ',
-                            style: pw.TextStyle(
-                                fontSize: 10, color: pdfSecondaryTextColor)),
-                        pw.Container(
-                          padding: const pw.EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 3),
-                          decoration: pw.BoxDecoration(
-                            color: balance <= 0
-                                ? pdfGreenColor
-                                : pdfDangerColor,
-                            borderRadius: pw.BorderRadius.circular(4),
-                          ),
-                          child: pw.Text(
-                            balance <= 0 ? 'PAID' : 'DUE',
-                            style: pw.TextStyle(
-                              fontSize: 9,
-                              color: pdfWhiteColor,
-                              fontWeight: pw.FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ]),
-                    ],
-                  ),
-                ),
-              ),
-              pw.SizedBox(width: 10),
-              pw.Expanded(
-                child: pw.Container(
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: exportPdfCardDecoration(color: pdfCardGrey),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Row(
-                        mainAxisAlignment:
-                            pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                          pw.Text('Total Cost',
-                              style: pw.TextStyle(
-                                  fontSize: 10,
-                                  color: pdfSecondaryTextColor)),
-                          pw.Container(
-                            padding: const pw.EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 3),
-                            decoration: pw.BoxDecoration(
-                              color: pdfGreenColor,
-                              borderRadius: pw.BorderRadius.circular(4),
-                            ),
-                            child: pw.Text(
-                              'Rs ${discountedTotal.toStringAsFixed(0)}',
-                              style: pw.TextStyle(
-                                fontSize: 11,
-                                color: pdfWhiteColor,
-                                fontWeight: pw.FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      pw.SizedBox(height: 6),
-                      _pdfSummaryLine('Specimen',
-                          'Rs ${a.price.toStringAsFixed(0)}'),
-                      _pdfSummaryLine(
-                        'Discount',
-                        discount <= 0
-                            ? '-'
-                            : (a.discountType == 'percent'
-                                ? '-${discount.toStringAsFixed(0)}%'
-                                : '-Rs ${discount.toStringAsFixed(0)}'),
-                      ),
-                      _pdfSummaryLine(
-                          'Paid', 'Rs ${paid.toStringAsFixed(0)}'),
-                      pw.Divider(color: pdfMutedGrey, thickness: 0.5),
-                      _pdfSummaryLine(
-                        'TOTAL',
-                        'Rs ${discountedTotal.toStringAsFixed(0)}',
-                        bold: true,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          pw.SizedBox(height: 8),
-          pw.Text('Payment History',
-              style: pw.TextStyle(
-                fontWeight: pw.FontWeight.bold,
-                color: pdfPrimaryTextColor,
-              )),
-          pw.SizedBox(height: 6),
-          pw.TableHelper.fromTextArray(
-            headerDecoration: exportPdfTableHeaderDecoration,
-            headerStyle: exportPdfTableHeaderTextStyle,
-            cellStyle: exportPdfTableCellTextStyle,
-            border: exportPdfTableBorder(),
-            rowDecoration: exportPdfTableRowDecoration,
-            headers: const ['Date', 'Reference', 'Mode', 'Amount'],
-            data: [
-              [
-                DateFormat('dd MMM yyyy').format(_paymentDate),
-                'TX-${DateTime.now().millisecondsSinceEpoch % 1000000}',
-                _paymentMode,
-                'Rs ${paid.toStringAsFixed(0)}',
-              ],
-            ],
-          ),
           pw.SizedBox(height: 10),
-          pw.Text(
-              'Consultant Charge: Rs ${widget.appointment.priceToPayDoctor.toStringAsFixed(0)}',
-              style: pw.TextStyle(fontSize: 9, color: pdfSecondaryTextColor)),
           if (a.preOpNotes.trim().isNotEmpty ||
-              a.postOpNotes.trim().isNotEmpty) ...[              pw.SizedBox(height: 10),
+              a.postOpNotes.trim().isNotEmpty) ...[
+            pw.SizedBox(height: 10),
             pw.Container(
               width: double.infinity,
               padding: const pw.EdgeInsets.all(10),
@@ -4504,8 +4619,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final status = outstanding <= 0 ? 'PAID' : 'DUE';
     final totalAfter =
         (double.tryParse(widget.paidController.text.trim()) ?? a.paid)
-        .clamp(0, double.infinity)
-        .toDouble();
+            .clamp(0, double.infinity)
+            .toDouble();
     final visitDay = DateTime(a.date.year, a.date.month, a.date.day);
     final seenDoctorIds = appointments.present.values
         .where((row) {
@@ -4863,18 +4978,16 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                               value: '__none__',
                               child: Text('None'),
                             ),
-                            ...consultantDoctors
-                                .map(
-                                  (doctor) => ComboBoxItem<String>(
-                                    value: doctor.id,
-                                    child: Text(
-                                      doctor.title.trim().isEmpty
-                                          ? 'Unnamed doctor'
-                                          : doctor.title,
-                                    ),
-                                  ),
-                                )
-                                ,
+                            ...consultantDoctors.map(
+                              (doctor) => ComboBoxItem<String>(
+                                value: doctor.id,
+                                child: Text(
+                                  doctor.title.trim().isEmpty
+                                      ? 'Unnamed doctor'
+                                      : doctor.title,
+                                ),
+                              ),
+                            ),
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -5138,7 +5251,8 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _checkoutSummaryLine('Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
+        _checkoutSummaryLine(
+            'Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
         const SizedBox(height: 6),
         if (discountEnabled) ...[
           _checkoutSummaryLine(
@@ -5182,8 +5296,9 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color:
-                status == 'PAID' ? const Color(0xFFDCFCE7) : const Color(0xFFFFF1F2),
+            color: status == 'PAID'
+                ? const Color(0xFFDCFCE7)
+                : const Color(0xFFFFF1F2),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(

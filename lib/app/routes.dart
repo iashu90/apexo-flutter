@@ -15,7 +15,6 @@ import 'package:apexo/services/admins.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/features/stats/charts_controller.dart';
 import 'package:apexo/services/permissions.dart';
-import 'package:apexo/services/login.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -148,7 +147,7 @@ class _Routes {
           identifier: 'doctors_v2',
           icon: FluentIcons.medical,
           screen: DoctorsScreenV2.new,
-          accessible: permissions.list[0] || login.isAdmin,
+          accessible: permissions.canAccessByRouteIdentifier('doctors_v2'),
           navbarTitle: 'Doctors',
           onSelect: () async {
             await doctors.synchronize();
@@ -162,8 +161,7 @@ class _Routes {
           navbarTitle: txt("labworks"),
           icon: FluentIcons.test_beaker,
           screen: LabworksV2Screen.new,
-          accessible:
-              permissions.list[3] || permissions.list[0] || login.isAdmin,
+          accessible: permissions.canAccessByRouteIdentifier('labworks'),
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();
@@ -176,7 +174,7 @@ class _Routes {
           navbarTitle: txt("patients"),
           icon: FluentIcons.medication_admin,
           screen: PatientsScreenV2.new,
-          accessible: permissions.list[1] || login.isAdmin,
+          accessible: permissions.canAccessByRouteIdentifier('patients'),
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();
@@ -189,7 +187,7 @@ class _Routes {
           navbarTitle: txt("calendar"),
           icon: FluentIcons.calendar,
           screen: CalendarScreen.new,
-          accessible: permissions.list[2] || login.isAdmin,
+          accessible: permissions.canAccessByRouteIdentifier('calendar'),
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();
@@ -202,7 +200,7 @@ class _Routes {
           navbarTitle: 'Checkin',
           icon: FluentIcons.preview_link,
           screen: CheckinScreen.new,
-          accessible: permissions.list[2] || login.isAdmin,
+          accessible: permissions.canAccessByRouteIdentifier('checkin'),
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();
@@ -215,7 +213,7 @@ class _Routes {
           navbarTitle: txt("expenses"),
           icon: FluentIcons.receipt_processing,
           screen: ExpensesScreenV2.new,
-          accessible: permissions.list[4] || login.isAdmin,
+          accessible: permissions.canAccessByRouteIdentifier('expenses'),
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();
@@ -227,7 +225,7 @@ class _Routes {
           identifier: 'report_v2',
           icon: FluentIcons.report_document,
           screen: ReportV2Screen.new,
-          accessible: permissions.list[5] || login.isAdmin,
+          accessible: permissions.canAccessByRouteIdentifier('report_v2'),
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();
