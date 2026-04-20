@@ -102,7 +102,8 @@ Future<void> _showNextAppointmentPromptDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setStateDialog) {
         final doctorRows = doctors.present.values.toList(growable: false)
-          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+          ..sort(
+              (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
         return ContentDialog(
           title: Text(
@@ -116,7 +117,8 @@ Future<void> _showNextAppointmentPromptDialog(
               children: [
                 Row(
                   children: [
-                    const Text('Date:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Text('Date:',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     Button(
                       onPressed: () async {
@@ -145,7 +147,8 @@ Future<void> _showNextAppointmentPromptDialog(
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Text('Time:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Text('Time:',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     Button(
                       onPressed: () async {
@@ -199,7 +202,8 @@ Future<void> _showNextAppointmentPromptDialog(
                           });
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: selected
                                 ? const Color(0xFF2D7BD8)
@@ -212,9 +216,13 @@ Future<void> _showNextAppointmentPromptDialog(
                             ),
                           ),
                           child: Text(
-                            doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title,
+                            doctor.title.trim().isEmpty
+                                ? 'Unnamed doctor'
+                                : doctor.title,
                             style: TextStyle(
-                              color: selected ? Colors.white : const Color(0xFF355A84),
+                              color: selected
+                                  ? Colors.white
+                                  : const Color(0xFF355A84),
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
                             ),
@@ -373,15 +381,15 @@ Future<void> openAppointmentJourneyDialog(
   }) {
     nextVisitDateTime = scheduledAt;
     final nextAppointment = scheduledNextAppointmentId != null
-        ? (appointments.get(scheduledNextAppointmentId!) ?? Appointment.fromJson({'id': scheduledNextAppointmentId!}))
+        ? (appointments.get(scheduledNextAppointmentId!) ??
+            Appointment.fromJson({'id': scheduledNextAppointmentId!}))
         : Appointment.fromJson({'id': uuid()});
     nextAppointment.patientID = appointment.patientID;
     nextAppointment.date = nextVisitDateTime;
     nextAppointment.checkinStage = 'scheduled';
     nextAppointment.isCheckedIn = false;
-    nextAppointment.operatorsIDs = doctorId == null
-        ? [...appointment.operatorsIDs]
-        : [doctorId];
+    nextAppointment.operatorsIDs =
+        doctorId == null ? [...appointment.operatorsIDs] : [doctorId];
     if (reason.trim().isNotEmpty) {
       nextAppointment.preOpNotes = reason.trim();
     }
@@ -448,7 +456,8 @@ Future<void> openAppointmentJourneyDialog(
           onSchedule: () {
             if (nextVisitDateTime.isBefore(DateTime.now())) {
               setStepState(() {
-                scheduleError = 'Next appointment must be now or in the future.';
+                scheduleError =
+                    'Next appointment must be now or in the future.';
               });
               return;
             }
@@ -753,7 +762,8 @@ class _CheckinScheduledStageScreen extends StatelessWidget {
                       ),
                     );
                   },
-                  child: Text(DateFormat('dd MMM yyyy').format(nextVisitDateTime)),
+                  child:
+                      Text(DateFormat('dd MMM yyyy').format(nextVisitDateTime)),
                 ),
               ),
             ),
@@ -783,8 +793,9 @@ class _CheckinScheduledStageScreen extends StatelessWidget {
         ComboBox<String>(
           isExpanded: true,
           placeholder: const Text('Select doctor'),
-          value:
-              doctorRows.any((d) => d?.id == nextDoctorId) ? nextDoctorId : null,
+          value: doctorRows.any((d) => d?.id == nextDoctorId)
+              ? nextDoctorId
+              : null,
           items: doctorRows
               .map(
                 (doctor) => ComboBoxItem<String>(
@@ -2088,7 +2099,7 @@ class _WorkflowRow extends StatelessWidget {
                             'Duplicate record',
                             style: TextStyle(
                               color: Color(0xFFB91C1C),
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -2950,9 +2961,8 @@ class TodayAppointmentInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final diagnosis = appointment.diagnosis
-        .where((row) => row.trim().isNotEmpty)
-        .join(', ');
+    final diagnosis =
+        appointment.diagnosis.where((row) => row.trim().isNotEmpty).join(', ');
     final treatments = appointment.selectedTreatments
         .where((row) => row.trim().isNotEmpty)
         .join(', ');
@@ -3181,9 +3191,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     _selectedTreatments = a.selectedTreatments.toSet();
     _selectedConsultationTypes =
         a.subTreatments.where((e) => e.trim().isNotEmpty).toSet();
-    _visitType = _visitTypes.contains(a.visitType)
-      ? a.visitType
-      : 'Follow-up Visit';
+    _visitType =
+        _visitTypes.contains(a.visitType) ? a.visitType : 'Follow-up Visit';
     _selectedTeeth = a.selectedTeeth.toSet();
     _teethStates = {
       for (final id in _allToothIds) id: ToothState(toothId: id),
@@ -3399,7 +3408,21 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 fontSize: 18,
               ),
             ),
-          if (isWithDoctor) const SizedBox(height: 14),
+          if (isWithDoctor) 
+            const SizedBox(height: 14),
+                   Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    _medicalHistorySummaryText(a.patient),
+                    style: const TextStyle(
+                      color: Color(0xFFC63A4D),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
           if (isWithDoctor)
             LayoutBuilder(
               builder: (context, constraints) {
@@ -3459,12 +3482,14 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   alignment: Alignment.center,
-                                  child: Icon(icon, size: 12, color: const Color(0xFF2E5C85)),
+                                  child: Icon(icon,
+                                      size: 12, color: const Color(0xFF2E5C85)),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         type,
@@ -3491,31 +3516,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           ),
                         );
                       }).toList(growable: false),
-                    ),
-                    const SizedBox(height: 12),
-                    Builder(
-                      builder: (context) {
-                        final summary = _medicalHistorySummaryText(a.patient);
-
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FBFF),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFDCE8F6)),
-                          ),
-                          child: Text(
-                            summary,
-                            style: const TextStyle(
-                              color: Color(0xFF476588),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        );
-                      },
                     ),
                     const SizedBox(height: 12),
                     InfoLabel(
@@ -3974,14 +3974,14 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
             ? '-'
             : a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ');
     final selectedTreatments =
-      a.selectedTreatments.where((t) => t.trim().isNotEmpty).toList();
+        a.selectedTreatments.where((t) => t.trim().isNotEmpty).toList();
     final selectedSubTreatments =
-      a.subTreatments.where((t) => t.trim().isNotEmpty).toList();
+        a.subTreatments.where((t) => t.trim().isNotEmpty).toList();
     final treatmentLabel = selectedTreatments.isEmpty
-      ? 'Consultation'
-      : selectedSubTreatments.isEmpty
-        ? selectedTreatments.join(', ')
-        : '${selectedTreatments.join(', ')} - ${selectedSubTreatments.join(', ')}';
+        ? 'Consultation'
+        : selectedSubTreatments.isEmpty
+            ? selectedTreatments.join(', ')
+            : '${selectedTreatments.join(', ')} - ${selectedSubTreatments.join(', ')}';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
