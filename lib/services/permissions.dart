@@ -47,11 +47,11 @@ class _Permissions extends ObservablePersistingObject {
     false,
   ];
 
-  List<bool> list = launch.isDemo
-      ? [..._allAccess]
-      : [..._receptionistDefaults];
+  List<bool> list =
+      launch.isDemo ? [..._allAccess] : [..._receptionistDefaults];
   List<bool> editingList = [..._receptionistDefaults];
-  List<bool> doctorList = launch.isDemo ? [..._allAccess] : [..._doctorDefaults];
+  List<bool> doctorList =
+      launch.isDemo ? [..._allAccess] : [..._doctorDefaults];
   List<bool> editingDoctorList = [..._doctorDefaults];
 
   UserRole? get _roleFromAuthRecord {
@@ -62,7 +62,17 @@ class _Permissions extends ObservablePersistingObject {
     for (final key in keys) {
       final raw = record.data[key]?.toString().trim().toLowerCase();
       if (raw == null || raw.isEmpty) continue;
-      if (raw == '0' || raw == 'admin') return UserRole.admin;
+      if (raw == '0' ||
+          raw == 'admin' ||
+          raw == 'adminuser' ||
+          raw == 'super admin' ||
+          raw == 'superadmin' ||
+          raw == 'super user' ||
+          raw == 'superuser' ||
+          raw == '_superusers' ||
+          login.isAdmin) {
+        return UserRole.admin;
+      }
       if (raw == '1' || raw == 'reception' || raw == 'receptionist') {
         return UserRole.receptionist;
       }
@@ -175,7 +185,8 @@ class _Permissions extends ObservablePersistingObject {
       final firstAccessibleIndex = routes.allRoutes.indexWhere(
         (route) => route.accessible,
       );
-      routes.currentRouteIndex(firstAccessibleIndex >= 0 ? firstAccessibleIndex : 0);
+      routes.currentRouteIndex(
+          firstAccessibleIndex >= 0 ? firstAccessibleIndex : 0);
       return;
     }
 
@@ -210,14 +221,16 @@ class _Permissions extends ObservablePersistingObject {
   }
 
   Future<void> reloadFromRemote() async {
-    if (login.pb == null || login.token.isEmpty || login.pb!.authStore.isValid == false) {
+    if (login.pb == null ||
+        login.token.isEmpty ||
+        login.pb!.authStore.isValid == false) {
       return;
     }
     notifyAndPersist();
     try {
-      final rawValue = (await login.pb!
-          .collection("data")
-          .getOne("permissions____")).get<Map<String, dynamic>>("data")["value"];
+      final rawValue =
+          (await login.pb!.collection("data").getOne("permissions____"))
+              .get<Map<String, dynamic>>("data")["value"];
       final decoded = jsonDecode(rawValue.toString());
 
       if (decoded is List) {

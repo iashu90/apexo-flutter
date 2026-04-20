@@ -15,9 +15,9 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
 import 'package:apexo/features/checkin/appointment_journey_dialog.dart';
-import 'package:apexo/features/checkin/checkin_flow_v2_screen.dart';
 import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
+import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -68,6 +68,194 @@ String _patientFocusSummary(Appointment appointment) {
   final phone = appointment.patient?.phone.trim() ?? '';
   final safePhone = phone.isEmpty ? '-' : phone;
   return '${_patientDisplayName(appointment)} • ${age}y • $gender • $safePhone';
+}
+
+String _medicalHistorySummaryText(Patient? patient) {
+  final medicalHistoryEntries = <String>{
+    ...?patient?.tags,
+    ...?patient?.drugHistorySuggestions,
+    ...?patient?.maternalHistorySuggestions,
+    ...?patient?.habitsSuggestions,
+  }.where((entry) => entry.trim().isNotEmpty).toList(growable: false);
+
+  return medicalHistoryEntries.isEmpty
+      ? 'Medical History: No history recorded'
+      : 'Medical History: ${medicalHistoryEntries.join(', ')}';
+}
+
+Future<void> _showNextAppointmentPromptDialog(
+  BuildContext context,
+  Appointment appointment,
+) async {
+  final patient = appointment.patient;
+  if (patient == null) return;
+
+  DateTime nextDate = DateTime.now().add(const Duration(days: 7));
+  material.TimeOfDay nextTime = material.TimeOfDay(
+    hour: nextDate.hour,
+    minute: nextDate.minute,
+  );
+  final selectedDoctors = appointment.operatorsIDs.toSet();
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setStateDialog) {
+        final doctorRows = doctors.present.values.toList(growable: false)
+          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+
+        return ContentDialog(
+          title: Text(
+            'Schedule • ${_toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+          ),
+          content: SizedBox(
+            width: 560,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('Date:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 8),
+                    Button(
+                      onPressed: () async {
+                        final picked = await material.showDatePicker(
+                          context: context,
+                          initialDate: nextDate,
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2100, 12, 31),
+                          builder: apexoDatePickerBuilder(context),
+                        );
+                        if (picked == null) return;
+                        setStateDialog(() {
+                          nextDate = DateTime(
+                            picked.year,
+                            picked.month,
+                            picked.day,
+                            nextTime.hour,
+                            nextTime.minute,
+                          );
+                        });
+                      },
+                      child: Text(DateFormat('dd MMM yyyy').format(nextDate)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text('Time:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 8),
+                    Button(
+                      onPressed: () async {
+                        final picked = await material.showTimePicker(
+                          context: context,
+                          initialTime: nextTime,
+                        );
+                        if (picked == null) return;
+                        setStateDialog(() {
+                          nextTime = picked;
+                          nextDate = DateTime(
+                            nextDate.year,
+                            nextDate.month,
+                            nextDate.day,
+                            picked.hour,
+                            picked.minute,
+                          );
+                        });
+                      },
+                      child: Text(nextTime.format(context)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Consultant/Doctor',
+                  style: TextStyle(
+                    color: Color(0xFF355279),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (doctorRows.isEmpty)
+                  const Text('No doctors available to assign.')
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: doctorRows.map((doctor) {
+                      final selected = selectedDoctors.contains(doctor.id);
+                      return GestureDetector(
+                        onTap: () {
+                          setStateDialog(() {
+                            if (selected) {
+                              selectedDoctors.remove(doctor.id);
+                            } else {
+                              selectedDoctors
+                                ..clear()
+                                ..add(doctor.id);
+                            }
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? const Color(0xFF2D7BD8)
+                                : const Color(0xFFEFF4FB),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: selected
+                                  ? const Color(0xFF2D7BD8)
+                                  : const Color(0xFFD4E2F3),
+                            ),
+                          ),
+                          child: Text(
+                            doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title,
+                            style: TextStyle(
+                              color: selected ? Colors.white : const Color(0xFF355A84),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(growable: false),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            Button(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Skip'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final scheduledDate = DateTime(
+                  nextDate.year,
+                  nextDate.month,
+                  nextDate.day,
+                  nextTime.hour,
+                  nextTime.minute,
+                );
+                Navigator.pop(dialogContext);
+                final nextAppointment = Appointment.fromJson({
+                  'patientID': patient.id,
+                  'operatorsIDs': selectedDoctors.toList(growable: false),
+                  'date': scheduledDate.millisecondsSinceEpoch,
+                  'checkinStage': 'pending',
+                });
+                appointments.set(nextAppointment);
+              },
+              child: const Text('Schedule'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }
 
 List<Widget> _buildBillingSummaryLines(
@@ -204,23 +392,13 @@ Future<void> openAppointmentJourneyDialog(
 
   Widget stageBody(BuildContext context, int currentStep, double panelHeight) {
     if (currentStep == 0 || currentStep == 2) {
-      return Container(
-        width: double.infinity,
-        height: panelHeight,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFD7E5F6)),
-        ),
-        padding: const EdgeInsets.all(10),
-        child: SingleChildScrollView(
-          child: _CheckinOperativeForm(
-            appointment: appointment,
-            allAppointmentsForPatient: allAppointmentsForPatient,
-            showInlineBottomActions: false,
-            forcedStage: currentStep == 2 ? 'checkout' : 'with_doctor',
-          ),
-        ),
+      return _CheckinTreatmentStageScreen(
+        appointment: appointment,
+        allAppointmentsForPatient: allAppointmentsForPatient,
+        forcedStage: currentStep == 2 ? 'checkout' : 'with_doctor',
+        showInlineBottomActions: false,
+        boxed: true,
+        panelHeight: panelHeight,
       );
     }
 
@@ -231,179 +409,59 @@ Future<void> openAppointmentJourneyDialog(
         );
 
       return StatefulBuilder(
-        builder: (context, setStepState) => Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD7E5F6)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Schedule Next Appointment',
-                style: TextStyle(
-                  color: Color(0xFF0F4B66),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 20,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                scheduledNextVisit
-                    ? 'Next appointment scheduled at ${DateFormat('dd MMM yyyy • h:mm a').format(nextVisitDateTime)}'
-                    : 'Enter next appointment details below, then schedule. Or skip with Continue.',
-                style: const TextStyle(
-                  color: Color(0xFF3E5F7D),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: InfoLabel(
-                      label: 'Date',
-                      child: Button(
-                        onPressed: () async {
-                          final picked = await material.showDatePicker(
-                            context: context,
-                            initialDate: nextVisitDateTime,
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2100, 12, 31),
-                            builder: apexoDatePickerBuilder(context),
-                          );
-                          if (picked == null) return;
-                          setStepState(() {
-                            nextVisitDateTime = DateTime(
-                              picked.year,
-                              picked.month,
-                              picked.day,
-                              nextVisitDateTime.hour,
-                              nextVisitDateTime.minute,
-                            );
-                            scheduleError = '';
-                          });
-                        },
-                        child: Text(
-                          DateFormat('dd MMM yyyy').format(nextVisitDateTime),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: InfoLabel(
-                      label: 'Time',
-                      child: Button(
-                        onPressed: () async {
-                          final picked = await material.showTimePicker(
-                            context: context,
-                            initialTime: material.TimeOfDay(
-                              hour: nextVisitDateTime.hour,
-                              minute: nextVisitDateTime.minute,
-                            ),
-                          );
-                          if (picked == null) return;
-                          setStepState(() {
-                            nextVisitDateTime = DateTime(
-                              nextVisitDateTime.year,
-                              nextVisitDateTime.month,
-                              nextVisitDateTime.day,
-                              picked.hour,
-                              picked.minute,
-                            );
-                            scheduleError = '';
-                          });
-                        },
-                        child: Text(
-                          DateFormat('h:mm a').format(nextVisitDateTime),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ComboBox<String>(
-                isExpanded: true,
-                placeholder: const Text('Select doctor'),
-                value: doctorRows.any((d) => d.id == nextDoctorId)
-                    ? nextDoctorId
-                    : null,
-                items: doctorRows
-                    .map(
-                      (doctor) => ComboBoxItem<String>(
-                        value: doctor.id,
-                        child: Text(
-                          doctor.title.trim().isEmpty
-                              ? 'Unnamed doctor'
-                              : doctor.title,
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
-                onChanged: (value) {
-                  setStepState(() {
-                    nextDoctorId = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 8),
-              InfoLabel(
-                label: 'Reason',
-                child: TextBox(
-                  controller: nextReasonController,
-                  placeholder: 'Reason for next appointment',
-                  onChanged: (_) {
-                    setStepState(() {
-                      scheduleError = '';
-                    });
-                  },
-                ),
-              ),
-              if (scheduleError.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  scheduleError,
-                  style: const TextStyle(
-                    color: Color(0xFFD4483B),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  FilledButton(
-                    onPressed: () {
-                      if (nextVisitDateTime.isBefore(DateTime.now())) {
-                        setStepState(() {
-                          scheduleError =
-                              'Next appointment must be now or in the future.';
-                        });
-                        return;
-                      }
-                      setStepState(() {
-                        scheduleError = '';
-                      });
-                      saveNextAppointment(
-                        scheduledAt: nextVisitDateTime,
-                        doctorId: nextDoctorId,
-                        reason: nextReasonController.text,
-                      );
-                      setStepState(() {});
-                    },
-                    child: Text(scheduledNextVisit
-                        ? 'Update Scheduled Appointment'
-                        : 'Schedule Next Appointment'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        builder: (context, setStepState) => _CheckinScheduledStageScreen(
+          nextVisitDateTime: nextVisitDateTime,
+          scheduledNextVisit: scheduledNextVisit,
+          nextDoctorId: nextDoctorId,
+          doctorRows: doctorRows,
+          nextReasonController: nextReasonController,
+          scheduleError: scheduleError,
+          boxed: true,
+          onDateChanged: (value) {
+            setStepState(() {
+              nextVisitDateTime = value;
+              scheduleError = '';
+            });
+          },
+          onTimeChanged: (picked) {
+            setStepState(() {
+              nextVisitDateTime = DateTime(
+                nextVisitDateTime.year,
+                nextVisitDateTime.month,
+                nextVisitDateTime.day,
+                picked.hour,
+                picked.minute,
+              );
+              scheduleError = '';
+            });
+          },
+          onDoctorChanged: (value) {
+            setStepState(() {
+              nextDoctorId = value;
+            });
+          },
+          onReasonChanged: () {
+            setStepState(() {
+              scheduleError = '';
+            });
+          },
+          onSchedule: () {
+            if (nextVisitDateTime.isBefore(DateTime.now())) {
+              setStepState(() {
+                scheduleError = 'Next appointment must be now or in the future.';
+              });
+              return;
+            }
+            setStepState(() {
+              scheduleError = '';
+            });
+            saveNextAppointment(
+              scheduledAt: nextVisitDateTime,
+              doctorId: nextDoctorId,
+              reason: nextReasonController.text,
+            );
+            setStepState(() {});
+          },
         ),
       );
     }
@@ -414,47 +472,10 @@ Future<void> openAppointmentJourneyDialog(
     final Appointment? lastVisit =
         previousVisits.isEmpty ? null : previousVisits.first;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E5F6)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _patientDisplayName(appointment),
-              style: const TextStyle(
-                color: Color(0xFF163F70),
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _patientFocusSummary(appointment),
-              style: const TextStyle(
-                color: Color(0xFF4F6C90),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TodayAppointmentInsightCard(appointment: appointment),
-            const SizedBox(height: 8),
-            _LastAppointmentInsightCard(lastAppointment: lastVisit),
-            const SizedBox(height: 12),
-            _CheckoutBillingSummaryPanel(
-              appointment: appointment,
-              discountEnabled: appointment.discount > 0,
-              totalPaidOverride: appointment.paid,
-            ),
-          ],
-        ),
-      ),
+    return _CheckinCompletedStageScreen(
+      appointment: appointment,
+      lastVisit: lastVisit,
+      boxed: true,
     );
   }
 
@@ -608,6 +629,292 @@ Future<void> openCheckinAppointmentModal(
   );
 }
 
+class _CheckinTreatmentStageScreen extends StatelessWidget {
+  final Appointment appointment;
+  final List<Appointment> allAppointmentsForPatient;
+  final String forcedStage;
+  final bool showInlineBottomActions;
+  final bool boxed;
+  final double? panelHeight;
+
+  const _CheckinTreatmentStageScreen({
+    required this.appointment,
+    required this.allAppointmentsForPatient,
+    required this.forcedStage,
+    this.showInlineBottomActions = false,
+    this.boxed = false,
+    this.panelHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = SingleChildScrollView(
+      child: _CheckinOperativeForm(
+        appointment: appointment,
+        allAppointmentsForPatient: allAppointmentsForPatient,
+        showInlineBottomActions: showInlineBottomActions,
+        forcedStage: forcedStage,
+      ),
+    );
+
+    if (!boxed) {
+      return content;
+    }
+
+    return Container(
+      width: double.infinity,
+      height: panelHeight,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E5F6)),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: content,
+    );
+  }
+}
+
+class _CheckinScheduledStageScreen extends StatelessWidget {
+  final DateTime nextVisitDateTime;
+  final bool scheduledNextVisit;
+  final String? nextDoctorId;
+  final List<Doctor?> doctorRows;
+  final TextEditingController nextReasonController;
+  final String scheduleError;
+  final ValueChanged<DateTime> onDateChanged;
+  final ValueChanged<material.TimeOfDay> onTimeChanged;
+  final ValueChanged<String?> onDoctorChanged;
+  final VoidCallback onReasonChanged;
+  final VoidCallback onSchedule;
+  final bool boxed;
+
+  const _CheckinScheduledStageScreen({
+    required this.nextVisitDateTime,
+    required this.scheduledNextVisit,
+    required this.nextDoctorId,
+    required this.doctorRows,
+    required this.nextReasonController,
+    required this.scheduleError,
+    required this.onDateChanged,
+    required this.onTimeChanged,
+    required this.onDoctorChanged,
+    required this.onReasonChanged,
+    required this.onSchedule,
+    this.boxed = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Schedule Next Appointment',
+          style: TextStyle(
+            color: Color(0xFF0F4B66),
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          scheduledNextVisit
+              ? 'Next appointment scheduled at ${DateFormat('dd MMM yyyy • h:mm a').format(nextVisitDateTime)}'
+              : 'Enter next appointment details below, then schedule. Or skip with Continue.',
+          style: const TextStyle(
+            color: Color(0xFF3E5F7D),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: InfoLabel(
+                label: 'Date',
+                child: Button(
+                  onPressed: () async {
+                    final picked = await material.showDatePicker(
+                      context: context,
+                      initialDate: nextVisitDateTime,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100, 12, 31),
+                      builder: apexoDatePickerBuilder(context),
+                    );
+                    if (picked == null) return;
+                    onDateChanged(
+                      DateTime(
+                        picked.year,
+                        picked.month,
+                        picked.day,
+                        nextVisitDateTime.hour,
+                        nextVisitDateTime.minute,
+                      ),
+                    );
+                  },
+                  child: Text(DateFormat('dd MMM yyyy').format(nextVisitDateTime)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: InfoLabel(
+                label: 'Time',
+                child: Button(
+                  onPressed: () async {
+                    final picked = await material.showTimePicker(
+                      context: context,
+                      initialTime: material.TimeOfDay(
+                        hour: nextVisitDateTime.hour,
+                        minute: nextVisitDateTime.minute,
+                      ),
+                    );
+                    if (picked == null) return;
+                    onTimeChanged(picked);
+                  },
+                  child: Text(DateFormat('h:mm a').format(nextVisitDateTime)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ComboBox<String>(
+          isExpanded: true,
+          placeholder: const Text('Select doctor'),
+          value:
+              doctorRows.any((d) => d?.id == nextDoctorId) ? nextDoctorId : null,
+          items: doctorRows
+              .map(
+                (doctor) => ComboBoxItem<String>(
+                  value: doctor?.id,
+                  child: Text(
+                    (doctor?.title.trim().isEmpty ?? true)
+                        ? 'Unnamed doctor'
+                        : doctor!.title,
+                  ),
+                ),
+              )
+              .toList(growable: false),
+          onChanged: onDoctorChanged,
+        ),
+        const SizedBox(height: 8),
+        InfoLabel(
+          label: 'Reason',
+          child: TextBox(
+            controller: nextReasonController,
+            placeholder: 'Reason for next appointment',
+            onChanged: (_) => onReasonChanged(),
+          ),
+        ),
+        if (scheduleError.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            scheduleError,
+            style: const TextStyle(
+              color: Color(0xFFD4483B),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            FilledButton(
+              onPressed: onSchedule,
+              child: Text(
+                scheduledNextVisit
+                    ? 'Update Scheduled Appointment'
+                    : 'Schedule Next Appointment',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    if (!boxed) {
+      return content;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E5F6)),
+      ),
+      child: content,
+    );
+  }
+}
+
+class _CheckinCompletedStageScreen extends StatelessWidget {
+  final Appointment appointment;
+  final Appointment? lastVisit;
+  final bool boxed;
+
+  const _CheckinCompletedStageScreen({
+    required this.appointment,
+    required this.lastVisit,
+    this.boxed = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final content = SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _patientDisplayName(appointment),
+            style: const TextStyle(
+              color: Color(0xFF163F70),
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _patientFocusSummary(appointment),
+            style: const TextStyle(
+              color: Color(0xFF4F6C90),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TodayAppointmentInsightCard(appointment: appointment),
+          const SizedBox(height: 8),
+          _LastAppointmentInsightCard(lastAppointment: lastVisit),
+          const SizedBox(height: 12),
+          _CheckoutBillingSummaryPanel(
+            appointment: appointment,
+            discountEnabled: appointment.discount > 0,
+            totalPaidOverride: appointment.paid,
+          ),
+        ],
+      ),
+    );
+
+    if (!boxed) {
+      return content;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E5F6)),
+      ),
+      child: content,
+    );
+  }
+}
+
 class CheckinScreen extends StatefulWidget {
   const CheckinScreen({super.key});
 
@@ -674,7 +981,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
     return DateTime(date.year, date.month, date.day, now.hour, now.minute);
   }
 
-  void _checkInPatient(Patient patient) {
+  Appointment _checkInPatient(Patient patient) {
     final appointment = Appointment.fromJson({
       'id': uuid(),
       'patientID': patient.id,
@@ -685,6 +992,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
     });
     appointments.set(appointment);
     setState(() => _selectedAppointment = appointment);
+    return appointment;
   }
 
   String _billingCombinedRowStage(Appointment appointment) {
@@ -727,36 +1035,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
     );
   }
 
-  Future<void> _openNextCheckinStepper(Appointment appointment) async {
-    await openAppointmentJourneyDialog(context, appointment);
+  Future<void> _openNewPatientAndCheckin() async {
+    final created = await _openAddPatientPopup('');
+    if (!mounted || created == null) return;
+    final appointment = _checkInPatient(created);
+    if (!mounted) return;
+    await _openAppointmentPopup(appointment);
   }
 
-  Future<void> _openCheckinV2Flow(Appointment appointment) async {
-    await showDialog<void>(
-      context: context,
-      barrierColor: const Color(0x660A1B33),
-      builder: (dialogContext) {
-        final size = MediaQuery.of(dialogContext).size;
-        final width = size.width < 760 ? size.width - 16 : size.width * 0.96;
-        final height =
-            size.height < 760 ? size.height - 16 : size.height * 0.94;
-
-        return ContentDialog(
-          constraints: BoxConstraints(
-            maxWidth: width,
-            maxHeight: height,
-          ),
-          content: SizedBox(
-            width: width,
-            height: height,
-            child: CheckinFlowV2Screen(
-              appointment: appointment,
-              onClose: () => Navigator.pop(dialogContext),
-            ),
-          ),
-        );
-      },
-    );
+  Future<void> _openNextCheckinStepper(Appointment appointment) async {
+    await openAppointmentJourneyDialog(context, appointment);
   }
 
   @override
@@ -895,19 +1183,36 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: _openQuickPatientSearchDialog,
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(FluentIcons.search, size: 12),
-                                  SizedBox(width: 8),
-                                  Text('Check-in'),
-                                ],
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Button(
+                                  onPressed: _openNewPatientAndCheckin,
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(FluentIcons.add_friend, size: 12),
+                                      SizedBox(width: 8),
+                                      Text('New Patient'),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: FilledButton(
+                                  onPressed: _openQuickPatientSearchDialog,
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(FluentIcons.search, size: 12),
+                                      SizedBox(width: 8),
+                                      Text('Check-in'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 8),
                           SizedBox(
@@ -921,20 +1226,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                       _openNextCheckinStepper(target);
                                     },
                               child: const Text('New Checkin Flow'),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: filtered.isEmpty
-                                  ? null
-                                  : () {
-                                      final target = _selectedAppointment ??
-                                          filtered.first;
-                                      _openCheckinV2Flow(target);
-                                    },
-                              child: const Text('Open Check-in V2'),
                             ),
                           ),
                         ],
@@ -996,6 +1287,26 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
+                          Button(
+                            onPressed: _openNewPatientAndCheckin,
+                            style: ButtonStyle(
+                              padding: WidgetStateProperty.all(
+                                const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 11,
+                                ),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(FluentIcons.add_friend, size: 12),
+                                SizedBox(width: 8),
+                                Text('New Patient'),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           FilledButton(
                             onPressed: _openQuickPatientSearchDialog,
                             style: ButtonStyle(
@@ -1038,25 +1349,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                             ),
                             child: const Text('Next Checkin'),
-                          ),
-                          const SizedBox(width: 8),
-                          Button(
-                            onPressed: filtered.isEmpty
-                                ? null
-                                : () {
-                                    final target =
-                                        _selectedAppointment ?? filtered.first;
-                                    _openCheckinV2Flow(target);
-                                  },
-                            style: ButtonStyle(
-                              padding: WidgetStateProperty.all(
-                                const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 11,
-                                ),
-                              ),
-                            ),
-                            child: const Text('Open Check-in V2'),
                           ),
                         ],
                       ),
@@ -1347,185 +1639,7 @@ class _WorkflowRow extends StatelessWidget {
     BuildContext context,
     Appointment appointment,
   ) async {
-    final p = appointment.patient;
-    if (p == null) return;
-
-    DateTime nextDate = DateTime.now().add(const Duration(days: 7));
-    material.TimeOfDay nextTime = material.TimeOfDay(
-      hour: nextDate.hour,
-      minute: nextDate.minute,
-    );
-    final selectedDoctors = appointment.operatorsIDs.toSet();
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setStateDialog) {
-          final doctorRows = doctors.present.values.toList(growable: false)
-            ..sort((a, b) =>
-                a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-
-          return ContentDialog(
-            title: Text(
-              'Schedule • ${_toTitleCase(p.title)} • ${p.age}y • ${p.phone.trim().isEmpty ? '-' : p.phone}',
-            ),
-            content: SizedBox(
-              width: 560,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text('Date:',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(width: 8),
-                      Button(
-                        onPressed: () async {
-                          final picked = await material.showDatePicker(
-                            context: context,
-                            initialDate: nextDate,
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2100, 12, 31),
-                            builder: apexoDatePickerBuilder(context),
-                          );
-                          if (picked == null) return;
-                          setStateDialog(() {
-                            nextDate = DateTime(
-                              picked.year,
-                              picked.month,
-                              picked.day,
-                              nextTime.hour,
-                              nextTime.minute,
-                            );
-                          });
-                        },
-                        child: Text(DateFormat('dd MMM yyyy').format(nextDate)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Text(
-                        'Time:',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(width: 8),
-                      Button(
-                        onPressed: () async {
-                          final picked = await material.showTimePicker(
-                            context: context,
-                            initialTime: nextTime,
-                          );
-                          if (picked == null) return;
-                          setStateDialog(() {
-                            nextTime = picked;
-                            nextDate = DateTime(
-                              nextDate.year,
-                              nextDate.month,
-                              nextDate.day,
-                              picked.hour,
-                              picked.minute,
-                            );
-                          });
-                        },
-                        child: Text(nextTime.format(context)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Consultant/Doctor',
-                    style: TextStyle(
-                      color: Color(0xFF355279),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (doctorRows.isEmpty)
-                    const Text('No doctors available to assign.')
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: doctorRows.map((doctor) {
-                        final selected = selectedDoctors.contains(doctor.id);
-                        return GestureDetector(
-                          onTap: () {
-                            setStateDialog(() {
-                              if (selected) {
-                                selectedDoctors.remove(doctor.id);
-                              } else {
-                                selectedDoctors
-                                  ..clear()
-                                  ..add(doctor.id);
-                              }
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? const Color(0xFF2D7BD8)
-                                  : const Color(0xFFEFF4FB),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: selected
-                                    ? const Color(0xFF2D7BD8)
-                                    : const Color(0xFFD4E2F3),
-                              ),
-                            ),
-                            child: Text(
-                              doctor.title.trim().isEmpty
-                                  ? 'Unnamed doctor'
-                                  : doctor.title,
-                              style: TextStyle(
-                                color: selected
-                                    ? Colors.white
-                                    : const Color(0xFF355A84),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(growable: false),
-                    ),
-                ],
-              ),
-            ),
-            actions: [
-              Button(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Skip'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final scheduledDate = DateTime(
-                    nextDate.year,
-                    nextDate.month,
-                    nextDate.day,
-                    nextTime.hour,
-                    nextTime.minute,
-                  );
-                  Navigator.pop(dialogContext);
-                  final nextAppointment = Appointment.fromJson({
-                    'patientID': p.id,
-                    'operatorsIDs': selectedDoctors.toList(growable: false),
-                    'date': scheduledDate.millisecondsSinceEpoch,
-                    'checkinStage': 'pending',
-                  });
-                  appointments.set(nextAppointment);
-                },
-                child: const Text('Schedule'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+    await _showNextAppointmentPromptDialog(context, appointment);
   }
 
   Future<void> _deleteScheduledAppointment(
@@ -2356,185 +2470,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
   }
 
   Future<void> _openNextAppointmentPrompt(Appointment appointment) async {
-    final patient = appointment.patient;
-    if (patient == null) return;
-
-    DateTime nextDate = DateTime.now().add(const Duration(days: 7));
-    material.TimeOfDay nextTime = material.TimeOfDay(
-      hour: nextDate.hour,
-      minute: nextDate.minute,
-    );
-    final selectedDoctors = appointment.operatorsIDs.toSet();
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setStateDialog) {
-          final doctorRows = doctors.present.values.toList(growable: false)
-            ..sort((a, b) =>
-                a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-
-          return ContentDialog(
-            title: Text(
-              'Schedule • ${_toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
-            ),
-            content: SizedBox(
-              width: 560,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text('Date:',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(width: 8),
-                      Button(
-                        onPressed: () async {
-                          final picked = await material.showDatePicker(
-                            context: context,
-                            initialDate: nextDate,
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2100, 12, 31),
-                            builder: apexoDatePickerBuilder(context),
-                          );
-                          if (picked == null) return;
-                          setStateDialog(() {
-                            nextDate = DateTime(
-                              picked.year,
-                              picked.month,
-                              picked.day,
-                              nextTime.hour,
-                              nextTime.minute,
-                            );
-                          });
-                        },
-                        child: Text(DateFormat('dd MMM yyyy').format(nextDate)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Text(
-                        'Time:',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(width: 8),
-                      Button(
-                        onPressed: () async {
-                          final picked = await material.showTimePicker(
-                            context: context,
-                            initialTime: nextTime,
-                          );
-                          if (picked == null) return;
-                          setStateDialog(() {
-                            nextTime = picked;
-                            nextDate = DateTime(
-                              nextDate.year,
-                              nextDate.month,
-                              nextDate.day,
-                              picked.hour,
-                              picked.minute,
-                            );
-                          });
-                        },
-                        child: Text(nextTime.format(context)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Consultant/Doctor',
-                    style: TextStyle(
-                      color: Color(0xFF355279),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (doctorRows.isEmpty)
-                    const Text('No doctors available to assign.')
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: doctorRows.map((doctor) {
-                        final selected = selectedDoctors.contains(doctor.id);
-                        return GestureDetector(
-                          onTap: () {
-                            setStateDialog(() {
-                              if (selected) {
-                                selectedDoctors.remove(doctor.id);
-                              } else {
-                                selectedDoctors
-                                  ..clear()
-                                  ..add(doctor.id);
-                              }
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? const Color(0xFF2D7BD8)
-                                  : const Color(0xFFEFF4FB),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: selected
-                                    ? const Color(0xFF2D7BD8)
-                                    : const Color(0xFFD4E2F3),
-                              ),
-                            ),
-                            child: Text(
-                              doctor.title.trim().isEmpty
-                                  ? 'Unnamed doctor'
-                                  : doctor.title,
-                              style: TextStyle(
-                                color: selected
-                                    ? Colors.white
-                                    : const Color(0xFF355A84),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(growable: false),
-                    ),
-                ],
-              ),
-            ),
-            actions: [
-              Button(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Skip'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final scheduledDate = DateTime(
-                    nextDate.year,
-                    nextDate.month,
-                    nextDate.day,
-                    nextTime.hour,
-                    nextTime.minute,
-                  );
-                  Navigator.pop(dialogContext);
-                  final nextAppointment = Appointment.fromJson({
-                    'patientID': patient.id,
-                    'operatorsIDs': selectedDoctors.toList(growable: false),
-                    'date': scheduledDate.millisecondsSinceEpoch,
-                    'checkinStage': 'pending',
-                  });
-                  appointments.set(nextAppointment);
-                },
-                child: const Text('Schedule'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+    await _showNextAppointmentPromptDialog(context, appointment);
   }
 
   @override
@@ -2545,12 +2481,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
     final doctorName = appointment.operators.isEmpty
         ? 'Unassigned'
         : appointment.operators.map((d) => d.title).join(', ');
-    final medicalHistoryEntries = <String>{
-      ...?patient?.tags,
-      ...?patient?.drugHistorySuggestions,
-      ...?patient?.maternalHistorySuggestions,
-      ...?patient?.habitsSuggestions,
-    }.where((entry) => entry.trim().isNotEmpty).toList(growable: false);
+    final medicalHistorySummary = _medicalHistorySummaryText(patient);
     final isCheckout = appointment.checkinStage == 'checkout';
     final pid = appointment.patientID;
 
@@ -2579,9 +2510,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(
-                    medicalHistoryEntries.isEmpty
-                        ? 'Medical History: No history recorded'
-                        : 'Medical History: ${medicalHistoryEntries.join(', ')}',
+                    medicalHistorySummary,
                     style: const TextStyle(
                       color: Color(0xFFC63A4D),
                       fontWeight: FontWeight.w700,
@@ -2661,16 +2590,22 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                 const SizedBox(height: 10),
                 if (appointment.checkinStage == 'with_doctor' ||
                     appointment.checkinStage == 'checkout')
-                  _CheckinOperativeForm(
+                  _CheckinTreatmentStageScreen(
                     appointment: appointment,
                     allAppointmentsForPatient: all,
+                    forcedStage: appointment.checkinStage == 'checkout'
+                        ? 'checkout'
+                        : 'with_doctor',
                     showInlineBottomActions: false,
                   )
                 else
                   const SizedBox.shrink(),
                 if (appointment.checkinStage == 'completed') ...[
                   const SizedBox(height: 8),
-                  TodayAppointmentInsightCard(appointment: appointment),
+                  _CheckinCompletedStageScreen(
+                    appointment: appointment,
+                    lastVisit: lastAppointment,
+                  ),
                 ],
                 const SizedBox(height: 10),
                 if (otherRows.isEmpty) const SizedBox.shrink(),
@@ -2928,61 +2863,79 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
 
 class _LastAppointmentInsightCard extends StatelessWidget {
   final Appointment? lastAppointment;
-
   const _LastAppointmentInsightCard({required this.lastAppointment});
 
   @override
   Widget build(BuildContext context) {
+    if (lastAppointment == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FBFF),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFD7E5F6)),
+        ),
+        child: const Text(
+          'No previous appointment history available.',
+          style: TextStyle(
+            color: Color(0xFF5B7394),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
+    final last = lastAppointment!;
+    final treatmentSummary = last.selectedTreatments
+        .where((row) => row.trim().isNotEmpty)
+        .join(', ');
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7FBFF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2ECF8)),
+        color: const Color(0xFFF8FBFF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E5F6)),
       ),
-      child: lastAppointment == null
-          ? const Text(
-              'Last Appointment Summary: no previous appointment found.',
-              style: TextStyle(color: Color(0xFF5F789B), fontSize: 12),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Last Appointment Summary',
-                  style: TextStyle(
-                    color: Color(0xFF2C4E76),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  DateFormat('dd MMM yyyy • h:mm a')
-                      .format(lastAppointment!.date),
-                  style: const TextStyle(
-                    color: Color(0xFF1F446E),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  lastAppointment!.selectedTreatments.isEmpty
-                      ? 'Treatments: -'
-                      : 'Treatments: ${lastAppointment!.selectedTreatments.join(', ')}',
-                  style:
-                      const TextStyle(color: Color(0xFF5F789B), fontSize: 12),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Paid: ${lastAppointment!.paid.toStringAsFixed(0)} | Price: ${lastAppointment!.price.toStringAsFixed(0)}',
-                  style:
-                      const TextStyle(color: Color(0xFF5F789B), fontSize: 12),
-                ),
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Last Appointment',
+            style: TextStyle(
+              color: Color(0xFF223B5E),
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            DateFormat('dd MMM yyyy • h:mm a').format(last.date),
+            style: const TextStyle(
+              color: Color(0xFF355279),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Stage: ${last.checkinStage}',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Treatment: ${treatmentSummary.isEmpty ? '-' : treatmentSummary}',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2990,53 +2943,62 @@ class _LastAppointmentInsightCard extends StatelessWidget {
 class TodayAppointmentInsightCard extends StatelessWidget {
   final Appointment appointment;
 
-  const TodayAppointmentInsightCard({super.key, required this.appointment});
+  const TodayAppointmentInsightCard({
+    super.key,
+    required this.appointment,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final treatments = appointment.selectedTreatments
-        .where((t) => t.trim().isNotEmpty)
+    final diagnosis = appointment.diagnosis
+        .where((row) => row.trim().isNotEmpty)
         .join(', ');
-    final teeth =
-        appointment.selectedTeeth.where((t) => t.trim().isNotEmpty).join(', ');
+    final treatments = appointment.selectedTreatments
+        .where((row) => row.trim().isNotEmpty)
+        .join(', ');
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7FBFF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2ECF8)),
+        color: const Color(0xFFF8FBFF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E5F6)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Today's Appointment Details",
+            'Today Appointment',
             style: TextStyle(
-              color: Color(0xFF2C4E76),
+              color: Color(0xFF223B5E),
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            DateFormat('dd MMM yyyy • h:mm a').format(appointment.date),
+            style: const TextStyle(
+              color: Color(0xFF355279),
               fontWeight: FontWeight.w700,
-              fontSize: 12,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            DateFormat('dd MMM yyyy • h:mm a').format(appointment.date),
+            'Diagnosis: ${diagnosis.isEmpty ? '-' : diagnosis}',
             style: const TextStyle(
-              color: Color(0xFF1F446E),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
-            treatments.isEmpty ? 'Treatments: -' : 'Treatments: $treatments',
-            style: const TextStyle(color: Color(0xFF5F789B), fontSize: 12),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            teeth.isEmpty ? 'Teeth: -' : 'Teeth: $teeth',
-            style: const TextStyle(color: Color(0xFF5F789B), fontSize: 12),
+            'Treatment: ${treatments.isEmpty ? '-' : treatments}',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -3053,7 +3015,7 @@ class _CheckinOperativeForm extends StatefulWidget {
   const _CheckinOperativeForm({
     required this.appointment,
     required this.allAppointmentsForPatient,
-    this.showInlineBottomActions = true,
+    this.showInlineBottomActions = false,
     this.forcedStage,
   });
 
@@ -3062,13 +3024,12 @@ class _CheckinOperativeForm extends StatefulWidget {
 }
 
 class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
+  Timer? _autosaveDebounce;
   late final TextEditingController _postOpController;
   late final TextEditingController _priceController;
   late final TextEditingController _paidController;
   late final TextEditingController _discountController;
-  Timer? _autosaveDebounce;
   bool _hasPendingAutosave = false;
-
   bool _discountEnabled = false;
   Set<String> _selectedTreatments = {};
   Set<String> _selectedConsultationTypes = {};
@@ -3322,185 +3283,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   }
 
   Future<void> _openNextAppointmentPrompt(Appointment appointment) async {
-    final patient = appointment.patient;
-    if (patient == null) return;
-
-    DateTime nextDate = DateTime.now().add(const Duration(days: 7));
-    material.TimeOfDay nextTime = material.TimeOfDay(
-      hour: nextDate.hour,
-      minute: nextDate.minute,
-    );
-    final selectedDoctors = appointment.operatorsIDs.toSet();
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setStateDialog) {
-          final doctorRows = doctors.present.values.toList(growable: false)
-            ..sort((a, b) =>
-                a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-
-          return ContentDialog(
-            title: Text(
-              'Schedule • ${_toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
-            ),
-            content: SizedBox(
-              width: 560,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text('Date:',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(width: 8),
-                      Button(
-                        onPressed: () async {
-                          final picked = await material.showDatePicker(
-                            context: context,
-                            initialDate: nextDate,
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2100, 12, 31),
-                            builder: apexoDatePickerBuilder(context),
-                          );
-                          if (picked == null) return;
-                          setStateDialog(() {
-                            nextDate = DateTime(
-                              picked.year,
-                              picked.month,
-                              picked.day,
-                              nextTime.hour,
-                              nextTime.minute,
-                            );
-                          });
-                        },
-                        child: Text(DateFormat('dd MMM yyyy').format(nextDate)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Text(
-                        'Time:',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(width: 8),
-                      Button(
-                        onPressed: () async {
-                          final picked = await material.showTimePicker(
-                            context: context,
-                            initialTime: nextTime,
-                          );
-                          if (picked == null) return;
-                          setStateDialog(() {
-                            nextTime = picked;
-                            nextDate = DateTime(
-                              nextDate.year,
-                              nextDate.month,
-                              nextDate.day,
-                              picked.hour,
-                              picked.minute,
-                            );
-                          });
-                        },
-                        child: Text(nextTime.format(context)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Consultant/Doctor',
-                    style: TextStyle(
-                      color: Color(0xFF355279),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (doctorRows.isEmpty)
-                    const Text('No doctors available to assign.')
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: doctorRows.map((doctor) {
-                        final selected = selectedDoctors.contains(doctor.id);
-                        return GestureDetector(
-                          onTap: () {
-                            setStateDialog(() {
-                              if (selected) {
-                                selectedDoctors.remove(doctor.id);
-                              } else {
-                                selectedDoctors
-                                  ..clear()
-                                  ..add(doctor.id);
-                              }
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? const Color(0xFF2D7BD8)
-                                  : const Color(0xFFEFF4FB),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: selected
-                                    ? const Color(0xFF2D7BD8)
-                                    : const Color(0xFFD4E2F3),
-                              ),
-                            ),
-                            child: Text(
-                              doctor.title.trim().isEmpty
-                                  ? 'Unnamed doctor'
-                                  : doctor.title,
-                              style: TextStyle(
-                                color: selected
-                                    ? Colors.white
-                                    : const Color(0xFF355A84),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(growable: false),
-                    ),
-                ],
-              ),
-            ),
-            actions: [
-              Button(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Skip'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final scheduledDate = DateTime(
-                    nextDate.year,
-                    nextDate.month,
-                    nextDate.day,
-                    nextTime.hour,
-                    nextTime.minute,
-                  );
-                  Navigator.pop(dialogContext);
-                  final nextAppointment = Appointment.fromJson({
-                    'patientID': patient.id,
-                    'operatorsIDs': selectedDoctors.toList(growable: false),
-                    'date': scheduledDate.millisecondsSinceEpoch,
-                    'checkinStage': 'pending',
-                  });
-                  appointments.set(nextAppointment);
-                },
-                child: const Text('Schedule'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+    await _showNextAppointmentPromptDialog(context, appointment);
   }
 
   Future<void> _moveBackToWaiting() async {
@@ -3712,18 +3495,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     const SizedBox(height: 12),
                     Builder(
                       builder: (context) {
-                        final medicalHistoryEntries = <String>{
-                          ...(a.patient?.tags ?? const <String>[]),
-                          ...(a.patient?.drugHistorySuggestions ?? const <String>[]),
-                          ...(a.patient?.maternalHistorySuggestions ?? const <String>[]),
-                          ...(a.patient?.habitsSuggestions ?? const <String>[]),
-                        }
-                            .where((entry) => entry.trim().isNotEmpty)
-                            .toList(growable: false);
-
-                        final summary = medicalHistoryEntries.isEmpty
-                            ? 'Medical History: No history recorded'
-                            : 'Medical History: ${medicalHistoryEntries.join(', ')}';
+                        final summary = _medicalHistorySummaryText(a.patient);
 
                         return Container(
                           width: double.infinity,

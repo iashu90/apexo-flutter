@@ -449,33 +449,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final doctorFeeToday =
             todaysAppointments.fold<double>(0, (sum, a) => sum + a.doctorPayableAmount);
         final netProfitToday = revenueToday - doctorFeeToday;
-        final previousDate = DateTime(
-          selectedDate.year,
-          selectedDate.month,
-          selectedDate.day,
-        ).subtract(const Duration(days: 1));
-        final previousAppointments = appointments.forDate(previousDate);
-        final previousRevenue = previousAppointments.fold<double>(
-          0,
-          (sum, a) => sum + a.paid + a.prescriptionPaid,
-        );
-        final previousDoctorFee = previousAppointments.fold<double>(
-          0,
-          (sum, a) => sum + a.doctorPayableAmount,
-        );
-        final previousNetProfit = previousRevenue - previousDoctorFee;
-        double _appointmentDue(Appointment a) {
-          final discount = a.discount;
-          final discountedTotal = a.discountType == 'percent'
-              ? (a.price - (a.price * discount / 100)).clamp(0, double.infinity)
-              : (a.price - discount).clamp(0, double.infinity);
-          return (discountedTotal - a.paid).clamp(0, double.infinity).toDouble();
-        }
-
-        final previousOutstanding = previousAppointments.fold<double>(
-          0,
-          (sum, a) => sum + _appointmentDue(a),
-        );
         final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
         final treatmentStats =
             DashboardTreatmentStats.from(doctorScopedAppointments);
@@ -571,6 +544,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       _RevenueCard(
                         title: 'Revenue Today',
                         value: _money(revenueToday),
+                        doctorFee: doctorFeeToday,
+                        netProfit: netProfitToday,
                       ),
                       _PaymentSessionCard(
                         onPreviousDate: () => _changeDate(-1),
@@ -621,17 +596,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                           .toList(growable: false),
                     );
                   },
-                ),
-                const SizedBox(height: 12),
-                _CashflowHealthStrip(
-                  revenue: revenueToday,
-                  previousRevenue: previousRevenue,
-                  doctorFee: doctorFeeToday,
-                  previousDoctorFee: previousDoctorFee,
-                  netProfit: netProfitToday,
-                  previousNetProfit: previousNetProfit,
-                  outstanding: outstandingBalance,
-                  previousOutstanding: previousOutstanding,
                 ),
                 const SizedBox(height: 16),
                 const _SectionTitle('Financial Summary'),
@@ -3063,8 +3027,15 @@ class _StatCard extends StatelessWidget {
 class _RevenueCard extends StatelessWidget {
   final String title;
   final String value;
+  final double doctorFee;
+  final double netProfit;
 
-  const _RevenueCard({required this.title, required this.value});
+  const _RevenueCard({
+    required this.title,
+    required this.value,
+    required this.doctorFee,
+    required this.netProfit,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -3093,155 +3064,29 @@ class _RevenueCard extends StatelessWidget {
                   color: Color(0xFF1468CC),
                 ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                'Doctor Fee: ${formatIndianShortCurrency(doctorFee)}',
+                style: const TextStyle(
+                  color: Color(0xFFD6455D),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Net Profit: ${formatIndianShortCurrency(netProfit)}',
+                style: TextStyle(
+                  color: netProfit >= 0
+                      ? const Color(0xFF2BA58D)
+                      : const Color(0xFFD6455D),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _CashflowHealthStrip extends StatelessWidget {
-  final double revenue;
-  final double previousRevenue;
-  final double doctorFee;
-  final double previousDoctorFee;
-  final double netProfit;
-  final double previousNetProfit;
-  final double outstanding;
-  final double previousOutstanding;
-
-  const _CashflowHealthStrip({
-    required this.revenue,
-    required this.previousRevenue,
-    required this.doctorFee,
-    required this.previousDoctorFee,
-    required this.netProfit,
-    required this.previousNetProfit,
-    required this.outstanding,
-    required this.previousOutstanding,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Cashflow Health',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF12355F),
-            ),
-          ),
-          const SizedBox(height: 8),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final compact = constraints.maxWidth < 980;
-              final tiles = [
-                _cashflowTile(
-                  'Revenue',
-                  revenue,
-                  previousRevenue,
-                  const Color(0xFF2D7BD8),
-                ),
-                _cashflowTile(
-                  'Doctor Fee',
-                  doctorFee,
-                  previousDoctorFee,
-                  const Color(0xFFD6455D),
-                ),
-                _cashflowTile(
-                  'Net Profit',
-                  netProfit,
-                  previousNetProfit,
-                  netProfit >= 0 ? const Color(0xFF2BA58D) : const Color(0xFFD6455D),
-                ),
-                _cashflowTile(
-                  'Outstanding',
-                  outstanding,
-                  previousOutstanding,
-                  const Color(0xFF7A4ACF),
-                ),
-              ];
-
-              if (compact) {
-                return Column(
-                  children: [
-                    Row(children: [Expanded(child: tiles[0]), const SizedBox(width: 8), Expanded(child: tiles[1])]),
-                    const SizedBox(height: 8),
-                    Row(children: [Expanded(child: tiles[2]), const SizedBox(width: 8), Expanded(child: tiles[3])]),
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  Expanded(child: tiles[0]),
-                  const SizedBox(width: 8),
-                  Expanded(child: tiles[1]),
-                  const SizedBox(width: 8),
-                  Expanded(child: tiles[2]),
-                  const SizedBox(width: 8),
-                  Expanded(child: tiles[3]),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _cashflowTile(
-    String label,
-    double current,
-    double previous,
-    Color color,
-  ) {
-    final delta = current - previous;
-    final pct = previous == 0 ? 0 : (delta / previous) * 100;
-    final improving = delta >= 0;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F8FD),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFDCE6F2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF546C8D),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            formatIndianShortCurrency(current),
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '${improving ? '▲' : '▼'} ${pct.abs().toStringAsFixed(1)}% vs previous',
-            style: TextStyle(
-              color: improving ? const Color(0xFF15803D) : const Color(0xFFB42318),
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
-            ),
-          ),
-        ],
       ),
     );
   }
