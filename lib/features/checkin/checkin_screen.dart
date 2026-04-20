@@ -8,6 +8,7 @@ import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
+import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -141,13 +142,13 @@ Future<bool> _confirmMoveToCompleted(
 int _stepIndexFromStageValue(String stage) {
   final normalized = stage.trim().toLowerCase();
   if (normalized == 'with_doctor' || normalized == 'treatment') {
-    return 1;
+    return 0;
   }
   if (normalized == 'checkout' || normalized == 'billing') {
-    return 3;
+    return 2;
   }
   if (normalized == 'completed') {
-    return 4;
+    return 3;
   }
   return 0;
 }
@@ -157,7 +158,7 @@ Future<void> openAppointmentJourneyDialog(
   Appointment appointment, {
   int? initialStep,
 }) async {
-  final startStep = initialStep?.clamp(0, 4) ??
+  final startStep = initialStep?.clamp(0, 3) ??
       _stepIndexFromStageValue(appointment.checkinStage);
   final patient = appointment.patient;
   final patientContext =
@@ -173,37 +174,9 @@ Future<void> openAppointmentJourneyDialog(
       ? appointment.operatorsIDs.first
       : null;
   String scheduleError = '';
-  final nextDateController = TextEditingController(
-    text: DateFormat('yyyy-MM-dd').format(nextVisitDateTime),
-  );
-  final nextTimeController = TextEditingController(
-    text: DateFormat('HH:mm').format(nextVisitDateTime),
-  );
   final nextReasonController = TextEditingController(
     text: 'Follow-up visit',
   );
-
-  Future<void> assignDoctor(
-    BuildContext dialogContext,
-    void Function(int step) setStep,
-  ) async {
-    final pickedDoctorIds = await pickDoctorDialog(
-      dialogContext,
-      initialSelected: appointment.operatorsIDs,
-      subtitle: _patientFocusSummary(appointment),
-    );
-    if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
-    appointment.operatorsIDs = pickedDoctorIds;
-    appointments.set(appointment);
-    setStep(1);
-  }
-
-  DateTime? parseScheduleDateTime(String dateInput, String timeInput) {
-    final safeDate = dateInput.trim();
-    final safeTime = timeInput.trim();
-    if (safeDate.isEmpty || safeTime.isEmpty) return null;
-    return DateTime.tryParse('${safeDate} ${safeTime}:00');
-  }
 
   void saveNextAppointment({
     required DateTime scheduledAt,
@@ -230,52 +203,7 @@ Future<void> openAppointmentJourneyDialog(
   }
 
   Widget stageBody(BuildContext context, int currentStep, double panelHeight) {
-    if (currentStep == 0) {
-      final doctorNames = appointment.operators
-          .map((doctor) => doctor.title.trim())
-          .where((name) => name.isNotEmpty)
-          .join(', ');
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF6FAFF),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFD7E5F6)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _patientDisplayName(appointment),
-              style: const TextStyle(
-                color: Color(0xFF163F70),
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _patientFocusSummary(appointment),
-              style: const TextStyle(
-                color: Color(0xFF4F6C90),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Assigned Doctor: ${doctorNames.isEmpty ? 'Unassigned' : doctorNames}',
-              style: const TextStyle(
-                color: Color(0xFF355279),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (currentStep == 1 || currentStep == 3) {
+    if (currentStep == 0 || currentStep == 2) {
       return Container(
         width: double.infinity,
         height: panelHeight,
@@ -290,13 +218,13 @@ Future<void> openAppointmentJourneyDialog(
             appointment: appointment,
             allAppointmentsForPatient: allAppointmentsForPatient,
             showInlineBottomActions: false,
-            forcedStage: currentStep == 3 ? 'checkout' : 'with_doctor',
+            forcedStage: currentStep == 2 ? 'checkout' : 'with_doctor',
           ),
         ),
       );
     }
 
-    if (currentStep == 2) {
+    if (currentStep == 1) {
       final doctorRows = doctors.present.values.toList(growable: false)
         ..sort(
           (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
@@ -338,29 +266,61 @@ Future<void> openAppointmentJourneyDialog(
                   Expanded(
                     child: InfoLabel(
                       label: 'Date',
-                      child: TextBox(
-                        controller: nextDateController,
-                        placeholder: 'YYYY-MM-DD',
-                        onChanged: (_) {
+                      child: Button(
+                        onPressed: () async {
+                          final picked = await material.showDatePicker(
+                            context: context,
+                            initialDate: nextVisitDateTime,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime(2100, 12, 31),
+                            builder: apexoDatePickerBuilder(context),
+                          );
+                          if (picked == null) return;
                           setStepState(() {
+                            nextVisitDateTime = DateTime(
+                              picked.year,
+                              picked.month,
+                              picked.day,
+                              nextVisitDateTime.hour,
+                              nextVisitDateTime.minute,
+                            );
                             scheduleError = '';
                           });
                         },
+                        child: Text(
+                          DateFormat('dd MMM yyyy').format(nextVisitDateTime),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: InfoLabel(
-                      label: 'Time (24h)',
-                      child: TextBox(
-                        controller: nextTimeController,
-                        placeholder: 'HH:mm',
-                        onChanged: (_) {
+                      label: 'Time',
+                      child: Button(
+                        onPressed: () async {
+                          final picked = await material.showTimePicker(
+                            context: context,
+                            initialTime: material.TimeOfDay(
+                              hour: nextVisitDateTime.hour,
+                              minute: nextVisitDateTime.minute,
+                            ),
+                          );
+                          if (picked == null) return;
                           setStepState(() {
+                            nextVisitDateTime = DateTime(
+                              nextVisitDateTime.year,
+                              nextVisitDateTime.month,
+                              nextVisitDateTime.day,
+                              picked.hour,
+                              picked.minute,
+                            );
                             scheduleError = '';
                           });
                         },
+                        child: Text(
+                          DateFormat('h:mm a').format(nextVisitDateTime),
+                        ),
                       ),
                     ),
                   ),
@@ -419,18 +379,7 @@ Future<void> openAppointmentJourneyDialog(
                 children: [
                   FilledButton(
                     onPressed: () {
-                      final parsed = parseScheduleDateTime(
-                        nextDateController.text,
-                        nextTimeController.text,
-                      );
-                      if (parsed == null) {
-                        setStepState(() {
-                          scheduleError =
-                              'Please enter valid date/time as YYYY-MM-DD and HH:mm.';
-                        });
-                        return;
-                      }
-                      if (parsed.isBefore(DateTime.now())) {
+                      if (nextVisitDateTime.isBefore(DateTime.now())) {
                         setStepState(() {
                           scheduleError =
                               'Next appointment must be now or in the future.';
@@ -441,7 +390,7 @@ Future<void> openAppointmentJourneyDialog(
                         scheduleError = '';
                       });
                       saveNextAppointment(
-                        scheduledAt: parsed,
+                        scheduledAt: nextVisitDateTime,
                         doctorId: nextDoctorId,
                         reason: nextReasonController.text,
                       );
@@ -516,7 +465,6 @@ Future<void> openAppointmentJourneyDialog(
     patientContext: patientContext,
     initialStep: startStep,
     stepBuilder: stageBody,
-    onAssignFromWaiting: assignDoctor,
     onBeforeStepAdvance: (dialogContext, currentStep, nextStep) async {
       appointments.set(appointment);
     },
@@ -839,6 +787,18 @@ class _CheckinScreenState extends State<CheckinScreen> {
               return a.operatorsIDs.contains(_selectedDoctor);
             }).toList(growable: false);
 
+            final patientVisitCounts = <String, int>{};
+            for (final row in filtered) {
+              final patientId = row.patientID;
+              if (patientId == null || patientId.trim().isEmpty) continue;
+              patientVisitCounts[patientId] =
+                  (patientVisitCounts[patientId] ?? 0) + 1;
+            }
+            final duplicatePatientIds = patientVisitCounts.entries
+                .where((entry) => entry.value > 1)
+                .map((entry) => entry.key)
+                .toSet();
+
             final waiting = filtered
                 .where((a) =>
                     a.checkinStage == 'waiting' ||
@@ -1142,6 +1102,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           stage: 'waiting',
                           color: const Color(0xFFE4A11B),
                           rows: waiting,
+                          duplicatePatientIds: duplicatePatientIds,
                           showHistoryAction: false,
                           onSelect: _selectAndOpenAppointment,
                           selectedAppointmentId: _selectedAppointment?.id,
@@ -1162,6 +1123,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           stage: 'with_doctor',
                           color: const Color(0xFF2D7BD8),
                           rows: withDoctor,
+                          duplicatePatientIds: duplicatePatientIds,
                           showHistoryAction: false,
                           onSelect: _selectAndOpenAppointment,
                           selectedAppointmentId: _selectedAppointment?.id,
@@ -1178,6 +1140,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           stage: 'billing_completed',
                           color: const Color(0xFF6C4CCF),
                           rows: billingAndCompleted,
+                          duplicatePatientIds: duplicatePatientIds,
                           rowStageBuilder: _billingCombinedRowStage,
                           onSelect: _selectAndOpenAppointment,
                           selectedAppointmentId: _selectedAppointment?.id,
@@ -1266,6 +1229,7 @@ class _WorkflowColumn extends StatelessWidget {
   final String stage;
   final Color color;
   final List<Appointment> rows;
+  final Set<String> duplicatePatientIds;
   final String Function(Appointment)? rowStageBuilder;
   final bool showHistoryAction;
   final bool expanded;
@@ -1278,6 +1242,7 @@ class _WorkflowColumn extends StatelessWidget {
     required this.stage,
     required this.color,
     required this.rows,
+    required this.duplicatePatientIds,
     this.rowStageBuilder,
     required this.expanded,
     required this.onToggleExpanded,
@@ -1348,6 +1313,8 @@ class _WorkflowColumn extends StatelessWidget {
               (a) => _WorkflowRow(
                 appointment: a,
                 stage: rowStageBuilder?.call(a) ?? stage,
+                duplicateRecord: a.patientID != null &&
+                    duplicatePatientIds.contains(a.patientID),
                 showHistoryAction: showHistoryAction,
                 selected: selectedAppointmentId == a.id,
                 onSelect: onSelect,
@@ -1362,6 +1329,7 @@ class _WorkflowColumn extends StatelessWidget {
 class _WorkflowRow extends StatelessWidget {
   final Appointment appointment;
   final String stage;
+  final bool duplicateRecord;
   final bool showHistoryAction;
   final bool selected;
   final ValueChanged<Appointment>? onSelect;
@@ -1369,6 +1337,7 @@ class _WorkflowRow extends StatelessWidget {
   const _WorkflowRow({
     required this.appointment,
     required this.stage,
+    this.duplicateRecord = false,
     this.showHistoryAction = false,
     this.selected = false,
     this.onSelect,
@@ -1987,6 +1956,25 @@ class _WorkflowRow extends StatelessWidget {
                             style: const TextStyle(
                               color: Color(0xFF1459AD),
                               fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (duplicateRecord) ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text(
+                            'Duplicate record',
+                            style: TextStyle(
+                              color: Color(0xFFB91C1C),
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -3084,6 +3072,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   bool _discountEnabled = false;
   Set<String> _selectedTreatments = {};
   Set<String> _selectedConsultationTypes = {};
+  String _visitType = 'Follow-up Visit';
   String? _selectedPostOpParent;
   Set<String> _selectedTeeth = {};
   Map<String, ToothState> _teethStates = {};
@@ -3103,6 +3092,12 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     'Clear Aligner',
     'Denture Evaluation',
     'Others',
+  ];
+
+  static const List<String> _visitTypes = [
+    'Follow-up Visit',
+    'New Problem / New Treatment',
+    'Consultation Only',
   ];
 
   static const Map<String, List<String>> _postOpSuggestions = {
@@ -3225,6 +3220,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     _selectedTreatments = a.selectedTreatments.toSet();
     _selectedConsultationTypes =
         a.subTreatments.where((e) => e.trim().isNotEmpty).toSet();
+    _visitType = _visitTypes.contains(a.visitType)
+      ? a.visitType
+      : 'Follow-up Visit';
     _selectedTeeth = a.selectedTeeth.toSet();
     _teethStates = {
       for (final id in _allToothIds) id: ToothState(toothId: id),
@@ -3625,6 +3623,129 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 final firstColumn = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text('Visit Type', style: sectionTitleStyle),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: _visitTypes.map((type) {
+                        final selected = _visitType == type;
+                        final icon = type == 'Follow-up Visit'
+                            ? FluentIcons.calendar
+                            : type == 'New Problem / New Treatment'
+                                ? FluentIcons.health
+                                : FluentIcons.chat;
+                        final note = type == 'Follow-up Visit'
+                            ? 'Patient is returning for a review'
+                            : type == 'New Problem / New Treatment'
+                                ? 'New concern or additional treatment'
+                                : 'Advice or opinion only';
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _visitType = type;
+                              a.visitType = type;
+                              _scheduleAutosave();
+                            });
+                          },
+                          child: Container(
+                            width: 250,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? const Color(0xFFEAF6FF)
+                                  : const Color(0xFFF4F6FA),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: selected
+                                    ? const Color(0xFF4DB6C6)
+                                    : const Color(0xFFDDE5F0),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? const Color(0xFFBEE9EF)
+                                        : const Color(0xFFE9EDF5),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Icon(icon, size: 12, color: const Color(0xFF2E5C85)),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        type,
+                                        style: const TextStyle(
+                                          color: Color(0xFF254870),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        note,
+                                        style: const TextStyle(
+                                          color: Color(0xFF5B7394),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(growable: false),
+                    ),
+                    const SizedBox(height: 12),
+                    Builder(
+                      builder: (context) {
+                        final medicalHistoryEntries = <String>{
+                          ...(a.patient?.tags ?? const <String>[]),
+                          ...(a.patient?.drugHistorySuggestions ?? const <String>[]),
+                          ...(a.patient?.maternalHistorySuggestions ?? const <String>[]),
+                          ...(a.patient?.habitsSuggestions ?? const <String>[]),
+                        }
+                            .where((entry) => entry.trim().isNotEmpty)
+                            .toList(growable: false);
+
+                        final summary = medicalHistoryEntries.isEmpty
+                            ? 'Medical History: No history recorded'
+                            : 'Medical History: ${medicalHistoryEntries.join(', ')}';
+
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FBFF),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFDCE8F6)),
+                          ),
+                          child: Text(
+                            summary,
+                            style: const TextStyle(
+                              color: Color(0xFF476588),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
                     InfoLabel(
                       label: 'Teeth:',
                       child: TeethPicker(
@@ -4080,13 +4201,15 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ').trim().isEmpty
             ? '-'
             : a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ');
-    final treatmentLabel = a.selectedTreatments
-            .where((t) => t.trim().isNotEmpty)
-            .join(', ')
-            .trim()
-            .isEmpty
-        ? 'Consultation'
-        : a.selectedTreatments.where((t) => t.trim().isNotEmpty).join(', ');
+    final selectedTreatments =
+      a.selectedTreatments.where((t) => t.trim().isNotEmpty).toList();
+    final selectedSubTreatments =
+      a.subTreatments.where((t) => t.trim().isNotEmpty).toList();
+    final treatmentLabel = selectedTreatments.isEmpty
+      ? 'Consultation'
+      : selectedSubTreatments.isEmpty
+        ? selectedTreatments.join(', ')
+        : '${selectedTreatments.join(', ')} - ${selectedSubTreatments.join(', ')}';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
@@ -5164,16 +5287,9 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
               ),
             ),
             if (onDownloadPdf != null)
-              Tooltip(
-                message: 'Download PDF',
-                child: IconButton(
-                  icon: const Icon(
-                    FluentIcons.download,
-                    size: 18,
-                    color: Color(0xFF1459AD),
-                  ),
-                  onPressed: onDownloadPdf,
-                ),
+              ExportFileActionButton(
+                type: ExportFileType.pdf,
+                onPressed: onDownloadPdf,
               ),
             if (onShare != null)
               Tooltip(

@@ -3,6 +3,7 @@
 import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
+import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
@@ -1345,18 +1346,20 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Button(
+                ExportFileActionButton(
+                  type: ExportFileType.csv,
+                  busy: _isExportingCsv,
                   onPressed: (_isExportingCsv || doctorEntries.isEmpty)
                       ? null
                       : _exportVisibleCsv,
-                  child: Text(_isExportingCsv ? 'CSV...' : 'CSV'),
                 ),
                 const SizedBox(width: 8),
-                Button(
+                ExportFileActionButton(
+                  type: ExportFileType.pdf,
+                  busy: _isExportingPdf,
                   onPressed: (_isExportingPdf || doctorEntries.isEmpty)
                       ? null
                       : _exportVisiblePdf,
-                  child: Text(_isExportingPdf ? 'PDF...' : 'PDF'),
                 ),
               ],
             ),
@@ -2507,32 +2510,20 @@ class _DoctorAppointmentDoneChartCardState
                   ),
                 ),
                 const Spacer(),
-                Button(
+                ExportFileActionButton(
+                  type: ExportFileType.csv,
+                  busy: _isExportingCsv,
                   onPressed: (_isExportingCsv || widget.rows.isEmpty)
                       ? null
                       : _exportCsv,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(FluentIcons.download, size: 12),
-                      const SizedBox(width: 6),
-                      Text(_isExportingCsv ? 'CSV...' : 'CSV'),
-                    ],
-                  ),
                 ),
                 const SizedBox(width: 8),
-                Button(
+                ExportFileActionButton(
+                  type: ExportFileType.pdf,
+                  busy: _isExportingPdf,
                   onPressed: (_isExportingPdf || widget.rows.isEmpty)
                       ? null
                       : _exportPdf,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(FluentIcons.download, size: 12),
-                      const SizedBox(width: 6),
-                      Text(_isExportingPdf ? 'PDF...' : 'PDF'),
-                    ],
-                  ),
                 ),
               ],
             ),

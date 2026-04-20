@@ -121,6 +121,7 @@ class Appointment extends Model {
   bool prescriptionGpayPaid = false;
   bool isCheckedIn = false;
   String checkinStage = 'pending';
+  String visitType = 'Follow-up Visit';
   DateTime? checkedInAt;
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
@@ -169,6 +170,10 @@ class Appointment extends Model {
     prescriptionGpayPaid = json['prescriptionGpayPaid'] ?? false;
     isCheckedIn = json['isCheckedIn'] ?? false;
     checkinStage = (json['checkinStage'] ?? '').toString().trim();
+    visitType = (json['visitType'] ?? visitType).toString().trim();
+    if (visitType.isEmpty) {
+      visitType = 'Follow-up Visit';
+    }
     if (checkinStage.isEmpty) {
       checkinStage = isDone ? 'completed' : 'pending';
     }
@@ -222,6 +227,7 @@ class Appointment extends Model {
     json['prescriptionGpayPaid'] = prescriptionGpayPaid;
     if (isCheckedIn != d.isCheckedIn) json['isCheckedIn'] = isCheckedIn;
     if (checkinStage != d.checkinStage) json['checkinStage'] = checkinStage;
+    if (visitType != d.visitType) json['visitType'] = visitType;
     if (checkedInAt != null) {
       json['checkedInAt'] = checkedInAt!.millisecondsSinceEpoch;
     }

@@ -105,26 +105,34 @@ class _Permissions extends ObservablePersistingObject {
   }
 
   bool canAccessByRouteIdentifier(String routeIdentifier) {
-    if (currentRole != UserRole.admin) {
-      return routeIdentifier == 'checkin';
+    if (routeIdentifier == 'access_control') {
+      return currentRole == UserRole.admin;
+    }
+
+    if (currentRole == UserRole.admin) {
+      return true;
     }
 
     switch (routeIdentifier) {
       case 'doctors_v2':
-        return true;
+        return hasAccess(doctorsPermissionIndex);
       case 'labworks':
-        return true;
+        return hasAccess(labworksPermissionIndex);
       case 'patients':
-        return true;
+        return hasAccess(patientsPermissionIndex);
       case 'calendar':
       case 'checkin':
-        return true;
+        return hasAccess(appointmentsPermissionIndex);
       case 'expenses':
-        return true;
+        return hasAccess(expensesPermissionIndex);
       case 'report_v2':
-        return true;
+        return hasAccess(statisticsPermissionIndex);
+      case 'dashboard':
+      case 'data':
+      case 'settings':
+        return false;
       default:
-        return true;
+        return false;
     }
   }
 

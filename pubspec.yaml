@@ -64,5 +64,7 @@ flutter:
     - assets/svg/surface_O.svg
     - assets/svg/surface_B.svg
     - assets/svg/surface_L.svg
+    - assets/svg/csv_icon.svg
+    - assets/svg/pdf_icon.svg
     - assets/fonts/readex.ttf
     - assets/fonts/readex-bold.ttf

@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'package:apexo/common_widgets/custom_date_range_picker.dart';
+import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/lab_bulk_update_dialog.dart';
 import 'package:apexo/common_widgets/month_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
@@ -141,18 +142,20 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
           ),
         ),
         const Spacer(),
-        Button(
+        ExportFileActionButton(
+          type: ExportFileType.csv,
+          busy: _isExportingCsv,
           onPressed: (_isExportingCsv || rows.isEmpty)
               ? null
               : () => _exportCsv(rows),
-          child: Text(_isExportingCsv ? 'CSV...' : 'CSV'),
         ),
         const SizedBox(width: 8),
-        Button(
+        ExportFileActionButton(
+          type: ExportFileType.pdf,
+          busy: _isExportingPdf,
           onPressed: (_isExportingPdf || rows.isEmpty)
               ? null
               : () => _exportPdf(rows),
-          child: Text(_isExportingPdf ? 'PDF...' : 'PDF'),
         ),
         const SizedBox(width: 8),
         Button(
