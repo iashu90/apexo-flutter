@@ -26,6 +26,7 @@ import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:apexo/utils/share_actions.dart';
 import 'package:apexo/utils/pdf_export_layout.dart';
+import 'package:apexo/services/login.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -1086,6 +1087,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
               return a.operatorsIDs.contains(_selectedDoctor);
             }).toList(growable: false);
 
+            final isDoctorLogin = !login.isAdmin;
+
             final patientVisitCounts = <String, int>{};
             for (final row in filtered) {
               final patientId = row.patientID;
@@ -1099,23 +1102,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 .toSet();
 
             final waiting = filtered
+                .where((a) => a.checkinStage == 'waiting')
+                .toList(growable: true)
+              ..sort((a, b) => a.date.compareTo(b.date));
+
+            final scheduled = filtered
                 .where((a) =>
-                    a.checkinStage == 'waiting' ||
                     a.checkinStage == 'pending' ||
                     a.checkinStage == 'scheduled')
                 .toList(growable: true)
-              ..sort((a, b) {
-                final aScheduled = (a.checkinStage == 'pending' ||
-                        a.checkinStage == 'scheduled')
-                    ? 1
-                    : 0;
-                final bScheduled = (b.checkinStage == 'pending' ||
-                        b.checkinStage == 'scheduled')
-                    ? 1
-                    : 0;
-                if (aScheduled != bScheduled) return aScheduled - bScheduled;
-                return a.date.compareTo(b.date);
-              });
+              ..sort((a, b) => a.date.compareTo(b.date));
             final withDoctor = filtered
                 .where((a) =>
                     a.checkinStage == 'with_doctor' ||
@@ -1398,10 +1394,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     const SizedBox(height: 12),
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final stacked = constraints.maxWidth < 1120;
+                        final stacked = constraints.maxWidth <
+                            (isDoctorLogin ? 1120 : 1400);
 
                         final waitingColumn = _WorkflowColumn(
-                          title: 'Scheduled / Waiting (${waiting.length})',
+                          title: 'Waiting (${waiting.length})',
                           stage: 'waiting',
                           color: const Color(0xFFE4A11B),
                           rows: waiting,
@@ -1414,11 +1411,22 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             _expandedStages['waiting'] =
                                 !(_expandedStages['waiting'] ?? true);
                           }),
-                          rowStageBuilder: (a) =>
-                              (a.checkinStage == 'pending' ||
-                                      a.checkinStage == 'scheduled')
-                                  ? 'scheduled'
-                                  : 'waiting',
+                        );
+
+                        final scheduledColumn = _WorkflowColumn(
+                          title: 'Scheduled (${scheduled.length})',
+                          stage: 'scheduled',
+                          color: const Color(0xFF4E79AF),
+                          rows: scheduled,
+                          duplicatePatientIds: duplicatePatientIds,
+                          showHistoryAction: false,
+                          onSelect: _selectAndOpenAppointment,
+                          selectedAppointmentId: _selectedAppointment?.id,
+                          expanded: _expandedStages['scheduled'] ?? true,
+                          onToggleExpanded: () => setState(() {
+                            _expandedStages['scheduled'] =
+                                !(_expandedStages['scheduled'] ?? true);
+                          }),
                         );
 
                         final withDoctorColumn = _WorkflowColumn(
@@ -1447,6 +1455,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           rowStageBuilder: _billingCombinedRowStage,
                           onSelect: _selectAndOpenAppointment,
                           selectedAppointmentId: _selectedAppointment?.id,
+                          interactionsEnabled: !isDoctorLogin,
                           expanded:
                               _expandedStages['billing_completed'] ?? true,
                           onToggleExpanded: () => setState(() {
@@ -1459,6 +1468,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           return Column(
                             children: [
                               waitingColumn,
+                              if (!isDoctorLogin) ...[
+                                const SizedBox(height: 10),
+                                scheduledColumn,
+                              ],
                               const SizedBox(height: 10),
                               withDoctorColumn,
                               const SizedBox(height: 10),
@@ -1471,6 +1484,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(child: waitingColumn),
+                            if (!isDoctorLogin) ...[
+                              const SizedBox(width: 10),
+                              Expanded(child: scheduledColumn),
+                            ],
                             const SizedBox(width: 10),
                             Expanded(child: withDoctorColumn),
                             const SizedBox(width: 10),
@@ -1539,6 +1556,7 @@ class _WorkflowColumn extends StatelessWidget {
   final VoidCallback onToggleExpanded;
   final ValueChanged<Appointment>? onSelect;
   final String? selectedAppointmentId;
+  final bool interactionsEnabled;
 
   const _WorkflowColumn({
     required this.title,
@@ -1552,11 +1570,15 @@ class _WorkflowColumn extends StatelessWidget {
     this.showHistoryAction = false,
     this.onSelect,
     this.selectedAppointmentId,
+    this.interactionsEnabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 120),
+      opacity: interactionsEnabled ? 1 : 0.62,
+      child: Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1590,7 +1612,7 @@ class _WorkflowColumn extends StatelessWidget {
                         : FluentIcons.chevron_right,
                     size: 11,
                   ),
-                  onPressed: onToggleExpanded,
+                  onPressed: interactionsEnabled ? onToggleExpanded : null,
                 ),
               ],
             ),
@@ -1620,12 +1642,13 @@ class _WorkflowColumn extends StatelessWidget {
                     duplicatePatientIds.contains(a.patientID),
                 showHistoryAction: showHistoryAction,
                 selected: selectedAppointmentId == a.id,
+                interactionsEnabled: interactionsEnabled,
                 onSelect: onSelect,
               ),
             ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -1635,6 +1658,7 @@ class _WorkflowRow extends StatelessWidget {
   final bool duplicateRecord;
   final bool showHistoryAction;
   final bool selected;
+  final bool interactionsEnabled;
   final ValueChanged<Appointment>? onSelect;
 
   const _WorkflowRow({
@@ -1643,6 +1667,7 @@ class _WorkflowRow extends StatelessWidget {
     this.duplicateRecord = false,
     this.showHistoryAction = false,
     this.selected = false,
+    this.interactionsEnabled = true,
     this.onSelect,
   });
 
@@ -2019,7 +2044,9 @@ class _WorkflowRow extends StatelessWidget {
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: (stage == 'waiting' || stage == 'scheduled')
+        onTap: !interactionsEnabled
+          ? null
+          : (stage == 'waiting' || stage == 'scheduled')
             ? () => _moveStage(context)
             : (onSelect == null ? null : () => onSelect!(appointment)),
         child: Row(
@@ -2172,7 +2199,8 @@ class _WorkflowRow extends StatelessWidget {
                         foregroundColor:
                             WidgetStateProperty.all(const Color(0xFFC97A11)),
                       ),
-                      onPressed: () => _undoStage(context),
+                      onPressed:
+                          interactionsEnabled ? () => _undoStage(context) : null,
                     ),
                   ),
                 if (stage != 'waiting' && stage != 'scheduled')
@@ -2194,8 +2222,9 @@ class _WorkflowRow extends StatelessWidget {
                         foregroundColor:
                             WidgetStateProperty.all(const Color(0xFF6B7280)),
                       ),
-                      onPressed: () =>
-                          _openScheduleActions(context, appointment),
+                        onPressed: interactionsEnabled
+                          ? () => _openScheduleActions(context, appointment)
+                          : null,
                     ),
                   ),
                 if (stage == 'scheduled' || stage == 'waiting')
@@ -2224,7 +2253,8 @@ class _WorkflowRow extends StatelessWidget {
                           const Color(0xFF2A8D3F),
                         ),
                       ),
-                      onPressed: () => _moveStage(context),
+                      onPressed:
+                          interactionsEnabled ? () => _moveStage(context) : null,
                     ),
                   ),
                 if (stage == 'completed')
@@ -2246,8 +2276,9 @@ class _WorkflowRow extends StatelessWidget {
                         foregroundColor:
                             WidgetStateProperty.all(const Color(0xFF2D7BD8)),
                       ),
-                      onPressed: () =>
-                          _openNextAppointmentPrompt(context, appointment),
+                        onPressed: interactionsEnabled
+                          ? () => _openNextAppointmentPrompt(context, appointment)
+                          : null,
                     ),
                   ),
               ],

@@ -119,6 +119,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                             context: context,
                             patient: patient,
                             rows: patient.patientDetails,
+                            labsOnly: true,
                           );
                         },
                       ),

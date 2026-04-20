@@ -374,7 +374,7 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                     onTap: () => _setDeliveryState('ready'),
                   ),
                   _toggleChoice(
-                    label: 'Delivery',
+                    label: 'Delivered',
                     selected: _deliveryState == 'delivery',
                     onTap: () => _setDeliveryState('delivery'),
                   ),

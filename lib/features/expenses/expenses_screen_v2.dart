@@ -26,6 +26,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
   String _categoryFilter = 'all';
   String _paymentFilter = 'all';
   String _rangeFilter = 'all';
+  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _fromDate;
   DateTime? _toDate;
   int _page = 1;
@@ -389,6 +390,10 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                 }
                 setState(() {
                   _rangeFilter = v;
+                  if (v == 'month') {
+                    _monthAnchor =
+                        DateTime(DateTime.now().year, DateTime.now().month, 1);
+                  }
                   _fromDate = null;
                   _toDate = null;
                   _page = 1;
@@ -409,6 +414,10 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
               ),
             ),
           const SizedBox(width: 8),
+          if (_rangeFilter == 'month') ...[
+            _buildMonthSelector(),
+            const SizedBox(width: 8),
+          ],
           Button(
             child: const Text('Reset'),
             onPressed: () {
@@ -418,6 +427,8 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                 _categoryFilter = 'all';
                 _paymentFilter = 'all';
                 _rangeFilter = 'all';
+                _monthAnchor =
+                  DateTime(DateTime.now().year, DateTime.now().month, 1);
                 _fromDate = null;
                 _toDate = null;
                 _sortBy = 'date';
@@ -432,6 +443,70 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
             style: const TextStyle(
               color: Color(0xFF5A7397),
               fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF4FB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD6E2F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: IconButton(
+              icon: const Icon(FluentIcons.chevron_left, size: 10),
+              onPressed: () {
+                setState(() {
+                  _monthAnchor = DateTime(
+                    _monthAnchor.year,
+                    _monthAnchor.month - 1,
+                    1,
+                  );
+                  _page = 1;
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            DateFormat('MMMM yyyy').format(_monthAnchor),
+            style: const TextStyle(
+              color: Color(0xFF355279),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: IconButton(
+              icon: const Icon(FluentIcons.chevron_right, size: 10),
+              onPressed: _monthAnchor.year < DateTime.now().year ||
+                      (_monthAnchor.year == DateTime.now().year &&
+                          _monthAnchor.month < DateTime.now().month)
+                  ? () {
+                      setState(() {
+                        _monthAnchor = DateTime(
+                          _monthAnchor.year,
+                          _monthAnchor.month + 1,
+                          1,
+                        );
+                        _page = 1;
+                      });
+                    }
+                  : null,
             ),
           ),
         ],
@@ -815,8 +890,8 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
       from = monday;
       to = sunday;
     } else if (_rangeFilter == 'month') {
-      from = DateTime(today.year, today.month, 1);
-      to = DateTime(today.year, today.month + 1, 0);
+      from = DateTime(_monthAnchor.year, _monthAnchor.month, 1);
+      to = DateTime(_monthAnchor.year, _monthAnchor.month + 1, 0);
     } else if (_rangeFilter == 'last_month') {
       final prev = DateTime(today.year, today.month - 1, 1);
       from = prev;

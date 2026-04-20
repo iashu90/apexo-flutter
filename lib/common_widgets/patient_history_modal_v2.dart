@@ -17,12 +17,17 @@ Future<void> showPatientHistoryDialogV2({
   required BuildContext context,
   required Patient patient,
   required List<ReportDetailRow> rows,
+  bool labsOnly = false,
 }) {
   return showDialog<void>(
     context: context,
     builder: (_) => Align(
       alignment: Alignment.center,
-      child: PatientHistoryDialogV2(patient: patient, rows: rows),
+      child: PatientHistoryDialogV2(
+        patient: patient,
+        rows: rows,
+        labsOnly: labsOnly,
+      ),
     ),
   );
 }
@@ -64,11 +69,13 @@ class _LedgerRowData {
 class PatientHistoryDialogV2 extends StatefulWidget {
   final Patient patient;
   final List<ReportDetailRow> rows;
+  final bool labsOnly;
 
   const PatientHistoryDialogV2({
     super.key,
     required this.patient,
     required this.rows,
+    this.labsOnly = false,
   });
 
   @override
@@ -81,7 +88,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   final TextEditingController _searchController = TextEditingController();
   int _exportLogSequence = 0;
   String _query = '';
-  String _historyTab = 'treatments';
+  late String _historyTab;
   String _statusFilter = 'All';
   String _modeFilter = 'All';
   String _dateRange = 'All';
@@ -101,6 +108,14 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
     if (value.isEmpty) return 'Cash';
     if (value.contains('cash')) return 'Cash';
     return 'UPI';
+  }
+
+  String _titleCase(String value) {
+    final words = value.trim().split(RegExp(r'\s+'));
+    return words
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase())
+        .join(' ');
   }
 
   String _fileStem() {
@@ -313,6 +328,9 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
 
   pw.Document _buildPdfDocument(List<_LedgerRowData> rows) {
     final firstRow = rows.isEmpty ? null : rows.first;
+    final displayName = widget.patient.title.trim().isEmpty
+        ? 'Unnamed Patient'
+        : _titleCase(widget.patient.title);
 
     final doc = pw.Document();
     doc.addPage(
@@ -321,17 +339,15 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
         header: (context) => exportPdfHeader(
           context,
           title: 'Patient Invoice',
-          subtitle: widget.patient.title.trim().isEmpty
+            subtitle: displayName.isEmpty
               ? widget.patient.id
-              : widget.patient.title,
+              : displayName,
         ),
         footer: exportPdfFooter,
         build: (context) => exportPdfBodyWithMargins([
           pw.SizedBox(height: 8),
           exportPdfBillToSection(
-            patientName: widget.patient.title.trim().isEmpty
-                ? 'Unnamed patient'
-                : widget.patient.title,
+            patientName: displayName,
             patientId: widget.patient.id,
             phone: widget.patient.phone.trim().isEmpty
                 ? '-'
@@ -360,7 +376,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
             data: rows
                 .map(
                   (r) => [
-                    DateFormat('dd MMM yyyy').format(r.date),
+                    DateFormat('dd/MM/yyyy').format(r.date),
                     r.tooth,
                     r.treatment,
                     'Rs ${r.cost.toStringAsFixed(0)}',
@@ -644,6 +660,7 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
   @override
   void initState() {
     super.initState();
+    _historyTab = widget.labsOnly ? 'labs' : 'treatments';
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });
@@ -973,11 +990,16 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   child: ComboBox<String>(
                     isExpanded: true,
                     value: _historyTab,
-                    items: const [
-                      ComboBoxItem(
-                          value: 'treatments', child: Text('Treatments')),
-                      ComboBoxItem(value: 'labs', child: Text('Labs')),
-                    ],
+                    items: widget.labsOnly
+                        ? const [
+                            ComboBoxItem(value: 'labs', child: Text('Labs')),
+                          ]
+                        : const [
+                            ComboBoxItem(
+                                value: 'treatments',
+                                child: Text('Treatments')),
+                            ComboBoxItem(value: 'labs', child: Text('Labs')),
+                          ],
                     onChanged: (v) {
                       if (v == null) return;
                       setState(() {

@@ -26,6 +26,12 @@ class ReportV2Screen extends StatefulWidget {
 
 class _ReportV2ScreenState extends State<ReportV2Screen> {
   bool _showHeavyCards = false;
+  int _dailyAppointmentsOffset = 0;
+  int _dailyRevenueOffset = 0;
+  int _monthlyAppointmentsOffset = 0;
+  int _monthlyRevenueOffset = 0;
+  int _monthlyExpensesOffset = 0;
+  int _monthlyNetRevenueOffset = 0;
 
   @override
   void initState() {
@@ -78,9 +84,25 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _DailyAppointmentsTrendWindowCard(rows: allAppointments),
+                    _DailyAppointmentsTrendWindowCard(
+                      rows: allAppointments,
+                      monthOffset: _dailyAppointmentsOffset,
+                      onBack: () =>
+                        setState(() => _dailyAppointmentsOffset += 1),
+                      onForward: _dailyAppointmentsOffset > 0
+                        ? () =>
+                          setState(() => _dailyAppointmentsOffset -= 1)
+                          : null,
+                    ),
                     const SizedBox(height: 10),
-                    _DailyRevenueTrendWindowCard(rows: allAppointments),
+                    _DailyRevenueTrendWindowCard(
+                      rows: allAppointments,
+                      monthOffset: _dailyRevenueOffset,
+                      onBack: () => setState(() => _dailyRevenueOffset += 1),
+                      onForward: _dailyRevenueOffset > 0
+                          ? () => setState(() => _dailyRevenueOffset -= 1)
+                          : null,
+                    ),
                     const SizedBox(height: 10),
                     if (!_showHeavyCards)
                       Wrap(
@@ -104,23 +126,57 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                             width: twoColWidth,
                             child: _MonthlyAppointmentsTrendWindowCard(
                               rows: allAppointments,
+                              windowOffset: _monthlyAppointmentsOffset,
+                              onBack: () => setState(
+                                  () => _monthlyAppointmentsOffset += 1),
+                              onForward: _monthlyAppointmentsOffset > 0
+                                  ? () => setState(
+                                      () => _monthlyAppointmentsOffset -= 1,
+                                    )
+                                  : null,
                             ),
                           ),
                           SizedBox(
                             width: twoColWidth,
                             child: _MonthlyRevenueTrendWindowCard(
-                                rows: allAppointments),
+                              rows: allAppointments,
+                              windowOffset: _monthlyRevenueOffset,
+                              onBack: () =>
+                                  setState(() => _monthlyRevenueOffset += 1),
+                              onForward: _monthlyRevenueOffset > 0
+                                  ? () => setState(
+                                      () => _monthlyRevenueOffset -= 1,
+                                    )
+                                  : null,
+                            ),
                           ),
                           SizedBox(
                             width: twoColWidth,
                             child: _MonthlyExpensesTrendWindowCard(
-                                rows: allExpenses),
+                              rows: allExpenses,
+                              windowOffset: _monthlyExpensesOffset,
+                              onBack: () =>
+                                  setState(() => _monthlyExpensesOffset += 1),
+                              onForward: _monthlyExpensesOffset > 0
+                                  ? () => setState(
+                                      () => _monthlyExpensesOffset -= 1,
+                                    )
+                                  : null,
+                            ),
                           ),
                           SizedBox(
                             width: twoColWidth,
                             child: _MonthlyNetRevenueTrendWindowCard(
                               appointmentsRows: allAppointments,
                               expenseRows: allExpenses,
+                              windowOffset: _monthlyNetRevenueOffset,
+                              onBack: () =>
+                                  setState(() => _monthlyNetRevenueOffset += 1),
+                              onForward: _monthlyNetRevenueOffset > 0
+                                  ? () => setState(
+                                      () => _monthlyNetRevenueOffset -= 1,
+                                    )
+                                  : null,
                             ),
                           ),
                           SizedBox(
@@ -159,6 +215,10 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                                 _ReportAgeDistributionCard(rows: allAppointments),
                               ],
                             ),
+                          ),
+                          SizedBox(
+                            width: twoColWidth,
+                            child: _PaymentModeStatusCard(rows: allAppointments),
                           ),
                         ],
                       ),
@@ -1426,25 +1486,24 @@ class _FilterChips extends StatelessWidget {
 List<DateTime> _monthOptions(List<Appointment> rows) =>
     monthOptionsFromAppointments(rows);
 
-class _DailyAppointmentsTrendWindowCard extends StatefulWidget {
+class _DailyAppointmentsTrendWindowCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int monthOffset;
+  final VoidCallback onBack;
+  final VoidCallback? onForward;
 
-  const _DailyAppointmentsTrendWindowCard({required this.rows});
-
-  @override
-  State<_DailyAppointmentsTrendWindowCard> createState() =>
-      _DailyAppointmentsTrendWindowCardState();
-}
-
-class _DailyAppointmentsTrendWindowCardState
-    extends State<_DailyAppointmentsTrendWindowCard> {
-  int _monthOffset = 0;
+  const _DailyAppointmentsTrendWindowCard({
+    required this.rows,
+    required this.monthOffset,
+    required this.onBack,
+    required this.onForward,
+  });
 
   @override
   Widget build(BuildContext context) {
     final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
     final monthStart =
-        DateTime(currentMonth.year, currentMonth.month - _monthOffset, 1);
+        DateTime(currentMonth.year, currentMonth.month - monthOffset, 1);
     final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
     final dayCount = monthEnd.difference(monthStart).inDays;
 
@@ -1454,7 +1513,7 @@ class _DailyAppointmentsTrendWindowCardState
 
     final points = starts.map((start) {
       final end = start.add(const Duration(days: 1));
-      final count = widget.rows
+        final count = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .length
           .toDouble();
@@ -1469,34 +1528,32 @@ class _DailyAppointmentsTrendWindowCardState
         rows: points,
         barColor: const Color(0xFF2D7BD8),
         trailing: _TrendNavButtons(
-          canGoForward: _monthOffset > 0,
-          onBack: () => setState(() => _monthOffset += 1),
-          onForward:
-              _monthOffset > 0 ? () => setState(() => _monthOffset -= 1) : null,
+          canGoForward: monthOffset > 0,
+          onBack: onBack,
+          onForward: onForward,
         ),
       ),
     );
   }
 }
 
-class _MonthlyAppointmentsTrendWindowCard extends StatefulWidget {
+class _MonthlyAppointmentsTrendWindowCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int windowOffset;
+  final VoidCallback onBack;
+  final VoidCallback? onForward;
 
-  const _MonthlyAppointmentsTrendWindowCard({required this.rows});
-
-  @override
-  State<_MonthlyAppointmentsTrendWindowCard> createState() =>
-      _MonthlyAppointmentsTrendWindowCardState();
-}
-
-class _MonthlyAppointmentsTrendWindowCardState
-    extends State<_MonthlyAppointmentsTrendWindowCard> {
-  int _windowOffset = 0;
+  const _MonthlyAppointmentsTrendWindowCard({
+    required this.rows,
+    required this.windowOffset,
+    required this.onBack,
+    required this.onForward,
+  });
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final windowEnd = DateTime(now.year, now.month - _windowOffset + 1, 1);
+    final windowEnd = DateTime(now.year, now.month - windowOffset + 1, 1);
     final windowStart = DateTime(windowEnd.year, windowEnd.month - 12, 1);
     final starts = List<DateTime>.generate(
       12,
@@ -1506,7 +1563,7 @@ class _MonthlyAppointmentsTrendWindowCardState
 
     final points = starts.map((start) {
       final end = DateTime(start.year, start.month + 1, 1);
-      final count = widget.rows
+        final count = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .length
           .toDouble();
@@ -1522,36 +1579,33 @@ class _MonthlyAppointmentsTrendWindowCardState
         rows: points,
         barColor: const Color(0xFF2BA58D),
         trailing: _TrendNavButtons(
-          canGoForward: _windowOffset > 0,
-          onBack: () => setState(() => _windowOffset += 1),
-          onForward: _windowOffset > 0
-              ? () => setState(() => _windowOffset -= 1)
-              : null,
+          canGoForward: windowOffset > 0,
+          onBack: onBack,
+          onForward: onForward,
         ),
       ),
     );
   }
 }
 
-class _DailyRevenueTrendWindowCard extends StatefulWidget {
+class _DailyRevenueTrendWindowCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int monthOffset;
+  final VoidCallback onBack;
+  final VoidCallback? onForward;
 
-  const _DailyRevenueTrendWindowCard({required this.rows});
-
-  @override
-  State<_DailyRevenueTrendWindowCard> createState() =>
-      _DailyRevenueTrendWindowCardState();
-}
-
-class _DailyRevenueTrendWindowCardState
-    extends State<_DailyRevenueTrendWindowCard> {
-  int _monthOffset = 0;
+  const _DailyRevenueTrendWindowCard({
+    required this.rows,
+    required this.monthOffset,
+    required this.onBack,
+    required this.onForward,
+  });
 
   @override
   Widget build(BuildContext context) {
     final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
     final monthStart =
-        DateTime(currentMonth.year, currentMonth.month - _monthOffset, 1);
+        DateTime(currentMonth.year, currentMonth.month - monthOffset, 1);
     final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
     final dayCount = monthEnd.difference(monthStart).inDays;
 
@@ -1561,7 +1615,7 @@ class _DailyRevenueTrendWindowCardState
 
     final points = starts.map((start) {
       final end = start.add(const Duration(days: 1));
-      final value = widget.rows
+        final value = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
       return (label: DateFormat('dd').format(start), value: value);
@@ -1577,34 +1631,32 @@ class _DailyRevenueTrendWindowCardState
         valueFormatter: formatIndianShortCurrency,
         verticalValueLabels: true,
         trailing: _TrendNavButtons(
-          canGoForward: _monthOffset > 0,
-          onBack: () => setState(() => _monthOffset += 1),
-          onForward:
-              _monthOffset > 0 ? () => setState(() => _monthOffset -= 1) : null,
+          canGoForward: monthOffset > 0,
+          onBack: onBack,
+          onForward: onForward,
         ),
       ),
     );
   }
 }
 
-class _MonthlyRevenueTrendWindowCard extends StatefulWidget {
+class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int windowOffset;
+  final VoidCallback onBack;
+  final VoidCallback? onForward;
 
-  const _MonthlyRevenueTrendWindowCard({required this.rows});
-
-  @override
-  State<_MonthlyRevenueTrendWindowCard> createState() =>
-      _MonthlyRevenueTrendWindowCardState();
-}
-
-class _MonthlyRevenueTrendWindowCardState
-    extends State<_MonthlyRevenueTrendWindowCard> {
-  int _windowOffset = 0;
+  const _MonthlyRevenueTrendWindowCard({
+    required this.rows,
+    required this.windowOffset,
+    required this.onBack,
+    required this.onForward,
+  });
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final windowEnd = DateTime(now.year, now.month - _windowOffset + 1, 1);
+    final windowEnd = DateTime(now.year, now.month - windowOffset + 1, 1);
     final windowStart = DateTime(windowEnd.year, windowEnd.month - 12, 1);
     final starts = List<DateTime>.generate(
       12,
@@ -1614,7 +1666,7 @@ class _MonthlyRevenueTrendWindowCardState
 
     final points = starts.map((start) {
       final end = DateTime(start.year, start.month + 1, 1);
-      final value = widget.rows
+        final value = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
       return (label: DateFormat('MMM').format(start), value: value);
@@ -1630,49 +1682,32 @@ class _MonthlyRevenueTrendWindowCardState
         barColor: const Color(0xFF2D7BD8),
         valueFormatter: formatIndianShortCurrency,
         trailing: _TrendNavButtons(
-          canGoForward: _windowOffset > 0,
-          onBack: () => setState(() => _windowOffset += 1),
-          onForward: _windowOffset > 0
-              ? () => setState(() => _windowOffset -= 1)
-              : null,
+          canGoForward: windowOffset > 0,
+          onBack: onBack,
+          onForward: onForward,
         ),
       ),
     );
   }
 }
 
-class _MonthlyExpensesTrendWindowCard extends StatefulWidget {
+class _MonthlyExpensesTrendWindowCard extends StatelessWidget {
   final List<Expense> rows;
+  final int windowOffset;
+  final VoidCallback onBack;
+  final VoidCallback? onForward;
 
-  const _MonthlyExpensesTrendWindowCard({required this.rows});
-
-  @override
-  State<_MonthlyExpensesTrendWindowCard> createState() =>
-      _MonthlyExpensesTrendWindowCardState();
-}
-
-class _MonthlyNetRevenueTrendWindowCard extends StatefulWidget {
-  final List<Appointment> appointmentsRows;
-  final List<Expense> expenseRows;
-
-  const _MonthlyNetRevenueTrendWindowCard({
-    required this.appointmentsRows,
-    required this.expenseRows,
+  const _MonthlyExpensesTrendWindowCard({
+    required this.rows,
+    required this.windowOffset,
+    required this.onBack,
+    required this.onForward,
   });
-
-  @override
-  State<_MonthlyNetRevenueTrendWindowCard> createState() =>
-      _MonthlyNetRevenueTrendWindowCardState();
-}
-
-class _MonthlyNetRevenueTrendWindowCardState
-    extends State<_MonthlyNetRevenueTrendWindowCard> {
-  int _windowOffset = 0;
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final windowEnd = DateTime(now.year, now.month - _windowOffset + 1, 1);
+    final windowEnd = DateTime(now.year, now.month - windowOffset + 1, 1);
     final windowStart = DateTime(windowEnd.year, windowEnd.month - 12, 1);
     final starts = List<DateTime>.generate(
       12,
@@ -1682,10 +1717,63 @@ class _MonthlyNetRevenueTrendWindowCardState
 
     final points = starts.map((start) {
       final end = DateTime(start.year, start.month + 1, 1);
-      final gross = widget.appointmentsRows
+      final value = rows
+          .where((e) => !e.date.isBefore(start) && e.date.isBefore(end))
+          .fold<double>(0, (sum, e) => sum + e.amount);
+      return (label: DateFormat('MMM').format(start), value: value);
+    }).toList(growable: false);
+
+    return SizedBox(
+      width: 560,
+      child: _SimpleBarsCard(
+        title: 'Expenses Trend (Monthly)',
+        subtitle:
+            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
+        rows: points,
+        barColor: const Color(0xFFD6455D),
+        valueFormatter: formatIndianShortCurrency,
+        trailing: _TrendNavButtons(
+          canGoForward: windowOffset > 0,
+          onBack: onBack,
+          onForward: onForward,
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
+  final List<Appointment> appointmentsRows;
+  final List<Expense> expenseRows;
+  final int windowOffset;
+  final VoidCallback onBack;
+  final VoidCallback? onForward;
+
+  const _MonthlyNetRevenueTrendWindowCard({
+    required this.appointmentsRows,
+    required this.expenseRows,
+    required this.windowOffset,
+    required this.onBack,
+    required this.onForward,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final windowEnd = DateTime(now.year, now.month - windowOffset + 1, 1);
+    final windowStart = DateTime(windowEnd.year, windowEnd.month - 12, 1);
+    final starts = List<DateTime>.generate(
+      12,
+      (i) => DateTime(windowStart.year, windowStart.month + i, 1),
+      growable: false,
+    );
+
+    final points = starts.map((start) {
+      final end = DateTime(start.year, start.month + 1, 1);
+        final gross = appointmentsRows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
-      final expensesSum = widget.expenseRows
+        final expensesSum = expenseRows
           .where((e) => !e.date.isBefore(start) && e.date.isBefore(end))
           .fold<double>(0, (sum, e) => sum + e.amount);
       final net = gross - expensesSum;
@@ -1702,11 +1790,108 @@ class _MonthlyNetRevenueTrendWindowCardState
         barColor: const Color(0xFF2BA58D),
         valueFormatter: formatIndianShortCurrency,
         trailing: _TrendNavButtons(
-          canGoForward: _windowOffset > 0,
-          onBack: () => setState(() => _windowOffset += 1),
-          onForward: _windowOffset > 0
-              ? () => setState(() => _windowOffset -= 1)
-              : null,
+          canGoForward: windowOffset > 0,
+          onBack: onBack,
+          onForward: onForward,
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentModeStatusCard extends StatelessWidget {
+  final List<Appointment> rows;
+
+  const _PaymentModeStatusCard({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    var upiCount = 0;
+    var cashCount = 0;
+    for (final appointment in rows) {
+      final hasPayment = appointment.paid > 0 || appointment.prescriptionPaid > 0;
+      if (!hasPayment) continue;
+      final isUpi = appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
+      if (isUpi) {
+        upiCount += 1;
+      } else {
+        cashCount += 1;
+      }
+    }
+    final total = upiCount + cashCount;
+    final upiPct = total == 0 ? 0.0 : (upiCount * 100) / total;
+    final cashPct = total == 0 ? 0.0 : (cashCount * 100) / total;
+
+    Widget modeRow({
+      required String label,
+      required int count,
+      required double pct,
+      required Color fg,
+      required Color bg,
+    }) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                '$label • $count',
+                style: TextStyle(
+                  color: fg,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            Text(
+              '${pct.toStringAsFixed(1)}%',
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 560,
+      child: _ReportContainer(
+        title: 'Total Payment Status',
+        subtitle: 'UPI vs Cash distribution by paid appointments',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            modeRow(
+              label: 'UPI',
+              count: upiCount,
+              pct: upiPct,
+              fg: const Color(0xFF1F4B8F),
+              bg: const Color(0xFFEAF2FF),
+            ),
+            const SizedBox(height: 8),
+            modeRow(
+              label: 'Cash',
+              count: cashCount,
+              pct: cashPct,
+              fg: const Color(0xFF8A5A00),
+              bg: const Color(0xFFFFF4D9),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Total counted: $total',
+              style: const TextStyle(
+                color: Color(0xFF4B6488),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1814,50 +1999,6 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
                     ),
                   ],
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MonthlyExpensesTrendWindowCardState
-    extends State<_MonthlyExpensesTrendWindowCard> {
-  int _windowOffset = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final windowEnd = DateTime(now.year, now.month - _windowOffset + 1, 1);
-    final windowStart = DateTime(windowEnd.year, windowEnd.month - 12, 1);
-    final starts = List<DateTime>.generate(
-      12,
-      (i) => DateTime(windowStart.year, windowStart.month + i, 1),
-      growable: false,
-    );
-
-    final points = starts.map((start) {
-      final end = DateTime(start.year, start.month + 1, 1);
-      final value = widget.rows
-          .where((e) => !e.date.isBefore(start) && e.date.isBefore(end))
-          .fold<double>(0, (sum, e) => sum + e.amount);
-      return (label: DateFormat('MMM').format(start), value: value);
-    }).toList(growable: false);
-
-    return SizedBox(
-      width: 560,
-      child: _SimpleBarsCard(
-        title: 'Expenses Trend (Monthly)',
-        subtitle:
-            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
-        rows: points,
-        barColor: const Color(0xFFD6455D),
-        valueFormatter: formatIndianShortCurrency,
-        trailing: _TrendNavButtons(
-          canGoForward: _windowOffset > 0,
-          onBack: () => setState(() => _windowOffset += 1),
-          onForward: _windowOffset > 0
-              ? () => setState(() => _windowOffset -= 1)
-              : null,
         ),
       ),
     );
