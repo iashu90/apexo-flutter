@@ -102,6 +102,7 @@ class TopTabsNavBar extends StatelessWidget {
       'labworks',
       'expenses',
       'report_v2',
+      'access_control'
     ];
 
     final byId = {

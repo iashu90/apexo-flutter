@@ -1,4 +1,3 @@
-import 'package:apexo/services/login.dart';
 import 'package:apexo/services/permissions.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -10,8 +9,6 @@ class AccessControlScreen extends StatefulWidget {
 }
 
 class _AccessControlScreenState extends State<AccessControlScreen> {
-  int _selectedPaneIndex = 0;
-
   static const List<String> _featureLabels = [
     'Doctors',
     'Patients',
@@ -23,31 +20,17 @@ class _AccessControlScreenState extends State<AccessControlScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!login.isAdmin) {
+    if (permissions.currentRole != UserRole.admin) {
       return const ScaffoldPage(
         content: Center(
-          child: Text('Access denied. Only admin can manage access control.'),
+          child: Text('Access denied. Only admin/super admin can manage access control.'),
         ),
       );
     }
 
-    return NavigationView(
-      pane: NavigationPane(
-        selected: _selectedPaneIndex,
-        onChanged: (index) => setState(() => _selectedPaneIndex = index),
-        displayMode: PaneDisplayMode.auto,
-        items: [
-          PaneItem(
-            icon: Icon(FluentIcons.lock),
-            title: Text('Access Control'),
-            body: SizedBox.shrink(),
-          ),
-        ],
-      ),
-      content: ScaffoldPage(
-        header: const PageHeader(title: Text('Setting')),
-        content: _buildAccessControlBody(),
-      ),
+    return ScaffoldPage(
+      header: const PageHeader(title: Text('Setting')),
+      content: _buildAccessControlBody(),
     );
   }
 

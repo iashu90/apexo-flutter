@@ -233,27 +233,38 @@ Future<void> showAppointmentJourneyDialog({
                         children: [
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: List.generate(labels.length, (index) {
-                                final connectorDone = index < currentStep;
-                                return Row(
-                                  children: [
-                                    SizedBox(
-                                      width: (dialogWidth - 28 - 48) / labels.length,
-                                      child: stepNode(index),
-                                    ),
-                                    if (index < labels.length - 1)
-                                      Container(
-                                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                                        width: 8,
-                                        height: 2,
-                                        color: connectorDone
-                                            ? const Color(0xFF2BA58D)
-                                            : const Color(0xFFC9D3E0),
+                            child: SizedBox(
+                              width: dialogWidth - 28,
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    top: 20,
+                                    left: 40,
+                                    right: 40,
+                                    child: Row(
+                                      children: List.generate(
+                                        labels.length - 1,
+                                        (index) => Expanded(
+                                          child: Container(
+                                            height: 2,
+                                            color: index < currentStep
+                                                ? const Color(0xFF2BA58D)
+                                                : const Color(0xFFC9D3E0),
+                                          ),
+                                        ),
                                       ),
-                                  ],
-                                );
-                              }),
+                                    ),
+                                  ),
+                                  Row(
+                                    children: List.generate(
+                                      labels.length,
+                                      (index) => Expanded(
+                                        child: Center(child: stepNode(index)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),
