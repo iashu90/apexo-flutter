@@ -831,7 +831,7 @@ class _StatusCountPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return _SimplePanel(
       titleIcon: FluentIcons.calendar,
-      title: 'Scheduled & Waiting',
+      title: 'Today\'s Appointments ($total)',
       titleColor: const Color(0xFFE09C31),
       onTitleAction: onOpenCheckin,
       child: Column(
@@ -841,7 +841,6 @@ class _StatusCountPanel extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _metricChip('Total $total', const Color(0xFF355A84), const Color(0xFFEAF2FF)),
               _metricChip('Scheduled $scheduled', const Color(0xFF355A84), const Color(0xFFEAF2FF)),
               _metricChip('Waiting $waiting', const Color(0xFF8A5A00), const Color(0xFFFFF4D9)),
               _metricChip('Treatment $treatment', const Color(0xFF1E40AF), const Color(0xFFEAF0FF)),
