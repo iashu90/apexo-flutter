@@ -1175,11 +1175,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
         [
           'Date',
           'Doctor',
-          'Patient',
-          'Time',
+          'Patient', 
           'Treatment',
           'Tooth/Area',
-          'Stage',
           'Paid',
           'Doctor Fee',
           'Net',
@@ -1196,21 +1194,18 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
               .join(', ');
           final tooth =
               appointment.selectedTeeth.isEmpty ? '-' : appointment.selectedTeeth.first;
-          final stage = _stageLabel(appointment);
           final paid = appointment.paid + appointment.prescriptionPaid;
           final fee = appointment.doctorPayableAmount;
           final net = paid - fee;
 
           rows.add([
-            DateFormat('yyyy-MM-dd').format(appointment.date),
+            DateFormat('dd/MM/yyyy').format(appointment.date),
             doctor.title.trim().isEmpty ? 'Unnamed doctor' : _doctorTitleCase(doctor.title),
             appointment.title.trim().isEmpty
                 ? 'Unnamed patient'
                 : _doctorTitleCase(appointment.title),
-            '${DateFormat('hh:mm a').format(appointment.date)} - ${DateFormat('hh:mm a').format(end)}',
             treatment.isEmpty ? '-' : treatment,
             tooth,
-            stage,
             paid.toStringAsFixed(0),
             fee.toStringAsFixed(0),
             net.toStringAsFixed(0),
@@ -1240,11 +1235,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
         [
           'Date',
           'Doctor',
-          'Patient',
-          'Time',
+          'Patient',  
           'Treatment',
           'Tooth/Area',
-          'Stage',
           'Paid',
           'Doctor Fee',
           'Net',
@@ -1261,21 +1254,18 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
               .join(', ');
           final tooth =
               appointment.selectedTeeth.isEmpty ? '-' : appointment.selectedTeeth.first;
-          final stage = _stageLabel(appointment);
           final paid = appointment.paid + appointment.prescriptionPaid;
           final fee = appointment.doctorPayableAmount;
           final net = paid - fee;
 
           rows.add([
-            DateFormat('yyyy-MM-dd').format(appointment.date),
+            DateFormat('dd/MM/yyyy').format(appointment.date),
             doctor.title.trim().isEmpty ? 'Unnamed doctor' : _doctorTitleCase(doctor.title),
             appointment.title.trim().isEmpty
                 ? 'Unnamed patient'
                 : _doctorTitleCase(appointment.title),
-            '${DateFormat('hh:mm a').format(appointment.date)} - ${DateFormat('hh:mm a').format(end)}',
             treatment.isEmpty ? '-' : treatment,
             tooth,
-            stage,
             'Rs ${paid.toStringAsFixed(0)}',
             'Rs ${fee.toStringAsFixed(0)}',
             'Rs ${net.toStringAsFixed(0)}',
@@ -1286,10 +1276,10 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
 
       await PdfExportUtility.savePdf(
         title: 'Doctor Activity Export',
-        subtitle: DateFormat('dd MMM yyyy').format(widget.selectedDate),
+        subtitle: DateFormat('dd/MM/yyyy').format(widget.selectedDate),
         data: rows,
         fileName:
-            'doctor_activity_${DateFormat('yyyyMMdd').format(widget.selectedDate)}.pdf',
+            'doctor_activity_${DateFormat('dd-M-yyyy').format(widget.selectedDate)}.pdf',
       );
     } finally {
       if (mounted) setState(() => _isExportingPdf = false);
@@ -2406,7 +2396,7 @@ class _DoctorAppointmentDoneChartCardState
       ];
       await PdfExportUtility.savePdf(
         title: 'Doctor Appointments Export',
-        subtitle: DateFormat('dd MMM yyyy').format(DateTime.now()),
+        subtitle: DateFormat('dd/MM/yyyy').format(DateTime.now()),
         data: rows,
         fileName:
             'doctor_appointments_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',

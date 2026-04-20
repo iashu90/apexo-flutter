@@ -181,8 +181,9 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
       expense.amount = totalPaid;
       expense.paid = true;
       expense.date = DateTime.now();
-      expense.issuer = 'Laboratory';
-      expense.items = ['Laboratory'];
+      expense.issuer = 'Labwork';
+      expense.items = ['Labwork'];
+      expense.tags = ['upi'];
       final labsLabel = labsPaid.isEmpty ? 'Lab' : labsPaid.join(', ');
       final amountText = NumberFormat('#,##0').format(totalPaid);
       final monthName = DateFormat('MMMM').format(_monthAnchor);

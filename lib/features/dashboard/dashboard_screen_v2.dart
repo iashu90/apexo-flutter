@@ -432,7 +432,28 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
             appointments.present.values.toList(growable: false);
 
         final completed = todaysAppointments.where((a) => a.isDone).length;
-        final pending = todaysAppointments.length - completed;
+        var waiting = 0;
+        var treatment = 0;
+        var billing = 0;
+        for (final appointment in todaysAppointments) {
+          if (appointment.isDone) continue;
+          switch (normalizeCheckinStage(appointment.checkinStage)) {
+            case 'waiting':
+              waiting += 1;
+              break;
+            case 'treatment':
+            case 'with_doctor':
+              treatment += 1;
+              break;
+            case 'billing':
+            case 'checkout':
+              billing += 1;
+              break;
+            default:
+              waiting += 1;
+              break;
+          }
+        }
         final newPatients = todaysAppointments
             .where((a) => a.firstAppointmentForThisPatient)
             .length;
@@ -468,15 +489,23 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         double morningUpi = 0;
         double eveningCash = 0;
         double eveningUpi = 0;
+        var morningPatients = 0;
+        var eveningPatients = 0;
 
         for (final a in todaysAppointments) {
-          final totalPayment = a.paid + a.prescriptionPaid;
-          if (totalPayment <= 0) continue;
-
           final hour = a.date.hour;
           final isMorningSession = hour >= 8 && hour < 15;
           final isEveningSession = hour >= 15 && hour < 24;
           if (!isMorningSession && !isEveningSession) continue;
+
+          if (isMorningSession) {
+            morningPatients += 1;
+          } else {
+            eveningPatients += 1;
+          }
+
+          final totalPayment = a.paid + a.prescriptionPaid;
+          if (totalPayment <= 0) continue;
 
           final isDigital = a.treatmentGpayPaid || a.prescriptionGpayPaid;
           if (isMorningSession) {
@@ -533,9 +562,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         icon: FluentIcons.calendar,
                         iconColor: const Color(0xFF2D7BD8),
                         iconBackground: const Color(0xFFDDEBFF),
+                        showIcon: false,
                       ),
                       _StatusSummaryCard(
-                          completed: completed, pending: pending),
+                        waiting: waiting,
+                        treatment: treatment,
+                        billing: billing,
+                        completed: completed,
+                      ),
                       _NewReturningPatientsCard(
                         newPatients: newPatients,
                         returningPatients: returningPatients,
@@ -544,56 +578,42 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       _RevenueCard(
                         title: 'Revenue Today',
                         value: _money(revenueToday),
+                        revenueTotal: revenueToday,
                         doctorFee: doctorFeeToday,
                         netProfit: netProfitToday,
                       ),
-                      _PaymentSessionCard(
-                        onPreviousDate: () => _changeDate(-1),
-                        onNextDate: () => _changeDate(1),
-                        morningCash: morningCash,
-                        morningUpi: morningUpi,
-                        eveningCash: eveningCash,
-                        eveningUpi: eveningUpi,
+                      _SessionRevenueCard(
+                        title: 'Morning',
+                        range: '8 AM - 3 PM',
+                        total: morningCash + morningUpi,
+                        cash: morningCash,
+                        upi: morningUpi,
+                        patientCount: morningPatients,
+                        borderColor: const Color(0xFFE5CC8A),
+                        background: const Color(0xFFFBF5E7),
+                        iconColor: const Color(0xFFC89F2B),
+                      ),
+                      _SessionRevenueCard(
+                        title: 'Evening',
+                        range: '3 PM - 12 AM',
+                        total: eveningCash + eveningUpi,
+                        cash: eveningCash,
+                        upi: eveningUpi,
+                        patientCount: eveningPatients,
+                        borderColor: const Color(0xFF8390C9),
+                        background: const Color(0xFFF0F2FA),
+                        iconColor: const Color(0xFF3F4D8F),
                       ),
                       _TopDailyTreatmentCard(
                         rows: dailyTreatmentDistribution,
                       ),
-                      _TopTimingSummaryCard(
-                        appointmentsForView: todaysAppointments,
-                      ),
                     ];
-
-                    int columns;
-                    if (width >= 2100) {
-                      columns = 7;
-                    } else if (width >= 1720) {
-                      columns = 6;
-                    } else if (width >= 1420) {
-                      columns = 5;
-                    } else if (width >= 1140) {
-                      columns = 4;
-                    } else if (width >= 860) {
-                      columns = 3;
-                    } else if (width >= 580) {
-                      columns = 2;
-                    } else {
-                      columns = 1;
-                    }
-
                     const gap = 10.0;
-                    final cardWidth = (width - (columns - 1) * gap) / columns;
 
                     return Wrap(
                       spacing: gap,
                       runSpacing: gap,
-                      children: cards
-                          .map(
-                            (card) => SizedBox(
-                              width: cardWidth,
-                              child: card,
-                            ),
-                          )
-                          .toList(growable: false),
+                      children: cards,
                     );
                   },
                 ),
@@ -1748,52 +1768,47 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String? pendingSubtext() {
-      if (done) return null;
+    String label;
+    Color fg;
+    Color bg;
+    if (done) {
+      label = 'Completed';
+      fg = const Color(0xFF166534);
+      bg = const Color(0xFFE8F7EE);
+    } else {
       final normalized = (stage ?? '').trim().toLowerCase();
-      if (normalized == 'waiting') return 'Waiting';
-      if (normalized == 'pending') return 'Scheduled';
-      if (normalized == 'with_doctor' || normalized == 'treatment') {
-        return 'Treatment';
+      if (normalized == 'billing' || normalized == 'checkout') {
+        label = 'Billing';
+        fg = const Color(0xFF5B2FA8);
+        bg = const Color(0xFFF1EBFF);
+      } else if (normalized == 'treatment' || normalized == 'with_doctor') {
+        label = 'Treatment';
+        fg = const Color(0xFF1E40AF);
+        bg = const Color(0xFFEAF0FF);
+      } else {
+        label = 'Waiting';
+        fg = const Color(0xFF8A5A00);
+        bg = const Color(0xFFFFF4D9);
       }
-      if (normalized == 'checkout') return 'Billing';
-      return null;
     }
 
-    final subtext = pendingSubtext();
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          done ? material.Icons.check_circle : material.Icons.circle,
-          size: 12,
-          color: done ? const Color(0xFF3B9A42) : const Color(0xFFE4A11B),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
         ),
-        const SizedBox(width: 4),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              done ? 'Completed' : 'Pending',
-              style: TextStyle(
-                fontSize: 12,
-                color: done ? const Color(0xFF3B9A42) : const Color(0xFFE4A11B),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (subtext != null)
-              Text(
-                subtext,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF7C93B1),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-          ],
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: fg,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -2014,9 +2029,9 @@ class _NewReturningPatientsCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
+        constraints: const BoxConstraints(minWidth: 190, maxWidth: 230),
         child: SizedBox(
-          height: 140,
+          height: 132,
           child: _CardShell(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2969,6 +2984,7 @@ class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final Color iconBackground;
+  final bool showIcon;
 
   const _StatCard({
     required this.title,
@@ -2976,14 +2992,15 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.iconBackground,
+    this.showIcon = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 180, maxWidth: 260),
+      constraints: const BoxConstraints(minWidth: 150, maxWidth: 190),
       child: SizedBox(
-        height: 140,
+        height: 132,
         child: _CardShell(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3006,16 +3023,17 @@ class _StatCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                width: 38,
-                height: 38,
-                margin: const EdgeInsets.only(top: 2),
-                decoration: BoxDecoration(
-                  color: iconBackground,
-                  borderRadius: BorderRadius.circular(8),
+              if (showIcon)
+                Container(
+                  width: 32,
+                  height: 32,
+                  margin: const EdgeInsets.only(top: 2),
+                  decoration: BoxDecoration(
+                    color: iconBackground,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 16),
                 ),
-                child: Icon(icon, color: iconColor, size: 18),
-              ),
             ],
           ),
         ),
@@ -3027,12 +3045,14 @@ class _StatCard extends StatelessWidget {
 class _RevenueCard extends StatelessWidget {
   final String title;
   final String value;
+  final double revenueTotal;
   final double doctorFee;
   final double netProfit;
 
   const _RevenueCard({
     required this.title,
     required this.value,
+    required this.revenueTotal,
     required this.doctorFee,
     required this.netProfit,
   });
@@ -3040,9 +3060,9 @@ class _RevenueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 200, maxWidth: 280),
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
       child: SizedBox(
-        height: 140,
+        height: 150,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3080,6 +3100,15 @@ class _RevenueCard extends StatelessWidget {
                   color: netProfit >= 0
                       ? const Color(0xFF2BA58D)
                       : const Color(0xFFD6455D),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Profit %: ${revenueTotal <= 0 ? '0.0' : ((netProfit / revenueTotal) * 100).toStringAsFixed(1)}%',
+                style: const TextStyle(
+                  color: Color(0xFF355279),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -3258,17 +3287,24 @@ class _TopPatientGrowthCardBodyState extends State<_TopPatientGrowthCardBody> {
 }
 
 class _StatusSummaryCard extends StatelessWidget {
+  final int waiting;
+  final int treatment;
+  final int billing;
   final int completed;
-  final int pending;
 
-  const _StatusSummaryCard({required this.completed, required this.pending});
+  const _StatusSummaryCard({
+    required this.waiting,
+    required this.treatment,
+    required this.billing,
+    required this.completed,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
+      constraints: const BoxConstraints(minWidth: 190, maxWidth: 230),
       child: SizedBox(
-        height: 140,
+        height: 132,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3281,52 +3317,41 @@ class _StatusSummaryCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
-              Row(
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Text(
-                    '$completed',
-                    style: const TextStyle(
-                      color: Color(0xFF3B9A42),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 30,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Completed',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF3B9A42),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Text(
-                    '$pending',
-                    style: const TextStyle(
-                      color: Color(0xFFE4A11B),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 30,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Pending',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFE4A11B),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  _statusChip('Waiting $waiting', const Color(0xFF8A5A00),
+                      const Color(0xFFFFF4D9)),
+                  _statusChip('Treatment $treatment', const Color(0xFF1E40AF),
+                      const Color(0xFFEAF0FF)),
+                  _statusChip('Billing $billing', const Color(0xFF5B2FA8),
+                      const Color(0xFFF1EBFF)),
+                  _statusChip('Completed $completed', const Color(0xFF166534),
+                      const Color(0xFFE8F7EE)),
                 ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String label, Color fg, Color bg) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
         ),
       ),
     );
@@ -3560,144 +3585,125 @@ class _TopDonutMetricCard extends StatelessWidget {
   }
 }
 
-class _PaymentSessionCard extends StatelessWidget {
-  final VoidCallback onPreviousDate;
-  final VoidCallback onNextDate;
-  final double morningCash;
-  final double morningUpi;
-  final double eveningCash;
-  final double eveningUpi;
+class _SessionRevenueCard extends StatelessWidget {
+  final String title;
+  final String range;
+  final double total;
+  final double cash;
+  final double upi;
+  final int patientCount;
+  final Color borderColor;
+  final Color background;
+  final Color iconColor;
 
-  const _PaymentSessionCard({
-    required this.onPreviousDate,
-    required this.onNextDate,
-    required this.morningCash,
-    required this.morningUpi,
-    required this.eveningCash,
-    required this.eveningUpi,
+  const _SessionRevenueCard({
+    required this.title,
+    required this.range,
+    required this.total,
+    required this.cash,
+    required this.upi,
+    required this.patientCount,
+    required this.borderColor,
+    required this.background,
+    required this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final morningTotal = morningCash + morningUpi;
-    final eveningTotal = eveningCash + eveningUpi;
-
-    Widget sessionRow({
-      required String title,
-      required String range,
-      required double total,
-      required double cash,
-      required double upi,
-      required Color chipColor,
-      required Color chipTextColor,
-    }) {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF4F8FF),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFDCE7F6)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '$title ($range)',
-                    style: const TextStyle(
-                      color: Color(0xFF2E4E76),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: chipColor,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    _DashboardScreenV2State._money(total),
-                    style: TextStyle(
-                      color: chipTextColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Cash ${_DashboardScreenV2State._money(cash)} • UPI ${_DashboardScreenV2State._money(upi)}',
-              style: const TextStyle(
-                color: Color(0xFF5B7498),
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 250, maxWidth: 320),
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
       child: SizedBox(
-        height: 170,
+        height: 156,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: background,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: Icon(
+                      title == 'Morning'
+                          ? material.Icons.wb_sunny
+                          : material.Icons.nightlight_round,
+                      size: 14,
+                      color: iconColor,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
                     child: Text(
-                      'Payment Sessions',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF496489),
-                        fontWeight: FontWeight.w600,
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: Color(0xFF111827),
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(FluentIcons.chevron_left, size: 10),
-                    onPressed: onPreviousDate,
-                  ),
-                  IconButton(
-                    icon: const Icon(FluentIcons.chevron_right, size: 10),
-                    onPressed: onNextDate,
+                  Text(
+                    '$patientCount',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF111827),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
-              Expanded(
-                child: sessionRow(
-                  title: 'Morning',
-                  range: '8 AM - 3 PM',
-                  total: morningTotal,
-                  cash: morningCash,
-                  upi: morningUpi,
-                  chipColor: const Color(0xFFE5EEF9),
-                  chipTextColor: const Color(0xFF234C7B),
+              Text(
+                range,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF1F2937),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              Expanded(
-                child: sessionRow(
-                  title: 'Evening',
-                  range: '3 PM - 12 AM',
-                  total: eveningTotal,
-                  cash: eveningCash,
-                  upi: eveningUpi,
-                  chipColor: const Color(0xFFE9F8EF),
-                  chipTextColor: const Color(0xFF1F7A4A),
+              const SizedBox(height: 6),
+              Text(
+                _DashboardScreenV2State._money(total),
+                style: const TextStyle(
+                  fontSize: 32,
+                  color: Color(0xFF111827),
+                  fontWeight: FontWeight.w700,
                 ),
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Cash ${_DashboardScreenV2State._money(cash)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF1F2937),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'UPI ${_DashboardScreenV2State._money(upi)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: Color(0xFF1F2937),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -112,15 +112,31 @@ Future<void> showDailyReminderModal(BuildContext context) async {
     ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
   final greetingStrip = () {
+    String toTimeText(int minutes) {
+      if (minutes > 60) {
+        final hours = minutes / 60;
+        return '${hours.toStringAsFixed(hours >= 10 ? 0 : 1)} hours';
+      }
+      return '$minutes minutes';
+    }
+
     if (waitingCount > 0) {
       return 'Next patient queue is active: $waitingCount waiting';
     }
     if (nextPatient == null) return 'No scheduled patients for today';
     final diff = nextPatient.date.difference(now).inMinutes;
-    if (diff > 0) return 'Clinic opens in $diff minutes';
+    if (diff > 0) return 'Clinic opens in ${toTimeText(diff)}';
     if (diff >= -10) return 'Current slot in progress';
     return 'Next patient queue is active';
   }();
+
+  final queueCount = waitingPatients.length + scheduledPatients.length;
+  final tomorrowQueueCount = tomorrowAppointments
+      .where((a) {
+        final stage = normalizeCheckinStage(a.checkinStage);
+        return stage == 'scheduled' || stage == 'waiting';
+      })
+      .length;
 
   await showDialog<void>(
     context: context,
@@ -209,7 +225,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                         },
                       ),
                       _QueueChipsPanel(
-                        title: 'Waiting + Scheduled Queue',
+                        title: 'Waiting + Scheduled Queue ($queueCount)',
                         waitingPatients: waitingPatients,
                         scheduledPatients: scheduledPatients,
                         onOpenCheckin: () {
@@ -218,6 +234,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                         },
                       ),
                       _TomorrowScheduleCard(
+                        title: 'Tomorrow Schedule ($tomorrowQueueCount)',
                         tomorrow: tomorrow,
                         appointments: tomorrowAppointments,
                       ),
@@ -430,6 +447,14 @@ class _NextPatientCard extends StatelessWidget {
         ? appointment!.operators.first.title
         : 'Doctor not assigned';
     final minsToArrival = appointment!.date.difference(now).inMinutes;
+    final etaText = () {
+      if (minsToArrival <= 0) return 'In progress';
+      if (minsToArrival > 60) {
+        final hours = minsToArrival / 60;
+        return 'Arriving in ${hours.toStringAsFixed(hours >= 10 ? 0 : 1)} hr';
+      }
+      return 'Arriving in $minsToArrival min';
+    }();
     final treatment = appointment!.selectedTreatments
         .where((t) => t.trim().isNotEmpty)
         .join(', ');
@@ -488,7 +513,7 @@ class _NextPatientCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Dr. $doctorName • ${minsToArrival > 0 ? 'Arriving in $minsToArrival min' : 'In progress'}',
+                      'Dr. $doctorName • $etaText',
                       style: const TextStyle(
                         color: Color(0xFF6B7280),
                         fontWeight: FontWeight.w600,
@@ -752,7 +777,14 @@ class _DoctorsAndChairsCard extends StatelessWidget {
         dot = const Color(0xFFE09C31);
       } else if (upcoming.isNotEmpty) {
         final mins = upcoming.first.date.difference(DateTime.now()).inMinutes;
-        status = 'Free in ${mins < 0 ? 0 : mins} min';
+        final safeMins = mins < 0 ? 0 : mins;
+        if (safeMins > 60) {
+          final hours = safeMins / 60;
+          status =
+              'Free in ${hours.toStringAsFixed(hours >= 10 ? 0 : 1)} hr';
+        } else {
+          status = 'Free in $safeMins min';
+        }
         dot = const Color(0xFF2BA58D);
       } else {
         status = 'Free';
@@ -1087,10 +1119,12 @@ class _LabFollowUpsCard extends StatelessWidget {
 }
 
 class _TomorrowScheduleCard extends StatelessWidget {
+  final String title;
   final DateTime tomorrow;
   final List<Appointment> appointments;
 
   const _TomorrowScheduleCard({
+    required this.title,
     required this.tomorrow,
     required this.appointments,
   });
@@ -1107,7 +1141,7 @@ class _TomorrowScheduleCard extends StatelessWidget {
 
     return _SimplePanel(
       titleIcon: FluentIcons.calendar_work_week,
-      title: 'Tomorrow Schedule',
+      title: title,
       titleColor: const Color(0xFF355A84),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1148,7 +1182,7 @@ class _TomorrowScheduleCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '${DateFormat('hh:mm a').format(appointment.date)} • ${isWaiting ? 'W' : 'S'} • $title',
+                    '${DateFormat('hh:mm a').format(appointment.date)} • $title',
                     style: TextStyle(
                       color: fg,
                       fontWeight: FontWeight.w700,
