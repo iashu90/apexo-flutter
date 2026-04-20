@@ -27,25 +27,19 @@ Future<void> showAppointmentJourneyDialog({
   AppointmentJourneyAssignHandler? onAssignFromWaiting,
   AppointmentJourneyBeforeAdvance? onBeforeStepAdvance,
 }) async {
-  var currentStep = initialStep.clamp(0, 4);
-  const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5'];
-  const subtitles = [
-    'Waiting',
-    'Treatment',
-    'Schedule Next',
-    'Billing',
-    'Completed'
-  ];
+  var currentStep = initialStep.clamp(0, 3);
+  const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4'];
+  const subtitles = ['Treatment', 'Schedule Next', 'Billing', 'Completed'];
 
   List<Color> headerGradient(int step) {
     switch (step) {
-      case 1:
+      case 0:
         return const [Color(0xFF5A84E6), Color(0xFF3F68CC)];
-      case 2:
+      case 1:
         return const [Color(0xFF14B8A6), Color(0xFF0F9D8B)];
-      case 3:
+      case 2:
         return const [Color(0xFF8B5CF6), Color(0xFF6D3FD2)];
-      case 4:
+      case 3:
         return const [Color(0xFF2BA58D), Color(0xFF1D8D77)];
       default:
         return const [Color(0xFFE4A11B), Color(0xFFD28C02)];
@@ -54,13 +48,13 @@ Future<void> showAppointmentJourneyDialog({
 
   Color stepColor(int step) {
     switch (step) {
-      case 1:
+      case 0:
         return const Color(0xFF2D7BD8);
-      case 2:
+      case 1:
         return const Color(0xFF0F9D8B);
-      case 3:
+      case 2:
         return const Color(0xFF6D3FD2);
-      case 4:
+      case 3:
         return const Color(0xFF1D8D77);
       default:
         return const Color(0xFFD28C02);
@@ -80,62 +74,67 @@ Future<void> showAppointmentJourneyDialog({
         Widget stepNode(int index) {
           final selected = index == currentStep;
           final complete = index < currentStep;
-          final nodeColor = stepColor(index);
+          final selectedColor = stepColor(index);
           return GestureDetector(
             onTap: () {
               setStateDialog(() {
                 currentStep = index;
               });
             },
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
-                    color: selected || complete
-                        ? nodeColor
-                        : Colors.transparent,
+                    color: selected
+                        ? selectedColor
+                        : complete
+                            ? const Color(0xFF2BA58D)
+                            : Colors.transparent,
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(
-                      color: selected || complete
-                          ? nodeColor
-                          : const Color(0xFFB8C2D1),
+                      color: selected
+                          ? selectedColor
+                          : complete
+                              ? const Color(0xFF2BA58D)
+                              : const Color(0xFFB8C2D1),
                     ),
                   ),
                   alignment: Alignment.center,
-                  child: Text(
-                    '${index + 1}',
-                    style: TextStyle(
-                      color: selected || complete
-                          ? Colors.white
-                          : const Color(0xFF5E6E85),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
-                    ),
+                  child: complete
+                      ? const Icon(FluentIcons.check_mark, size: 12, color: Colors.white)
+                      : Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            color: selected ? Colors.white : const Color(0xFF5E6E85),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  labels[index],
+                  style: TextStyle(
+                    color: selected
+                        ? selectedColor
+                        : complete
+                            ? const Color(0xFF1D8D77)
+                            : const Color(0xFF233B5F),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      labels[index],
-                      style: TextStyle(
-                        color: selected ? nodeColor : const Color(0xFF233B5F),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      subtitles[index],
-                      style: const TextStyle(
-                        color: Color(0xFF7E8795),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                Text(
+                  subtitles[index],
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF7E8795),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -143,17 +142,7 @@ Future<void> showAppointmentJourneyDialog({
         }
 
         Future<void> handleContinue() async {
-          final assignHandler = onAssignFromWaiting;
-          if (currentStep == 0 && assignHandler != null) {
-            await assignHandler(context, (step) {
-              setStateDialog(() {
-                currentStep = step.clamp(0, 4);
-              });
-            });
-            return;
-          }
-
-          if (currentStep < 4) {
+          if (currentStep < 3) {
             final beforeAdvance = onBeforeStepAdvance;
             if (beforeAdvance != null) {
               await beforeAdvance(context, currentStep, currentStep + 1);
@@ -244,27 +233,27 @@ Future<void> showAppointmentJourneyDialog({
                         children: [
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            child: SizedBox(
-                              width: dialogWidth - 28,
-                              child: Row(
-                                children: List.generate(labels.length, (index) {
-                                  final connectorDone = index < currentStep;
-                                  return Row(
-                                    children: [
-                                      stepNode(index),
-                                      if (index < labels.length - 1)
-                                        Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 12),
-                                          width: 38,
-                                          height: 1,
-                                          color: connectorDone
-                                              ? stepColor(index)
-                                              : const Color(0xFFC9D3E0),
-                                        ),
-                                    ],
-                                  );
-                                }),
-                              ),
+                            child: Row(
+                              children: List.generate(labels.length, (index) {
+                                final connectorDone = index < currentStep;
+                                return Row(
+                                  children: [
+                                    SizedBox(
+                                      width: (dialogWidth - 28 - 48) / labels.length,
+                                      child: stepNode(index),
+                                    ),
+                                    if (index < labels.length - 1)
+                                      Container(
+                                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                                        width: 8,
+                                        height: 2,
+                                        color: connectorDone
+                                            ? const Color(0xFF2BA58D)
+                                            : const Color(0xFFC9D3E0),
+                                      ),
+                                  ],
+                                );
+                              }),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -300,7 +289,7 @@ Future<void> showAppointmentJourneyDialog({
                         const Spacer(),
                         FilledButton(
                           onPressed: handleContinue,
-                          child: Text(currentStep == 4 ? 'Done' : 'Continue'),
+                          child: Text(currentStep == 3 ? 'Done' : 'Continue'),
                         ),
                       ],
                     ),

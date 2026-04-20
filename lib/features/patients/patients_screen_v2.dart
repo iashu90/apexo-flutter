@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'dart:math' as math;
 
+import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
@@ -3191,18 +3192,20 @@ class _AllPatientsListCard extends StatelessWidget {
                   ),
                 ),
               ),
-              FilledButton(
+              ExportFileActionButton(
+                type: ExportFileType.csv,
+                busy: isExportingCsv,
                 onPressed: (totalItems == 0 || isExportingCsv || isExportingPdf)
                     ? null
                     : onExportCsv,
-                child: Text(isExportingCsv ? 'Exporting CSVs...' : 'CSVs'),
               ),
               const SizedBox(width: 6),
-              FilledButton(
+              ExportFileActionButton(
+                type: ExportFileType.pdf,
+                busy: isExportingPdf,
                 onPressed: (totalItems == 0 || isExportingCsv || isExportingPdf)
                     ? null
                     : onExportPdf,
-                child: Text(isExportingPdf ? 'Exporting PDF...' : 'PDF'),
               ),
             ],
           ),

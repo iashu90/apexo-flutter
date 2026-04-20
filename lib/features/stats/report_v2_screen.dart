@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -714,18 +715,20 @@ class _ReportDoctorAppointmentDoneCardState
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Button(
+          ExportFileActionButton(
+            type: ExportFileType.pdf,
+            busy: _isExportingPdf,
             onPressed: (_isExportingCsv || _isExportingPdf || rows.isEmpty)
                 ? null
                 : () => _exportPdf(rows),
-            child: const Icon(FluentIcons.pdf, size: 12),
           ),
           const SizedBox(width: 6),
-          Button(
+          ExportFileActionButton(
+            type: ExportFileType.csv,
+            busy: _isExportingCsv,
             onPressed: (_isExportingCsv || _isExportingPdf || rows.isEmpty)
                 ? null
                 : () => _exportCsv(rows),
-            child: const Icon(FluentIcons.download, size: 12),
           ),
         ],
       ),

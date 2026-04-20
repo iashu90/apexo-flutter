@@ -24,6 +24,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../services/localization/locale.dart';
 import 'package:apexo/features/appointments/calendar_screen.dart';
 import 'package:apexo/features/settings/settings_screen.dart';
+import 'package:apexo/features/settings/access_control_screen.dart';
 import '../core/observable.dart';
 import "../features/appointments/appointments_store.dart";
 import "../features/settings/settings_stores.dart";
@@ -245,6 +246,17 @@ class _Routes {
             await patients.synchronize();
             appointments.synchronize();
             prescriptionsStore.synchronize();
+          },
+        ),
+        Route(
+          title: 'Setting',
+          identifier: 'access_control',
+          icon: FluentIcons.settings_secure,
+          screen: AccessControlScreen.new,
+          accessible: permissions.canAccessByRouteIdentifier('access_control'),
+          onFooter: false,
+          onSelect: () {
+            permissions.reloadFromRemote();
           },
         ),
         Route(

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -872,17 +873,19 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                     Button(
                         onPressed: _openShareOptions,
                         child: const Text('Share')),
-                    Button(
+                    ExportFileActionButton(
+                      type: ExportFileType.csv,
+                      busy: _isExportingCsv,
                       onPressed: _isExportingCsv || _isExportingPdf
                           ? null
                           : _exportCsv,
-                      child: const Text('CSV'),
                     ),
-                    Button(
+                    ExportFileActionButton(
+                      type: ExportFileType.pdf,
+                      busy: _isExportingPdf,
                       onPressed: _isExportingCsv || _isExportingPdf
                           ? null
                           : _exportPdf,
-                      child: const Text('PDF'),
                     ),
                   ],
                 ),

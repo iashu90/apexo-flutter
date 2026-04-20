@@ -1,6 +1,7 @@
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
@@ -813,26 +814,16 @@ class _SearchAndActionsBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Button(
+        ExportFileActionButton(
+          type: ExportFileType.pdf,
+          busy: isExportingPdf,
           onPressed: (isExportingCsv || isExportingPdf) ? null : onExportPdf,
-          child: const Row(
-            children: [
-              Icon(FluentIcons.pdf, size: 14),
-              SizedBox(width: 6),
-              Text('PDF'),
-            ],
-          ),
         ),
         const SizedBox(width: 6),
-        Button(
+        ExportFileActionButton(
+          type: ExportFileType.csv,
+          busy: isExportingCsv,
           onPressed: (isExportingCsv || isExportingPdf) ? null : onExportCsv,
-          child: Row(
-            children: [
-              const Icon(FluentIcons.download, size: 14),
-              const SizedBox(width: 6),
-              Text(isExportingCsv ? 'CSV...' : 'CSV'),
-            ],
-          ),
         ),
       ],
     );

@@ -168,12 +168,12 @@ Future<void> showPatientCheckinLookupDialog({
     context: context,
     builder: (dialogContext) {
       final screen = MediaQuery.of(dialogContext).size;
-      final dialogWidth = (screen.width - 24).clamp(340.0, 1320.0);
-      final twoColumn = dialogWidth >= 1000;
+      final dialogWidth = (screen.width - 24).clamp(340.0, 860.0);
       final maxBodyHeight = (screen.height - 250).clamp(320.0, 680.0);
 
       final queryController = TextEditingController(text: '');
       String query = queryController.text.trim().toLowerCase();
+      String activeTab = 'today';
 
       final allPatients = patients.present.values.toList(growable: false);
       final todaysAppointments = appointments.forDate(selectedDate);
@@ -413,21 +413,6 @@ Future<void> showPatientCheckinLookupDialog({
             );
           }
 
-          Widget _patientGrid(List<Patient> patientsList, {required int columns}) {
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: patientsList.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columns,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 2.25,
-              ),
-              itemBuilder: (_, index) => _patientCard(patientsList[index]),
-            );
-          }
-
           return ContentDialog(
             constraints: BoxConstraints(maxWidth: dialogWidth),
             title: Row(
@@ -466,6 +451,19 @@ Future<void> showPatientCheckinLookupDialog({
                     ],
                   ),
                 ),
+                FilledButton(
+                  onPressed: () async {
+                    final navigator = Navigator.of(dialogContext);
+                    final created = await onAddPatient(queryController.text);
+                    if (created == null) return;
+                    await onCheckInPatient(created);
+                    if (navigator.mounted) {
+                      navigator.pop();
+                    }
+                  },
+                  child: const Text('New Patient'),
+                ),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(FluentIcons.chrome_close, size: 12),
                   onPressed: () => Navigator.pop(dialogContext),
@@ -478,203 +476,105 @@ Future<void> showPatientCheckinLookupDialog({
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextBox(
-                    controller: queryController,
-                    placeholder: 'Search name or phone...',
-                    autofocus: true,
-                    prefix: const Padding(
-                      padding: EdgeInsets.only(left: 10),
-                      child: Icon(
-                        FluentIcons.search,
-                        size: 12,
-                        color: Color(0xFF6D84A8),
-                      ),
-                    ),
-                    onSubmitted: (_) async {
-                      if (matches.isEmpty) return;
-                      final navigator = Navigator.of(dialogContext);
-                      await onCheckInPatient(matches.first);
-                      if (navigator.mounted) {
-                        navigator.pop();
-                      }
-                    },
-                    onChanged: (value) {
-                      setDialogState(() => query = value.trim().toLowerCase());
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Type name or phone • Press Enter to check-in instantly',
-                    style: TextStyle(
-                      color: Color(0xFF5A6E89),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: () async {
-                            final navigator = Navigator.of(dialogContext);
-                            final created = await onAddPatient(queryController.text);
-                            if (created == null) return;
-                            await onCheckInPatient(created);
-                            if (navigator.mounted) {
-                              navigator.pop();
-                            }
-                          },
-                          child: const Text('New Patient'),
-                        ),
+                      _tabChip(
+                        label: "Today's",
+                        selected: activeTab == 'today',
+                        onTap: () => setDialogState(() => activeTab = 'today'),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
-                        child: Button(
-                          onPressed: matches.isEmpty
-                              ? null
-                              : () async {
-                                  final scheduledAt = await _scheduleAppointmentForPatient(
-                                    context,
-                                    matches.first,
-                                    selectedDate,
-                                  );
-                                  if (scheduledAt == null || !context.mounted) {
-                                    return;
-                                  }
-                                  displayInfoBar(
-                                    context,
-                                    builder: (context, close) => InfoBar(
-                                      title: const Text('Appointment scheduled'),
-                                      content: Text(
-                                        'Scheduled for ${DateFormat('dd MMM yyyy, hh:mm a').format(scheduledAt)}',
-                                      ),
-                                      severity: InfoBarSeverity.success,
-                                    ),
-                                  );
-                                },
-                          child: const Text('Schedule'),
-                        ),
+                      _tabChip(
+                        label: 'Search',
+                        selected: activeTab == 'search',
+                        onTap: () => setDialogState(() => activeTab = 'search'),
                       ),
                     ],
                   ),
+                  if (activeTab == 'search') ...[
+                    const SizedBox(height: 10),
+                    TextBox(
+                      controller: queryController,
+                      placeholder: 'Search name or phone...',
+                      autofocus: true,
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 10),
+                        child: Icon(
+                          FluentIcons.search,
+                          size: 12,
+                          color: Color(0xFF6D84A8),
+                        ),
+                      ),
+                      onSubmitted: (_) async {
+                        if (matches.isEmpty) return;
+                        final navigator = Navigator.of(dialogContext);
+                        await onCheckInPatient(matches.first);
+                        if (navigator.mounted) {
+                          navigator.pop();
+                        }
+                      },
+                      onChanged: (value) {
+                        setDialogState(() => query = value.trim().toLowerCase());
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Type name or phone • Press Enter to check-in instantly',
+                      style: TextStyle(
+                        color: Color(0xFF5A6E89),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   SizedBox(
                     height: maxBodyHeight,
-                    child: twoColumn
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: _LookupColumn(
-                                  title: 'Recent Today',
-                                  children: recentToday.isEmpty
-                                      ? const [
-                                          Padding(
-                                            padding: EdgeInsets.only(bottom: 8),
-                                            child: Text(
-                                              'No recent patients today.',
-                                              style: TextStyle(
-                                                color: Color(0xFF6D84A8),
-                                              ),
-                                            ),
-                                          ),
-                                        ]
-                                      : [
-                                          _patientGrid(
-                                            recentToday,
-                                            columns: 2,
-                                          ),
-                                        ],
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (activeTab == 'today') ...[
+                            if (recentToday.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  'No patients found for today.',
+                                  style: TextStyle(color: Color(0xFF6D84A8)),
+                                ),
+                              )
+                            else
+                              ...recentToday.map(_patientCard),
+                          ] else ...[
+                            if (matches.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 18),
+                                child: Text(
+                                  'No matching patients.',
+                                  style: TextStyle(color: Color(0xFF6D84A8)),
+                                ),
+                              )
+                            else
+                              ...matches.map(_patientCard),
+                            if (query.isNotEmpty && !hasExactMatch)
+                              FilledButton(
+                                onPressed: () async {
+                                  final navigator = Navigator.of(dialogContext);
+                                  final created = await onAddPatient(queryController.text);
+                                  if (created == null) return;
+                                  await onCheckInPatient(created);
+                                  if (navigator.mounted) {
+                                    navigator.pop();
+                                  }
+                                },
+                                child: Text(
+                                  'Add "${queryController.text.trim()}" as new patient',
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _LookupColumn(
-                                  title: 'Search Results',
-                                  children: [
-                                    if (matches.isEmpty)
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 18),
-                                        child: Text(
-                                          'No matching patients.',
-                                          style: TextStyle(color: Color(0xFF6D84A8)),
-                                        ),
-                                      )
-                                    else
-                                      ...matches.map(_patientCard),
-                                    if (query.isNotEmpty && !hasExactMatch)
-                                      FilledButton(
-                                        onPressed: () async {
-                                          final navigator = Navigator.of(dialogContext);
-                                          final created = await onAddPatient(queryController.text);
-                                          if (created == null) return;
-                                          await onCheckInPatient(created);
-                                          if (navigator.mounted) {
-                                            navigator.pop();
-                                          }
-                                        },
-                                        child: Text(
-                                          'Add "${queryController.text.trim()}" as new patient',
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          )
-                        : _LookupColumn(
-                            title: 'Recent Today',
-                            children: [
-                              if (recentToday.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.only(bottom: 8),
-                                  child: Text(
-                                    'No recent patients today.',
-                                    style: TextStyle(color: Color(0xFF6D84A8)),
-                                  ),
-                                )
-                              else
-                                _patientGrid(
-                                  recentToday,
-                                  columns: dialogWidth >= 760 ? 2 : 1,
-                                ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Search Results',
-                                style: TextStyle(
-                                  color: Color(0xFF4D5C77),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              if (matches.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 18),
-                                  child: Text(
-                                    'No matching patients.',
-                                    style: TextStyle(color: Color(0xFF6D84A8)),
-                                  ),
-                                )
-                              else
-                                ...matches.map(_patientCard),
-                              if (query.isNotEmpty && !hasExactMatch)
-                                FilledButton(
-                                  onPressed: () async {
-                                    final navigator = Navigator.of(dialogContext);
-                                    final created = await onAddPatient(queryController.text);
-                                    if (created == null) return;
-                                    await onCheckInPatient(created);
-                                    if (navigator.mounted) {
-                                      navigator.pop();
-                                    }
-                                  },
-                                  child: Text(
-                                    'Add "${queryController.text.trim()}" as new patient',
-                                  ),
-                                ),
-                            ],
-                          ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -692,35 +592,32 @@ Future<void> showPatientCheckinLookupDialog({
   );
 }
 
-class _LookupColumn extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-
-  const _LookupColumn({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Color(0xFF4D5C77),
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...children,
-          ],
+Widget _tabChip({
+  required String label,
+  required bool selected,
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD5E5F7),
         ),
       ),
-    );
-  }
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.white : const Color(0xFF355279),
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    ),
+  );
 }
 
 String _initials(String name) {

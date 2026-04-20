@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
+import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -151,18 +152,20 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
           ),
         ),
         const Spacer(),
-        Button(
+        ExportFileActionButton(
+          type: ExportFileType.csv,
+          busy: _isExportingCsv,
           onPressed: (_isExportingCsv || rows.isEmpty)
               ? null
               : () => _exportCsv(rows),
-          child: Text(_isExportingCsv ? 'CSV...' : 'CSV'),
         ),
         const SizedBox(width: 8),
-        Button(
+        ExportFileActionButton(
+          type: ExportFileType.pdf,
+          busy: _isExportingPdf,
           onPressed: (_isExportingPdf || rows.isEmpty)
               ? null
               : () => _exportPdf(rows),
-          child: Text(_isExportingPdf ? 'PDF...' : 'PDF'),
         ),
         const SizedBox(width: 8),
         FilledButton(
