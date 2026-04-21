@@ -26,12 +26,6 @@ class ReportV2Screen extends StatefulWidget {
 
 class _ReportV2ScreenState extends State<ReportV2Screen> {
   bool _showHeavyCards = false;
-  int _dailyAppointmentsOffset = 0;
-  int _dailyRevenueOffset = 0;
-  int _monthlyAppointmentsOffset = 0;
-  int _monthlyRevenueOffset = 0;
-  int _monthlyExpensesOffset = 0;
-  int _monthlyNetRevenueOffset = 0;
 
   @override
   void initState() {
@@ -84,24 +78,12 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _DailyAppointmentsTrendWindowCard(
+                    _DailyAppointmentsTrendSection(
                       rows: allAppointments,
-                      monthOffset: _dailyAppointmentsOffset,
-                      onBack: () =>
-                        setState(() => _dailyAppointmentsOffset += 1),
-                      onForward: _dailyAppointmentsOffset > 0
-                        ? () =>
-                          setState(() => _dailyAppointmentsOffset -= 1)
-                          : null,
                     ),
                     const SizedBox(height: 10),
-                    _DailyRevenueTrendWindowCard(
+                    _DailyRevenueTrendSection(
                       rows: allAppointments,
-                      monthOffset: _dailyRevenueOffset,
-                      onBack: () => setState(() => _dailyRevenueOffset += 1),
-                      onForward: _dailyRevenueOffset > 0
-                          ? () => setState(() => _dailyRevenueOffset -= 1)
-                          : null,
                     ),
                     const SizedBox(height: 10),
                     if (!_showHeavyCards)
@@ -124,59 +106,27 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                         children: [
                           SizedBox(
                             width: twoColWidth,
-                            child: _MonthlyAppointmentsTrendWindowCard(
+                            child: _MonthlyAppointmentsTrendSection(
                               rows: allAppointments,
-                              windowOffset: _monthlyAppointmentsOffset,
-                              onBack: () => setState(
-                                  () => _monthlyAppointmentsOffset += 1),
-                              onForward: _monthlyAppointmentsOffset > 0
-                                  ? () => setState(
-                                      () => _monthlyAppointmentsOffset -= 1,
-                                    )
-                                  : null,
                             ),
                           ),
                           SizedBox(
                             width: twoColWidth,
-                            child: _MonthlyRevenueTrendWindowCard(
+                            child: _MonthlyRevenueTrendSection(
                               rows: allAppointments,
-                              windowOffset: _monthlyRevenueOffset,
-                              onBack: () =>
-                                  setState(() => _monthlyRevenueOffset += 1),
-                              onForward: _monthlyRevenueOffset > 0
-                                  ? () => setState(
-                                      () => _monthlyRevenueOffset -= 1,
-                                    )
-                                  : null,
                             ),
                           ),
                           SizedBox(
                             width: twoColWidth,
-                            child: _MonthlyExpensesTrendWindowCard(
+                            child: _MonthlyExpensesTrendSection(
                               rows: allExpenses,
-                              windowOffset: _monthlyExpensesOffset,
-                              onBack: () =>
-                                  setState(() => _monthlyExpensesOffset += 1),
-                              onForward: _monthlyExpensesOffset > 0
-                                  ? () => setState(
-                                      () => _monthlyExpensesOffset -= 1,
-                                    )
-                                  : null,
                             ),
                           ),
                           SizedBox(
                             width: twoColWidth,
-                            child: _MonthlyNetRevenueTrendWindowCard(
+                            child: _MonthlyNetRevenueTrendSection(
                               appointmentsRows: allAppointments,
                               expenseRows: allExpenses,
-                              windowOffset: _monthlyNetRevenueOffset,
-                              onBack: () =>
-                                  setState(() => _monthlyNetRevenueOffset += 1),
-                              onForward: _monthlyNetRevenueOffset > 0
-                                  ? () => setState(
-                                      () => _monthlyNetRevenueOffset -= 1,
-                                    )
-                                  : null,
                             ),
                           ),
                           SizedBox(
@@ -1485,6 +1435,173 @@ class _FilterChips extends StatelessWidget {
 
 List<DateTime> _monthOptions(List<Appointment> rows) =>
     monthOptionsFromAppointments(rows);
+
+class _DailyAppointmentsTrendSection extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _DailyAppointmentsTrendSection({required this.rows});
+
+  @override
+  State<_DailyAppointmentsTrendSection> createState() =>
+      _DailyAppointmentsTrendSectionState();
+}
+
+class _DailyAppointmentsTrendSectionState
+    extends State<_DailyAppointmentsTrendSection> {
+  int _monthOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DailyAppointmentsTrendWindowCard(
+      rows: widget.rows,
+      monthOffset: _monthOffset,
+      onBack: () => setState(() => _monthOffset += 1),
+      onForward: _monthOffset > 0
+          ? () => setState(() => _monthOffset -= 1)
+          : null,
+    );
+  }
+}
+
+class _DailyRevenueTrendSection extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _DailyRevenueTrendSection({required this.rows});
+
+  @override
+  State<_DailyRevenueTrendSection> createState() =>
+      _DailyRevenueTrendSectionState();
+}
+
+class _DailyRevenueTrendSectionState
+    extends State<_DailyRevenueTrendSection> {
+  int _monthOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DailyRevenueTrendWindowCard(
+      rows: widget.rows,
+      monthOffset: _monthOffset,
+      onBack: () => setState(() => _monthOffset += 1),
+      onForward: _monthOffset > 0
+          ? () => setState(() => _monthOffset -= 1)
+          : null,
+    );
+  }
+}
+
+class _MonthlyAppointmentsTrendSection extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _MonthlyAppointmentsTrendSection({required this.rows});
+
+  @override
+  State<_MonthlyAppointmentsTrendSection> createState() =>
+      _MonthlyAppointmentsTrendSectionState();
+}
+
+class _MonthlyAppointmentsTrendSectionState
+    extends State<_MonthlyAppointmentsTrendSection> {
+  int _windowOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return _MonthlyAppointmentsTrendWindowCard(
+      rows: widget.rows,
+      windowOffset: _windowOffset,
+      onBack: () => setState(() => _windowOffset += 1),
+      onForward: _windowOffset > 0
+          ? () => setState(() => _windowOffset -= 1)
+          : null,
+    );
+  }
+}
+
+class _MonthlyRevenueTrendSection extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _MonthlyRevenueTrendSection({required this.rows});
+
+  @override
+  State<_MonthlyRevenueTrendSection> createState() =>
+      _MonthlyRevenueTrendSectionState();
+}
+
+class _MonthlyRevenueTrendSectionState
+    extends State<_MonthlyRevenueTrendSection> {
+  int _windowOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return _MonthlyRevenueTrendWindowCard(
+      rows: widget.rows,
+      windowOffset: _windowOffset,
+      onBack: () => setState(() => _windowOffset += 1),
+      onForward: _windowOffset > 0
+          ? () => setState(() => _windowOffset -= 1)
+          : null,
+    );
+  }
+}
+
+class _MonthlyExpensesTrendSection extends StatefulWidget {
+  final List<Expense> rows;
+
+  const _MonthlyExpensesTrendSection({required this.rows});
+
+  @override
+  State<_MonthlyExpensesTrendSection> createState() =>
+      _MonthlyExpensesTrendSectionState();
+}
+
+class _MonthlyExpensesTrendSectionState
+    extends State<_MonthlyExpensesTrendSection> {
+  int _windowOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return _MonthlyExpensesTrendWindowCard(
+      rows: widget.rows,
+      windowOffset: _windowOffset,
+      onBack: () => setState(() => _windowOffset += 1),
+      onForward: _windowOffset > 0
+          ? () => setState(() => _windowOffset -= 1)
+          : null,
+    );
+  }
+}
+
+class _MonthlyNetRevenueTrendSection extends StatefulWidget {
+  final List<Appointment> appointmentsRows;
+  final List<Expense> expenseRows;
+
+  const _MonthlyNetRevenueTrendSection({
+    required this.appointmentsRows,
+    required this.expenseRows,
+  });
+
+  @override
+  State<_MonthlyNetRevenueTrendSection> createState() =>
+      _MonthlyNetRevenueTrendSectionState();
+}
+
+class _MonthlyNetRevenueTrendSectionState
+    extends State<_MonthlyNetRevenueTrendSection> {
+  int _windowOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return _MonthlyNetRevenueTrendWindowCard(
+      appointmentsRows: widget.appointmentsRows,
+      expenseRows: widget.expenseRows,
+      windowOffset: _windowOffset,
+      onBack: () => setState(() => _windowOffset += 1),
+      onForward: _windowOffset > 0
+          ? () => setState(() => _windowOffset -= 1)
+          : null,
+    );
+  }
+}
 
 class _DailyAppointmentsTrendWindowCard extends StatelessWidget {
   final List<Appointment> rows;

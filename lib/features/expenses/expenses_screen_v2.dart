@@ -25,7 +25,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
   String _query = '';
   String _categoryFilter = 'all';
   String _paymentFilter = 'all';
-  String _rangeFilter = 'all';
+  String _rangeFilter = 'month';
   DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _fromDate;
   DateTime? _toDate;
@@ -376,7 +376,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                 ComboBoxItem<String>(value: 'all', child: Text('All Dates')),
                 ComboBoxItem<String>(value: 'today', child: Text('Today')),
                 ComboBoxItem<String>(value: 'week', child: Text('This Week')),
-                ComboBoxItem<String>(value: 'month', child: Text('This Month')),
+                ComboBoxItem<String>(value: 'month', child: Text('Monthly')),
                 ComboBoxItem<String>(
                     value: 'last_month', child: Text('Last Month')),
                 ComboBoxItem<String>(
@@ -426,7 +426,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                 _searchCtrl.text = '';
                 _categoryFilter = 'all';
                 _paymentFilter = 'all';
-                _rangeFilter = 'all';
+                _rangeFilter = 'month';
                 _monthAnchor =
                   DateTime(DateTime.now().year, DateTime.now().month, 1);
                 _fromDate = null;
