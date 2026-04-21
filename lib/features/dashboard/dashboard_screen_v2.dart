@@ -2002,20 +2002,34 @@ class _AppointmentsTodayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget summaryChip(String label, int value, Color fg, Color bg) {
+    Widget summaryBlock(String label, int value, Color fg, Color bg) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(
-          '$label $value',
-          style: TextStyle(
-            color: fg,
-            fontWeight: FontWeight.w700,
-            fontSize: 11,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w700,
+                fontSize: 10,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '$value',
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -2025,7 +2039,7 @@ class _AppointmentsTodayCard extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
         child: SizedBox(
-          height: 132,
+          height: 168,
           child: _CardShell(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2042,27 +2056,30 @@ class _AppointmentsTodayCard extends StatelessWidget {
                 Text(
                   '$totalAppointments',
                   style: const TextStyle(
-                    fontSize: 34,
+                    fontSize: 30,
                     color: Color(0xFF1B3557),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
+                const SizedBox(height: 8),
+                Row(
                   children: [
-                    summaryChip(
-                      'New',
-                      newPatients,
-                      const Color(0xFF214F86),
-                      const Color(0xFFE6F0FD),
+                    Expanded(
+                      child: summaryBlock(
+                        'New',
+                        newPatients,
+                        const Color(0xFF214F86),
+                        const Color(0xFFE6F0FD),
+                      ),
                     ),
-                    summaryChip(
-                      'Returning',
-                      returningPatients,
-                      const Color(0xFF166534),
-                      const Color(0xFFE8F7EE),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: summaryBlock(
+                        'Returning',
+                        returningPatients,
+                        const Color(0xFF166534),
+                        const Color(0xFFE8F7EE),
+                      ),
                     ),
                   ],
                 ),
@@ -2113,7 +2130,7 @@ class _TopDailyTreatmentCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
       child: SizedBox(
-        height: 146,
+        height: 168,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3015,7 +3032,7 @@ class _RevenueCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
       child: SizedBox(
-        height: 172,
+        height: 168,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3050,22 +3067,16 @@ class _RevenueCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: FittedBox(
-                  alignment: Alignment.centerLeft,
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1468CC),
-                    ),
-                  ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 30,
+                  color: Color(0xFF1468CC),
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 6),
+              const Spacer(),
               Row(
                 children: [
                   Expanded(
@@ -3321,7 +3332,7 @@ class _StatusSummaryCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
       child: SizedBox(
-        height: 146,
+        height: 168,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3381,7 +3392,7 @@ class _StatusSummaryCard extends StatelessWidget {
         style: TextStyle(
           color: fg,
           fontWeight: FontWeight.w700,
-          fontSize: 10,
+          fontSize: 12,
         ),
       ),
     );

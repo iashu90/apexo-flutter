@@ -222,6 +222,10 @@ class _UserChipState extends State<_UserChip> {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(const Color(0xFFD6455D)),
+              foregroundColor: WidgetStateProperty.all(Colors.white),
+            ),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(txt('logout')),
           ),
