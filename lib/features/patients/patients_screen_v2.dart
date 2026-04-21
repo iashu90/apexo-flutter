@@ -217,8 +217,8 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
           }
 
           final buffer = StringBuffer();
-          buffer.writeln(
-              'ID,Patient,Phone,Age,Visits,Last Visit,Paid So Far,Outstanding');
+            buffer.writeln(
+              'ID,Patient,Phone,Age,Visits,Last Visit,Paid,Outstanding');
 
           for (int i = 0; i < rows.length; i++) {
             if (progress.isCancelled) return;
@@ -318,7 +318,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
               'Age',
               'Visits',
               'Last Visit',
-              'Paid So Far',
+              'Paid',
               'Outstanding',
             ],
           ];
@@ -3468,7 +3468,7 @@ class _AllPatientsListCard extends StatelessWidget {
                           flex: 16,
                           child: _SortableHead(
                             flex: 16,
-                            label: 'Paid So Far',
+                            label: 'Paid',
                             keyName: 'paidSoFar',
                             current: sortBy,
                             ascending: sortAscending,

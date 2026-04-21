@@ -990,16 +990,13 @@ class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
                   child: ComboBox<String>(
                     isExpanded: true,
                     value: _historyTab,
-                    items: widget.labsOnly
-                        ? const [
-                            ComboBoxItem(value: 'labs', child: Text('Labs')),
-                          ]
-                        : const [
-                            ComboBoxItem(
-                                value: 'treatments',
-                                child: Text('Treatments')),
-                            ComboBoxItem(value: 'labs', child: Text('Labs')),
-                          ],
+                    items: const [
+                      ComboBoxItem(value: 'labs', child: Text('Labs')),
+                      ComboBoxItem(
+                        value: 'treatments',
+                        child: Text('Treatments'),
+                      ),
+                    ],
                     onChanged: (v) {
                       if (v == null) return;
                       setState(() {

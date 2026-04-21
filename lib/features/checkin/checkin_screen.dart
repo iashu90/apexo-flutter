@@ -27,6 +27,7 @@ import 'package:apexo/utils/uuid.dart';
 import 'package:apexo/utils/share_actions.dart';
 import 'package:apexo/utils/pdf_export_layout.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/permissions.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -1087,7 +1088,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
               return a.operatorsIDs.contains(_selectedDoctor);
             }).toList(growable: false);
 
-            final isDoctorLogin = !login.isAdmin;
+            final isDoctorLogin = permissions.currentRole == UserRole.doctor;
 
             final patientVisitCounts = <String, int>{};
             for (final row in filtered) {
