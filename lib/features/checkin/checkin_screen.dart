@@ -1483,11 +1483,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: waitingColumn),
-                            if (!isDoctorLogin) ...[
-                              const SizedBox(width: 10),
-                              Expanded(child: scheduledColumn),
-                            ],
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  waitingColumn,
+                                  if (!isDoctorLogin) ...[
+                                    const SizedBox(height: 10),
+                                    scheduledColumn,
+                                  ],
+                                ],
+                              ),
+                            ),
                             const SizedBox(width: 10),
                             Expanded(child: withDoctorColumn),
                             const SizedBox(width: 10),

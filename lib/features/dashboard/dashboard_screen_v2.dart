@@ -433,11 +433,16 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
 
         final completed = todaysAppointments.where((a) => a.isDone).length;
         var waiting = 0;
+        var scheduled = 0;
         var treatment = 0;
         var billing = 0;
         for (final appointment in todaysAppointments) {
           if (appointment.isDone) continue;
           switch (normalizeCheckinStage(appointment.checkinStage)) {
+            case 'scheduled':
+            case 'pending':
+              scheduled += 1;
+              break;
             case 'waiting':
               waiting += 1;
               break;
@@ -566,6 +571,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                       ),
                       _StatusSummaryCard(
                         waiting: waiting,
+                        scheduled: scheduled,
                         treatment: treatment,
                         billing: billing,
                         completed: completed,
@@ -1781,6 +1787,10 @@ class _StatusBadge extends StatelessWidget {
         label = 'Billing';
         fg = const Color(0xFF5B2FA8);
         bg = const Color(0xFFF1EBFF);
+      } else if (normalized == 'scheduled' || normalized == 'pending') {
+        label = 'Scheduled';
+        fg = const Color(0xFF214F86);
+        bg = const Color(0xFFE6F0FD);
       } else if (normalized == 'treatment' || normalized == 'with_doctor') {
         label = 'Treatment';
         fg = const Color(0xFF1E40AF);
@@ -2029,7 +2039,7 @@ class _NewReturningPatientsCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 190, maxWidth: 230),
+        constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
         child: SizedBox(
           height: 132,
           child: _CardShell(
@@ -3062,7 +3072,7 @@ class _RevenueCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
       child: SizedBox(
-        height: 150,
+        height: 158,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3076,15 +3086,22 @@ class _RevenueCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 7),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1468CC),
+              SizedBox(
+                width: double.infinity,
+                child: FittedBox(
+                  alignment: Alignment.centerLeft,
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1468CC),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 'Doctor Fee: ${formatIndianShortCurrency(doctorFee)}',
                 style: const TextStyle(
@@ -3288,12 +3305,14 @@ class _TopPatientGrowthCardBodyState extends State<_TopPatientGrowthCardBody> {
 
 class _StatusSummaryCard extends StatelessWidget {
   final int waiting;
+  final int scheduled;
   final int treatment;
   final int billing;
   final int completed;
 
   const _StatusSummaryCard({
     required this.waiting,
+    required this.scheduled,
     required this.treatment,
     required this.billing,
     required this.completed,
@@ -3302,7 +3321,7 @@ class _StatusSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 190, maxWidth: 230),
+      constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
       child: SizedBox(
         height: 132,
         child: _CardShell(
@@ -3324,6 +3343,8 @@ class _StatusSummaryCard extends StatelessWidget {
                 children: [
                   _statusChip('Waiting $waiting', const Color(0xFF8A5A00),
                       const Color(0xFFFFF4D9)),
+                  _statusChip('Scheduled $scheduled', const Color(0xFF214F86),
+                    const Color(0xFFE6F0FD)),
                   _statusChip('Treatment $treatment', const Color(0xFF1E40AF),
                       const Color(0xFFEAF0FF)),
                   _statusChip('Billing $billing', const Color(0xFF5B2FA8),
@@ -3647,12 +3668,19 @@ class _SessionRevenueCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Text(
-                    '$patientCount',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF111827),
-                      fontWeight: FontWeight.w800,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE6F0FD),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$patientCount',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF214F86),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -3670,7 +3698,7 @@ class _SessionRevenueCard extends StatelessWidget {
                 _DashboardScreenV2State._money(total),
                 style: const TextStyle(
                   fontSize: 32,
-                  color: Color(0xFF111827),
+                  color: Color(0xFF1468CC),
                   fontWeight: FontWeight.w700,
                 ),
               ),
