@@ -2061,7 +2061,7 @@ class _AppointmentsTodayCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                Spacer(flex: 1),
+                const Spacer(flex: 1),
                 Row(
                   children: [
                     Expanded(
@@ -2128,7 +2128,7 @@ class _TopDailyTreatmentCard extends StatelessWidget {
     }
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
+      constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
       child: SizedBox(
         height: 168,
         child: _CardShell(
@@ -2853,160 +2853,6 @@ class _AppointmentTrendChartCard extends StatelessWidget {
   }
 }
 
-class _NewVsReturningPieCard extends StatelessWidget {
-  final int newCount;
-  final int returningCount;
-
-  const _NewVsReturningPieCard({
-    required this.newCount,
-    required this.returningCount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _TopDonutMetricCard(
-      title: 'New vs Returning (Current Month)',
-      centerValue: '${newCount + returningCount}',
-      segments: [
-        _TopDonutSegment(
-          label: 'New',
-          value: newCount,
-          color: const Color(0xFF2D7BD8),
-        ),
-        _TopDonutSegment(
-          label: 'Returning',
-          value: returningCount,
-          color: const Color(0xFF2BA58D),
-        ),
-      ],
-    );
-  }
-}
-
-class _MonthlyTreatmentDistributionCard extends StatelessWidget {
-  final List<MapEntry<String, int>> rows;
-
-  const _MonthlyTreatmentDistributionCard({required this.rows});
-
-  @override
-  Widget build(BuildContext context) {
-    final segments = _topTreatmentSegments(rows);
-    final total = rows.fold<int>(0, (s, e) => s + e.value);
-
-    return SizedBox(
-      height: 250,
-      child: _CardShell(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Monthly Treatment Distribution',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 140,
-                    height: 140,
-                    child: CustomPaint(
-                      painter: _TopDonutPainter(segments: segments),
-                      child: Center(
-                        child: Text(
-                          '$total',
-                          style: const TextStyle(
-                            color: Color(0xFF1D3E67),
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: segments.map((s) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: s.color,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    '${s.label} (${s.value})',
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0xFF36557C),
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(growable: false),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 2),
-            const Text(
-              'Distribution is based on current month treatment entries.',
-              style: TextStyle(
-                fontSize: 9,
-                color: Color(0xFF8AA0BC),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-List<_TopDonutSegment> _topTreatmentSegments(List<MapEntry<String, int>> rows) {
-  final palette = [
-    const Color(0xFF2D7BD8),
-    const Color(0xFF2BA58D),
-    const Color(0xFFE09C31),
-    const Color(0xFF7D8FA7),
-    const Color(0xFF8D5CF6),
-    const Color(0xFFD6455D),
-  ];
-
-  return rows
-      .asMap()
-      .entries
-      .map(
-        (entry) => _TopDonutSegment(
-          label: entry.value.key,
-          value: entry.value.value,
-          color: palette[entry.key % palette.length],
-        ),
-      )
-      .toList(growable: false);
-}
-
 class _RevenueCard extends StatelessWidget {
   final String title;
   final String value;
@@ -3068,7 +2914,7 @@ class _RevenueCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const Expanded(child: SizedBox()),
               Text(
                 value,
                 style: const TextStyle(
@@ -3077,8 +2923,7 @@ class _RevenueCard extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 6),
-              const Spacer(),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
@@ -3144,171 +2989,6 @@ class _RevenueCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TopPatientGrowthCard extends StatelessWidget {
-  final Map<String, DateTime> firstVisitByPatient;
-  final DateTime anchorDate;
-
-  const _TopPatientGrowthCard({
-    required this.firstVisitByPatient,
-    required this.anchorDate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _TopPatientGrowthCardBody(
-      firstVisitByPatient: firstVisitByPatient,
-      anchorDate: anchorDate,
-    );
-  }
-}
-
-class _TopPatientGrowthCardBody extends StatefulWidget {
-  final Map<String, DateTime> firstVisitByPatient;
-  final DateTime anchorDate;
-
-  const _TopPatientGrowthCardBody({
-    required this.firstVisitByPatient,
-    required this.anchorDate,
-  });
-
-  @override
-  State<_TopPatientGrowthCardBody> createState() =>
-      _TopPatientGrowthCardBodyState();
-}
-
-class _TopPatientGrowthCardBodyState extends State<_TopPatientGrowthCardBody> {
-  int _weekOffset = 0;
-
-  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
-
-  DateTime _startOfWeek(DateTime input) {
-    final d = _dateOnly(input);
-    return d.subtract(Duration(days: d.weekday - 1));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final anchor = _dateOnly(widget.anchorDate);
-    final currentWeekStart = _startOfWeek(anchor);
-    final weekStart =
-        currentWeekStart.subtract(Duration(days: _weekOffset * 7));
-    final weekDays = List<DateTime>.generate(
-      7,
-      (i) => weekStart.add(Duration(days: i)),
-      growable: false,
-    );
-
-    final counts = <DateTime, int>{for (final day in weekDays) day: 0};
-    for (final firstVisit in widget.firstVisitByPatient.values) {
-      final day = _dateOnly(firstVisit);
-      if (counts.containsKey(day)) {
-        counts[day] = (counts[day] ?? 0) + 1;
-      }
-    }
-
-    final maxBar = counts.values.fold<int>(1, (m, e) => e > m ? e : m);
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 240, maxWidth: 340),
-      child: SizedBox(
-        height: 180,
-        child: _CardShell(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Text(
-                    'Patient Growth',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF496489),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: IconButton(
-                      icon: const Icon(FluentIcons.chevron_left, size: 10),
-                      onPressed: () => setState(() => _weekOffset += 1),
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: IconButton(
-                      icon: const Icon(FluentIcons.chevron_right, size: 10),
-                      onPressed: () => setState(() => _weekOffset -= 1),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${DateFormat('dd MMM').format(weekDays.first)} - ${DateFormat('dd MMM').format(weekDays.last)}',
-                style: const TextStyle(
-                  color: Color(0xFF6D84A8),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: weekDays.map((day) {
-                    final value = counts[day] ?? 0;
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              '$value',
-                              style: const TextStyle(
-                                color: Color(0xFF36557C),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 9,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Container(
-                              height: (80 * (value / maxBar))
-                                  .clamp(0, 80)
-                                  .toDouble(),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2D7BD8),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              DateFormat('E').format(day),
-                              style: const TextStyle(
-                                color: Color(0xFF5A7397),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 9,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(growable: false),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -3401,233 +3081,6 @@ class _StatusSummaryCard extends StatelessWidget {
   }
 }
 
-class _TopTimingSummaryCard extends StatelessWidget {
-  final List<Appointment> appointmentsForView;
-
-  const _TopTimingSummaryCard({required this.appointmentsForView});
-
-  @override
-  Widget build(BuildContext context) {
-    final morning = appointmentsForView
-        .where((a) => a.date.hour >= 6 && a.date.hour <= 11)
-        .length;
-    final afternoon = appointmentsForView
-        .where((a) => a.date.hour >= 12 && a.date.hour <= 16)
-        .length;
-    final evening = appointmentsForView
-        .where((a) => a.date.hour >= 17 && a.date.hour <= 21)
-        .length;
-    final maxCount =
-        math.max(1, math.max(morning, math.max(afternoon, evening)));
-
-    Widget miniBar(String label, int value, Color color) {
-      return Row(
-        children: [
-          SizedBox(
-            width: 132,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF496489),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Container(
-                height: 8,
-                color: const Color(0xFFEAF2FC),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: FractionallySizedBox(
-                    widthFactor: value / maxCount,
-                    child: Container(color: color),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '$value',
-            style: const TextStyle(
-              color: Color(0xFF1F446E),
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
-      child: SizedBox(
-        height: 140,
-        child: _CardShell(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Appointment Timing',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF496489),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: miniBar(
-                      'Morning (6:00-11:59)', morning, const Color(0xFF2D7BD8)),
-                ),
-              ),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: miniBar('Afternoon (12:00-16:59)', afternoon,
-                      const Color(0xFF2BA58D)),
-                ),
-              ),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: miniBar('Evening (17:00-21:59)', evening,
-                      const Color(0xFFE09C31)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TopDonutSegment {
-  final String label;
-  final int value;
-  final Color color;
-
-  const _TopDonutSegment({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-}
-
-class _TopDonutMetricCard extends StatelessWidget {
-  final String title;
-  final String centerValue;
-  final List<_TopDonutSegment> segments;
-
-  const _TopDonutMetricCard({
-    required this.title,
-    required this.centerValue,
-    required this.segments,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final total = segments.fold<int>(0, (sum, s) => sum + s.value);
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
-      child: SizedBox(
-        height: 140,
-        child: _CardShell(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF496489),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 74,
-                    height: 74,
-                    child: CustomPaint(
-                      painter: _TopDonutPainter(segments: segments),
-                      child: Center(
-                        child: Text(
-                          centerValue,
-                          style: const TextStyle(
-                            color: Color(0xFF1D3E67),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: segments
-                          .map(
-                            (s) => Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      color: s.color,
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      '${s.label} (${s.value})',
-                                      style: const TextStyle(
-                                        color: Color(0xFF36557C),
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    total == 0
-                                        ? '0%'
-                                        : '${((s.value / total) * 100).round()}%',
-                                    style: const TextStyle(
-                                      color: Color(0xFF1F446E),
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SessionRevenueCard extends StatelessWidget {
   final String title;
   final String range;
@@ -3654,12 +3107,10 @@ class _SessionRevenueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMorning = title == 'Morning';
-    final cashBg =
-        isMorning ? const Color(0xFFEAF3FF) : const Color(0xFFFFF1E5);
-    final cashFg =
-        isMorning ? const Color(0xFF1F5FA8) : const Color(0xFF9B4C00);
-    final upiBg = isMorning ? const Color(0xFFE8F8EE) : const Color(0xFFEEF0FF);
-    final upiFg = isMorning ? const Color(0xFF1F8D5A) : const Color(0xFF344FA7);
+    const cashBg = Color(0xFFFFF1E5);
+    const cashFg = Color(0xFF9B4C00);
+    const upiBg = Color(0xFFEEF0FF);
+    const upiFg = Color(0xFF344FA7);
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
@@ -3851,57 +3302,6 @@ class _FilterChipTag extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _TopDonutPainter extends CustomPainter {
-  final List<_TopDonutSegment> segments;
-
-  const _TopDonutPainter({required this.segments});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final total = segments.fold<int>(0, (sum, s) => sum + s.value);
-    final stroke = size.width * 0.2;
-    final rect = Offset.zero & size;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round;
-
-    if (total == 0) {
-      paint.color = const Color(0xFFD8E6F5);
-      canvas.drawArc(
-        rect.deflate(stroke / 2),
-        -math.pi / 2,
-        math.pi * 2,
-        false,
-        paint,
-      );
-      return;
-    }
-
-    double start = -math.pi / 2;
-    const gap = 0.04;
-    for (final segment in segments) {
-      if (segment.value <= 0) continue;
-      final sweep = (segment.value / total) * math.pi * 2;
-      paint.color = segment.color;
-      final adjustedSweep = math.max(0.0, sweep - gap);
-      canvas.drawArc(
-        rect.deflate(stroke / 2),
-        start,
-        adjustedSweep,
-        false,
-        paint,
-      );
-      start += sweep;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _TopDonutPainter oldDelegate) {
-    return oldDelegate.segments != segments;
   }
 }
 

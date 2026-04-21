@@ -29,7 +29,6 @@ class ApexoApp extends StatelessWidget {
       showDialogsIfNeeded();
       if (!bContext.mounted) {
         // If the context is not mounted, we cannot show dialogs or interact with the UI
-        print('Context is not mounted, skipping backup.');
         return;
       }
       // backups.backupToDriveOncePerDay(bContext);
