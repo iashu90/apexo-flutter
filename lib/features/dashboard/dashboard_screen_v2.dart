@@ -559,7 +559,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                 const SizedBox(height: 10),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final width = constraints.maxWidth;
+                    const primaryCardMinWidth = 180.0;
+                    const primaryCardMaxWidth = 220.0;
                     final cards = [
                       _StatCard(
                         title: 'Appointments Today',
@@ -568,6 +569,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         iconColor: const Color(0xFF2D7BD8),
                         iconBackground: const Color(0xFFDDEBFF),
                         showIcon: false,
+                        minWidth: primaryCardMinWidth,
+                        maxWidth: primaryCardMaxWidth,
                       ),
                       _StatusSummaryCard(
                         waiting: waiting,
@@ -580,6 +583,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                         newPatients: newPatients,
                         returningPatients: returningPatients,
                         onTap: () => _openNewPatientsDialog(todaysAppointments),
+                        minWidth: primaryCardMinWidth,
+                        maxWidth: primaryCardMaxWidth,
                       ),
                       _RevenueCard(
                         title: 'Revenue Today',
@@ -1999,11 +2004,15 @@ class _NewReturningPatientsCard extends StatelessWidget {
   final int newPatients;
   final int returningPatients;
   final VoidCallback? onTap;
+  final double minWidth;
+  final double maxWidth;
 
   const _NewReturningPatientsCard({
     required this.newPatients,
     required this.returningPatients,
     this.onTap,
+    this.minWidth = 180,
+    this.maxWidth = 240,
   });
 
   @override
@@ -2039,7 +2048,7 @@ class _NewReturningPatientsCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
+        constraints: BoxConstraints(minWidth: minWidth, maxWidth: maxWidth),
         child: SizedBox(
           height: 132,
           child: _CardShell(
@@ -2995,6 +3004,8 @@ class _StatCard extends StatelessWidget {
   final Color iconColor;
   final Color iconBackground;
   final bool showIcon;
+  final double minWidth;
+  final double maxWidth;
 
   const _StatCard({
     required this.title,
@@ -3003,12 +3014,14 @@ class _StatCard extends StatelessWidget {
     required this.iconColor,
     required this.iconBackground,
     this.showIcon = true,
+    this.minWidth = 150,
+    this.maxWidth = 190,
   });
 
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 150, maxWidth: 190),
+      constraints: BoxConstraints(minWidth: minWidth, maxWidth: maxWidth),
       child: SizedBox(
         height: 132,
         child: _CardShell(
@@ -3069,23 +3082,57 @@ class _RevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profitPct = revenueTotal <= 0 ? 0.0 : ((netProfit / revenueTotal) * 100);
+    final doctorFeePct = revenueTotal <= 0 ? 0.0 : ((doctorFee / revenueTotal) * 100);
+    final profitColor =
+        netProfit >= 0 ? const Color(0xFF1F8D5A) : const Color(0xFFD6455D);
+
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
       child: SizedBox(
-        height: 158,
+        height: 172,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF496489),
-                  fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF496489),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF2FC),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      'Today',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF214F86),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Total Revenue',
+                style: TextStyle(
+                  color: Color(0xFF5A7397),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 7),
               SizedBox(
                 width: double.infinity,
                 child: FittedBox(
@@ -3094,45 +3141,79 @@ class _RevenueCard extends StatelessWidget {
                   child: Text(
                     value,
                     style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
                       color: Color(0xFF1468CC),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                'Doctor Fee: ${formatIndianShortCurrency(doctorFee)}',
-                style: const TextStyle(
-                  color: Color(0xFFD6455D),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Net Profit: ${formatIndianShortCurrency(netProfit)}',
-                style: TextStyle(
-                  color: netProfit >= 0
-                      ? const Color(0xFF2BA58D)
-                      : const Color(0xFFD6455D),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Profit %: ${revenueTotal <= 0 ? '0.0' : ((netProfit / revenueTotal) * 100).toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  color: Color(0xFF355279),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
+              const SizedBox(height: 5),
+              Row(
+                children: [
+                  Expanded(
+                    child: _metricTile(
+                      label: 'Doctor Fee (${doctorFeePct.toStringAsFixed(1)}%)',
+                      metricValue: formatIndianShortCurrency(doctorFee),
+                      fg: const Color(0xFF8B1D3B),
+                      bg: const Color(0xFFFFEAF0),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _metricTile(
+                      label: 'Net Profit (${profitPct.toStringAsFixed(1)}%)',
+                      metricValue: formatIndianShortCurrency(netProfit),
+                      fg: profitColor,
+                      bg: netProfit >= 0
+                          ? const Color(0xFFE7F8EF)
+                          : const Color(0xFFFFEEF0),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _metricTile({
+    required String label,
+    required String metricValue,
+    required Color fg,
+    required Color bg,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            metricValue,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: fg,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -3323,7 +3404,7 @@ class _StatusSummaryCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
       child: SizedBox(
-        height: 132,
+        height: 146,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3336,22 +3417,33 @@ class _StatusSummaryCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _statusChip('Waiting $waiting', const Color(0xFF8A5A00),
-                      const Color(0xFFFFF4D9)),
-                  _statusChip('Scheduled $scheduled', const Color(0xFF214F86),
-                    const Color(0xFFE6F0FD)),
-                  _statusChip('Treatment $treatment', const Color(0xFF1E40AF),
-                      const Color(0xFFEAF0FF)),
-                  _statusChip('Billing $billing', const Color(0xFF5B2FA8),
-                      const Color(0xFFF1EBFF)),
-                  _statusChip('Completed $completed', const Color(0xFF166534),
-                      const Color(0xFFE8F7EE)),
-                ],
+              const SizedBox(height: 8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _statusChip('Waiting $waiting', const Color(0xFF8A5A00),
+                          const Color(0xFFFFF4D9)),
+                      _statusChip(
+                        'Scheduled $scheduled',
+                        const Color(0xFF214F86),
+                        const Color(0xFFE6F0FD),
+                      ),
+                      _statusChip('Treatment $treatment', const Color(0xFF1E40AF),
+                          const Color(0xFFEAF0FF)),
+                      _statusChip('Billing $billing', const Color(0xFF5B2FA8),
+                          const Color(0xFFF1EBFF)),
+                      _statusChip(
+                        'Completed $completed',
+                        const Color(0xFF166534),
+                        const Color(0xFFE8F7EE),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -3362,7 +3454,7 @@ class _StatusSummaryCard extends StatelessWidget {
 
   Widget _statusChip(String label, Color fg, Color bg) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
@@ -3372,7 +3464,7 @@ class _StatusSummaryCard extends StatelessWidget {
         style: TextStyle(
           color: fg,
           fontWeight: FontWeight.w700,
-          fontSize: 11,
+          fontSize: 10,
         ),
       ),
     );
@@ -3631,10 +3723,20 @@ class _SessionRevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMorning = title == 'Morning';
+    final cashBg =
+        isMorning ? const Color(0xFFEAF3FF) : const Color(0xFFFFF1E5);
+    final cashFg =
+        isMorning ? const Color(0xFF1F5FA8) : const Color(0xFF9B4C00);
+    final upiBg =
+        isMorning ? const Color(0xFFE8F8EE) : const Color(0xFFEEF0FF);
+    final upiFg =
+        isMorning ? const Color(0xFF1F8D5A) : const Color(0xFF344FA7);
+
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
       child: SizedBox(
-        height: 156,
+        height: 168,
         child: _CardShell(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3697,38 +3799,29 @@ class _SessionRevenueCard extends StatelessWidget {
               Text(
                 _DashboardScreenV2State._money(total),
                 style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: 30,
                   color: Color(0xFF1468CC),
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 6),
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      'Cash ${_DashboardScreenV2State._money(cash)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF1F2937),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
+                    child: _paymentBlock(
+                      label: 'Cash',
+                      amount: _DashboardScreenV2State._money(cash),
+                      fg: cashFg,
+                      bg: cashBg,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'UPI ${_DashboardScreenV2State._money(upi)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        color: Color(0xFF1F2937),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
+                    child: _paymentBlock(
+                      label: 'UPI',
+                      amount: _DashboardScreenV2State._money(upi),
+                      fg: upiFg,
+                      bg: upiBg,
                     ),
                   ),
                 ],
@@ -3736,6 +3829,50 @@ class _SessionRevenueCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _paymentBlock({
+    required String label,
+    required String amount,
+    required Color fg,
+    required Color bg,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          SizedBox(
+            width: double.infinity,
+            child: FittedBox(
+              alignment: Alignment.centerLeft,
+              fit: BoxFit.scaleDown,
+              child: Text(
+                amount,
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
