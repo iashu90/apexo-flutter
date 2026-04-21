@@ -472,8 +472,8 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
         final prescriptionRevenue = todaysAppointments.fold<double>(
             0, (sum, a) => sum + a.prescriptionPaid);
         final outstandingBalance = dashboardCtrl.totalDueAmount();
-        final doctorFeeToday =
-            todaysAppointments.fold<double>(0, (sum, a) => sum + a.doctorPayableAmount);
+        final doctorFeeToday = todaysAppointments.fold<double>(
+            0, (sum, a) => sum + a.doctorPayableAmount);
         final netProfitToday = revenueToday - doctorFeeToday;
         final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
         final treatmentStats =
@@ -2017,7 +2017,7 @@ class _AppointmentsTodayCard extends StatelessWidget {
               style: TextStyle(
                 color: fg,
                 fontWeight: FontWeight.w700,
-                fontSize: 10,
+                fontSize: 12,
               ),
             ),
             const SizedBox(height: 2),
@@ -2026,7 +2026,7 @@ class _AppointmentsTodayCard extends StatelessWidget {
               style: TextStyle(
                 color: fg,
                 fontWeight: FontWeight.w800,
-                fontSize: 14,
+                fontSize: 16,
               ),
             ),
           ],
@@ -2061,7 +2061,7 @@ class _AppointmentsTodayCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
+                Spacer(flex: 1),
                 Row(
                   children: [
                     Expanded(
@@ -3024,13 +3024,15 @@ class _RevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profitPct = revenueTotal <= 0 ? 0.0 : ((netProfit / revenueTotal) * 100);
-    final doctorFeePct = revenueTotal <= 0 ? 0.0 : ((doctorFee / revenueTotal) * 100);
+    final profitPct =
+        revenueTotal <= 0 ? 0.0 : ((netProfit / revenueTotal) * 100);
+    final doctorFeePct =
+        revenueTotal <= 0 ? 0.0 : ((doctorFee / revenueTotal) * 100);
     final profitColor =
         netProfit >= 0 ? const Color(0xFF1F8D5A) : const Color(0xFFD6455D);
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
+      constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
       child: SizedBox(
         height: 168,
         child: _CardShell(
@@ -3081,7 +3083,7 @@ class _RevenueCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _metricTile(
-                      label: 'Doctor Fee (${doctorFeePct.toStringAsFixed(1)}%)',
+                      label: 'Fee (${doctorFeePct.toStringAsFixed(1)}%)',
                       metricValue: formatIndianShortCurrency(doctorFee),
                       fg: const Color(0xFF8B1D3B),
                       bg: const Color(0xFFFFEAF0),
@@ -3090,7 +3092,7 @@ class _RevenueCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: _metricTile(
-                      label: 'Net Profit (${profitPct.toStringAsFixed(1)}%)',
+                      label: 'Profit (${profitPct.toStringAsFixed(1)}%)',
                       metricValue: formatIndianShortCurrency(netProfit),
                       fg: profitColor,
                       bg: netProfit >= 0
@@ -3137,7 +3139,7 @@ class _RevenueCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: fg,
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -3345,13 +3347,13 @@ class _StatusSummaryCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Expanded(
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                    spacing: 8,
+                    runSpacing: 12,
                     children: [
                       _statusChip('Waiting $waiting', const Color(0xFF8A5A00),
                           const Color(0xFFFFF4D9)),
@@ -3360,8 +3362,8 @@ class _StatusSummaryCard extends StatelessWidget {
                         const Color(0xFF214F86),
                         const Color(0xFFE6F0FD),
                       ),
-                      _statusChip('Treatment $treatment', const Color(0xFF1E40AF),
-                          const Color(0xFFEAF0FF)),
+                      _statusChip('Treatment $treatment',
+                          const Color(0xFF1E40AF), const Color(0xFFEAF0FF)),
                       _statusChip('Billing $billing', const Color(0xFF5B2FA8),
                           const Color(0xFFF1EBFF)),
                       _statusChip(
@@ -3462,7 +3464,7 @@ class _TopTimingSummaryCard extends StatelessWidget {
     }
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
+      constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
       child: SizedBox(
         height: 140,
         child: _CardShell(
@@ -3656,13 +3658,11 @@ class _SessionRevenueCard extends StatelessWidget {
         isMorning ? const Color(0xFFEAF3FF) : const Color(0xFFFFF1E5);
     final cashFg =
         isMorning ? const Color(0xFF1F5FA8) : const Color(0xFF9B4C00);
-    final upiBg =
-        isMorning ? const Color(0xFFE8F8EE) : const Color(0xFFEEF0FF);
-    final upiFg =
-        isMorning ? const Color(0xFF1F8D5A) : const Color(0xFF344FA7);
+    final upiBg = isMorning ? const Color(0xFFE8F8EE) : const Color(0xFFEEF0FF);
+    final upiFg = isMorning ? const Color(0xFF1F8D5A) : const Color(0xFF344FA7);
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 280),
+      constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
       child: SizedBox(
         height: 168,
         child: _CardShell(
@@ -3699,7 +3699,8 @@ class _SessionRevenueCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE6F0FD),
                       borderRadius: BorderRadius.circular(999),
@@ -3732,13 +3733,10 @@ class _SessionRevenueCard extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
+              const SizedBox(height: 4),
+              Row(
                 children: [
-                  SizedBox(
-                    width: 96,
+                  Expanded(
                     child: _paymentBlock(
                       label: 'Cash',
                       amount: _DashboardScreenV2State._money(cash),
@@ -3746,8 +3744,8 @@ class _SessionRevenueCard extends StatelessWidget {
                       bg: cashBg,
                     ),
                   ),
-                  SizedBox(
-                    width: 96,
+                  const SizedBox(width: 6),
+                  Expanded(
                     child: _paymentBlock(
                       label: 'UPI',
                       amount: _DashboardScreenV2State._money(upi),
@@ -3797,7 +3795,7 @@ class _SessionRevenueCard extends StatelessWidget {
                 amount,
                 style: TextStyle(
                   color: fg,
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                 ),
               ),
