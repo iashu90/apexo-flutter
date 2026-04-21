@@ -173,7 +173,7 @@ Future<void> showPatientCheckinLookupDialog({
 
       final queryController = TextEditingController(text: '');
       String query = queryController.text.trim().toLowerCase();
-      String activeTab = 'today';
+      String activeTab = 'search';
 
       final allPatients = patients.present.values.toList(growable: false);
       final todaysAppointments = appointments.forDate(selectedDate);
@@ -208,7 +208,7 @@ Future<void> showPatientCheckinLookupDialog({
               .where((p) => todaysAppointments.any((a) => a.patientID == p.id))
               .toList(growable: false);
 
-          Appointment? _todayAppointment(Patient patient) {
+          Appointment? todayAppointment(Patient patient) {
             final rows = todaysAppointments
                 .where((a) => a.patientID == patient.id)
                 .toList(growable: false);
@@ -216,7 +216,7 @@ Future<void> showPatientCheckinLookupDialog({
             return rows.last;
           }
 
-          String _statusLabel(Appointment? existing) {
+          String statusLabel(Appointment? existing) {
             if (existing == null) return 'No Appointment';
             final stage = existing.checkinStage.trim().toLowerCase();
             if (stage == 'waiting') return 'Waiting';
@@ -231,7 +231,7 @@ Future<void> showPatientCheckinLookupDialog({
             return _toTitleCase(stage);
           }
 
-          Widget _statusChip(Appointment? existing) {
+          Widget statusChip(Appointment? existing) {
             final stage = existing?.checkinStage.trim().toLowerCase() ?? '';
             final isCompleted = stage == 'completed' || existing?.isDone == true;
             final isWaiting = stage == 'waiting';
@@ -271,7 +271,7 @@ Future<void> showPatientCheckinLookupDialog({
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                _statusLabel(existing),
+                statusLabel(existing),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
                 style: TextStyle(
@@ -283,8 +283,8 @@ Future<void> showPatientCheckinLookupDialog({
             );
           }
 
-          Widget _patientCard(Patient patient) {
-            final existing = _todayAppointment(patient);
+          Widget patientCard(Patient patient) {
+            final existing = todayAppointment(patient);
             final displayName = patient.title.trim().isEmpty
                 ? 'Unnamed patient'
                 : patient.title;
@@ -354,7 +354,7 @@ Future<void> showPatientCheckinLookupDialog({
                           ],
                         ),
                       ),
-                      _statusChip(existing),
+                      statusChip(existing),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -544,7 +544,7 @@ Future<void> showPatientCheckinLookupDialog({
                                 ),
                               )
                             else
-                              ...recentToday.map(_patientCard),
+                              ...recentToday.map(patientCard),
                           ] else ...[
                             if (matches.isEmpty)
                               const Padding(
@@ -555,7 +555,7 @@ Future<void> showPatientCheckinLookupDialog({
                                 ),
                               )
                             else
-                              ...matches.map(_patientCard),
+                              ...matches.map(patientCard),
                             if (query.isNotEmpty && !hasExactMatch)
                               FilledButton(
                                 onPressed: () async {
@@ -600,7 +600,7 @@ Widget _tabChip({
   return GestureDetector(
     onTap: onTap,
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
         borderRadius: BorderRadius.circular(999),
@@ -613,7 +613,7 @@ Widget _tabChip({
         style: TextStyle(
           color: selected ? Colors.white : const Color(0xFF355279),
           fontWeight: FontWeight.w700,
-          fontSize: 12,
+          fontSize: 13,
         ),
       ),
     ),
