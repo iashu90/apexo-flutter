@@ -33,7 +33,7 @@ class _Permissions extends ObservablePersistingObject {
     false,
     true,
     true,
-    false,
+    true,
     true,
     false,
   ];
@@ -121,6 +121,12 @@ class _Permissions extends ObservablePersistingObject {
 
     if (currentRole == UserRole.admin) {
       return true;
+    }
+
+    if (currentRole == UserRole.receptionist) {
+      if (routeIdentifier == 'patients' || routeIdentifier == 'labworks') {
+        return true;
+      }
     }
 
     switch (routeIdentifier) {
