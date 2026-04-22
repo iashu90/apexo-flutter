@@ -123,7 +123,7 @@ Win32Window::~Win32Window() {
 bool CheckOneInstance()
 {
 
-    HANDLE  m_hStartEvent = CreateEventW( NULL, FALSE, FALSE, L"Global\\app.apexo.app" );
+    HANDLE  m_hStartEvent = CreateEventW( NULL, FALSE, FALSE, L"Global\\app.dr.nowfardentalclinic" );
 
     if(m_hStartEvent == NULL)
     {

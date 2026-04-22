@@ -26,6 +26,26 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 
+String _toTitleCasePatientName(String input) {
+  final cleaned = input.trim();
+  if (cleaned.isEmpty) return cleaned;
+  return cleaned
+      .split(RegExp(r'\s+'))
+      .map((word) {
+        if (word.isEmpty) return word;
+        final first = word.substring(0, 1).toUpperCase();
+        final rest = word.length > 1 ? word.substring(1).toLowerCase() : '';
+        return '$first$rest';
+      })
+      .join(' ');
+}
+
+String _patientDisplayName(Patient patient) {
+  return patient.title.trim().isEmpty
+      ? 'Unnamed patient'
+      : _toTitleCasePatientName(patient.title);
+}
+
 class PatientsScreenV2 extends StatefulWidget {
   const PatientsScreenV2({super.key});
 
@@ -37,10 +57,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   final TextEditingController _listSearchController = TextEditingController();
 
   String _listQuery = '';
-  String _topRange = 'All';
-  String _outstandingRange = 'All';
-  String _procedureRange = 'All';
-  String _procedureTab = 'RCT';
+  final String _topRange = 'All';
+  final String _outstandingRange = 'All';
+  final String _procedureRange = 'All';
+  final String _procedureTab = 'RCT';
   String _selectedAlphabet = 'All';
   String _listBehaviorFilter = 'all';
   String _sortBy = 'name';
@@ -234,9 +254,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             buffer.writeln(
               [
                 _csvCell(patient.id),
-                _csvCell(patient.title.trim().isEmpty
-                    ? 'Unnamed patient'
-                    : patient.title),
+                _csvCell(_patientDisplayName(patient)),
                 _csvCell(patient.phone),
                 patient.age,
                 visits.length,
@@ -335,7 +353,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                 : DateFormat('dd MMM yyyy').format(visits.last.date);
             tableRows.add([
               patient.id,
-              patient.title.trim().isEmpty ? 'Unnamed patient' : patient.title,
+              _patientDisplayName(patient),
               patient.phone,
               '${patient.age}',
               '${visits.length}',
@@ -404,7 +422,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Name: ${patient.title.trim().isEmpty ? 'Unnamed patient' : patient.title}',
+              'Name: ${_patientDisplayName(patient)}',
             ),
             Text('Patient ID: ${patient.id}'),
             Text(
@@ -2371,9 +2389,7 @@ class _TopPatientsCard extends StatelessWidget {
                                     ),
                                   ),
                                   title: Text(
-                                    entry.value.key.title.trim().isEmpty
-                                        ? 'Unnamed patient'
-                                        : entry.value.key.title,
+                                    _patientDisplayName(entry.value.key),
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: Color(0xFF1F446E),
@@ -2619,9 +2635,7 @@ class _TopOutstandingCard extends StatelessWidget {
                                     ),
                                   ),
                                   title: Text(
-                                    entry.value.key.title.trim().isEmpty
-                                        ? 'Unnamed patient'
-                                        : entry.value.key.title,
+                                    _patientDisplayName(entry.value.key),
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: Color(0xFF1F446E),
@@ -2904,9 +2918,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                                     ),
                                   ),
                                   title: Text(
-                                    entry.value.key.title.trim().isEmpty
-                                        ? 'Unnamed patient'
-                                        : entry.value.key.title,
+                                    _patientDisplayName(entry.value.key),
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: Color(0xFF1F446E),
@@ -3574,9 +3586,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              patient.title.trim().isEmpty
-                                                  ? 'Unnamed patient'
-                                                  : patient.title,
+                                              _patientDisplayName(patient),
                                               overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
                                                 color: Color(0xFF1459AD),
