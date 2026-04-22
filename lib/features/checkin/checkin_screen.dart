@@ -5,7 +5,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
-import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
+import 'package:apexo/common_widgets/patient_checkin_search_button.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
@@ -1031,23 +1031,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
     );
   }
 
-  Future<void> _openQuickPatientSearchDialog() async {
-    await showPatientCheckinLookupDialog(
-      context: context,
-      selectedDate: _selectedDate,
-      title: 'Patient Check-in',
-      onAddPatient: _openAddPatientPopup,
-      onOpenExisting: (existing) async {
-        if (!mounted) return;
-        _selectAndOpenAppointment(existing);
-      },
-      onCheckInPatient: (patient) async {
-        if (!mounted) return;
-        _checkInPatient(patient);
-      },
-    );
-  }
-
   Future<void> _openNewPatientAndCheckin() async {
     final created = await _openAddPatientPopup('');
     if (!mounted || created == null) return;
@@ -1208,16 +1191,18 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: FilledButton(
-                                  onPressed: _openQuickPatientSearchDialog,
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(FluentIcons.search, size: 12),
-                                      SizedBox(width: 8),
-                                      Text('Check-in'),
-                                    ],
-                                  ),
+                                child: PatientCheckinSearchButton(
+                                  selectedDate: _selectedDate,
+                                  title: 'Search Patient',
+                                  onAddPatient: _openAddPatientPopup,
+                                  onOpenExisting: (existing) async {
+                                    if (!mounted) return;
+                                    _selectAndOpenAppointment(existing);
+                                  },
+                                  onCheckInPatient: (patient) async {
+                                    if (!mounted) return;
+                                    _checkInPatient(patient);
+                                  },
                                 ),
                               ),
                             ],
@@ -1315,23 +1300,20 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          FilledButton(
-                            onPressed: _openQuickPatientSearchDialog,
-                            style: ButtonStyle(
-                              padding: WidgetStateProperty.all(
-                                const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 11,
-                                ),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(FluentIcons.add, size: 12),
-                                SizedBox(width: 8),
-                                Text('Check-in'),
-                              ],
+                          SizedBox(
+                            height: 38,
+                            child: PatientCheckinSearchButton(
+                              selectedDate: _selectedDate,
+                              title: 'Search Patient',
+                              onAddPatient: _openAddPatientPopup,
+                              onOpenExisting: (existing) async {
+                                if (!mounted) return;
+                                _selectAndOpenAppointment(existing);
+                              },
+                              onCheckInPatient: (patient) async {
+                                if (!mounted) return;
+                                _checkInPatient(patient);
+                              },
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -2545,6 +2527,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         .toList(growable: false);
 
     final lastAppointment = otherRows.isNotEmpty ? otherRows.first : null;
+    final timelineRows =
+      otherRows.length <= 1 ? <Appointment>[] : otherRows.sublist(1);
 
     return Column(
       children: [
@@ -2630,8 +2614,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: _PatientJourneyTimeline(
-                          appointments: all,
-                          excludeDate: appointment.date,
+                          appointments: timelineRows,
                         ),
                       ),
                     ],
@@ -2923,7 +2906,6 @@ class _LastAppointmentInsightCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFF8FBFF),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFD7E5F6)),
         ),
         child: const Text(
           'No previous appointment history available.',
@@ -2939,6 +2921,13 @@ class _LastAppointmentInsightCard extends StatelessWidget {
     final treatmentSummary = last.selectedTreatments
         .where((row) => row.trim().isNotEmpty)
         .join(', ');
+    final doctorSummary = last.operators.isEmpty
+        ? 'Unassigned'
+        : last.operators
+            .map((d) => d.title.trim().isEmpty ? 'Unnamed doctor' : d.title)
+            .join(', ');
+    final teethSummary =
+        last.selectedTeeth.where((row) => row.trim().isNotEmpty).join(', ');
 
     return Container(
       width: double.infinity,
@@ -2946,7 +2935,6 @@ class _LastAppointmentInsightCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FBFF),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E5F6)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2969,7 +2957,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Stage: ${last.checkinStage}',
+            'Treatment: ${treatmentSummary.isEmpty ? '-' : treatmentSummary}',
             style: const TextStyle(
               color: Color(0xFF5B7394),
               fontWeight: FontWeight.w600,
@@ -2977,7 +2965,15 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Treatment: ${treatmentSummary.isEmpty ? '-' : treatmentSummary}',
+            'Doctor: $doctorSummary',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Teeth: ${teethSummary.isEmpty ? '-' : teethSummary}',
             style: const TextStyle(
               color: Color(0xFF5B7394),
               fontWeight: FontWeight.w600,
@@ -3011,7 +3007,6 @@ class TodayAppointmentInsightCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FBFF),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E5F6)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3101,6 +3096,12 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     'Clear Aligner',
     'Denture Evaluation',
     'Others',
+  ];
+
+  static const List<String> _rctSubTypes = [
+    'AO & BMP',
+    'Obturation',
+    'PCS',
   ];
 
   static const List<String> _visitTypes = [
@@ -3229,6 +3230,14 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     _selectedTreatments = a.selectedTreatments.toSet();
     _selectedConsultationTypes =
         a.subTreatments.where((e) => e.trim().isNotEmpty).toSet();
+    if (_selectedConsultationTypes.contains('Access opening') ||
+        _selectedConsultationTypes.contains('BMP')) {
+      _selectedConsultationTypes
+        ..remove('Access opening')
+        ..remove('BMP')
+        ..add('AO & BMP');
+      a.subTreatments = _selectedConsultationTypes.toList(growable: false);
+    }
     _visitType =
         _visitTypes.contains(a.visitType) ? a.visitType : 'Follow-up Visit';
     _selectedTeeth = a.selectedTeeth.toSet();
@@ -3246,6 +3255,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   bool _hasConsultationSelected() {
     return _selectedTreatments
         .any((t) => t.trim().toLowerCase() == 'consultation');
+  }
+
+  bool _hasRctSelected() {
+    return _selectedTreatments.any((t) => t.trim().toLowerCase() == 'rct');
   }
 
   void _scheduleAutosave({bool immediate = false}) {
@@ -3637,7 +3650,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       onChanged: (values) {
                         _selectedTreatments = values.toSet();
                         a.selectedTreatments = values;
-                        if (!_hasConsultationSelected()) {
+                        if (!_hasConsultationSelected() && !_hasRctSelected()) {
                           _selectedConsultationTypes.clear();
                           a.subTreatments = [];
                         } else {
@@ -3685,7 +3698,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                     }
                                     a.selectedTreatments = _selectedTreatments
                                         .toList(growable: false);
-                                    if (!_hasConsultationSelected()) {
+                                    if (!_hasConsultationSelected() &&
+                                        !_hasRctSelected()) {
                                       _selectedConsultationTypes.clear();
                                       a.subTreatments = [];
                                     } else {
@@ -3728,6 +3742,53 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 normalTextColor: const Color(0xFF8B5C2E),
                                 selectedBorderColor: const Color(0xFFFFB36C),
                                 normalBorderColor: const Color(0xFFF3D9BD),
+                                radius: 7,
+                                onTap: () {
+                                  setState(() {
+                                    if (_selectedConsultationTypes
+                                        .contains(type)) {
+                                      _selectedConsultationTypes.remove(type);
+                                    } else {
+                                      _selectedConsultationTypes.add(type);
+                                    }
+                                    a.subTreatments =
+                                        _selectedConsultationTypes.toList(
+                                      growable: false,
+                                    );
+                                    _scheduleAutosave();
+                                  });
+                                },
+                              ),
+                            )
+                            .toList(growable: false),
+                      ),
+                    ],
+                    if (_hasRctSelected()) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        'RCT Stage Selection:',
+                        style: TextStyle(
+                          color: Color(0xFF5A7397),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: _rctSubTypes
+                            .map(
+                              (type) => _quickChip(
+                                label: type,
+                                selected:
+                                    _selectedConsultationTypes.contains(type),
+                                selectedColor: const Color(0xFFE2EEFF),
+                                selectedTextColor: const Color(0xFF184A9C),
+                                normalColor: const Color(0xFFF2F7FF),
+                                normalTextColor: const Color(0xFF355279),
+                                selectedBorderColor: const Color(0xFF7FA9EA),
+                                normalBorderColor: const Color(0xFFD6E4F7),
                                 radius: 7,
                                 onTap: () {
                                   setState(() {
@@ -5530,22 +5591,12 @@ class SvgOdontogramCard extends StatelessWidget {
 
 class _PatientJourneyTimeline extends StatelessWidget {
   final List<Appointment> appointments;
-  final DateTime? excludeDate;
 
-  const _PatientJourneyTimeline({required this.appointments, this.excludeDate});
-
-  static bool _sameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+  const _PatientJourneyTimeline({required this.appointments});
 
   @override
   Widget build(BuildContext context) {
-    final scoped = excludeDate == null
-        ? appointments
-        : appointments
-            .where((a) => !_sameDay(a.date, excludeDate!))
-            .toList(growable: false);
-    final points = scoped.take(8).toList(growable: false);
+    final points = appointments.take(8).toList(growable: false);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),

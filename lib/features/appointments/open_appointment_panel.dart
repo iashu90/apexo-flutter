@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
-import 'package:apexo/features/appointments/previous_treatment_info.dart';
 import 'package:apexo/features/appointments/sittings_checkbox.dart';
 import 'package:apexo/features/appointments/treatment_model.dart';
 import 'package:apexo/features/data/prescriptions_model.dart';
@@ -27,6 +26,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart' as material;
 
 void openAppointment([Appointment? appointment, int initialTab = 0]) {
@@ -399,8 +399,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   double originalPrice = 0;
   Set<String> selectedTeethSet = {};
   bool isAdult = true;
-  List<bool> rctChecked = [false, false, false, false];
-  List<bool> crownChecked = [false, false];
+  List<bool> rctChecked = List<bool>.filled(rctSittings.length, false);
+  List<bool> crownChecked = List<bool>.filled(crownSittings.length, false);
 
   void setToDone() {
     setState(() {
@@ -430,13 +430,25 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     // Initialize selectedTeethSet from the saved appointment value
     selectedTeethSet = Set<String>.from(widget.appointment.selectedTeeth);
     widget.appointment.treatmentGpayPaid = widget.appointment.treatmentGpayPaid;
+    final normalizedSubTreatments = widget.appointment.subTreatments
+        .map((v) => v.trim())
+        .where((v) => v.isNotEmpty)
+        .toSet();
+    if (normalizedSubTreatments.contains('Access opening') ||
+        normalizedSubTreatments.contains('BMP')) {
+      normalizedSubTreatments
+        ..remove('Access opening')
+        ..remove('BMP')
+        ..add('AO & BMP');
+      widget.appointment.subTreatments =
+          normalizedSubTreatments.toList(growable: false);
+    }
     for (int i = 0; i < rctSittings.length; i++) {
-      rctChecked[i] = widget.appointment.subTreatments.contains(rctSittings[i]);
+      rctChecked[i] = normalizedSubTreatments.contains(rctSittings[i]);
     }
     // Set initial checked state for Crown sittings
     for (int i = 0; i < crownSittings.length; i++) {
-      crownChecked[i] =
-          widget.appointment.subTreatments.contains(crownSittings[i]);
+      crownChecked[i] = normalizedSubTreatments.contains(crownSittings[i]);
     }
     originalPrice = widget.appointment.price;
     _applyDiscount();
@@ -484,6 +496,21 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
 
   @override
   Widget build(BuildContext context) {
+    final previousAppointments = (appointments.present.values
+        .where((a) =>
+          a.id != widget.appointment.id &&
+          a.patientID == widget.appointment.patientID &&
+          a.date.isBefore(widget.appointment.date))
+        .toList()
+        ..sort((a, b) => b.date.compareTo(a.date)))
+      .take(10)
+      .toList(growable: false);
+    final Appointment? lastAppointment =
+      previousAppointments.isEmpty ? null : previousAppointments.first;
+    final timelineAppointments = previousAppointments.length <= 1
+      ? <Appointment>[]
+      : previousAppointments.sublist(1);
+
     final double discount = double.tryParse(discountController.text) ?? 0;
     double discountValue = 0;
     if (discountType == 'percent') {
@@ -499,6 +526,18 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            InfoLabel(
+              label: "${txt("doctors")}:",
+              child: OperatorsPicker(
+                value: widget.appointment.operatorsIDs,
+                onChanged: (s) {
+                  setState(() {
+                    widget.appointment.operatorsIDs = s;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 10),
             InfoLabel(
               label: "Diagnosis:",
               child: TagInputWidget(
@@ -613,17 +652,9 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             },
           ),
         ],
-        PreviousTreatmentInfo(
-          appointments: (appointments.present.values
-                  .where((a) =>
-                      a.id != widget.appointment.id &&
-                      a.patientID == widget.appointment.patientID &&
-                      a.date.isBefore(widget.appointment.date))
-                  .toList()
-                ..sort((a, b) => b.date.compareTo(a.date)))
-              .take(5)
-              .toList(),
-        ),
+        _LastAppointmentCard(lastAppointment: lastAppointment),
+        const SizedBox(height: 8),
+        _AppointmentTimeline(appointments: timelineAppointments),
         const SizedBox(height: 8),
         TeethPicker(
           selectedTeeth: selectedTeethSet,
@@ -699,8 +730,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: discountType == 'percent'
-                              ? material.Colors.blue.withOpacity(0.15)
-                              : material.Colors.green.withOpacity(0.15),
+                              ? material.Colors.blue.withValues(alpha: 0.15)
+                              : material.Colors.green.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -936,15 +967,191 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
               backgroundColor: WidgetStatePropertyAll(Colors.blue),
             ),
-            child: Row(
+            child: const Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Icon(FluentIcons.save),
                 SizedBox(width: 8),
                 Txt("Save & Book New Appointment"),
               ],
             )),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
+    );
+  }
+}
+
+class _LastAppointmentCard extends StatelessWidget {
+  final Appointment? lastAppointment;
+
+  const _LastAppointmentCard({required this.lastAppointment});
+
+  @override
+  Widget build(BuildContext context) {
+    if (lastAppointment == null) {
+      return const Text(
+        'No previous appointment history available.',
+        style: TextStyle(
+          color: Color(0xFF5B7394),
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+
+    final item = lastAppointment!;
+    final treatmentSummary = item.selectedTreatments
+        .where((v) => v.trim().isNotEmpty)
+        .join(', ');
+    final subTreatmentSummary =
+        item.subTreatments.where((v) => v.trim().isNotEmpty).join(', ');
+    final doctorSummary = item.operators.isEmpty
+        ? 'Unassigned'
+        : item.operators
+            .map((d) => d.title.trim().isEmpty ? 'Unnamed doctor' : d.title)
+            .join(', ');
+    final teethSummary =
+        item.selectedTeeth.where((v) => v.trim().isNotEmpty).join(', ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Last Appointment',
+          style: TextStyle(
+            color: Color(0xFF223B5E),
+            fontWeight: FontWeight.w800,
+            fontSize: 15,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          DateFormat('dd MMM yyyy • h:mm a').format(item.date),
+          style: const TextStyle(
+            color: Color(0xFF355279),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Doctor: $doctorSummary',
+          style: const TextStyle(
+            color: Color(0xFF5B7394),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Treatment: ${treatmentSummary.isEmpty ? '-' : treatmentSummary}',
+          style: const TextStyle(
+            color: Color(0xFF5B7394),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (subTreatmentSummary.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Sub-treatment: $subTreatmentSummary',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+        const SizedBox(height: 4),
+        Text(
+          'Teeth: ${teethSummary.isEmpty ? '-' : teethSummary}',
+          style: const TextStyle(
+            color: Color(0xFF5B7394),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AppointmentTimeline extends StatelessWidget {
+  final List<Appointment> appointments;
+
+  const _AppointmentTimeline({required this.appointments});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = appointments.take(6).toList(growable: false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Journey Timeline',
+          style: TextStyle(
+            color: Color(0xFF2C4E76),
+            fontWeight: FontWeight.w800,
+            fontSize: 15,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (rows.isEmpty)
+          const Text(
+            'No timeline data available.',
+            style: TextStyle(color: Color(0xFF6D84A8), fontSize: 12),
+          )
+        else
+          ...rows.asMap().entries.map((entry) {
+            final item = entry.value;
+            final isLast = entry.key == rows.length - 1;
+            final treatments = item.selectedTreatments
+                .where((v) => v.trim().isNotEmpty)
+                .join(', ');
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF2D7BD8),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    if (!isLast)
+                      Container(
+                        width: 2,
+                        height: 28,
+                        color: const Color(0xFFCFE0F3),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          DateFormat('dd MMM yyyy • h:mm a').format(item.date),
+                          style: const TextStyle(
+                            color: Color(0xFF1F446E),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          treatments.isEmpty ? '-' : treatments,
+                          style: const TextStyle(
+                            color: Color(0xFF5F789B),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+      ],
     );
   }
 }
