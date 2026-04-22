@@ -236,7 +236,7 @@ final List<String> allDiagnosis = [
   'Stains',
   'Abscess',
 ];
-final List<String> rctSittings = ["Access opening", "BMP", "Obturation", "PCS"];
+final List<String> rctSittings = ["AO & BMP", "Obturation", "PCS"];
 final List<String> crownSittings = ["Tooth preparation", "Crown luting"];
 
 final appointments = Appointments();
