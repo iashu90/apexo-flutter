@@ -163,6 +163,7 @@ Future<void> showPatientCheckinLookupDialog({
   required PatientLookupOpenExisting onOpenExisting,
   required PatientLookupCheckInPatient onCheckInPatient,
   String title = 'Patient Check-in',
+  String initialQuery = '',
 }) async {
   await showDialog<void>(
     context: context,
@@ -171,7 +172,7 @@ Future<void> showPatientCheckinLookupDialog({
       final dialogWidth = (screen.width - 24).clamp(340.0, 860.0);
       final maxBodyHeight = (screen.height - 250).clamp(320.0, 680.0);
 
-      final queryController = TextEditingController(text: '');
+      final queryController = TextEditingController(text: initialQuery);
       String query = queryController.text.trim().toLowerCase();
       String activeTab = 'search';
 

@@ -4,6 +4,7 @@ import 'package:apexo/app/top_tabs_navbar.dart';
 import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/features/login/login_screen.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
@@ -14,6 +15,7 @@ import 'package:apexo/theme/apexo_theme.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' as material;
 
 late BuildContext bContextV2;
 
@@ -44,22 +46,25 @@ class ApexoAppV2 extends StatelessWidget {
                 : const CupertinoThemeData(brightness: Brightness.light),
             child: FluentTheme(
               data: isDark ? FluentThemeData.dark() : FluentThemeData.light(),
-              child: MStreamBuilder(
-                streams: [
-                  version.latest.stream,
-                  version.current.stream,
-                  launch.dialogShown.stream,
-                  launch.isFirstLaunch.stream,
-                  launch.open.stream,
-                  routes.panels.stream,
-                  routes.minimizePanels.stream,
-                  routes.currentRouteIndex.stream,
-                ],
-                builder: (BuildContext context, _) {
-                  bContextV2 = context;
-                  return buildAppLayout();
-                },
-              ),
+                child: material.Theme(
+                  data: AppTheme.light,
+                  child: MStreamBuilder(
+                    streams: [
+                      version.latest.stream,
+                      version.current.stream,
+                      launch.dialogShown.stream,
+                      launch.isFirstLaunch.stream,
+                      launch.open.stream,
+                      routes.panels.stream,
+                      routes.minimizePanels.stream,
+                      routes.currentRouteIndex.stream,
+                    ],
+                    builder: (BuildContext context, _) {
+                      bContextV2 = context;
+                      return buildAppLayout();
+                    },
+                  ),
+                ),
             ),
           ),
         );

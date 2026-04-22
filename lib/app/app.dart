@@ -5,6 +5,7 @@ import 'package:apexo/common_widgets/back_button.dart';
 import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
@@ -17,6 +18,7 @@ import 'package:apexo/services/version.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' as material;
 
 late BuildContext bContext;
 
@@ -55,30 +57,33 @@ class ApexoApp extends StatelessWidget {
                 data: localSettings.selectedTheme == ThemeMode.dark
                     ? FluentThemeData.dark()
                     : FluentThemeData(),
-                child: MStreamBuilder(
-                  streams: [
-                    version.latest.stream,
-                    version.current.stream,
-                    launch.dialogShown.stream,
-                    launch.isFirstLaunch.stream,
-                    launch.open.stream,
-                    routes.showBottomNav.stream,
-                    routes.panels.stream,
-                    routes.minimizePanels.stream
-                  ],
-                  builder: (BuildContext context, _) {
-                    bContext = context;
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        buildAppLayout(),
-                        if (routes.showBottomNav() &&
-                            routes.panels().isEmpty &&
-                            launch.open())
-                          const BottomNavBar()
-                      ],
-                    );
-                  },
+                child: material.Theme(
+                  data: AppTheme.light,
+                  child: MStreamBuilder(
+                    streams: [
+                      version.latest.stream,
+                      version.current.stream,
+                      launch.dialogShown.stream,
+                      launch.isFirstLaunch.stream,
+                      launch.open.stream,
+                      routes.showBottomNav.stream,
+                      routes.panels.stream,
+                      routes.minimizePanels.stream
+                    ],
+                    builder: (BuildContext context, _) {
+                      bContext = context;
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          buildAppLayout(),
+                          if (routes.showBottomNav() &&
+                              routes.panels().isEmpty &&
+                              launch.open())
+                            const BottomNavBar()
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ),

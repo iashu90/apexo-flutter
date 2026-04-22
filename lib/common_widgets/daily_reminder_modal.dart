@@ -288,27 +288,6 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                     );
                   },
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Spacer(),
-                    FilledButton(
-                      style: ButtonStyle(
-                        padding: WidgetStateProperty.all(
-                          const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 11),
-                        ),
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                      ),
-                      onPressed: () {
-                        _navigateToRouteById('checkin');
-                        Navigator.pop(dialogContext);
-                      },
-                      child: const Text("Open Today's Schedule"),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),

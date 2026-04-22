@@ -1194,6 +1194,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 child: PatientCheckinSearchButton(
                                   selectedDate: _selectedDate,
                                   title: 'Search Patient',
+                                  compact: true,
                                   onAddPatient: _openAddPatientPopup,
                                   onOpenExisting: (existing) async {
                                     if (!mounted) return;
@@ -1301,10 +1302,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           ),
                           const SizedBox(width: 8),
                           SizedBox(
-                            height: 38,
+                            width: 340,
                             child: PatientCheckinSearchButton(
                               selectedDate: _selectedDate,
                               title: 'Search Patient',
+                              compact: false,
                               onAddPatient: _openAddPatientPopup,
                               onOpenExisting: (existing) async {
                                 if (!mounted) return;
