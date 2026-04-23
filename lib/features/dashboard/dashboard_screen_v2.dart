@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -379,12 +380,10 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                 ),
         ),
         actions: [
-          FilledButton(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-            ),
-            child: const Text('Close'),
+          AppButton(
+            label: 'Close',
             onPressed: () => Navigator.pop(context),
+            variant: AppButtonVariant.primary,
           ),
         ],
       ),
@@ -428,98 +427,106 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
       builder: (context, _) {
         final todaysAppointments = appointments.forDate(selectedDate)
           ..sort((a, b) => a.date.compareTo(b.date));
-        final allAppointments =
-            appointments.present.values.toList(growable: false);
 
-        final completed = todaysAppointments.where((a) => a.isDone).length;
-        var waiting = 0;
-        var scheduled = 0;
-        var treatment = 0;
-        var billing = 0;
-        for (final appointment in todaysAppointments) {
-          if (appointment.isDone) continue;
-          switch (normalizeCheckinStage(appointment.checkinStage)) {
-            case 'scheduled':
-            case 'pending':
-              scheduled += 1;
-              break;
-            case 'waiting':
-              waiting += 1;
-              break;
-            case 'treatment':
-            case 'with_doctor':
-              treatment += 1;
-              break;
-            case 'billing':
-            case 'checkout':
-              billing += 1;
-              break;
-            default:
-              waiting += 1;
-              break;
-          }
-        }
-        final newPatients = todaysAppointments
-            .where((a) => a.firstAppointmentForThisPatient)
-            .length;
-        final returningPatients =
-            math.max(0, todaysAppointments.length - newPatients);
-        final revenueToday = todaysAppointments.fold<double>(
-            0, (sum, a) => sum + a.paid + a.prescriptionPaid);
-
-        final treatmentRevenue =
-            todaysAppointments.fold<double>(0, (sum, a) => sum + a.paid);
-        final prescriptionRevenue = todaysAppointments.fold<double>(
-            0, (sum, a) => sum + a.prescriptionPaid);
-        final outstandingBalance = dashboardCtrl.totalDueAmount();
-        final doctorFeeToday = todaysAppointments.fold<double>(
-            0, (sum, a) => sum + a.doctorPayableAmount);
-        final netProfitToday = revenueToday - doctorFeeToday;
+        final allAppointments = appointments.present.values.toList(growable: false);
         final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
+        final tableAppointments = _filteredAndSorted(_treatmentFiltered(doctorScopedAppointments));
         final treatmentStats =
             DashboardTreatmentStats.from(doctorScopedAppointments);
-        final treatmentScopedAppointments =
-            _treatmentFiltered(doctorScopedAppointments);
-        final tableAppointments =
-            _filteredAndSorted(treatmentScopedAppointments);
-        final duplicatePatientKeys =
-            _duplicatePatientKeys(treatmentScopedAppointments);
+
+        final doctorFilterChip = _doctorFilterChipLabel();
+        final treatmentFilterChip = _treatmentFilterChipLabel();
         final isDoctorFilterApplied =
             _selectedDoctorFilter != dashboardDoctorFilterAll ||
                 _selectedTreatmentFilter != dashboardTreatmentFilterAll;
-        final doctorFilterChip = _doctorFilterChipLabel();
-        final treatmentFilterChip = _treatmentFilterChipLabel();
+
+        final duplicatePatientCounts = <String, int>{};
+        for (final appointment in tableAppointments) {
+          final pid = appointment.patientID;
+          if (pid == null || pid.isEmpty) continue;
+          duplicatePatientCounts[pid] = (duplicatePatientCounts[pid] ?? 0) + 1;
+        }
+        final duplicatePatientKeys = duplicatePatientCounts.entries
+            .where((entry) => entry.value > 1)
+            .map((entry) => entry.key)
+            .toSet();
+
+        final waiting = doctorScopedAppointments
+            .where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'waiting';
+            })
+            .length;
+        final scheduled = doctorScopedAppointments
+            .where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'scheduled';
+            })
+            .length;
+        final treatment = doctorScopedAppointments
+            .where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'with_doctor';
+            })
+            .length;
+        final billing = doctorScopedAppointments
+            .where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'checkout';
+            })
+            .length;
+        final completed = doctorScopedAppointments
+            .where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'completed';
+            })
+            .length;
+
+        final newPatients = doctorScopedAppointments
+            .where((appointment) => appointment.firstAppointmentForThisPatient)
+            .length;
+        final returningPatients =
+            math.max(0, doctorScopedAppointments.length - newPatients);
+
+        final treatmentRevenue = doctorScopedAppointments.fold<double>(
+          0,
+          (sum, appointment) => sum + appointment.paid,
+        );
+        final prescriptionRevenue = doctorScopedAppointments.fold<double>(
+          0,
+          (sum, appointment) => sum + appointment.prescriptionPaid,
+        );
+        final revenueToday = treatmentRevenue + prescriptionRevenue;
+
+        final doctorFeeToday = doctorScopedAppointments.fold<double>(
+          0,
+          (sum, appointment) => sum + appointment.doctorPayableAmount,
+        );
+        final netProfitToday = revenueToday - doctorFeeToday;
+
+        final outstandingBalance = dashboardCtrl.totalDueAmount();
 
         double morningCash = 0;
         double morningUpi = 0;
+        int morningPatients = 0;
         double eveningCash = 0;
         double eveningUpi = 0;
-        var morningPatients = 0;
-        var eveningPatients = 0;
+        int eveningPatients = 0;
 
-        for (final a in todaysAppointments) {
-          final hour = a.date.hour;
-          final isMorningSession = hour >= 0 && hour < 15;
-          final isEveningSession = hour >= 15 && hour < 24;
-          if (!isMorningSession && !isEveningSession) continue;
+        for (final appointment in doctorScopedAppointments) {
+          final totalPayment = appointment.paid + appointment.prescriptionPaid;
+          final isDigital = appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
+          final hour = appointment.date.hour;
 
-          if (isMorningSession) {
+          if (hour < 15) {
             morningPatients += 1;
-          } else {
-            eveningPatients += 1;
-          }
-
-          final totalPayment = a.paid + a.prescriptionPaid;
-          if (totalPayment <= 0) continue;
-
-          final isDigital = a.treatmentGpayPaid || a.prescriptionGpayPaid;
-          if (isMorningSession) {
             if (isDigital) {
               morningUpi += totalPayment;
             } else {
               morningCash += totalPayment;
             }
           } else {
+            eveningPatients += 1;
             if (isDigital) {
               eveningUpi += totalPayment;
             } else {
@@ -543,7 +550,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
             _treatmentDistributionRows(todaysAppointments);
 
         return Container(
-          color: const Color(0xFFF3F7FC),
+          color: material.Theme.of(context).scaffoldBackgroundColor,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
             child: Column(
@@ -712,7 +719,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                   ? dashboardDoctorFilterAll
                                   : v;
                             }),
-                            onAddAppointment: _openAddAppointmentFromDashboard,
                           ),
                           const SizedBox(height: 10),
                           DashboardTreatmentStatsCard(
@@ -784,8 +790,6 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
                                           ? dashboardDoctorFilterAll
                                           : v;
                                 }),
-                                onAddAppointment:
-                                    _openAddAppointmentFromDashboard,
                               ),
                               const SizedBox(height: 10),
                               DashboardTreatmentStatsCard(
@@ -856,6 +860,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
     final formatter = NumberFormat('#,##0.##');
     return '₹${formatter.format(value)}';
   }
+
 }
 
 class _PatientGrowthMetricsCard extends StatelessWidget {
@@ -1198,49 +1203,15 @@ class _AppointmentsTableCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: TextBox(
-                            placeholder: 'Search patient name or phone',
                             controller: searchController,
-                            prefix: const Padding(
-                              padding: EdgeInsets.only(left: 8),
-                              child: Icon(
-                                FluentIcons.search,
-                                size: 12,
-                                color: Color(0xFF6D84A8),
-                              ),
-                            ),
-                            suffix: searchController.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(FluentIcons.clear),
-                                    onPressed: () => searchController.clear(),
-                                  )
-                                : null,
-                            placeholderStyle:
-                                const TextStyle(color: Color(0xFF6D84A8)),
+                            placeholder: 'Search patient name or phone',
                           ),
                         ),
                         const SizedBox(width: 10),
-                        FilledButton(
+                        AppButton(
+                          label: 'Check-in',
                           onPressed: onAddAppointment,
-                          style: ButtonStyle(
-                            shape: WidgetStateProperty.all(
-                              RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(FluentIcons.add,
-                                  size: 14, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'Check-in',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
+                          leading: const Icon(FluentIcons.add, size: 14),
                         ),
                       ],
                     ),
@@ -1464,12 +1435,13 @@ class _AppointmentRow extends StatelessWidget {
           'Delete appointment for ${appointment.title.trim().isEmpty ? 'this patient' : appointment.title}?',
         ),
         actions: [
-          Button(
-            child: const Text('Cancel'),
+          AppButton(
+            label: 'Cancel',
             onPressed: () => Navigator.pop(context),
+            variant: AppButtonVariant.secondary,
           ),
-          FilledButton(
-            child: const Text('Delete'),
+          AppButton(
+            label: 'Delete',
             onPressed: () {
               appointments.delete(appointment.id);
               Navigator.pop(context);

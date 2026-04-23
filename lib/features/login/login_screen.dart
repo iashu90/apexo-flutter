@@ -118,10 +118,10 @@ class _LoginState extends State<Login> {
               const SizedBox(height: 20),
               _buildHeroVisual(),
               const SizedBox(height: 22),
-              Wrap(
+              const Wrap(
                 spacing: 16,
                 runSpacing: 16,
-                children: const [
+                children: [
                   _FeatureBadge(
                       icon: FluentIcons.calendar, label: 'Smart\nScheduling'),
                   _FeatureBadge(
@@ -654,31 +654,6 @@ class _FeatureBadge extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ProviderChip extends StatelessWidget {
-  final String label;
-
-  const _ProviderChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFDCE5F8)),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: AppTextTheme.textTheme.bodyLarge
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
       ),
     );
   }

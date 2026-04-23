@@ -11,6 +11,7 @@ import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
@@ -1128,7 +1129,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
             final isMobile = screenWidth < 760;
 
             return Container(
-              color: const Color(0xFFF3F7FC),
+              color: material.Theme.of(context).scaffoldBackgroundColor,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
                 child: Column(
@@ -1177,16 +1178,13 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: Button(
+                                child: AppButton(
+                                  variant: AppButtonVariant.secondary,
                                   onPressed: _openNewPatientAndCheckin,
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(FluentIcons.add_friend, size: 12),
-                                      SizedBox(width: 8),
-                                      Text('New Patient'),
-                                    ],
-                                  ),
+                                  label: 'New Patient',
+                                  leading: const Icon(FluentIcons.add_friend,
+                                      size: 12),
+                                  expanded: true,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1195,6 +1193,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                   selectedDate: _selectedDate,
                                   title: 'Search Patient',
                                   compact: true,
+                                  showInput: false,
                                   onAddPatient: _openAddPatientPopup,
                                   onOpenExisting: (existing) async {
                                     if (!mounted) return;
@@ -1211,15 +1210,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           const SizedBox(height: 8),
                           SizedBox(
                             width: double.infinity,
-                            child: Button(
-                              onPressed: filtered.isEmpty
-                                  ? null
-                                  : () {
-                                      final target = _selectedAppointment ??
-                                          filtered.first;
-                                      _openNextCheckinStepper(target);
-                                    },
-                              child: const Text('New Checkin Flow'),
+                            child: AppButton(
+                              onPressed: () {
+                                final target =
+                                    _selectedAppointment ?? filtered.first;
+                                _openNextCheckinStepper(target);
+                              },
+                              label: 'New Checkin Flow',
+                              expanded: true,
                             ),
                           ),
                         ],
@@ -1264,49 +1262,34 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                DateNavigatorBar(
-                                  selectedDate: _selectedDate,
-                                  onPrevious: () => _changeDate(-1),
-                                  onNext: () => _changeDate(1),
-                                  onPick: () => _pickDate(context),
-                                  onToday: () => setState(() {
-                                    _selectedDate = _dateOnly(DateTime.now());
-                                    checkinPersistedDate = _selectedDate;
-                                  }),
-                                ),
-                              ],
+                            child: Center(
+                              child: DateNavigatorBar(
+                                selectedDate: _selectedDate,
+                                onPrevious: () => _changeDate(-1),
+                                onNext: () => _changeDate(1),
+                                onPick: () => _pickDate(context),
+                                onToday: () => setState(() {
+                                  _selectedDate = _dateOnly(DateTime.now());
+                                  checkinPersistedDate = _selectedDate;
+                                }),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Button(
+                          AppButton(
                             onPressed: _openNewPatientAndCheckin,
-                            style: ButtonStyle(
-                              padding: WidgetStateProperty.all(
-                                const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 11,
-                                ),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(FluentIcons.add_friend, size: 12),
-                                SizedBox(width: 8),
-                                Text('New Patient'),
-                              ],
-                            ),
+                            label: 'New Patient',
+                            leading:
+                                const Icon(FluentIcons.add_friend, size: 12),
                           ),
                           const SizedBox(width: 8),
                           SizedBox(
-                            width: 340,
+                            width: 180,
                             child: PatientCheckinSearchButton(
                               selectedDate: _selectedDate,
                               title: 'Search Patient',
                               compact: false,
+                              showInput: false,
                               onAddPatient: _openAddPatientPopup,
                               onOpenExisting: (existing) async {
                                 if (!mounted) return;
@@ -1319,7 +1302,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          FilledButton(
+                          AppButton(
                             onPressed: filtered.isEmpty
                                 ? null
                                 : () {
@@ -1327,20 +1310,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                         _selectedAppointment ?? filtered.first;
                                     _openNextCheckinStepper(target);
                                   },
-                            style: ButtonStyle(
-                              backgroundColor: WidgetStateProperty.all(
-                                const Color(0xFF1D8D77),
-                              ),
-                              foregroundColor:
-                                  WidgetStateProperty.all(Colors.white),
-                              padding: WidgetStateProperty.all(
-                                const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 11,
-                                ),
-                              ),
-                            ),
-                            child: const Text('Next Checkin'),
+                            label: 'Next Checkin',
                           ),
                         ],
                       ),
@@ -1511,26 +1481,10 @@ class _DoctorFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFF4F8FD),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD6E2F0),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF355279),
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
-      ),
+    return AppButton(
+      label: label,
+      onPressed: onTap,
+      variant: selected ? AppButtonVariant.primary : AppButtonVariant.secondary,
     );
   }
 }
@@ -1567,79 +1521,80 @@ class _WorkflowColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 120),
-      opacity: interactionsEnabled ? 1 : 0.62,
-      child: Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD6E2F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(11)),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: Icon(
-                    expanded
-                        ? FluentIcons.chevron_down
-                        : FluentIcons.chevron_right,
-                    size: 11,
-                  ),
-                  onPressed: interactionsEnabled ? onToggleExpanded : null,
-                ),
-              ],
-            ),
+        duration: const Duration(milliseconds: 120),
+        opacity: interactionsEnabled ? 1 : 0.62,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFD6E2F0)),
           ),
-          if (!expanded)
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'Collapsed',
-                style: TextStyle(color: Color(0xFF6D84A8)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(11)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(
+                        expanded
+                            ? FluentIcons.chevron_down
+                            : FluentIcons.chevron_right,
+                        size: 11,
+                      ),
+                      onPressed: interactionsEnabled ? onToggleExpanded : null,
+                    ),
+                  ],
+                ),
               ),
-            )
-          else if (rows.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'No appointments in this state.',
-                style: TextStyle(color: Color(0xFF6D84A8)),
-              ),
-            )
-          else
-            ...rows.map(
-              (a) => _WorkflowRow(
-                appointment: a,
-                stage: rowStageBuilder?.call(a) ?? stage,
-                duplicateRecord: a.patientID != null &&
-                    duplicatePatientIds.contains(a.patientID),
-                showHistoryAction: showHistoryAction,
-                selected: selectedAppointmentId == a.id,
-                interactionsEnabled: interactionsEnabled,
-                onSelect: onSelect,
-              ),
-            ),
-        ],
-      ),
-    ));
+              if (!expanded)
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'Collapsed',
+                    style: TextStyle(color: Color(0xFF6D84A8)),
+                  ),
+                )
+              else if (rows.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'No appointments in this state.',
+                    style: TextStyle(color: Color(0xFF6D84A8)),
+                  ),
+                )
+              else
+                ...rows.map(
+                  (a) => _WorkflowRow(
+                    appointment: a,
+                    stage: rowStageBuilder?.call(a) ?? stage,
+                    duplicateRecord: a.patientID != null &&
+                        duplicatePatientIds.contains(a.patientID),
+                    showHistoryAction: showHistoryAction,
+                    selected: selectedAppointmentId == a.id,
+                    interactionsEnabled: interactionsEnabled,
+                    onSelect: onSelect,
+                  ),
+                ),
+            ],
+          ),
+        ));
   }
 }
 
@@ -2036,10 +1991,10 @@ class _WorkflowRow extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: !interactionsEnabled
-          ? null
-          : (stage == 'waiting' || stage == 'scheduled')
-            ? () => _moveStage(context)
-            : (onSelect == null ? null : () => onSelect!(appointment)),
+            ? null
+            : (stage == 'waiting' || stage == 'scheduled')
+                ? () => _moveStage(context)
+                : (onSelect == null ? null : () => onSelect!(appointment)),
         child: Row(
           children: [
             Expanded(
@@ -2190,8 +2145,9 @@ class _WorkflowRow extends StatelessWidget {
                         foregroundColor:
                             WidgetStateProperty.all(const Color(0xFFC97A11)),
                       ),
-                      onPressed:
-                          interactionsEnabled ? () => _undoStage(context) : null,
+                      onPressed: interactionsEnabled
+                          ? () => _undoStage(context)
+                          : null,
                     ),
                   ),
                 if (stage != 'waiting' && stage != 'scheduled')
@@ -2213,7 +2169,7 @@ class _WorkflowRow extends StatelessWidget {
                         foregroundColor:
                             WidgetStateProperty.all(const Color(0xFF6B7280)),
                       ),
-                        onPressed: interactionsEnabled
+                      onPressed: interactionsEnabled
                           ? () => _openScheduleActions(context, appointment)
                           : null,
                     ),
@@ -2244,8 +2200,9 @@ class _WorkflowRow extends StatelessWidget {
                           const Color(0xFF2A8D3F),
                         ),
                       ),
-                      onPressed:
-                          interactionsEnabled ? () => _moveStage(context) : null,
+                      onPressed: interactionsEnabled
+                          ? () => _moveStage(context)
+                          : null,
                     ),
                   ),
                 if (stage == 'completed')
@@ -2267,8 +2224,9 @@ class _WorkflowRow extends StatelessWidget {
                         foregroundColor:
                             WidgetStateProperty.all(const Color(0xFF2D7BD8)),
                       ),
-                        onPressed: interactionsEnabled
-                          ? () => _openNextAppointmentPrompt(context, appointment)
+                      onPressed: interactionsEnabled
+                          ? () =>
+                              _openNextAppointmentPrompt(context, appointment)
                           : null,
                     ),
                   ),
@@ -2530,7 +2488,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
 
     final lastAppointment = otherRows.isNotEmpty ? otherRows.first : null;
     final timelineRows =
-      otherRows.length <= 1 ? <Appointment>[] : otherRows.sublist(1);
+        otherRows.length <= 1 ? <Appointment>[] : otherRows.sublist(1);
 
     return Column(
       children: [
@@ -3078,7 +3036,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   bool _discountEnabled = false;
   Set<String> _selectedTreatments = {};
   Set<String> _selectedConsultationTypes = {};
-  String _visitType = 'Follow-up Visit';
+  String _visitType = 'Consultation Only';
   String? _selectedPostOpParent;
   Set<String> _selectedTeeth = {};
   Map<String, ToothState> _teethStates = {};
@@ -3107,9 +3065,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   ];
 
   static const List<String> _visitTypes = [
-    'Follow-up Visit',
-    'New Problem / New Treatment',
     'Consultation Only',
+    'New Problem / New Treatment',
+    'Follow-up Visit',
   ];
 
   static const Map<String, List<String>> _postOpSuggestions = {
@@ -3461,21 +3419,20 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 fontSize: 18,
               ),
             ),
-          if (isWithDoctor) 
-            const SizedBox(height: 14),
-                   Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    _medicalHistorySummaryText(a.patient),
-                    style: const TextStyle(
-                      color: Color(0xFFC63A4D),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
+          if (isWithDoctor) const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              _medicalHistorySummaryText(a.patient),
+              style: const TextStyle(
+                color: Color(0xFFC63A4D),
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ),
           if (isWithDoctor)
             LayoutBuilder(
               builder: (context, constraints) {

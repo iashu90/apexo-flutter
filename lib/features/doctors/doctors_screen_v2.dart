@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
@@ -13,6 +14,7 @@ import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/core/theme/app_text_theme.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
@@ -42,7 +44,7 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
   String _performanceRange = 'month';
   String _doneRange = 'month';
   String _workloadRange = 'week';
-  DateTime _doneMonthAnchor =
+  final DateTime _doneMonthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
   final bool _compareMode = false;
   DateTime? _customRangeStart;
@@ -224,22 +226,10 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
                       ),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: FilledButton(
+                        child: AppButton(
                           onPressed: _openAddDoctorModal,
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(
-                                const Color(0xFF2D7BD8)),
-                            foregroundColor:
-                                WidgetStateProperty.all(Colors.white),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(FluentIcons.add, size: 12),
-                              SizedBox(width: 6),
-                              Text('Add Doctor'),
-                            ],
-                          ),
+                          label: 'Add Doctor',
+                          leading: const Icon(FluentIcons.add, size: 12),
                         ),
                       ),
                     ],
@@ -400,11 +390,13 @@ Future<void> _openDoctorEntryModalV2(
           ),
         ),
         actions: [
-          Button(
+          AppButton(
+            label: 'Cancel',
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            variant: AppButtonVariant.secondary,
           ),
-          FilledButton(
+          AppButton(
+            label: isEdit ? 'Save Changes' : 'Add Doctor',
             onPressed: () {
               final name = nameController.text.trim();
               if (name.isEmpty) {
@@ -422,7 +414,6 @@ Future<void> _openDoctorEntryModalV2(
               doctors.set(doctor);
               Navigator.pop(dialogContext);
             },
-            child: Text(isEdit ? 'Save Changes' : 'Save Doctor'),
           ),
         ],
       ),
@@ -976,14 +967,14 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
               ],
             ),
           ),
-          Button(
-            style: ButtonStyle(
-              padding: WidgetStateProperty.all(
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              ),
+          SizedBox(
+            width: 72,
+            child: AppButton(
+              label: 'Edit',
+              onPressed: () => widget.onEdit(doctor),
+              variant: AppButtonVariant.secondary,
+              expanded: true,
             ),
-            onPressed: () => widget.onEdit(doctor),
-            child: const Text('Edit', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
@@ -1353,43 +1344,56 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _topMetric(
-                    'Patients Seen',
-                    NumberFormat.compact(locale: 'en_IN').format(totalPatients),
-                    const Color(0xFF1B3557),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _topMetric(
-                    'Revenue',
-                    formatIndianShortCurrency(revenue),
-                    const Color(0xFF2BA58D),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _topMetric(
-                    'Doctors Fee',
-                    formatIndianShortCurrency(doctorsFee),
-                    const Color(0xFFD6455D),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _topMetric(
-                    'Net Profit',
-                    '${formatIndianShortCurrency(netProfit)} (${netProfitPct.toStringAsFixed(1)}%)',
-                    netProfit >= 0
-                        ? const Color(0xFF2BA58D)
-                        : const Color(0xFFD6455D),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 10),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cardWidth = (constraints.maxWidth - 24) / 4;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    SizedBox(
+                      width: cardWidth,
+                      child: _topMetric(
+                        'Patients Seen',
+                        NumberFormat.compact(locale: 'en_IN')
+                            .format(totalPatients),
+                        const Color(0xFF1B3557),
+                        FluentIcons.people,
+                      ),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _topMetric(
+                        'Revenue',
+                        formatIndianShortCurrency(revenue),
+                        const Color(0xFF2BA58D),
+                        FluentIcons.receipt_check,
+                      ),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _topMetric(
+                        'Doctors Fee',
+                        formatIndianShortCurrency(doctorsFee),
+                        const Color(0xFFD6455D),
+                        FluentIcons.money,
+                      ),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _topMetric(
+                        'Net Profit',
+                        '${formatIndianShortCurrency(netProfit)} (${netProfitPct.toStringAsFixed(1)}%)',
+                        netProfit >= 0
+                            ? const Color(0xFF2BA58D)
+                            : const Color(0xFFD6455D),
+                        FluentIcons.pie_single,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             if (doctorEntries.isEmpty)
               const Padding(
@@ -1418,26 +1422,38 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                   earned <= 0 ? 0.0 : (doctorNet / earned) * 100;
                 final screenWidth = MediaQuery.of(context).size.width;
                 final compact = screenWidth < 1440;
-                final patientWidth = compact ? 170.0 : 210.0;
-                final timeWidth = compact ? 120.0 : 140.0;
-                final treatmentWidth = compact ? 170.0 : 200.0;
-                final toothWidth = compact ? 90.0 : 110.0;
-                final stageWidth = compact ? 90.0 : 110.0;
-                final paidWidth = compact ? 100.0 : 110.0;
-                final feeWidth = compact ? 100.0 : 120.0;
-                final netWidth = compact ? 100.0 : 120.0;
-                final statusWidth = compact ? 82.0 : 90.0;
-                final actionWidth = compact ? 72.0 : 82.0;
-                final minTableWidth = patientWidth +
-                    timeWidth +
-                    treatmentWidth +
-                    toothWidth +
-                    stageWidth +
-                    paidWidth +
-                    feeWidth +
-                    netWidth +
-                    statusWidth +
-                    actionWidth;
+                final basePatientWidth = compact ? 170.0 : 210.0;
+                final baseTimeWidth = compact ? 120.0 : 140.0;
+                final baseTreatmentWidth = compact ? 170.0 : 200.0;
+                final baseToothWidth = compact ? 90.0 : 110.0;
+                final baseStageWidth = compact ? 90.0 : 110.0;
+                final basePaidWidth = compact ? 100.0 : 110.0;
+                final baseFeeWidth = compact ? 100.0 : 120.0;
+                final baseNetWidth = compact ? 100.0 : 120.0;
+                final baseStatusWidth = compact ? 82.0 : 90.0;
+                final baseActionWidth = compact ? 72.0 : 82.0;
+                final baseTableWidth = basePatientWidth +
+                  baseTimeWidth +
+                  baseTreatmentWidth +
+                  baseToothWidth +
+                  baseStageWidth +
+                  basePaidWidth +
+                  baseFeeWidth +
+                  baseNetWidth +
+                  baseStatusWidth +
+                  baseActionWidth;
+                final minTableWidth = math.max(baseTableWidth, screenWidth - 90);
+                final widthScale = minTableWidth / baseTableWidth;
+                final patientWidth = basePatientWidth * widthScale;
+                final timeWidth = baseTimeWidth * widthScale;
+                final treatmentWidth = baseTreatmentWidth * widthScale;
+                final toothWidth = baseToothWidth * widthScale;
+                final stageWidth = baseStageWidth * widthScale;
+                final paidWidth = basePaidWidth * widthScale;
+                final feeWidth = baseFeeWidth * widthScale;
+                final netWidth = baseNetWidth * widthScale;
+                final statusWidth = baseStatusWidth * widthScale;
+                final actionWidth = baseActionWidth * widthScale;
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -1468,8 +1484,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                   : _doctorTitleCase(doctor.title),
                               style: const TextStyle(
                                 color: Color(0xFF143C6B),
-                                fontWeight: FontWeight.w500,
-                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
                               ),
                             ),
                           ),
@@ -1571,7 +1587,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Color(0xFF1F446E),
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
                                         ),
                                       ),
                                     ),
@@ -1724,7 +1741,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     }
   }
 
-  Widget _topMetric(String label, String value, Color color) {
+  Widget _topMetric(String label, String value, Color color, IconData icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -1732,25 +1749,41 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFFDCE8F6)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w800,
-              fontSize: 34,
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F2FF),
+              borderRadius: BorderRadius.circular(999),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            alignment: Alignment.center,
+            child: Icon(icon, size: 14, color: color),
           ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF4D6488),
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: AppTextTheme.textTheme.titleLarge?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 30,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  label,
+                  style: AppTextTheme.textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF4D6488),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1769,20 +1802,20 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
         children: [
           Text(
             value,
-            style: TextStyle(
+            style: AppTextTheme.textTheme.titleMedium?.copyWith(
               color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF5D789D),
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+            style: AppTextTheme.textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF5D789D),
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
