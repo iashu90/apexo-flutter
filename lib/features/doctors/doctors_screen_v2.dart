@@ -1132,6 +1132,24 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
 
+  double _appointmentTreatmentTotal(Appointment appointment) {
+    final discountedTotal = appointment.discountType == 'percent'
+        ? (appointment.price - (appointment.price * appointment.discount / 100))
+            .clamp(0, double.infinity)
+        : (appointment.price - appointment.discount).clamp(0, double.infinity);
+    return discountedTotal + appointment.prescriptionPrice;
+  }
+
+  String _paymentStatusForAppointment(Appointment appointment) {
+    final treatmentTotal = _appointmentTreatmentTotal(appointment);
+    final paid = appointment.paid + appointment.prescriptionPaid;
+
+    if (treatmentTotal <= 0 && paid <= 0) return 'Free';
+    if (treatmentTotal > 0 && paid <= 0) return 'Nil';
+    if (paid < treatmentTotal) return 'Partial';
+    return 'Paid';
+  }
+
   List<MapEntry<Doctor, List<Appointment>>> _doctorEntries() {
     final rowsByDoctor = <Doctor, List<Appointment>>{};
     for (final doctor in widget.doctors) {
@@ -1189,6 +1207,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           final paid = appointment.paid + appointment.prescriptionPaid;
           final fee = appointment.doctorPayableAmount;
           final net = paid - fee;
+          final paymentStatus = _paymentStatusForAppointment(appointment);
 
           rows.add([
             DateFormat('dd/MM/yyyy').format(appointment.date),
@@ -1201,7 +1220,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
             paid.toStringAsFixed(0),
             fee.toStringAsFixed(0),
             net.toStringAsFixed(0),
-            paid > 0 ? 'Paid' : 'Free',
+            paymentStatus,
           ]);
         }
       }
@@ -1249,6 +1268,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           final paid = appointment.paid + appointment.prescriptionPaid;
           final fee = appointment.doctorPayableAmount;
           final net = paid - fee;
+          final paymentStatus = _paymentStatusForAppointment(appointment);
 
           rows.add([
             DateFormat('dd/MM/yyyy').format(appointment.date),
@@ -1261,7 +1281,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
             'Rs ${paid.toStringAsFixed(0)}',
             'Rs ${fee.toStringAsFixed(0)}',
             'Rs ${net.toStringAsFixed(0)}',
-            paid > 0 ? 'Paid' : 'Free',
+            paymentStatus,
           ]);
         }
       }
@@ -1616,6 +1636,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                               final consultantFee =
                                   appointment.doctorPayableAmount;
                                 final appointmentNet = paid - consultantFee;
+                                final paymentStatus =
+                                  _paymentStatusForAppointment(appointment);
 
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 0),
@@ -1726,8 +1748,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                     SizedBox(
                                       width: statusWidth,
                                       child: _statusPill(
-                                        paid > 0 ? 'Paid' : 'Free',
-                                        paid > 0,
+                                        paymentStatus,
                                       ),
                                     ),
                                     SizedBox(
@@ -1834,18 +1855,34 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     );
   }
 
-  Widget _statusPill(String text, bool isPaid) {
+  Widget _statusPill(String text) {
+    final normalized = text.trim().toLowerCase();
+    final isPaid = normalized == 'paid';
+    final isPartial = normalized == 'partial';
+    final isNil = normalized == 'nil';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isPaid ? const Color(0xFFE7F6EC) : const Color(0xFFEFF2F6),
+        color: isPaid
+            ? const Color(0xFFE7F6EC)
+            : isPartial
+                ? const Color(0xFFFFF6CC)
+                : isNil
+                    ? const Color(0xFFFDECEC)
+                    : const Color(0xFFEFF2F6),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         text,
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: isPaid ? const Color(0xFF1E8B66) : const Color(0xFF5E738F),
+          color: isPaid
+              ? const Color(0xFF1E8B66)
+              : isPartial
+                  ? const Color(0xFF8A6D00)
+                  : isNil
+                      ? const Color(0xFFB42336)
+                      : const Color(0xFF5E738F),
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),

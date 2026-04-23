@@ -173,7 +173,7 @@ Future<void> showPatientCheckinLookupDialog({
     context: context,
     builder: (dialogContext) {
       final screen = MediaQuery.of(dialogContext).size;
-      final dialogWidth = (screen.width - 24).clamp(340.0, 860.0);
+      final dialogWidth = (screen.width - 24).clamp(340.0, 1040.0);
       final maxBodyHeight = (screen.height - 250).clamp(320.0, 680.0);
 
       final queryController = TextEditingController(text: initialQuery);

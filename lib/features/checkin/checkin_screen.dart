@@ -770,6 +770,7 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
             appointment: appointment,
             discountEnabled: appointment.discount > 0,
             totalPaidOverride: appointment.paid,
+            includeTodayInOutstanding: true,
           ),
         ],
       ),
@@ -1163,7 +1164,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 _checkInPatient(patient);
                               },
                             ),
-                          ),    
+                          ),
                         ],
                       ),
                     const SizedBox(height: 8),
@@ -3994,7 +3995,19 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       return;
     }
 
-    final initialDate = DateTime.now().add(const Duration(days: 7));
+    final upcomingAppointments = appointments.present.values.where((row) {
+      if (row.id == a.id) return false;
+      if (row.patientID != a.patientID) return false;
+      final stage = row.checkinStage.trim().toLowerCase();
+      if (stage != 'scheduled' && stage != 'pending') return false;
+      return row.date.isAfter(DateTime.now());
+    }).toList(growable: false)
+      ..sort((x, y) => x.date.compareTo(y.date));
+    final existingScheduled =
+        upcomingAppointments.isEmpty ? null : upcomingAppointments.first;
+
+    final initialDate =
+        existingScheduled?.date ?? DateTime.now().add(const Duration(days: 7));
     final pickedDate = await material.showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -4007,7 +4020,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
 
     final pickedTime = await material.showTimePicker(
       context: context,
-      initialTime: const material.TimeOfDay(hour: 10, minute: 0),
+      initialTime: material.TimeOfDay(
+        hour: existingScheduled?.date.hour ?? 10,
+        minute: existingScheduled?.date.minute ?? 0,
+      ),
     );
     if (pickedTime == null) return;
     if (!mounted) return;
@@ -4035,14 +4051,19 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       return;
     }
 
-    final nextAppointment = Appointment.fromJson({'id': uuid()});
-    nextAppointment.patientID = a.patientID;
-    nextAppointment.date = scheduledAt;
-    nextAppointment.checkinStage = 'scheduled';
-    nextAppointment.isCheckedIn = false;
-    nextAppointment.operatorsIDs = [...a.operatorsIDs];
-    nextAppointment.preOpNotes = 'Follow-up visit';
-    appointments.set(nextAppointment);
+    final targetAppointment =
+        existingScheduled ?? Appointment.fromJson({'id': uuid()});
+    targetAppointment.patientID = a.patientID;
+    targetAppointment.date = scheduledAt;
+    targetAppointment.checkinStage = 'scheduled';
+    targetAppointment.isCheckedIn = false;
+    if (targetAppointment.operatorsIDs.isEmpty) {
+      targetAppointment.operatorsIDs = [...a.operatorsIDs];
+    }
+    if (targetAppointment.preOpNotes.trim().isEmpty) {
+      targetAppointment.preOpNotes = 'Follow-up visit';
+    }
+    appointments.set(targetAppointment);
 
     if (!mounted) return;
     setState(() {});
@@ -4440,15 +4461,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         .where((doctor) => seenDoctorIds.contains(doctor.id))
         .toList(growable: false)
       ..sort((x, y) => x.title.toLowerCase().compareTo(y.title.toLowerCase()));
-    final upcomingAppointments = appointments.present.values
-        .where((row) {
-          if (row.id == a.id) return false;
-          if (row.patientID != a.patientID) return false;
-          final stage = row.checkinStage.trim().toLowerCase();
-          if (stage != 'scheduled' && stage != 'pending') return false;
-          return row.date.isAfter(DateTime.now());
-        })
-        .toList(growable: false)
+    final upcomingAppointments = appointments.present.values.where((row) {
+      if (row.id == a.id) return false;
+      if (row.patientID != a.patientID) return false;
+      final stage = row.checkinStage.trim().toLowerCase();
+      if (stage != 'scheduled' && stage != 'pending') return false;
+      return row.date.isAfter(DateTime.now());
+    }).toList(growable: false)
       ..sort((x, y) => x.date.compareTo(y.date));
     final nextScheduled =
         upcomingAppointments.isEmpty ? null : upcomingAppointments.first;
@@ -4862,14 +4881,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   appointment: a,
                   discountEnabled: widget.discountEnabled,
                   totalPaidOverride: totalAfter,
+                  includeTodayInOutstanding: false,
                   onDownloadPdf: _downloadReceiptPdf,
                   onShare: _openShareOptions,
                   doctorNames: doctorNames,
                   scheduledAppointmentText: nextScheduledText,
-                  onScheduleAppointment:
-                      (a.patientID ?? '').trim().isEmpty
-                          ? null
-                          : _scheduleAppointmentFromBilling,
+                  onScheduleAppointment: (a.patientID ?? '').trim().isEmpty
+                      ? null
+                      : _scheduleAppointmentFromBilling,
                 ),
               );
 
@@ -4941,6 +4960,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
   final List<String>? doctorNames;
   final String? scheduledAppointmentText;
   final VoidCallback? onScheduleAppointment;
+  final bool includeTodayInOutstanding;
 
   const _CheckoutBillingSummaryPanel({
     required this.appointment,
@@ -4951,15 +4971,48 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     this.doctorNames,
     this.scheduledAppointmentText,
     this.onScheduleAppointment,
+    this.includeTodayInOutstanding = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final a = appointment;
+    final appointmentDate = DateTime(a.date.year, a.date.month, a.date.day);
+    final patientId = (a.patientID ?? '').trim();
+
+    double outstandingForAppointment(Appointment row) {
+      final discounted = row.discountType == 'percent'
+          ? (row.price - (row.price * row.discount / 100))
+              .clamp(0, double.infinity)
+          : (row.price - row.discount).clamp(0, double.infinity);
+      return (discounted - row.paid).clamp(0, double.infinity).toDouble();
+    }
+
+    final allPatientRows = patientId.isEmpty
+        ? <Appointment>[]
+        : appointments.present.values
+            .where((row) => row.patientID == patientId)
+            .toList(growable: false);
+
+    final outstandingRows = includeTodayInOutstanding
+        ? allPatientRows
+        : allPatientRows.where((row) {
+            final rowDate =
+                DateTime(row.date.year, row.date.month, row.date.day);
+            return rowDate != appointmentDate;
+          }).toList(growable: false);
+
+    final aggregatedOutstanding = outstandingRows.fold<double>(
+      0,
+      (sum, row) => sum + outstandingForAppointment(row),
+    );
+
     final discountedTotal = a.discountType == 'percent'
         ? (a.price - (a.price * a.discount / 100)).clamp(0, double.infinity)
         : (a.price - a.discount).clamp(0, double.infinity);
     final outstanding = (discountedTotal - a.paid).clamp(0, double.infinity);
+    final displayedOutstanding =
+        allPatientRows.isEmpty ? outstanding : aggregatedOutstanding;
     final totalAfter =
         (totalPaidOverride ?? a.paid).clamp(0, double.infinity).toDouble();
     final status = outstanding <= 0 ? 'PAID' : 'DUE';
@@ -4968,264 +5021,265 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
             .map((doctor) => doctor.title.trim())
             .where((name) => name.isNotEmpty)
             .toList(growable: false);
+    final treatmentSummary = a.selectedTreatments
+        .where((t) => t.trim().isNotEmpty)
+        .join(', ')
+        .trim();
+    final toothSummary =
+        a.selectedTeeth.where((t) => t.trim().isNotEmpty).join(', ').trim();
+
+    Widget sectionCard({
+      required String title,
+      required List<Widget> children,
+      Widget? trailing,
+    }) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FBFF),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFDCE8F8)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color(0xFF2D476D),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                if (trailing != null) trailing,
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...children,
+          ],
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Patient',
-          style: TextStyle(
-            color: Color(0xFF5A7397),
-            fontWeight: FontWeight.w700,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                a.title.trim().isEmpty ? 'Unnamed patient' : a.title,
-                style: const TextStyle(
-                  color: Color(0xFF2D476D),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
+        sectionCard(
+          title: 'Patient & Schedule',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onDownloadPdf != null)
+                ExportFileActionButton(
+                  type: ExportFileType.pdf,
+                  onPressed: onDownloadPdf,
                 ),
+              if (onShare != null)
+                Tooltip(
+                  message: 'Share',
+                  child: IconButton(
+                    icon: const Icon(
+                      FluentIcons.share,
+                      size: 18,
+                      color: Color(0xFF7C3AED),
+                    ),
+                    onPressed: onShare,
+                  ),
+                ),
+            ],
+          ),
+          children: [
+            Text(
+              toTitleCase(a.title.trim().isEmpty ? 'Unnamed patient' : a.title),
+              style: const TextStyle(
+                color: Color(0xFF2D476D),
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
               ),
             ),
-            if (onDownloadPdf != null)
-              ExportFileActionButton(
-                type: ExportFileType.pdf,
-                onPressed: onDownloadPdf,
+            const SizedBox(height: 6),
+            Text(
+              'Patient ID: ${a.patientID ?? '-'}',
+              style: const TextStyle(color: Color(0xFF5A7397)),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Age: ${a.patient?.age ?? 0}${(a.patient?.gender == 1 ? 'M' : a.patient?.gender == 0 ? 'F' : '')}  • ${a.patient?.phone ?? ''}',
+              style: const TextStyle(
+                color: Color(0xFF6D84A8),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
-            if (onShare != null)
-              Tooltip(
-                message: 'Share',
-                child: IconButton(
-                  icon: const Icon(
-                    FluentIcons.share,
-                    size: 18,
-                    color: Color(0xFF7C3AED),
-                  ),
-                  onPressed: onShare,
-                ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFDCE8F8)),
               ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Patient ID: ${a.patientID ?? '-'}',
-          style: const TextStyle(color: Color(0xFF5A7397)),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Age: ${a.patient?.age ?? 0}${(a.patient?.gender == 1 ? 'M' : a.patient?.gender == 0 ? 'F' : '')}  • ${a.patient?.phone ?? ''}',
-          style: const TextStyle(
-            color: Color(0xFF6D84A8),
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Doctor: ${resolvedDoctorNames.isEmpty ? 'Unassigned' : resolvedDoctorNames.join(', ')}',
-          style: const TextStyle(
-            color: Color(0xFFD6455D),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Divider(),
-        const SizedBox(height: 10),
-        const Text(
-          'Treatment',
-          style: TextStyle(
-            color: Color(0xFF2D476D),
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          a.selectedTreatments
-                  .where((t) => t.trim().isNotEmpty)
-                  .join(', ')
-                  .trim()
-                  .isEmpty
-              ? '-'
-              : a.selectedTreatments
-                  .where((t) => t.trim().isNotEmpty)
-                  .join(', '),
-          style: const TextStyle(
-            color: Color(0xFF5A7397),
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Divider(),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF1F2),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFF4C4CB)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                FluentIcons.warning,
-                size: 14,
-                color: Color(0xFFD6455D),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Outstanding Balance',
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      scheduledAppointmentText == null
+                          ? 'No scheduled appointment'
+                          : 'Next: $scheduledAppointmentText',
                       style: TextStyle(
-                        color: Color(0xFFD6455D),
-                        fontWeight: FontWeight.w800,
+                        color: scheduledAppointmentText == null
+                            ? const Color(0xFF5A7397)
+                            : const Color(0xFF184A9C),
+                        fontWeight: FontWeight.w700,
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '₹${outstanding.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        color: Color(0xFFB42336),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
+                  ),
+                  if (onScheduleAppointment != null)
+                    Tooltip(
+                      message: scheduledAppointmentText == null
+                          ? 'Add Scheduled Appointment'
+                          : 'Edit Scheduled Appointment',
+                      child: IconButton(
+                        icon: Icon(
+                          scheduledAppointmentText == null
+                              ? FluentIcons.add
+                              : FluentIcons.edit,
+                          size: 14,
+                        ),
+                        onPressed: onScheduleAppointment,
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Scheduled Appointment',
-          style: TextStyle(
-            color: Color(0xFF2D476D),
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FBFF),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFDCE8F8)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                scheduledAppointmentText == null
-                    ? 'No scheduled appointment'
-                    : 'Next: $scheduledAppointmentText',
-                style: TextStyle(
-                  color: scheduledAppointmentText == null
-                      ? const Color(0xFF5A7397)
-                      : const Color(0xFF184A9C),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-              if (scheduledAppointmentText == null &&
-                  onScheduleAppointment != null) ...[
-                const SizedBox(height: 8),
-                AppButton(
-                  label: 'Schedule Appointment',
-                  compact: true,
-                  variant: AppButtonVariant.secondary,
-                  onPressed: onScheduleAppointment,
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Divider(),
-        const SizedBox(height: 10),
-        const Text(
-          'Billing Summary',
-          style: TextStyle(
-            color: Color(0xFF2D476D),
-            fontWeight: FontWeight.w700,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _checkoutSummaryLine(
-            'Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
-        const SizedBox(height: 6),
-        if (discountEnabled) ...[
-          _checkoutSummaryLine(
-            'Discount Applied',
-            a.discount <= 0
-                ? '-'
-                : a.discountType == 'percent'
-                    ? '-${a.discount.toStringAsFixed(0)}%'
-                    : '-₹${a.discount.toStringAsFixed(0)}',
-            valueColor: const Color(0xFFD6455D),
-          ),
-          _checkoutSummaryLine(
-            'Discounted Total',
-            '₹${discountedTotal.toStringAsFixed(0)}',
-            valueColor: const Color(0xFF1459AD),
-          ),
-          const SizedBox(height: 10),
-        ],
-        _checkoutSummaryLine('Already Paid', '₹${a.paid.toStringAsFixed(0)}'),
-        _checkoutSummaryLine(
-          'Remaining Balance',
-          '₹${outstanding.toStringAsFixed(0)}',
-          valueColor: const Color(0xFFD6455D),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'After Payment',
-          style: TextStyle(
-            color: Color(0xFF2D476D),
-            fontWeight: FontWeight.w700,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _checkoutSummaryLine('Total Paid', '₹${totalAfter.toStringAsFixed(0)}'),
-        _checkoutSummaryLine(
-          'Balance',
-          '₹${(discountedTotal - totalAfter).clamp(0, double.infinity).toStringAsFixed(0)}',
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: status == 'PAID'
-                ? const Color(0xFFDCFCE7)
-                : const Color(0xFFFFF1F2),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            status,
-            style: TextStyle(
-              color: status == 'PAID'
-                  ? const Color(0xFF16A34A)
-                  : const Color(0xFFD6455D),
-              fontWeight: FontWeight.w800,
             ),
-          ),
+          ],
+        ),
+        sectionCard(
+          title: 'Treatment & Tooth Info',
+          children: [
+            _checkoutSummaryLine(
+              'Treatment',
+              treatmentSummary.isEmpty ? '-' : treatmentSummary,
+            ),
+            Text(
+              'Doctor: ${resolvedDoctorNames.isEmpty ? 'Unassigned' : resolvedDoctorNames.join(', ')}',
+              style: const TextStyle(
+                color: Color(0xFFD6455D),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            _checkoutSummaryLine(
+              'Tooth/Area',
+              toothSummary.isEmpty ? '-' : toothSummary,
+            ),
+          ],
+        ),
+        sectionCard(
+          title: 'Billing Summary',
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1F2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFF4C4CB)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    FluentIcons.warning,
+                    size: 14,
+                    color: Color(0xFFD6455D),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Outstanding Balance',
+                          style: TextStyle(
+                            color: Color(0xFFD6455D),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '₹${displayedOutstanding.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            color: Color(0xFFB42336),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            _checkoutSummaryLine(
+                'Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
+            if (discountEnabled) ...[
+              _checkoutSummaryLine(
+                'Discount Applied',
+                a.discount <= 0
+                    ? '-'
+                    : a.discountType == 'percent'
+                        ? '-${a.discount.toStringAsFixed(0)}%'
+                        : '-₹${a.discount.toStringAsFixed(0)}',
+                valueColor: const Color(0xFFD6455D),
+              ),
+              _checkoutSummaryLine(
+                'Discounted Total',
+                '₹${discountedTotal.toStringAsFixed(0)}',
+                valueColor: const Color(0xFF1459AD),
+              ),
+            ],
+            _checkoutSummaryLine('Paid Today', '₹${a.paid.toStringAsFixed(0)}'),
+            _checkoutSummaryLine(
+              'Balance',
+              '₹${(discountedTotal - totalAfter).clamp(0, double.infinity).toStringAsFixed(0)}',
+              valueColor: const Color(0xFFD6455D),
+            ),
+            const SizedBox(height: 8),
+            _checkoutSummaryLine(
+              'Total Balance',
+              '₹${displayedOutstanding.toStringAsFixed(0)}',
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: status == 'PAID'
+                    ? const Color(0xFFDCFCE7)
+                    : const Color(0xFFFFF1F2),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                status,
+                style: TextStyle(
+                  color: status == 'PAID'
+                      ? const Color(0xFF16A34A)
+                      : const Color(0xFFD6455D),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
