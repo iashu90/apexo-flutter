@@ -145,10 +145,10 @@ class _Routes {
         ),
         Route(
           title: 'Doctors',
-          identifier: 'doctors_v2',
+          identifier: 'doctors',
           icon: FluentIcons.medical,
           screen: DoctorsScreenV2.new,
-          accessible: permissions.canAccessByRouteIdentifier('doctors_v2'),
+          accessible: permissions.canAccessByRouteIdentifier('doctors'),
           navbarTitle: 'Doctors',
           onSelect: () async {
             await doctors.synchronize();
@@ -223,10 +223,10 @@ class _Routes {
         ),
         Route(
           title: 'Report',
-          identifier: 'report_v2',
+          identifier: 'report',
           icon: FluentIcons.report_document,
           screen: ReportV2Screen.new,
-          accessible: permissions.canAccessByRouteIdentifier('report_v2'),
+          accessible: permissions.canAccessByRouteIdentifier('report'),
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();

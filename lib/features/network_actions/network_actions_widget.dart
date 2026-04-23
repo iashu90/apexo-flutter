@@ -24,7 +24,7 @@ class NetworkActions extends StatelessWidget {
               children: [
                 ...networkActions.actions.where((action) => action.hidden != true).map(
                       (action) => Container(
-                        margin: const EdgeInsets.only(left: 3, top: 7),
+                        margin: const EdgeInsets.only(left: 3),
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
@@ -56,7 +56,7 @@ class NetworkActions extends StatelessWidget {
             onPressed: action.onPressed,
             iconButtonMode: IconButtonMode.large,
             style: ButtonStyle(
-                shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
+              shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
                 iconSize: WidgetStateProperty.all(18),
                 backgroundColor:
                     WidgetStatePropertyAll(action.processing ?? false ? action.activeColor : Colors.transparent)),

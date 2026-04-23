@@ -11,6 +11,7 @@ class AppButton extends StatelessWidget {
   final AppButtonVariant variant;
   final Widget? leading;
   final bool expanded;
+  final bool compact;
 
   const AppButton({
     super.key,
@@ -19,10 +20,15 @@ class AppButton extends StatelessWidget {
     this.variant = AppButtonVariant.primary,
     this.leading,
     this.expanded = false,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final horizontalPadding = compact ? 10.0 : 16.0;
+    final verticalPadding = compact ? 6.0 : 10.0;
+    final minHeight = compact ? 30.0 : 40.0;
+
     final child = Row(
       mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -41,6 +47,11 @@ class AppButton extends StatelessWidget {
           onPressed: onPressed,
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary600,
+            minimumSize: Size(0, minHeight),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
             side: const BorderSide(color: AppColors.borderSoft),
             shape: const RoundedRectangleBorder(borderRadius: AppRadius.button),
           ),
@@ -51,6 +62,11 @@ class AppButton extends StatelessWidget {
           onPressed: onPressed,
           style: TextButton.styleFrom(
             foregroundColor: AppColors.primary600,
+            minimumSize: Size(0, minHeight),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
             shape: const RoundedRectangleBorder(borderRadius: AppRadius.button),
           ),
           child: child,
@@ -62,6 +78,11 @@ class AppButton extends StatelessWidget {
             elevation: 0,
             backgroundColor: AppColors.primary500,
             foregroundColor: Colors.white,
+            minimumSize: Size(0, minHeight),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
             shape: const RoundedRectangleBorder(borderRadius: AppRadius.button),
           ),
           child: child,

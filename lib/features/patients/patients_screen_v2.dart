@@ -178,9 +178,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             style: const TextStyle(color: Color(0xFF5B789F)),
           ),
           actions: [
-            FilledButton(
+            AppButton(
+              label: 'Close',
+              variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
             ),
           ],
         ),
@@ -435,16 +436,15 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
           ],
         ),
         actions: [
-          Button(
+          AppButton(
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(const Color(0xFFD6455D)),
-            ),
+          AppButton(
+            label: 'Delete',
+            variant: AppButtonVariant.ghost,
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
           ),
         ],
       ),
@@ -463,9 +463,10 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
             '$e\n\nDelete or reassign linked appointments/labworks first.',
           ),
           actions: [
-            FilledButton(
+            AppButton(
+              label: 'OK',
+              variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('OK'),
             ),
           ],
         ),
@@ -1172,9 +1173,10 @@ class _TreatmentJourneyTimelineCard extends StatelessWidget {
                       ],
                     ),
                     actions: [
-                      Button(
+                      AppButton(
+                        label: 'Close',
+                        variant: AppButtonVariant.secondary,
                         onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Close'),
                       ),
                     ],
                   ),
@@ -2997,6 +2999,7 @@ class _AllPatientsListCard extends StatelessWidget {
                             padding: const EdgeInsets.only(right: 6),
                             child: AppButton(
                               label: l,
+                              compact: true,
                               variant: selectedAlphabet == l
                                   ? AppButtonVariant.primary
                                   : AppButtonVariant.secondary,
@@ -3023,6 +3026,7 @@ class _AllPatientsListCard extends StatelessWidget {
                               padding: const EdgeInsets.only(right: 6),
                               child: AppButton(
                                 label: l,
+                                compact: true,
                                 variant: selectedAlphabet == l
                                     ? AppButtonVariant.primary
                                     : AppButtonVariant.secondary,

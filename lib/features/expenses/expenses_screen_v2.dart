@@ -245,7 +245,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
 
   Widget _buildSummaryStrip(List<_ExpenseSummaryCardData> cards) {
     return SizedBox(
-      height: 94,
+      height: 82,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: cards.length,
@@ -253,8 +253,8 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
         itemBuilder: (context, index) {
           final card = cards[index];
           return Container(
-            width: 250,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            width: 160,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
@@ -274,7 +274,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                   card.title,
                   style: const TextStyle(
                     color: Color(0xFF5A7397),
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -284,7 +284,7 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                   style: TextStyle(
                     color: card.valueColor,
                     fontWeight: FontWeight.w800,
-                    fontSize: 24,
+                    fontSize: 20,
                   ),
                 ),
               ],

@@ -27,6 +27,7 @@ class ReportV2Screen extends StatefulWidget {
 
 class _ReportV2ScreenState extends State<ReportV2Screen> {
   bool _showHeavyCards = false;
+  int _monthlyOffset = 0;
 
   @override
   void initState() {
@@ -62,21 +63,47 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Reports',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF12355F),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Advanced analytics for appointments, traffic, and doctor outputs',
-                      style: TextStyle(
-                        color: Color(0xFF5A7397),
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Reports',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF12355F),
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Advanced analytics for appointments, traffic, and doctor outputs',
+                                style: TextStyle(
+                                  color: Color(0xFF5A7397),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _ReportMonthNavigator(
+                          label: DateFormat('MMMM yyyy').format(
+                            DateTime(
+                              DateTime.now().year,
+                              DateTime.now().month - _monthlyOffset,
+                              1,
+                            ),
+                          ),
+                          canGoForward: _monthlyOffset > 0,
+                          onBack: () => setState(() => _monthlyOffset += 1),
+                          onForward: _monthlyOffset > 0
+                              ? () => setState(() => _monthlyOffset -= 1)
+                              : null,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     _DailyAppointmentsTrendSection(
@@ -109,18 +136,21 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                             width: twoColWidth,
                             child: _MonthlyAppointmentsTrendSection(
                               rows: allAppointments,
+                              windowOffset: _monthlyOffset,
                             ),
                           ),
                           SizedBox(
                             width: twoColWidth,
                             child: _MonthlyRevenueTrendSection(
                               rows: allAppointments,
+                              windowOffset: _monthlyOffset,
                             ),
                           ),
                           SizedBox(
                             width: twoColWidth,
                             child: _MonthlyExpensesTrendSection(
                               rows: allExpenses,
+                              windowOffset: _monthlyOffset,
                             ),
                           ),
                           SizedBox(
@@ -128,6 +158,7 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                             child: _MonthlyNetRevenueTrendSection(
                               appointmentsRows: allAppointments,
                               expenseRows: allExpenses,
+                              windowOffset: _monthlyOffset,
                             ),
                           ),
                           SizedBox(
@@ -138,6 +169,7 @@ class _ReportV2ScreenState extends State<ReportV2Screen> {
                             width: twoColWidth,
                             child: _MonthlyTreatmentDistributionCard(
                               rows: allAppointments,
+                              monthOffset: _monthlyOffset,
                             ),
                           ),
                           SizedBox(
@@ -1181,30 +1213,25 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
   }
 }
 
-class _MonthlyTreatmentDistributionCard extends StatefulWidget {
+class _MonthlyTreatmentDistributionCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int monthOffset;
 
-  const _MonthlyTreatmentDistributionCard({required this.rows});
-
-  @override
-  State<_MonthlyTreatmentDistributionCard> createState() =>
-      _MonthlyTreatmentDistributionCardState();
-}
-
-class _MonthlyTreatmentDistributionCardState
-    extends State<_MonthlyTreatmentDistributionCard> {
-  int _monthOffset = 0;
+  const _MonthlyTreatmentDistributionCard({
+    required this.rows,
+    required this.monthOffset,
+  });
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final monthStart = DateTime(now.year, now.month - _monthOffset, 1);
+    final monthStart = DateTime(now.year, now.month - monthOffset, 1);
     final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
-    final scoped = widget.rows
+    final scoped = this.rows
         .where((a) => !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
         .toList(growable: false);
-    final rows = _treatmentDistributionRows(scoped);
-    final total = rows.fold<int>(0, (s, e) => s + e.value);
+    final distributionRows = _treatmentDistributionRows(scoped);
+    final total = distributionRows.fold<int>(0, (s, e) => s + e.value);
     const colors = [
       Color(0xFF2D7BD8),
       Color(0xFF2BA58D),
@@ -1219,15 +1246,9 @@ class _MonthlyTreatmentDistributionCardState
       child: _ReportContainer(
         title: 'Monthly Treatment Distribution',
         subtitle: DateFormat('MMMM yyyy').format(monthStart),
-        trailing: _TrendNavButtons(
-          canGoForward: _monthOffset > 0,
-          onBack: () => setState(() => _monthOffset += 1),
-          onForward:
-              _monthOffset > 0 ? () => setState(() => _monthOffset -= 1) : null,
-        ),
         child: SizedBox(
           height: 250,
-          child: rows.isEmpty
+          child: distributionRows.isEmpty
               ? const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -1244,7 +1265,7 @@ class _MonthlyTreatmentDistributionCardState
                         height: 112,
                         child: CustomPaint(
                           painter: _DonutPainter(
-                            rows: rows,
+                            rows: distributionRows,
                             colors: colors,
                           ),
                           child: Center(
@@ -1265,7 +1286,7 @@ class _MonthlyTreatmentDistributionCardState
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: rows.asMap().entries.map((entry) {
+                          children: distributionRows.asMap().entries.map((entry) {
                             final row = entry.value;
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 6),
@@ -1489,115 +1510,77 @@ class _DailyRevenueTrendSectionState
   }
 }
 
-class _MonthlyAppointmentsTrendSection extends StatefulWidget {
+class _MonthlyAppointmentsTrendSection extends StatelessWidget {
   final List<Appointment> rows;
+  final int windowOffset;
 
-  const _MonthlyAppointmentsTrendSection({required this.rows});
-
-  @override
-  State<_MonthlyAppointmentsTrendSection> createState() =>
-      _MonthlyAppointmentsTrendSectionState();
-}
-
-class _MonthlyAppointmentsTrendSectionState
-    extends State<_MonthlyAppointmentsTrendSection> {
-  int _windowOffset = 0;
+  const _MonthlyAppointmentsTrendSection({
+    required this.rows,
+    required this.windowOffset,
+  });
 
   @override
   Widget build(BuildContext context) {
     return _MonthlyAppointmentsTrendWindowCard(
-      rows: widget.rows,
-      windowOffset: _windowOffset,
-      onBack: () => setState(() => _windowOffset += 1),
-      onForward: _windowOffset > 0
-          ? () => setState(() => _windowOffset -= 1)
-          : null,
+      rows: rows,
+      windowOffset: windowOffset,
     );
   }
 }
 
-class _MonthlyRevenueTrendSection extends StatefulWidget {
+class _MonthlyRevenueTrendSection extends StatelessWidget {
   final List<Appointment> rows;
+  final int windowOffset;
 
-  const _MonthlyRevenueTrendSection({required this.rows});
-
-  @override
-  State<_MonthlyRevenueTrendSection> createState() =>
-      _MonthlyRevenueTrendSectionState();
-}
-
-class _MonthlyRevenueTrendSectionState
-    extends State<_MonthlyRevenueTrendSection> {
-  int _windowOffset = 0;
+  const _MonthlyRevenueTrendSection({
+    required this.rows,
+    required this.windowOffset,
+  });
 
   @override
   Widget build(BuildContext context) {
     return _MonthlyRevenueTrendWindowCard(
-      rows: widget.rows,
-      windowOffset: _windowOffset,
-      onBack: () => setState(() => _windowOffset += 1),
-      onForward: _windowOffset > 0
-          ? () => setState(() => _windowOffset -= 1)
-          : null,
+      rows: rows,
+      windowOffset: windowOffset,
     );
   }
 }
 
-class _MonthlyExpensesTrendSection extends StatefulWidget {
+class _MonthlyExpensesTrendSection extends StatelessWidget {
   final List<Expense> rows;
+  final int windowOffset;
 
-  const _MonthlyExpensesTrendSection({required this.rows});
-
-  @override
-  State<_MonthlyExpensesTrendSection> createState() =>
-      _MonthlyExpensesTrendSectionState();
-}
-
-class _MonthlyExpensesTrendSectionState
-    extends State<_MonthlyExpensesTrendSection> {
-  int _windowOffset = 0;
+  const _MonthlyExpensesTrendSection({
+    required this.rows,
+    required this.windowOffset,
+  });
 
   @override
   Widget build(BuildContext context) {
     return _MonthlyExpensesTrendWindowCard(
-      rows: widget.rows,
-      windowOffset: _windowOffset,
-      onBack: () => setState(() => _windowOffset += 1),
-      onForward: _windowOffset > 0
-          ? () => setState(() => _windowOffset -= 1)
-          : null,
+      rows: rows,
+      windowOffset: windowOffset,
     );
   }
 }
 
-class _MonthlyNetRevenueTrendSection extends StatefulWidget {
+class _MonthlyNetRevenueTrendSection extends StatelessWidget {
   final List<Appointment> appointmentsRows;
   final List<Expense> expenseRows;
+  final int windowOffset;
 
   const _MonthlyNetRevenueTrendSection({
     required this.appointmentsRows,
     required this.expenseRows,
+    required this.windowOffset,
   });
-
-  @override
-  State<_MonthlyNetRevenueTrendSection> createState() =>
-      _MonthlyNetRevenueTrendSectionState();
-}
-
-class _MonthlyNetRevenueTrendSectionState
-    extends State<_MonthlyNetRevenueTrendSection> {
-  int _windowOffset = 0;
 
   @override
   Widget build(BuildContext context) {
     return _MonthlyNetRevenueTrendWindowCard(
-      appointmentsRows: widget.appointmentsRows,
-      expenseRows: widget.expenseRows,
-      windowOffset: _windowOffset,
-      onBack: () => setState(() => _windowOffset += 1),
-      onForward: _windowOffset > 0
-          ? () => setState(() => _windowOffset -= 1)
-          : null,
+      appointmentsRows: appointmentsRows,
+      expenseRows: expenseRows,
+      windowOffset: windowOffset,
     );
   }
 }
@@ -1656,14 +1639,10 @@ class _DailyAppointmentsTrendWindowCard extends StatelessWidget {
 class _MonthlyAppointmentsTrendWindowCard extends StatelessWidget {
   final List<Appointment> rows;
   final int windowOffset;
-  final VoidCallback onBack;
-  final VoidCallback? onForward;
 
   const _MonthlyAppointmentsTrendWindowCard({
     required this.rows,
     required this.windowOffset,
-    required this.onBack,
-    required this.onForward,
   });
 
   @override
@@ -1694,11 +1673,6 @@ class _MonthlyAppointmentsTrendWindowCard extends StatelessWidget {
             '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
         rows: points,
         barColor: const Color(0xFF2BA58D),
-        trailing: _TrendNavButtons(
-          canGoForward: windowOffset > 0,
-          onBack: onBack,
-          onForward: onForward,
-        ),
       ),
     );
   }
@@ -1759,14 +1733,10 @@ class _DailyRevenueTrendWindowCard extends StatelessWidget {
 class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
   final List<Appointment> rows;
   final int windowOffset;
-  final VoidCallback onBack;
-  final VoidCallback? onForward;
 
   const _MonthlyRevenueTrendWindowCard({
     required this.rows,
     required this.windowOffset,
-    required this.onBack,
-    required this.onForward,
   });
 
   @override
@@ -1797,11 +1767,6 @@ class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
         rows: points,
         barColor: const Color(0xFF2D7BD8),
         valueFormatter: formatIndianShortCurrency,
-        trailing: _TrendNavButtons(
-          canGoForward: windowOffset > 0,
-          onBack: onBack,
-          onForward: onForward,
-        ),
       ),
     );
   }
@@ -1810,14 +1775,10 @@ class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
 class _MonthlyExpensesTrendWindowCard extends StatelessWidget {
   final List<Expense> rows;
   final int windowOffset;
-  final VoidCallback onBack;
-  final VoidCallback? onForward;
 
   const _MonthlyExpensesTrendWindowCard({
     required this.rows,
     required this.windowOffset,
-    required this.onBack,
-    required this.onForward,
   });
 
   @override
@@ -1848,11 +1809,6 @@ class _MonthlyExpensesTrendWindowCard extends StatelessWidget {
         rows: points,
         barColor: const Color(0xFFD6455D),
         valueFormatter: formatIndianShortCurrency,
-        trailing: _TrendNavButtons(
-          canGoForward: windowOffset > 0,
-          onBack: onBack,
-          onForward: onForward,
-        ),
       ),
     );
   }
@@ -1862,15 +1818,11 @@ class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
   final List<Appointment> appointmentsRows;
   final List<Expense> expenseRows;
   final int windowOffset;
-  final VoidCallback onBack;
-  final VoidCallback? onForward;
 
   const _MonthlyNetRevenueTrendWindowCard({
     required this.appointmentsRows,
     required this.expenseRows,
     required this.windowOffset,
-    required this.onBack,
-    required this.onForward,
   });
 
   @override
@@ -1905,11 +1857,6 @@ class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
         rows: points,
         barColor: const Color(0xFF2BA58D),
         valueFormatter: formatIndianShortCurrency,
-        trailing: _TrendNavButtons(
-          canGoForward: windowOffset > 0,
-          onBack: onBack,
-          onForward: onForward,
-        ),
       ),
     );
   }
@@ -2154,6 +2101,63 @@ class _TrendNavButtons extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ReportMonthNavigator extends StatelessWidget {
+  final String label;
+  final VoidCallback onBack;
+  final VoidCallback? onForward;
+  final bool canGoForward;
+
+  const _ReportMonthNavigator({
+    required this.label,
+    required this.onBack,
+    required this.onForward,
+    required this.canGoForward,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: IconButton(
+              icon: const Icon(FluentIcons.chevron_left, size: 11),
+              onPressed: onBack,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF36557C),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: IconButton(
+              icon: const Icon(FluentIcons.chevron_right, size: 11),
+              onPressed: canGoForward ? onForward : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
