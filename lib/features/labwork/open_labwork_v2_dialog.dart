@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
@@ -385,16 +386,15 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
         ),
       ),
       actions: [
-        Button(
+          AppButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
         ),
-        FilledButton(
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-          ),
+          AppButton(
           onPressed: _saving ? null : _save,
-          child: Text(_saving ? 'Saving...' : 'Save'),
+            label: _saving ? 'Saving...' : 'Save',
+            variant: AppButtonVariant.primary,
         ),
       ],
     );

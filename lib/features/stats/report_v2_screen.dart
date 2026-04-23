@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -814,18 +815,16 @@ class _ReportDoctorAppointmentDoneCardState
                 ),
               ),
               const Spacer(),
-              Button(
+              AppButton(
+                label: _range == _RangeFilter.month
+                    ? 'Collapse'
+                    : 'Expand',
+                variant: AppButtonVariant.secondary,
                 onPressed: () => setState(() {
                   _range = _range == _RangeFilter.month
                       ? _RangeFilter.today
                       : _RangeFilter.month;
                 }),
-                child: Icon(
-                  _range == _RangeFilter.month
-                      ? FluentIcons.chevron_up
-                      : FluentIcons.chevron_down,
-                  size: 12,
-                ),
               ),
             ],
           ),

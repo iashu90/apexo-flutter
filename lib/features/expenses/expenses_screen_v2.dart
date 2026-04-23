@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -169,20 +170,10 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
               : () => _exportPdf(rows),
         ),
         const SizedBox(width: 8),
-        FilledButton(
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-            foregroundColor: WidgetStateProperty.all(Colors.white),
-          ),
+        AppButton(
           onPressed: () => _openExpenseModal(),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(FluentIcons.add, size: 14),
-              SizedBox(width: 6),
-              Text('New Expense'),
-            ],
-          ),
+          label: 'New Expense',
+          leading: const Icon(FluentIcons.add, size: 14),
         ),
       ],
     );
@@ -418,8 +409,9 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
             _buildMonthSelector(),
             const SizedBox(width: 8),
           ],
-          Button(
-            child: const Text('Reset'),
+          AppButton(
+            label: 'Reset',
+            variant: AppButtonVariant.secondary,
             onPressed: () {
               setState(() {
                 _query = '';
@@ -1088,15 +1080,8 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                     children: [
                       InfoLabel(
                         label: 'Expense Date:',
-                        child: Button(
-                          style: ButtonStyle(
-                            padding: WidgetStateProperty.all(
-                              const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 9),
-                            ),
-                            backgroundColor: WidgetStateProperty.all(
-                                const Color(0xFFF8FAFE)),
-                          ),
+                        child: AppButton(
+                          variant: AppButtonVariant.secondary,
                           onPressed: () async {
                             final picked = await material.showDatePicker(
                               context: context,
@@ -1116,20 +1101,9 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                               );
                             });
                           },
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  DateFormat('dd/MM/yyyy').format(selectedDate),
-                                  style: const TextStyle(
-                                    color: Color(0xFF1F2A3A),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const Icon(FluentIcons.calendar, size: 14),
-                            ],
-                          ),
+                          label: DateFormat('dd/MM/yyyy').format(selectedDate),
+                          leading: const Icon(FluentIcons.calendar, size: 12),
+                          expanded: true,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -1311,15 +1285,13 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
               ),
             ),
             actions: [
-              Button(
+              AppButton(
+                label: 'Cancel',
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
+                variant: AppButtonVariant.secondary,
               ),
-              FilledButton(
-                style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                ),
+              AppButton(
+                label: draft.id.isEmpty ? 'Create Expense' : 'Save Changes',
                 onPressed: () {
                   final normalizedCategory = selectedCategory == 'Other'
                       ? customCategoryController.text.trim()
@@ -1350,14 +1322,12 @@ class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
                   expenses.set(draft);
                   Navigator.pop(dialogContext);
                 },
-                child:
-                    Text(editing == null ? 'Save Expense' : 'Update Expense'),
               ),
             ],
           );
         },
-      ),
-    );
+    ),
+  );
   }
 }
 
