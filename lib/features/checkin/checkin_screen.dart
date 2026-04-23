@@ -504,143 +504,6 @@ Future<void> openAppointmentJourneyDialog(
   );
 }
 
-Future<void> openNextCheckinStepperDialog(
-  BuildContext context,
-  Appointment appointment, {
-  int? initialStep,
-}) {
-  return openAppointmentJourneyDialog(
-    context,
-    appointment,
-    initialStep: initialStep,
-  );
-}
-
-Future<void> openCheckinAppointmentModal(
-  BuildContext context,
-  Appointment appointment,
-) async {
-  final screenWidth = MediaQuery.of(context).size.width;
-  final normalizedStage = appointment.checkinStage.trim().toLowerCase();
-  final isWideStage = normalizedStage == 'checkout' ||
-      normalizedStage == 'with_doctor' ||
-      normalizedStage == 'treatment';
-  final popupWidth = screenWidth < 760
-      ? screenWidth - 20
-      : isWideStage
-          ? (screenWidth * 0.75).clamp(760.0, 1000.0)
-          : 540.0;
-  final stageLabel =
-      normalizedStage == 'with_doctor' || normalizedStage == 'treatment'
-          ? 'Treatment'
-          : normalizedStage == 'checkout'
-              ? 'Billing'
-              : normalizedStage == 'completed'
-                  ? 'Complete'
-                  : 'Check-in';
-  final patientName = appointment.title.trim().isEmpty
-      ? 'Unnamed patient'
-      : _toTitleCase(appointment.title);
-  final patientAge = appointment.patient?.age ?? 0;
-  final patientGender = appointment.patient?.gender == 1 ? 'M' : 'F';
-  final patientPhone = (appointment.patient?.phone ?? '').trim();
-
-  await showDialog<void>(
-    context: context,
-    barrierColor: const Color(0x660A1B33),
-    builder: (dialogContext) => SafeArea(
-      child: Align(
-        alignment: Alignment.center,
-        child: Container(
-          width: popupWidth,
-          height: screenWidth < 760
-              ? null
-              : MediaQuery.of(context).size.height * 0.9,
-          margin: const EdgeInsets.fromLTRB(10, 12, 12, 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x2A0D2F5B),
-                blurRadius: 24,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: appointment.checkinStage == 'completed'
-                        ? const [Color(0xFF2BA58D), Color(0xFF1D8D77)]
-                        : appointment.checkinStage == 'checkout'
-                            ? const [Color(0xFF8B5CF6), Color(0xFF6D3FD2)]
-                            : (appointment.checkinStage == 'with_doctor' ||
-                                    appointment.checkinStage == 'treatment')
-                                ? const [Color(0xFF5A84E6), Color(0xFF3F68CC)]
-                                : const [Color(0xFFE4A11B), Color(0xFFD28C02)],
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(14),
-                    topRight: Radius.circular(14),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            stageLabel,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$patientName • ${patientAge}y • $patientGender • ${patientPhone.isEmpty ? '-' : patientPhone}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFFEAF2FF),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(FluentIcons.cancel, size: 12),
-                      style: ButtonStyle(
-                        foregroundColor: WidgetStateProperty.all(Colors.white),
-                      ),
-                      onPressed: () => Navigator.pop(dialogContext),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: _CheckinHistoryDetails(
-                  appointment: appointment,
-                  rootContext: context,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
 class _CheckinTreatmentStageScreen extends StatelessWidget {
   final Appointment appointment;
   final List<Appointment> allAppointmentsForPatient;
@@ -1300,18 +1163,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 _checkInPatient(patient);
                               },
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          AppButton(
-                            onPressed: filtered.isEmpty
-                                ? null
-                                : () {
-                                    final target =
-                                        _selectedAppointment ?? filtered.first;
-                                    _openNextCheckinStepper(target);
-                                  },
-                            label: 'Next Checkin',
-                          ),
+                          ),    
                         ],
                       ),
                     const SizedBox(height: 8),
@@ -3572,13 +3424,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             (diagnosis) => _quickChip(
                               label: diagnosis,
                               selected: a.diagnosis.contains(diagnosis),
-                              selectedColor: const Color(0xFF2D7BD8),
-                              selectedTextColor: Colors.white,
-                              normalColor: const Color(0xFFF3F4F6),
-                              normalTextColor: const Color(0xFF2D3F58),
-                              radius: 7,
-                              selectedBorderColor: const Color(0xFF2D7BD8),
-                              normalBorderColor: const Color(0xFFDBE1EA),
                               onTap: () {
                                 setState(() {
                                   final updated =
@@ -3641,13 +3486,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               (t) => _quickChip(
                                 label: t,
                                 selected: _selectedTreatments.contains(t),
-                                selectedColor: const Color(0xFF2D7BD8),
-                                selectedTextColor: Colors.white,
-                                normalColor: const Color(0xFFF3F4F6),
-                                normalTextColor: const Color(0xFF2D3F58),
-                                selectedBorderColor: const Color(0xFF2D7BD8),
-                                normalBorderColor: const Color(0xFFDBE1EA),
-                                radius: 7,
                                 onTap: () {
                                   setState(() {
                                     if (_selectedTreatments.contains(t)) {
@@ -3695,13 +3533,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 label: type,
                                 selected:
                                     _selectedConsultationTypes.contains(type),
-                                selectedColor: const Color(0xFFFFDDBB),
-                                selectedTextColor: const Color(0xFF8B4500),
-                                normalColor: const Color(0xFFFFF3E6),
-                                normalTextColor: const Color(0xFF8B5C2E),
-                                selectedBorderColor: const Color(0xFFFFB36C),
-                                normalBorderColor: const Color(0xFFF3D9BD),
-                                radius: 7,
+                                selectedVariant: AppButtonVariant.ghost,
+                                normalVariant: AppButtonVariant.secondary,
                                 onTap: () {
                                   setState(() {
                                     if (_selectedConsultationTypes
@@ -3742,13 +3575,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 label: type,
                                 selected:
                                     _selectedConsultationTypes.contains(type),
-                                selectedColor: const Color(0xFFE2EEFF),
-                                selectedTextColor: const Color(0xFF184A9C),
-                                normalColor: const Color(0xFFF2F7FF),
-                                normalTextColor: const Color(0xFF355279),
-                                selectedBorderColor: const Color(0xFF7FA9EA),
-                                normalBorderColor: const Color(0xFFD6E4F7),
-                                radius: 7,
+                                selectedVariant: AppButtonVariant.ghost,
+                                normalVariant: AppButtonVariant.secondary,
                                 onTap: () {
                                   setState(() {
                                     if (_selectedConsultationTypes
@@ -3795,19 +3623,16 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       runSpacing: 8,
                       children: [100, 200, 500, 1000, 2000, 2500]
                           .map(
-                            (v) => Button(
-                              style: ButtonStyle(
-                                backgroundColor: WidgetStateProperty.all(
-                                  const Color(0xFFEAF2FC),
-                                ),
-                              ),
+                            (v) => AppButton(
+                              label: '₹$v',
+                              compact: true,
+                              variant: AppButtonVariant.secondary,
                               onPressed: () {
                                 _priceController.text = '$v';
                                 a.price = v.toDouble();
                                 _scheduleAutosave();
                                 setState(() {});
                               },
-                              child: Text('₹$v'),
                             ),
                           )
                           .toList(growable: false),
@@ -3840,13 +3665,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             (parent) => _quickChip(
                               label: parent,
                               selected: _selectedPostOpParent == parent,
-                              selectedColor: const Color(0xFF2D7BD8),
-                              selectedTextColor: Colors.white,
-                              normalColor: const Color(0xFFF3F4F6),
-                              normalTextColor: const Color(0xFF2D3F58),
-                              selectedBorderColor: const Color(0xFF2D7BD8),
-                              normalBorderColor: const Color(0xFFDBE1EA),
-                              radius: 7,
                               onTap: () {
                                 setState(() => _selectedPostOpParent = parent);
                               },
@@ -3864,13 +3682,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             .map(
                               (child) => _quickChip(
                                 label: child,
-                                selectedColor: const Color(0xFF2D7BD8),
-                                selectedTextColor: Colors.white,
-                                normalColor: const Color(0xFFF3F4F6),
-                                normalTextColor: const Color(0xFF2D3F58),
-                                selectedBorderColor: const Color(0xFF2D7BD8),
-                                normalBorderColor: const Color(0xFFDBE1EA),
-                                radius: 7,
+                                selectedVariant: AppButtonVariant.ghost,
+                                normalVariant: AppButtonVariant.secondary,
                                 onTap: () {
                                   final parent = _selectedPostOpParent;
                                   if (parent == null) return;
@@ -3992,35 +3805,15 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   Widget _quickChip({
     required String label,
     bool selected = false,
-    Color selectedColor = const Color(0xFFDDEBFF),
-    Color normalColor = const Color(0xFFEAF2FC),
-    Color selectedTextColor = const Color(0xFF1459AD),
-    Color normalTextColor = const Color(0xFF2F5B88),
-    Color selectedBorderColor = const Color(0xFF2D7BD8),
-    Color normalBorderColor = const Color(0xFFD5E5F7),
-    double radius = 999,
+    AppButtonVariant selectedVariant = AppButtonVariant.primary,
+    AppButtonVariant normalVariant = AppButtonVariant.secondary,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: selected ? selectedColor : normalColor,
-          borderRadius: BorderRadius.circular(radius),
-          border: Border.all(
-            color: selected ? selectedBorderColor : normalBorderColor,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? selectedTextColor : normalTextColor,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+    return AppButton(
+      label: label,
+      compact: true,
+      variant: selected ? selectedVariant : normalVariant,
+      onPressed: onTap,
     );
   }
 
@@ -4192,6 +3985,66 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     a.discountType = _discountMode;
     a.price = _basePrice;
     _scheduleAutosave();
+    setState(() {});
+  }
+
+  Future<void> _scheduleAppointmentFromBilling() async {
+    final a = widget.appointment;
+    if ((a.patientID ?? '').trim().isEmpty) {
+      return;
+    }
+
+    final initialDate = DateTime.now().add(const Duration(days: 7));
+    final pickedDate = await material.showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100, 12, 31),
+      builder: apexoDatePickerBuilder(context),
+    );
+    if (pickedDate == null) return;
+    if (!mounted) return;
+
+    final pickedTime = await material.showTimePicker(
+      context: context,
+      initialTime: const material.TimeOfDay(hour: 10, minute: 0),
+    );
+    if (pickedTime == null) return;
+    if (!mounted) return;
+
+    final scheduledAt = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    if (scheduledAt.isBefore(DateTime.now())) {
+      displayInfoBar(
+        context,
+        builder: (ctx, close) => InfoBar(
+          title: const Text('Invalid schedule time'),
+          content: const Text('Please pick a future date and time.'),
+          severity: InfoBarSeverity.warning,
+          action: IconButton(
+            icon: const Icon(FluentIcons.clear),
+            onPressed: close,
+          ),
+        ),
+      );
+      return;
+    }
+
+    final nextAppointment = Appointment.fromJson({'id': uuid()});
+    nextAppointment.patientID = a.patientID;
+    nextAppointment.date = scheduledAt;
+    nextAppointment.checkinStage = 'scheduled';
+    nextAppointment.isCheckedIn = false;
+    nextAppointment.operatorsIDs = [...a.operatorsIDs];
+    nextAppointment.preOpNotes = 'Follow-up visit';
+    appointments.set(nextAppointment);
+
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -4587,6 +4440,21 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         .where((doctor) => seenDoctorIds.contains(doctor.id))
         .toList(growable: false)
       ..sort((x, y) => x.title.toLowerCase().compareTo(y.title.toLowerCase()));
+    final upcomingAppointments = appointments.present.values
+        .where((row) {
+          if (row.id == a.id) return false;
+          if (row.patientID != a.patientID) return false;
+          final stage = row.checkinStage.trim().toLowerCase();
+          if (stage != 'scheduled' && stage != 'pending') return false;
+          return row.date.isAfter(DateTime.now());
+        })
+        .toList(growable: false)
+      ..sort((x, y) => x.date.compareTo(y.date));
+    final nextScheduled =
+        upcomingAppointments.isEmpty ? null : upcomingAppointments.first;
+    final nextScheduledText = nextScheduled == null
+        ? null
+        : DateFormat('dd MMM yyyy • h:mm a').format(nextScheduled.date);
 
     return Padding(
       padding: const EdgeInsets.all(4),
@@ -4997,6 +4865,11 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   onDownloadPdf: _downloadReceiptPdf,
                   onShare: _openShareOptions,
                   doctorNames: doctorNames,
+                  scheduledAppointmentText: nextScheduledText,
+                  onScheduleAppointment:
+                      (a.patientID ?? '').trim().isEmpty
+                          ? null
+                          : _scheduleAppointmentFromBilling,
                 ),
               );
 
@@ -5066,6 +4939,8 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
   final VoidCallback? onDownloadPdf;
   final VoidCallback? onShare;
   final List<String>? doctorNames;
+  final String? scheduledAppointmentText;
+  final VoidCallback? onScheduleAppointment;
 
   const _CheckoutBillingSummaryPanel({
     required this.appointment,
@@ -5074,6 +4949,8 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     this.onDownloadPdf,
     this.onShare,
     this.doctorNames,
+    this.scheduledAppointmentText,
+    this.onScheduleAppointment,
   });
 
   @override
@@ -5183,6 +5060,99 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
           style: const TextStyle(
             color: Color(0xFF5A7397),
             fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Divider(),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF1F2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFF4C4CB)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                FluentIcons.warning,
+                size: 14,
+                color: Color(0xFFD6455D),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Outstanding Balance',
+                      style: TextStyle(
+                        color: Color(0xFFD6455D),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${outstanding.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        color: Color(0xFFB42336),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Scheduled Appointment',
+          style: TextStyle(
+            color: Color(0xFF2D476D),
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FBFF),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFDCE8F8)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                scheduledAppointmentText == null
+                    ? 'No scheduled appointment'
+                    : 'Next: $scheduledAppointmentText',
+                style: TextStyle(
+                  color: scheduledAppointmentText == null
+                      ? const Color(0xFF5A7397)
+                      : const Color(0xFF184A9C),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+              if (scheduledAppointmentText == null &&
+                  onScheduleAppointment != null) ...[
+                const SizedBox(height: 8),
+                AppButton(
+                  label: 'Schedule Appointment',
+                  compact: true,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: onScheduleAppointment,
+                ),
+              ],
+            ],
           ),
         ),
         const SizedBox(height: 10),

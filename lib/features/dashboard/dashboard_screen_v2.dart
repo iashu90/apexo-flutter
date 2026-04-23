@@ -404,7 +404,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         initialInput: query,
       ),
       onOpenExisting: (appointment) async {
-        await openCheckinAppointmentModal(context, appointment);
+        await openAppointmentJourneyDialog(context, appointment);
       },
       onCheckInPatient: (patient) async {
         final appointment = Appointment.fromJson({
@@ -415,7 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'checkedInAt': DateTime.now().millisecondsSinceEpoch,
         });
         appointments.set(appointment);
-        await openCheckinAppointmentModal(context, appointment);
+        await openAppointmentJourneyDialog(context, appointment);
       },
     );
   }
@@ -1471,9 +1471,9 @@ class _AppointmentRow extends StatelessWidget {
     await CheckinStageModalRouter.openForStage(
       context: context,
       appointment: appointment,
-      openTreatmentModal: openCheckinAppointmentModal,
-      openBillingModal: openCheckinAppointmentModal,
-      openCompleteModal: openCheckinAppointmentModal,
+      openTreatmentModal: openAppointmentJourneyDialog,
+      openBillingModal: openAppointmentJourneyDialog,
+      openCompleteModal: openAppointmentJourneyDialog,
     );
   }
 
