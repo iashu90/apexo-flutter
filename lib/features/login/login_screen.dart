@@ -85,58 +85,62 @@ class _LoginState extends State<Login> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(40, 28, 40, 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            ColorFiltered(
-              colorFilter: const ColorFilter.mode(_primary, BlendMode.srcIn),
-              child: Image.asset(
-                'assets/drnowdentallogo.png',
-                width: 200,
-                fit: BoxFit.contain,
+        child:
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ColorFiltered(
+                colorFilter: const ColorFilter.mode(_primary, BlendMode.srcIn),
+                child: Image.asset(
+                  'assets/drnowdentallogo.png',
+                  width: 200,
+                  fit: BoxFit.contain,
+                ),
               ),
-            ),
-            const SizedBox(height: 26),
-            Text(
-              'Welcome back,',
-              style: tt.displayLarge?.copyWith(fontSize: titleSize, height: 1.1),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Dr. Nowfar Dental Clinic 👋',
-              style: tt.displayLarge?.copyWith(fontSize: titleSize, height: 1.1, color: _primary),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Sign in to access your clinic dashboard',
-              style: tt.headlineMedium?.copyWith(color: _textSecondary),
-            ),
-            const SizedBox(height: 20),
-            _buildHeroVisual(),
-            const SizedBox(height: 22),
-            Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: const [
-                _FeatureBadge(
-                    icon: FluentIcons.calendar, label: 'Smart\nScheduling'),
-                _FeatureBadge(
-                    icon: FluentIcons.contact_info, label: 'Patient\nManagement'),
-                _FeatureBadge(
-                    icon: FluentIcons.area_chart, label: 'Clinic\nAnalytics'),
-                _FeatureBadge(
-                    icon: FluentIcons.shield, label: 'Secure\n& Reliable'),
-              ],
-            ),
-            const SizedBox(height: 22),
-            Text(
-              '© 2026 Dr. Nowfear Dental Clinic. All rights reserved.',
-              style: tt.bodySmall,
-            ),
-          ],
+              const SizedBox(height: 26),
+              Text(
+                'Welcome back,',
+                style:
+                    tt.displayLarge?.copyWith(fontSize: titleSize, height: 1.1),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Dr. Nowfar Dental Clinic 👋',
+                style: tt.displayLarge?.copyWith(
+                    fontSize: titleSize, height: 1.1, color: _primary),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Sign in to access your clinic dashboard',
+                style: tt.headlineMedium?.copyWith(color: _textSecondary),
+              ),
+              const SizedBox(height: 20),
+              _buildHeroVisual(),
+              const SizedBox(height: 22),
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: const [
+                  _FeatureBadge(
+                      icon: FluentIcons.calendar, label: 'Smart\nScheduling'),
+                  _FeatureBadge(
+                      icon: FluentIcons.contact_info,
+                      label: 'Patient\nManagement'),
+                  _FeatureBadge(
+                      icon: FluentIcons.area_chart, label: 'Clinic\nAnalytics'),
+                  _FeatureBadge(
+                      icon: FluentIcons.shield, label: 'Secure\n& Reliable'),
+                ],
+              ),
+              const SizedBox(height: 22),
+              Text(
+                '© 2026 Dr. Nowfear Dental Clinic. All rights reserved.',
+                style: tt.bodySmall,
+              ),
+            ],
+          ),
         ),
-      ),
     );
   }
 
@@ -333,7 +337,8 @@ class _LoginState extends State<Login> {
                           const SizedBox(width: 8),
                           Text(
                             'Remember me',
-                            style: AppTextTheme.textTheme.labelLarge?.copyWith(color: const Color(0xFF5D6F94)),
+                            style: AppTextTheme.textTheme.labelLarge
+                                ?.copyWith(color: const Color(0xFF5D6F94)),
                           ),
                           const Spacer(),
                           Button(
@@ -342,7 +347,10 @@ class _LoginState extends State<Login> {
                                 : () => loginCtrl.selectedTab(1),
                             child: Text(
                               'Forgot password?',
-                              style: AppTextTheme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF2B75EB)),
+                              style: AppTextTheme.textTheme.labelLarge
+                                  ?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF2B75EB)),
                             ),
                           ),
                         ],
@@ -380,7 +388,10 @@ class _LoginState extends State<Login> {
                               Expanded(
                                 child: Text(
                                   loginCtrl.loadingIndicator(),
-                                  style: AppTextTheme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, color: const Color(0xFF35507F)),
+                                  style: AppTextTheme.textTheme.bodySmall
+                                      ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF35507F)),
                                 ),
                               ),
                             ],
@@ -437,10 +448,12 @@ class _LoginState extends State<Login> {
                           width: double.infinity,
                           child: AppButton(
                             key: WK.btnResetPassword,
-                            label: isLoading ? 'Please wait...' : 'Reset password',
+                            label:
+                                isLoading ? 'Please wait...' : 'Reset password',
                             onPressed: isLoading ? null : loginCtrl.resetButton,
                             expanded: true,
-                            leading: const Icon(FluentIcons.password_field, size: 14),
+                            leading: const Icon(FluentIcons.password_field,
+                                size: 14),
                           ),
                         ),
                     ],
@@ -461,7 +474,9 @@ class _LoginState extends State<Login> {
                           Expanded(
                             child: Text(
                               'Your data is protected with enterprise-grade security',
-                              style: AppTextTheme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, color: const Color(0xFF3D5587)),
+                              style: AppTextTheme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF3D5587)),
                             ),
                           ),
                         ],
@@ -518,7 +533,9 @@ class _LoginState extends State<Login> {
   }
 
   Widget _fieldLabel(String text) {
-    return Text(text, style: AppTextTheme.textTheme.labelLarge?.copyWith(color: _textSecondary));
+    return Text(text,
+        style:
+            AppTextTheme.textTheme.labelLarge?.copyWith(color: _textSecondary));
   }
 
   Widget _styledInput({required Widget child}) {
@@ -659,7 +676,8 @@ class _ProviderChip extends StatelessWidget {
       child: Center(
         child: Text(
           label,
-          style: AppTextTheme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+          style: AppTextTheme.textTheme.bodyLarge
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );

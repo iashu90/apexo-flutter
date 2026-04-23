@@ -3,7 +3,26 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 class AppTextTheme {
-  static const font = 'PlusJakartaSans';
+  static const plusJakartaSans = 'Roboto';
+
+  // Flip this to true to use the platform system font everywhere.
+  static const useSystemFont = false;
+
+  static const sansFallback = <String>[
+    'Segoe UI',
+    'Roboto',
+    'Helvetica Neue',
+    'Arial',
+    'sans-serif',
+  ];
+
+  static String? get fontFamily => useSystemFont ? null : plusJakartaSans;
+  static List<String>? get fontFamilyFallback =>
+      useSystemFont ? null : sansFallback;
+  static TextStyle get baseTextStyle => TextStyle(
+    fontFamily: fontFamily,
+    fontFamilyFallback: fontFamilyFallback,
+  );
 
   static TextTheme textTheme = const TextTheme(
     displayLarge: TextStyle(fontSize: 34, fontWeight: FontWeight.w700),
@@ -18,6 +37,7 @@ class AppTextTheme {
   ).apply(
     bodyColor: AppColors.textPrimary,
     displayColor: AppColors.textPrimary,
-    fontFamily: font,
+    fontFamily: fontFamily,
+    fontFamilyFallback: fontFamilyFallback,
   );
 }
