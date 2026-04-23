@@ -2,6 +2,9 @@ import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
+import 'package:apexo/core/ui/components/app_search_field.dart';
+import 'package:apexo/core/ui/components/top_widget_cards.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -252,43 +255,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final card = cards[index];
-          return Container(
-            width: 160,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFD7E3F0)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x160D2F5B),
-                  blurRadius: 10,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  card.title,
-                  style: const TextStyle(
-                    color: Color(0xFF5A7397),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '₹${NumberFormat('#,##0').format(card.value)}',
-                  style: TextStyle(
-                    color: card.valueColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                  ),
-                ),
-              ],
-            ),
+          return TopWidgetSmallCard(
+            title: card.title,
+            value: '₹${NumberFormat('#,##0').format(card.value)}',
+            valueColor: card.valueColor,
           );
         },
       ),
@@ -305,92 +275,81 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          SizedBox(
+          AppSearchField(
+            hint: 'Search expenses...',
+            controller: _searchCtrl,
             width: 280,
-            child: TextBox(
-              controller: _searchCtrl,
-              placeholder: 'Search expenses...',
-              prefix: const Padding(
-                padding: EdgeInsets.only(left: 10),
-                child: Icon(FluentIcons.search, size: 12),
-              ),
-            ),
+            onClear: () {
+              _searchCtrl.clear();
+              setState(() {
+                _query = '';
+                _page = 1;
+              });
+            },
           ),
           const SizedBox(width: 8),
-          SizedBox(
+          AppDropdownMenu<String>(
             width: 180,
-            child: ComboBox<String>(
-              value: _categoryFilter,
-              items: categories
-                  .map(
-                    (v) => ComboBoxItem<String>(
-                      value: v,
-                      child: Text(v == 'all' ? 'Category' : v),
-                    ),
-                  )
-                  .toList(growable: false),
-              onChanged: (v) {
-                if (v == null) return;
-                setState(() {
-                  _categoryFilter = v;
-                  _page = 1;
-                });
-              },
-            ),
+            value: _categoryFilter,
+            items: categories
+                .map(
+                  (v) => AppDropdownItem<String>(
+                    value: v,
+                    label: v == 'all' ? 'Category' : v,
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: (v) {
+              setState(() {
+                _categoryFilter = v;
+                _page = 1;
+              });
+            },
           ),
           const SizedBox(width: 8),
-          SizedBox(
+          AppDropdownMenu<String>(
             width: 140,
-            child: ComboBox<String>(
-              value: _paymentFilter,
-              items: const [
-                ComboBoxItem<String>(value: 'all', child: Text('All Payments')),
-                ComboBoxItem<String>(value: 'upi', child: Text('UPI Payments')),
-                ComboBoxItem<String>(
-                    value: 'cash', child: Text('Cash Payments')),
-              ],
-              onChanged: (v) {
-                if (v == null) return;
-                setState(() {
-                  _paymentFilter = v;
-                  _page = 1;
-                });
-              },
-            ),
+            value: _paymentFilter,
+            items: const [
+              AppDropdownItem<String>(value: 'all', label: 'All Payments'),
+              AppDropdownItem<String>(value: 'upi', label: 'UPI Payments'),
+              AppDropdownItem<String>(value: 'cash', label: 'Cash Payments'),
+            ],
+            onChanged: (v) {
+              setState(() {
+                _paymentFilter = v;
+                _page = 1;
+              });
+            },
           ),
           const SizedBox(width: 8),
-          SizedBox(
+          AppDropdownMenu<String>(
             width: 160,
-            child: ComboBox<String>(
-              value: _rangeFilter,
-              items: const [
-                ComboBoxItem<String>(value: 'all', child: Text('All Dates')),
-                ComboBoxItem<String>(value: 'today', child: Text('Today')),
-                ComboBoxItem<String>(value: 'week', child: Text('This Week')),
-                ComboBoxItem<String>(value: 'month', child: Text('Monthly')),
-                ComboBoxItem<String>(
-                    value: 'last_month', child: Text('Last Month')),
-                ComboBoxItem<String>(
-                    value: 'custom', child: Text('Custom Date')),
-              ],
-              onChanged: (v) async {
-                if (v == null) return;
-                if (v == 'custom') {
-                  await _pickCustomRange();
-                  return;
+            value: _rangeFilter,
+            items: const [
+              AppDropdownItem<String>(value: 'all', label: 'All Dates'),
+              AppDropdownItem<String>(value: 'today', label: 'Today'),
+              AppDropdownItem<String>(value: 'week', label: 'This Week'),
+              AppDropdownItem<String>(value: 'month', label: 'Monthly'),
+              AppDropdownItem<String>(value: 'last_month', label: 'Last Month'),
+              AppDropdownItem<String>(value: 'custom', label: 'Custom Date'),
+            ],
+            onChanged: (v) async {
+              if (v == 'custom') {
+                await _pickCustomRange();
+                return;
+              }
+              setState(() {
+                _rangeFilter = v;
+                if (v == 'month') {
+                  _monthAnchor =
+                      DateTime(DateTime.now().year, DateTime.now().month, 1);
                 }
-                setState(() {
-                  _rangeFilter = v;
-                  if (v == 'month') {
-                    _monthAnchor =
-                        DateTime(DateTime.now().year, DateTime.now().month, 1);
-                  }
-                  _fromDate = null;
-                  _toDate = null;
-                  _page = 1;
-                });
-              },
-            ),
+                _fromDate = null;
+                _toDate = null;
+                _page = 1;
+              });
+            },
           ),
           if (_rangeFilter == 'custom' &&
               (_fromDate != null || _toDate != null))

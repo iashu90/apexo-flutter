@@ -2,6 +2,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
@@ -66,7 +67,9 @@ Future<DateTime?> _pickScheduleDateTime(
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(width: 8),
-                    Button(
+                    AppButton(
+                      label: DateFormat('dd MMM yyyy').format(pickedDate),
+                      variant: AppButtonVariant.secondary,
                       onPressed: () async {
                         final next = await material.showDatePicker(
                           context: context,
@@ -80,7 +83,6 @@ Future<DateTime?> _pickScheduleDateTime(
                           pickedDate = DateTime(next.year, next.month, next.day);
                         });
                       },
-                      child: Text(DateFormat('dd MMM yyyy').format(pickedDate)),
                     ),
                   ],
                 ),
@@ -92,7 +94,9 @@ Future<DateTime?> _pickScheduleDateTime(
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(width: 8),
-                    Button(
+                    AppButton(
+                      label: pickedTime.format(context),
+                      variant: AppButtonVariant.secondary,
                       onPressed: () async {
                         final next = await material.showTimePicker(
                           context: context,
@@ -102,7 +106,6 @@ Future<DateTime?> _pickScheduleDateTime(
                         if (next == null) return;
                         setStateDialog(() => pickedTime = next);
                       },
-                      child: Text(pickedTime.format(context)),
                     ),
                   ],
                 ),
@@ -118,16 +121,17 @@ Future<DateTime?> _pickScheduleDateTime(
             ),
           ),
           actions: [
-            Button(
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
             ),
-            FilledButton(
+            AppButton(
+              label: 'Schedule',
               onPressed: () {
                 result = updatedDateTime;
                 Navigator.pop(dialogContext);
               },
-              child: const Text('Schedule'),
             ),
           ],
         );
@@ -364,7 +368,9 @@ Future<void> showPatientCheckinLookupDialog({
                   Row(
                     children: [
                       if (existing != null)
-                        Button(
+                        AppButton(
+                          label: 'Open',
+                          variant: AppButtonVariant.secondary,
                           onPressed: () async {
                             final navigator = Navigator.of(dialogContext);
                             if (navigator.mounted) {
@@ -372,10 +378,10 @@ Future<void> showPatientCheckinLookupDialog({
                             }
                             await onOpenExisting(existing);
                           },
-                          child: const Text('Open'),
                         ),
                       if (existing != null) const SizedBox(width: 6),
-                      FilledButton(
+                      AppButton(
+                        label: 'Check-in',
                         onPressed: () async {
                           final navigator = Navigator.of(dialogContext);
                           await onCheckInPatient(patient);
@@ -383,10 +389,11 @@ Future<void> showPatientCheckinLookupDialog({
                             navigator.pop();
                           }
                         },
-                        child: const Text('Check-in'),
                       ),
                       const SizedBox(width: 6),
-                      Button(
+                      AppButton(
+                        label: 'Schedule',
+                        variant: AppButtonVariant.secondary,
                         onPressed: () async {
                           final scheduledAt = await _scheduleAppointmentForPatient(
                             context,
@@ -405,7 +412,6 @@ Future<void> showPatientCheckinLookupDialog({
                             ),
                           );
                         },
-                        child: const Text('Schedule'),
                       ),
                     ],
                   ),
@@ -452,7 +458,8 @@ Future<void> showPatientCheckinLookupDialog({
                     ],
                   ),
                 ),
-                FilledButton(
+                AppButton(
+                  label: 'New Patient',
                   onPressed: () async {
                     final navigator = Navigator.of(dialogContext);
                     final created = await onAddPatient(queryController.text);
@@ -462,7 +469,6 @@ Future<void> showPatientCheckinLookupDialog({
                       navigator.pop();
                     }
                   },
-                  child: const Text('New Patient'),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
@@ -558,7 +564,9 @@ Future<void> showPatientCheckinLookupDialog({
                             else
                               ...matches.map(patientCard),
                             if (query.isNotEmpty && !hasExactMatch)
-                              FilledButton(
+                              AppButton(
+                                label:
+                                    'Add "${queryController.text.trim()}" as new patient',
                                 onPressed: () async {
                                   final navigator = Navigator.of(dialogContext);
                                   final created = await onAddPatient(queryController.text);
@@ -568,9 +576,6 @@ Future<void> showPatientCheckinLookupDialog({
                                     navigator.pop();
                                   }
                                 },
-                                child: Text(
-                                  'Add "${queryController.text.trim()}" as new patient',
-                                ),
                               ),
                           ],
                         ],
@@ -581,9 +586,10 @@ Future<void> showPatientCheckinLookupDialog({
               ),
             ),
             actions: [
-              Button(
+              AppButton(
+                label: 'Close',
+                variant: AppButtonVariant.secondary,
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Close'),
               ),
             ],
           );

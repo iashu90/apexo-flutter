@@ -2,6 +2,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
@@ -520,7 +521,8 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
             if (checkedCount > 0)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: Button(
+                child: AppButton(
+                  label: 'Send WhatsApp Reminder ($checkedCount)',
                   onPressed: () async {
                     final checkedRows = data.rows
                         .where((r) => _checkedIds.contains(r.patient.id))
@@ -548,32 +550,14 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
                         : Uri.parse('https://wa.me/?text=$encoded');
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   },
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStateProperty.all(
-                      const Color(0xFF25D366),
-                    ),
-                    foregroundColor:
-                        WidgetStateProperty.all(Colors.white),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(FluentIcons.chat, size: 14),
-                      const SizedBox(width: 6),
-                      Text('Send WhatsApp Reminder ($checkedCount)'),
-                    ],
-                  ),
+                  leading: const Icon(FluentIcons.chat, size: 14),
                 ),
               ),
             if (visible.length < filtered.length)
-              FilledButton(
+              AppButton(
+                label: 'Load More',
                 onPressed: () =>
                     setState(() => _visibleCount += _pageSize),
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(
-                    const Color(0xFF1459AD),
-                  ),
-                ),
-                child: const Text('Load More'),
               ),
           ],
         ),
@@ -1150,27 +1134,12 @@ class _PatientRow extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                FilledButton(
+                AppButton(
+                  label: row.isDueToday ? 'Send Reminder' : 'Collect Payment',
                   onPressed: () {},
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStateProperty.all(
-                      const Color(0xFF16A34A),
-                    ),
-                    padding: WidgetStateProperty.all(
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(FluentIcons.receipt_processing,
-                          size: 13, color: Colors.white),
-                      const SizedBox(width: 5),
-                      Text(
-                        row.isDueToday ? 'Send Reminder' : 'Collect Payment',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
+                  leading: const Icon(
+                    FluentIcons.receipt_processing,
+                    size: 13,
                   ),
                 ),
               ],

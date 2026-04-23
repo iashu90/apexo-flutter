@@ -6,6 +6,9 @@ class TopWidgetSmallCard extends StatelessWidget {
   final String title;
   final String value;
   final Color valueColor;
+  final Color cardColor;
+  final Color borderColor;
+  final Color titleColor;
   final double width;
 
   const TopWidgetSmallCard({
@@ -13,6 +16,9 @@ class TopWidgetSmallCard extends StatelessWidget {
     required this.title,
     required this.value,
     required this.valueColor,
+    this.cardColor = Colors.white,
+    this.borderColor = const Color(0xFFD7E3F0),
+    this.titleColor = const Color(0xFF5A7397),
     this.width = 160,
   });
 
@@ -22,6 +28,8 @@ class TopWidgetSmallCard extends StatelessWidget {
       width: width,
       child: AppCard(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        backgroundColor: cardColor,
+        borderColor: borderColor,
         child: SizedBox(
           height: 66,
           child: Column(
@@ -29,8 +37,8 @@ class TopWidgetSmallCard extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: Color(0xFF5A7397),
+                style: TextStyle(
+                  color: titleColor,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),

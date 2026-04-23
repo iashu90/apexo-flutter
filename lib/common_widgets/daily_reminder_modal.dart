@@ -2,6 +2,7 @@
 
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/checkin/checkin_stage_modals.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
@@ -540,16 +541,18 @@ class _NextPatientCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Button(
+              AppButton(
+                label: 'Call Patient',
+                variant: AppButtonVariant.secondary,
                 onPressed: patient?.phone.trim().isNotEmpty == true
                     ? onCallPatient
                     : null,
-                child: const Text('Call Patient'),
               ),
               const SizedBox(width: 8),
-              Button(
+              AppButton(
+                label: 'View Schedule',
                 onPressed: onViewSchedule,
-                child: const Text('View Schedule'),
+                variant: AppButtonVariant.secondary,
               ),
             ],
           ),
@@ -1385,13 +1388,9 @@ class _SmallActionCard extends StatelessWidget {
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
+            child: AppButton(
+              label: actionLabel,
               onPressed: onAction,
-              style: ButtonStyle(
-                backgroundColor:
-                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-              ),
-              child: Text(actionLabel),
             ),
           ),
         ],

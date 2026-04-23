@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/core/ui/components/top_widget_cards.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
@@ -1293,139 +1294,171 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     final netProfit = revenue - doctorsFee;
     final netProfitPct = revenue <= 0 ? 0.0 : (netProfit / revenue) * 100;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E3F0)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Column(
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD7E3F0)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(FluentIcons.health, size: 16, color: Color(0xFF2D7BD8)),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Doctor Activity',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF183A67),
+                Row(
+                  children: [
+                    const Icon(
+                      FluentIcons.health,
+                      size: 16,
+                      color: Color(0xFF2D7BD8),
                     ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Doctor Activity',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF183A67),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      DateFormat('EEEE, dd MMMM yyyy').format(widget.selectedDate),
+                      style: const TextStyle(
+                        color: Color(0xFF6D84A8),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ExportFileActionButton(
+                      type: ExportFileType.csv,
+                      busy: _isExportingCsv,
+                      onPressed: (_isExportingCsv || doctorEntries.isEmpty)
+                          ? null
+                          : _exportVisibleCsv,
+                    ),
+                    const SizedBox(width: 8),
+                    ExportFileActionButton(
+                      type: ExportFileType.pdf,
+                      busy: _isExportingPdf,
+                      onPressed: (_isExportingPdf || doctorEntries.isEmpty)
+                          ? null
+                          : _exportVisiblePdf,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Overview',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF183A67),
                   ),
                 ),
-                Text(
-                  DateFormat('EEEE, dd MMMM yyyy').format(widget.selectedDate),
-                  style: const TextStyle(
-                    color: Color(0xFF6D84A8),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ExportFileActionButton(
-                  type: ExportFileType.csv,
-                  busy: _isExportingCsv,
-                  onPressed: (_isExportingCsv || doctorEntries.isEmpty)
-                      ? null
-                      : _exportVisibleCsv,
-                ),
-                const SizedBox(width: 8),
-                ExportFileActionButton(
-                  type: ExportFileType.pdf,
-                  busy: _isExportingPdf,
-                  onPressed: (_isExportingPdf || doctorEntries.isEmpty)
-                      ? null
-                      : _exportVisiblePdf,
+                const SizedBox(height: 6),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cardWidth = (constraints.maxWidth - 24) / 4;
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        SizedBox(
+                          width: cardWidth,
+                          child: TopWidgetSmallCard(
+                            title: 'Patients Seen',
+                            value: NumberFormat.compact(locale: 'en_IN')
+                                .format(totalPatients),
+                            valueColor: const Color(0xFF1B3557),
+                            cardColor: const Color(0xFFFBFDFF),
+                            borderColor: const Color(0xFFEAF1FB),
+                          ),
+                        ),
+                        SizedBox(
+                          width: cardWidth,
+                          child: TopWidgetSmallCard(
+                            title: 'Revenue',
+                            value: formatIndianShortCurrency(revenue),
+                            valueColor: const Color(0xFF2BA58D),
+                            cardColor: const Color(0xFFFAFEFC),
+                            borderColor: const Color(0xFFE6F4EE),
+                          ),
+                        ),
+                        SizedBox(
+                          width: cardWidth,
+                          child: TopWidgetSmallCard(
+                            title: 'Doctors Fee',
+                            value: formatIndianShortCurrency(doctorsFee),
+                            valueColor: const Color(0xFFD6455D),
+                            cardColor: const Color(0xFFFFFBFC),
+                            borderColor: const Color(0xFFF7E8EC),
+                          ),
+                        ),
+                        SizedBox(
+                          width: cardWidth,
+                          child: TopWidgetSmallCard(
+                            title: 'Net Profit',
+                            value:
+                                '${formatIndianShortCurrency(netProfit)} (${netProfitPct.toStringAsFixed(1)}%)',
+                            valueColor: netProfit >= 0
+                                ? const Color(0xFF2BA58D)
+                                : const Color(0xFFD6455D),
+                            cardColor: netProfit >= 0
+                              ? const Color(0xFFFAFEFC)
+                              : const Color(0xFFFFFBFC),
+                            borderColor: netProfit >= 0
+                              ? const Color(0xFFE6F4EE)
+                              : const Color(0xFFF7E8EC),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            const Text(
-              'Overview',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67),
-              ),
-            ),
-            const SizedBox(height: 6),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final cardWidth = (constraints.maxWidth - 24) / 4;
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    SizedBox(
-                      width: cardWidth,
-                      child: _topMetric(
-                        'Patients Seen',
-                        NumberFormat.compact(locale: 'en_IN')
-                            .format(totalPatients),
-                        const Color(0xFF1B3557),
-                        FluentIcons.people,
-                      ),
-                    ),
-                    SizedBox(
-                      width: cardWidth,
-                      child: _topMetric(
-                        'Revenue',
-                        formatIndianShortCurrency(revenue),
-                        const Color(0xFF2BA58D),
-                        FluentIcons.receipt_check,
-                      ),
-                    ),
-                    SizedBox(
-                      width: cardWidth,
-                      child: _topMetric(
-                        'Doctors Fee',
-                        formatIndianShortCurrency(doctorsFee),
-                        const Color(0xFFD6455D),
-                        FluentIcons.money,
-                      ),
-                    ),
-                    SizedBox(
-                      width: cardWidth,
-                      child: _topMetric(
-                        'Net Profit',
-                        '${formatIndianShortCurrency(netProfit)} (${netProfitPct.toStringAsFixed(1)}%)',
-                        netProfit >= 0
-                            ? const Color(0xFF2BA58D)
-                            : const Color(0xFFD6455D),
-                        FluentIcons.pie_single,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Doctor List',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67),
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Divider(size: 1),
-            if (doctorEntries.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: Text(
-                  'No appointments found for this date.',
-                  style: TextStyle(color: Color(0xFF8AAAC6)),
+          ),
+        ),
+        const SizedBox(height: 10),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD7E3F0)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Doctor List',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF183A67),
+                  ),
                 ),
-              )
-            else ...[
-              const SizedBox(height: 10),
-              ...doctorEntries.map((entry) {
+                const SizedBox(height: 6),
+                const Divider(size: 1),
+                if (doctorEntries.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(minHeight: 220),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'No doctors entry available',
+                      style: TextStyle(color: Color(0xFF8AAAC6)),
+                    ),
+                  )
+                else ...[
+                  const SizedBox(height: 10),
+                  ...doctorEntries.map((entry) {
                 final doctor = entry.key;
                 final doctorAppts = entry.value;
                 final expanded = _expandedDoctorIds.contains(doctor.id);
@@ -1475,14 +1508,17 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                 final statusWidth = baseStatusWidth * widthScale;
                 final actionWidth = baseActionWidth * widthScale;
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FBFF),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFDCE8F6)),
-                  ),
-                  child: Expander(
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Color(0xFFEFF4FB),
+                            width: 0.8,
+                          ),
+                        ),
+                      ),
+                      child: Expander(
                     initiallyExpanded: expanded,
                     onStateChanged: (isExpanded) {
                       setState(() {
@@ -1538,7 +1574,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                         ],
                       ),
                     ),
-                    content: SingleChildScrollView(
+                        content: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: ConstrainedBox(
                         constraints: BoxConstraints(minWidth: minTableWidth),
@@ -1717,14 +1753,16 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -1759,56 +1797,6 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
       default:
         return const Color(0xFF5E738F);
     }
-  }
-
-  Widget _topMetric(String label, String value, Color color, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F7FF),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFDCE8F6)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8F2FF),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            alignment: Alignment.center,
-            child: Icon(icon, size: 14, color: color),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: AppTextTheme.textTheme.titleLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 30,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  label,
-                  style: AppTextTheme.textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF4D6488),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _inlineMetric(String label, String value, Color color,

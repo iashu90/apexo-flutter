@@ -1,6 +1,7 @@
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
@@ -337,11 +338,13 @@ Future<Patient?> openAddPatientPopup({
           ),
         ),
         actions: [
-          Button(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
+          AppButton(
+          label: 'Close',
+          variant: AppButtonVariant.secondary,
+          onPressed: () => Navigator.pop(dialogContext),
           ),
-          FilledButton(
+          AppButton(
+            label: isEditMode ? 'Save Changes' : 'Add Patient',
             onPressed: () {
               final rawName = nameController.text.trim();
               final parsedAge = int.tryParse(ageController.text.trim()) ?? 0;
@@ -387,7 +390,6 @@ Future<Patient?> openAddPatientPopup({
               patients.set(patient);
               Navigator.pop(dialogContext, patient);
             },
-            child: Text(isEditMode ? 'Update' : 'Save'),
           ),
         ],
       ),
