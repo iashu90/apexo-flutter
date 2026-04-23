@@ -125,8 +125,13 @@ Future<Patient?> openAddPatientPopup({
 
   return showDialog<Patient>(
     context: context,
-    builder: (dialogContext) => StatefulBuilder(
+    builder: (dialogContext) {
+      final screen = MediaQuery.of(dialogContext).size;
+      final dialogWidth = (screen.width - 24).clamp(360.0, 1100.0);
+
+      return StatefulBuilder(
       builder: (context, setStateDialog) => ContentDialog(
+        constraints: BoxConstraints(maxWidth: dialogWidth),
         title: Row(
           children: [
             
@@ -143,7 +148,7 @@ Future<Patient?> openAddPatientPopup({
           ],
         ),
         content: SizedBox(
-          width: 900,
+          width: dialogWidth - 28,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -191,7 +196,7 @@ Future<Patient?> openAddPatientPopup({
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,7 +228,7 @@ Future<Patient?> openAddPatientPopup({
                       ),
                     ),
                   ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _popupFieldLabel('Phone:'),
                 TextBox(
                   controller: phoneController,
@@ -250,13 +255,13 @@ Future<Patient?> openAddPatientPopup({
                       ),
                     ),
                   ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _popupFieldLabel('Address:'),
                 TextBox(
                   controller: addressController,
                   placeholder: 'Address',
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _popupFieldLabel('Medical History:'),
                 _buildSelectableHistoryChips(
                   options: patientMedicalHistorySuggestions,
@@ -271,7 +276,7 @@ Future<Patient?> openAddPatientPopup({
                     });
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _popupFieldLabel('Drug History:'),
                 _buildSelectableHistoryChips(
                   options: patientDrugHistorySuggestions,
@@ -286,7 +291,7 @@ Future<Patient?> openAddPatientPopup({
                     });
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _popupFieldLabel('Maternal History:'),
                 _buildSelectableHistoryChips(
                   options: patientMaternalHistorySuggestions,
@@ -301,7 +306,7 @@ Future<Patient?> openAddPatientPopup({
                     });
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _popupFieldLabel('Habits:'),
                 _buildSelectableHistoryChips(
                   options: patientHabitsSuggestions,
@@ -316,7 +321,7 @@ Future<Patient?> openAddPatientPopup({
                     });
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _popupFieldLabel('Referral:'),
                 ComboBox<String>(
                   isExpanded: true,
@@ -340,9 +345,9 @@ Future<Patient?> openAddPatientPopup({
         ),
         actions: [
           AppButton(
-          label: 'Close',
-          variant: AppButtonVariant.secondary,
-          onPressed: () => Navigator.pop(dialogContext),
+            label: 'Close',
+            variant: AppButtonVariant.secondary,
+            onPressed: () => Navigator.pop(dialogContext),
           ),
           AppButton(
             label: isEditMode ? 'Save Changes' : 'Add Patient',
@@ -394,6 +399,7 @@ Future<Patient?> openAddPatientPopup({
           ),
         ],
       ),
-    ),
+    );
+    },
   );
 }

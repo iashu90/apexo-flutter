@@ -135,7 +135,7 @@ class _LoginState extends State<Login> {
               ),
               const SizedBox(height: 22),
               Text(
-                '© 2026 Dr. Nowfear Dental Clinic. All rights reserved.',
+                '© 2026 Dr. Nowfar Dental Clinic. All rights reserved.',
                 style: tt.bodySmall,
               ),
             ],

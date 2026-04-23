@@ -28,6 +28,7 @@ constexpr const wchar_t kGetPreferredBrightnessRegValue[] = L"AppsUseLightTheme"
 
 // The number of Win32Window objects that currently exist.
 static int g_active_window_count = 0;
+static HANDLE g_single_instance_event = nullptr;
 
 using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 
@@ -123,19 +124,20 @@ Win32Window::~Win32Window() {
 bool CheckOneInstance()
 {
 
-    HANDLE  m_hStartEvent = CreateEventW( NULL, FALSE, FALSE, L"Global\\app.dr.nowfardentalclinic" );
+  g_single_instance_event = CreateEventW( NULL, FALSE, FALSE, L"Global\\app.dr.nowfardentalclinic" );
 
-    if(m_hStartEvent == NULL)
+  if(g_single_instance_event == NULL)
     {
-        CloseHandle( m_hStartEvent );
+    CloseHandle(g_single_instance_event);
+    g_single_instance_event = nullptr;
         return false;
     }
 
 
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
 
-        CloseHandle( m_hStartEvent );
-        m_hStartEvent = NULL;
+    CloseHandle(g_single_instance_event);
+    g_single_instance_event = nullptr;
         // already exist
         // send message from here to existing copy of the application
         return false;
@@ -147,14 +149,23 @@ bool CheckOneInstance()
 bool Win32Window::Create(const std::wstring& title,
                          const Point& origin,
                          const Size& size) {
+  (void)size;
   
   // checks if the application is already running
   if( !CheckOneInstance()) {
-        // Show a message box to notify the user
-    MessageBox(nullptr, 
-               L"The application is already running.", 
-               L"Error", 
-               MB_ICONERROR | MB_OK);
+    // Try to bring an existing instance to the foreground.
+    HWND existing = FindWindow(WindowClassRegistrar::GetInstance()->GetWindowClass(), nullptr);
+    if (existing != nullptr) {
+      ShowWindow(existing, SW_SHOW);
+      SetWindowPos(existing, HWND_TOP, 0, 0, 0, 0,
+                   SWP_NOMOVE | SWP_NOSIZE);
+      SetForegroundWindow(existing);
+    } else {
+      MessageBox(nullptr,
+                 L"The application is already running.",
+                 L"Information",
+                 MB_ICONINFORMATION | MB_OK);
+    }
     return false;
   }
   Destroy();
@@ -165,13 +176,16 @@ bool Win32Window::Create(const std::wstring& title,
   const POINT target_point = {static_cast<LONG>(origin.x),
                               static_cast<LONG>(origin.y)};
   HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
-  UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
-  double scale_factor = dpi / 96.0;
 
-  HWND window = CreateWindow(
-      window_class, title.c_str(),  WS_OVERLAPPEDWINDOW | WS_MAXIMIZE,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
+  MONITORINFO monitor_info = {};
+  monitor_info.cbSize = sizeof(MONITORINFO);
+  GetMonitorInfo(monitor, &monitor_info);
+  const RECT bounds = monitor_info.rcWork;
+
+    HWND window = CreateWindow(
+      window_class, title.c_str(),  WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+      bounds.left, bounds.top,
+      bounds.right - bounds.left, bounds.bottom - bounds.top,
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 
   if (!window) {
@@ -184,7 +198,7 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  return ShowWindow(window_handle_, SW_SHOW);
 }
 
 // static
@@ -213,6 +227,14 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_SYSCOMMAND:
+      switch (wparam & 0xFFF0) {
+        case SC_SIZE:
+        case SC_MAXIMIZE:
+          return 0;
+      }
+      break;
+
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();
@@ -222,12 +244,16 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
 
     case WM_DPICHANGED: {
-      auto newRectSize = reinterpret_cast<RECT*>(lparam);
-      LONG newWidth = newRectSize->right - newRectSize->left;
-      LONG newHeight = newRectSize->bottom - newRectSize->top;
+      HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+      MONITORINFO monitor_info = {};
+      monitor_info.cbSize = sizeof(MONITORINFO);
+      GetMonitorInfo(monitor, &monitor_info);
+      const RECT bounds = monitor_info.rcWork;
 
-      SetWindowPos(hwnd, nullptr, newRectSize->left, newRectSize->top, newWidth,
-                   newHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+      SetWindowPos(hwnd, HWND_TOP, bounds.left, bounds.top,
+                   bounds.right - bounds.left,
+                   bounds.bottom - bounds.top,
+                   SWP_NOACTIVATE);
 
       return 0;
     }
@@ -263,6 +289,10 @@ void Win32Window::Destroy() {
     window_handle_ = nullptr;
   }
   if (g_active_window_count == 0) {
+    if (g_single_instance_event != nullptr) {
+      CloseHandle(g_single_instance_event);
+      g_single_instance_event = nullptr;
+    }
     WindowClassRegistrar::GetInstance()->UnregisterWindowClass();
   }
 }
