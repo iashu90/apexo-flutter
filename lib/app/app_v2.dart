@@ -40,8 +40,9 @@ class ApexoAppV2 extends StatelessWidget {
         final fluentThemeBase =
             isDark ? FluentThemeData.dark() : FluentThemeData.light();
         final fluentTheme = fluentThemeBase.copyWith(
-          typography:
-              fluentThemeBase.typography.apply(fontFamily: AppTextTheme.font),
+          typography: fluentThemeBase.typography.apply(
+            fontFamily: AppTextTheme.fontFamily,
+          ),
         );
         return FluentApp(
           key: WK.fluentApp,

@@ -10,6 +10,7 @@ import 'chip_theme.dart';
 class AppTheme {
   static ThemeData light = ThemeData(
     useMaterial3: true,
+    fontFamily: AppTextTheme.fontFamily,
     scaffoldBackgroundColor: AppColors.bgMain,
     primaryColor: AppColors.primary500,
     textTheme: AppTextTheme.textTheme,
