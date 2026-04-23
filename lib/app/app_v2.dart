@@ -4,6 +4,7 @@ import 'package:apexo/app/top_tabs_navbar.dart';
 import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/core/theme/app_text_theme.dart';
 import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/features/login/login_screen.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -36,16 +37,22 @@ class ApexoAppV2 extends StatelessWidget {
       stream: localSettings.stream,
       builder: (context, _) {
         final isDark = localSettings.selectedTheme == ThemeMode.dark;
+        final fluentThemeBase =
+            isDark ? FluentThemeData.dark() : FluentThemeData.light();
+        final fluentTheme = fluentThemeBase.copyWith(
+          typography:
+              fluentThemeBase.typography.apply(fontFamily: AppTextTheme.font),
+        );
         return FluentApp(
           key: WK.fluentApp,
           locale: Locale(locale.s.$code),
-          theme: isDark ? FluentThemeData.dark() : FluentThemeData.light(),
+          theme: fluentTheme,
           home: CupertinoTheme(
             data: isDark
                 ? const CupertinoThemeData(brightness: Brightness.dark)
                 : const CupertinoThemeData(brightness: Brightness.light),
             child: FluentTheme(
-              data: isDark ? FluentThemeData.dark() : FluentThemeData.light(),
+              data: fluentTheme,
                 child: material.Theme(
                   data: AppTheme.light,
                   child: MStreamBuilder(
