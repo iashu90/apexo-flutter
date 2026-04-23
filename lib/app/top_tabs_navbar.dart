@@ -256,7 +256,7 @@ class _UserChipState extends State<_UserChip> {
           ),
           AppButton(
             label: txt('logout'),
-            variant: AppButtonVariant.ghost,
+            variant: AppButtonVariant.danger,
             onPressed: () => Navigator.pop(dialogContext, true),
           ),
         ],
