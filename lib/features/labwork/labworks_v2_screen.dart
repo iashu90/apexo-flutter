@@ -5,6 +5,7 @@ import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/lab_bulk_update_dialog.dart';
 import 'package:apexo/common_widgets/month_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
@@ -70,62 +71,65 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
       key: WK.labworksScreenV2,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       children: [
-        StreamBuilder(
-          stream: labworks.observableMap.stream,
-          builder: (context, _) {
-            final all = labworks.present.values.toList(growable: false)
-              ..sort((a, b) => b.date.compareTo(a.date));
+        Container(
+          color: FluentTheme.of(context).scaffoldBackgroundColor,
+          child: StreamBuilder(
+            stream: labworks.observableMap.stream,
+            builder: (context, _) {
+              final all = labworks.present.values.toList(growable: false)
+                ..sort((a, b) => b.date.compareTo(a.date));
 
-            final filtered = _applyFilters(all);
-            final inLab = filtered
-                .where((l) => !l.deliveredToDoctor)
-                .toList(growable: false);
-            final ready = filtered
-                .where((l) => l.deliveredToDoctor && !l.deliveredToPatient)
-                .toList(growable: false);
-            final delivered = filtered
-                .where((l) => l.deliveredToPatient)
-                .toList(growable: false);
+              final filtered = _applyFilters(all);
+              final inLab = filtered
+                  .where((l) => !l.deliveredToDoctor)
+                  .toList(growable: false);
+              final ready = filtered
+                  .where((l) => l.deliveredToDoctor && !l.deliveredToPatient)
+                  .toList(growable: false);
+              final delivered = filtered
+                  .where((l) => l.deliveredToPatient)
+                  .toList(growable: false);
 
-            return Column(
-              children: [
-                _buildHeader(filtered),
-                const SizedBox(height: 10),
-                _buildStatStrip(all, filtered),
-                const SizedBox(height: 10),
-                _buildSearchAndDateFilters(filtered),
-                const SizedBox(height: 10),
-                filtered.isEmpty
-                    ? _EmptyState(onClear: _clearFilters)
-                    : _LabworkBoard(
-                        inLab: inLab,
-                        ready: ready,
-                        delivered: delivered,
-                        inLabCollapsed: _inLabCollapsed,
-                        readyCollapsed: _readyCollapsed,
-                        deliveredCollapsed: _deliveredCollapsed,
-                        onToggleInLab: () =>
-                            setState(() => _inLabCollapsed = !_inLabCollapsed),
-                        onToggleReady: () =>
-                            setState(() => _readyCollapsed = !_readyCollapsed),
-                        onToggleDelivered: () => setState(
-                          () => _deliveredCollapsed = !_deliveredCollapsed,
+              return Column(
+                children: [
+                  _buildHeader(filtered),
+                  const SizedBox(height: 10),
+                  _buildStatStrip(all, filtered),
+                  const SizedBox(height: 10),
+                  _buildSearchAndDateFilters(filtered),
+                  const SizedBox(height: 10),
+                  filtered.isEmpty
+                      ? _EmptyState(onClear: _clearFilters)
+                      : _LabworkBoard(
+                          inLab: inLab,
+                          ready: ready,
+                          delivered: delivered,
+                          inLabCollapsed: _inLabCollapsed,
+                          readyCollapsed: _readyCollapsed,
+                          deliveredCollapsed: _deliveredCollapsed,
+                          onToggleInLab: () =>
+                              setState(() => _inLabCollapsed = !_inLabCollapsed),
+                          onToggleReady: () =>
+                              setState(() => _readyCollapsed = !_readyCollapsed),
+                          onToggleDelivered: () => setState(
+                            () => _deliveredCollapsed = !_deliveredCollapsed,
+                          ),
+                          onOpen: (item) => openLabworkV2Dialog(context, item),
+                          onHistory: (item) {
+                            final patient = item.patient;
+                            if (patient == null) return;
+                            showPatientHistoryDialogV2(
+                              context: context,
+                              patient: patient,
+                              rows: patient.patientDetails,
+                              labsOnly: true,
+                            );
+                          },
                         ),
-                        onOpen: (item) => openLabworkV2Dialog(context, item),
-                        onHistory: (item) {
-                          final patient = item.patient;
-                          if (patient == null) return;
-                          showPatientHistoryDialogV2(
-                            context: context,
-                            patient: patient,
-                            rows: patient.patientDetails,
-                            labsOnly: true,
-                          );
-                        },
-                      ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ],
     );
@@ -159,32 +163,17 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
               : () => _exportPdf(rows),
         ),
         const SizedBox(width: 8),
-        Button(
+        AppButton(
           onPressed: () => showLabBulkUpdateDialog(context),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(FluentIcons.edit, size: 12),
-              SizedBox(width: 6),
-              Text('Lab Bulk Update'),
-            ],
-          ),
+          label: 'Lab Bulk Update',
+          leading: const Icon(FluentIcons.edit, size: 12),
+          variant: AppButtonVariant.secondary,
         ),
         const SizedBox(width: 8),
-        FilledButton(
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-            foregroundColor: WidgetStateProperty.all(Colors.white),
-          ),
+        AppButton(
           onPressed: () => openLabworkV2Dialog(context),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(FluentIcons.add, size: 14),
-              SizedBox(width: 6),
-              Text('New Labwork'),
-            ],
-          ),
+          label: 'New Labwork',
+          leading: const Icon(FluentIcons.add, size: 14),
         ),
       ],
     );
@@ -1265,14 +1254,15 @@ class _LabworkBoardCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              Button(
+              AppButton(
                 onPressed: item.patient == null ? null : () => onHistory(item),
-                child: const Text('History'),
+                label: 'History',
+                variant: AppButtonVariant.secondary,
               ),
               const SizedBox(width: 6),
-              FilledButton(
+              AppButton(
                 onPressed: () => onOpen(item),
-                child: const Text('Open'),
+                label: 'Open',
               ),
             ],
           ),
@@ -1597,7 +1587,11 @@ class _EmptyState extends StatelessWidget {
               style: TextStyle(color: Color(0xFF6E7E99)),
             ),
             const SizedBox(height: 12),
-            Button(onPressed: onClear, child: const Text('Clear filters')),
+            AppButton(
+              onPressed: onClear,
+              label: 'Clear filters',
+              variant: AppButtonVariant.secondary,
+            ),
           ],
         ),
       ),

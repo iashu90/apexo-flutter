@@ -3021,35 +3021,12 @@ class _AllPatientsListCard extends StatelessWidget {
                           .map(
                             (l) => Padding(
                               padding: const EdgeInsets.only(right: 6),
-                              child: GestureDetector(
-                                onTap: () => onSelectAlphabet(l),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: selectedAlphabet == l
-                                        ? const Color(0xFF2D7BD8)
-                                        : const Color(0xFFEFF4FB),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: selectedAlphabet == l
-                                          ? const Color(0xFF2D7BD8)
-                                          : const Color(0xFFD2E1F2),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    l,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: selectedAlphabet == l
-                                          ? Colors.white
-                                          : const Color(0xFF355A84),
-                                    ),
-                                  ),
-                                ),
+                              child: AppButton(
+                                label: l,
+                                variant: selectedAlphabet == l
+                                    ? AppButtonVariant.primary
+                                    : AppButtonVariant.secondary,
+                                onPressed: () => onSelectAlphabet(l),
                               ),
                             ),
                           )
