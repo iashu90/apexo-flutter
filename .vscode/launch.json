@@ -16,6 +16,12 @@
             "flutterMode": "profile"
         },
         {
+            "name": "apexo-flutter (Flutter Windows)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "windows"
+        },
+        {
             "name": "apexo-flutter (release mode)",
             "request": "launch",
             "type": "dart",

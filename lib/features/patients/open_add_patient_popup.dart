@@ -129,6 +129,7 @@ Future<Patient?> openAddPatientPopup({
       builder: (context, setStateDialog) => ContentDialog(
         title: Row(
           children: [
+            
             Expanded(
               child: Text(
                 isEditMode ? 'Edit Patient' : 'Add Patient',
@@ -142,7 +143,7 @@ Future<Patient?> openAddPatientPopup({
           ],
         ),
         content: SizedBox(
-          width: 700,
+          width: 900,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
