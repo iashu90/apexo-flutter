@@ -1442,6 +1442,7 @@ class _AppointmentRow extends StatelessWidget {
           ),
           AppButton(
             label: 'Delete',
+            variant: AppButtonVariant.danger,
             onPressed: () {
               appointments.delete(appointment.id);
               Navigator.pop(context);

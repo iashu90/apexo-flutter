@@ -443,7 +443,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
           ),
           AppButton(
             label: 'Delete',
-            variant: AppButtonVariant.ghost,
+            variant: AppButtonVariant.danger,
             onPressed: () => Navigator.pop(dialogContext, true),
           ),
         ],

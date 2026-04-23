@@ -127,6 +127,25 @@ class _Permissions extends ObservablePersistingObject {
       return true;
     }
 
+    if (currentRole == UserRole.receptionist) {
+      switch (routeIdentifier) {
+        case 'dashboard':
+        case 'doctors':
+        case 'labworks':
+        case 'patients':
+        case 'calendar':
+        case 'checkin':
+        case 'expenses':
+          return true;
+        case 'report':
+        case 'data':
+        case 'settings':
+          return false;
+        default:
+          return false;
+      }
+    }
+
     switch (routeIdentifier) {
       case 'doctors':
         return hasAccess(doctorsPermissionIndex);

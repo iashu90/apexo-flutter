@@ -2045,7 +2045,7 @@ class _WorkflowRow extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: const Text(
-                            'Duplicate record',
+                            'Duplicate',
                             style: TextStyle(
                               color: Color(0xFFB91C1C),
                               fontSize: 12,
