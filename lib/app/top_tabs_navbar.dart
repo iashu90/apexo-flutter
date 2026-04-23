@@ -21,14 +21,10 @@ class TopTabsNavBar extends StatelessWidget {
     final veryCompact = width < 760;
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            ApexoThemeColors.navGradientStart,
-            ApexoThemeColors.navGradientEnd,
-          ],
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.22)),
         ),
       ),
       padding: EdgeInsets.symmetric(horizontal: veryCompact ? 8 : 14),
@@ -38,7 +34,7 @@ class TopTabsNavBar extends StatelessWidget {
           height: compact ? 56 : 64,
           child: Row(
             children: [
-              _LogoCluster(compact: compact),
+              _LogoCluster(compact: compact, veryCompact: veryCompact),
               SizedBox(width: veryCompact ? 8 : 14),
               Expanded(
                 child: SingleChildScrollView(
@@ -62,8 +58,8 @@ class TopTabsNavBar extends StatelessWidget {
                 child: IconButton(
                   icon: const Icon(
                     CupertinoIcons.bell_fill,
-                    color: Colors.white,
-                    size: 24.0,
+                    color: Color(0xFF5B6475),
+                    size: 20.0,
                   ),
                   onPressed: () => showDailyReminderModal(context),
                 ),
@@ -74,8 +70,8 @@ class TopTabsNavBar extends StatelessWidget {
                 child: IconButton(
                   icon: const Icon(
                     FluentIcons.edit,
-                    color: Colors.white,
-                    size: 20.0,
+                    color: Color(0xFF5B6475),
+                    size: 18.0,
                   ),
                   onPressed: () => showBulkUpdateDialog(context),
                 ),
@@ -119,17 +115,27 @@ class TopTabsNavBar extends StatelessWidget {
 
 class _LogoCluster extends StatelessWidget {
   final bool compact;
+  final bool veryCompact;
 
-  const _LogoCluster({required this.compact});
+  const _LogoCluster({required this.compact, required this.veryCompact});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (!veryCompact)
+          const Padding(
+            padding: EdgeInsets.only(right: 10),
+            child: Icon(
+              FluentIcons.home,
+              size: 14,
+              color: Color(0xFF7D8697),
+            ),
+          ),
         Image.asset(
           'assets/drnowdentallogo.png',
-          height: compact ? 46 : 58,
+          height: compact ? 38 : 42,
           fit: BoxFit.contain,
         ),
       ],
@@ -148,20 +154,21 @@ class _TabButton extends StatelessWidget {
         route.identifier == app_routes.routes.currentRoute.identifier;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       child: GestureDetector(
         onTap: () => app_routes.routes.navigate(route),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: active ? ApexoThemeColors.navActiveTab : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: active
-                  ? Colors.white.withValues(alpha: 0.2)
-                  : Colors.transparent,
+            color: active ? const Color(0xFFEFF4FF) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border(
+              bottom: BorderSide(
+                color: active ? const Color(0xFF3A7BF8) : Colors.transparent,
+                width: 2,
+              ),
             ),
           ),
           child: Row(
@@ -169,10 +176,8 @@ class _TabButton extends StatelessWidget {
             children: [
               Icon(
                 route.icon,
-                size: 14,
-                color: active
-                    ? ApexoThemeColors.navText
-                    : ApexoThemeColors.navTextMuted,
+                size: 14.5,
+                color: active ? const Color(0xFF1E4FBD) : const Color(0xFF7D8697),
               ),
               const SizedBox(width: 8),
               Text(
@@ -180,9 +185,7 @@ class _TabButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                  color: active
-                      ? ApexoThemeColors.navText
-                      : ApexoThemeColors.navTextMuted,
+                  color: active ? const Color(0xFF1E4FBD) : const Color(0xFF707A8A),
                 ),
               ),
             ],
@@ -275,9 +278,9 @@ class _UserChipState extends State<_UserChip> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.14),
+                color: const Color(0xFFF3F7FF),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                border: Border.all(color: const Color(0xFFD9E6FF)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -304,7 +307,7 @@ class _UserChipState extends State<_UserChip> {
                   const Icon(
                     FluentIcons.chevron_down,
                     size: 11,
-                    color: Colors.white,
+                    color: Color(0xFF4D5B74),
                   ),
                 ],
               ),

@@ -53,6 +53,8 @@ class _LoginService extends ObservablePersistingObject {
     password = "";
     token = "";
     pb!.authStore.clear();
+    loginCtrl.emailField.clear();
+    loginCtrl.passwordField.clear();
     notifyAndPersist();
     routes.panels([]);
     return loginCtrl.finishedLoginProcess();
@@ -188,16 +190,13 @@ class _LoginService extends ObservablePersistingObject {
   @override
   fromJson(Map<String, dynamic> json) async {
     url = json["url"] ?? url;
-    email = json["email"] ?? email;
+    email = "";
     token = json["token"] ?? token;
     adminCollectionId = json["adminCollectionId"] ?? adminCollectionId;
     loginCtrl.urlField.text = url;
-    loginCtrl.emailField.text = email;
-    if (token.isNotEmpty) {
-      await activate(url, [token], true);
-    } else {
-      launch.open(false);
-    }
+    loginCtrl.emailField.clear();
+    loginCtrl.passwordField.clear();
+    launch.open(false);
   }
 
   @override

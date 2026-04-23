@@ -110,12 +110,10 @@ class LocalSettings extends ObservablePersistingObject {
 
   String dateFormat = "dd/MM/yyyy";
   ThemeMode selectedTheme = ThemeMode.light;
-  int selectedLocale = 0;
   Map<String, String> savedLabs = {};
 
   @override
   fromJson(Map<String, dynamic> json) {
-    selectedLocale = json["selectedLocale"] ?? selectedLocale;
     dateFormat = json["dateFormat"] ?? dateFormat;
     selectedTheme = json["selectedTheme"] == 1 ? ThemeMode.dark : ThemeMode.light;
     final rawSavedLabs = json["savedLabs"];
@@ -132,7 +130,6 @@ class LocalSettings extends ObservablePersistingObject {
   @override
   Map<String, dynamic> toJson() {
     return {
-      "selectedLocale": selectedLocale,
       "dateFormat": dateFormat,
       "selectedTheme": selectedTheme == ThemeMode.dark ? 1 : 0,
       "savedLabs": savedLabs,
