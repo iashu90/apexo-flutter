@@ -5006,6 +5006,10 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
       0,
       (sum, row) => sum + outstandingForAppointment(row),
     );
+    final overallOutstanding = allPatientRows.fold<double>(
+      0,
+      (sum, row) => sum + outstandingForAppointment(row),
+    );
 
     final discountedTotal = a.discountType == 'percent'
         ? (a.price - (a.price * a.discount / 100)).clamp(0, double.infinity)
@@ -5071,7 +5075,8 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         sectionCard(
-          title: 'Patient & Schedule',
+          title:
+              toTitleCase(a.title.trim().isEmpty ? 'Unnamed patient' : a.title),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -5096,26 +5101,17 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
           ),
           children: [
             Text(
-              toTitleCase(a.title.trim().isEmpty ? 'Unnamed patient' : a.title),
-              style: const TextStyle(
-                color: Color(0xFF2D476D),
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Patient ID: ${a.patientID ?? '-'}',
-              style: const TextStyle(color: Color(0xFF5A7397)),
-            ),
-            const SizedBox(height: 4),
-            Text(
               'Age: ${a.patient?.age ?? 0}${(a.patient?.gender == 1 ? 'M' : a.patient?.gender == 0 ? 'F' : '')}  • ${a.patient?.phone ?? ''}',
               style: const TextStyle(
                 color: Color(0xFF6D84A8),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Patient ID: ${a.patientID ?? '-'}',
+              style: const TextStyle(color: Color(0xFF5A7397)),
             ),
             const SizedBox(height: 10),
             Container(
@@ -5166,16 +5162,14 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
           title: 'Treatment & Tooth Info',
           children: [
             _checkoutSummaryLine(
+              'Doctor',
+              resolvedDoctorNames.isEmpty
+                  ? '-'
+                  : resolvedDoctorNames.join(', '),
+            ),
+            _checkoutSummaryLine(
               'Treatment',
               treatmentSummary.isEmpty ? '-' : treatmentSummary,
-            ),
-            Text(
-              'Doctor: ${resolvedDoctorNames.isEmpty ? 'Unassigned' : resolvedDoctorNames.join(', ')}',
-              style: const TextStyle(
-                color: Color(0xFFD6455D),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
             ),
             _checkoutSummaryLine(
               'Tooth/Area',
@@ -5208,7 +5202,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Outstanding Balance',
+                          'Previous Balance',
                           style: TextStyle(
                             color: Color(0xFFD6455D),
                             fontWeight: FontWeight.w800,
@@ -5256,9 +5250,11 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
               valueColor: const Color(0xFFD6455D),
             ),
             const SizedBox(height: 8),
+            const Divider(direction: Axis.horizontal),
+            const SizedBox(height: 8),
             _checkoutSummaryLine(
               'Total Balance',
-              '₹${displayedOutstanding.toStringAsFixed(0)}',
+              '₹${(allPatientRows.isEmpty ? outstanding : overallOutstanding).toStringAsFixed(0)}',
             ),
             const SizedBox(height: 8),
             Container(
