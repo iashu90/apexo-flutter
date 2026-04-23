@@ -5,20 +5,20 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 // PDF theme palette (single place for future color changes)
-final PdfColor pdfAccentColor = PdfColor.fromInt(0xFF3069BD);
-final PdfColor pdfPrimaryTextColor = PdfColor.fromInt(0xFF2A405F);
-final PdfColor pdfSecondaryTextColor = PdfColor.fromInt(0xFF5E6B7A);
-final PdfColor pdfPageGrey = PdfColor.fromInt(0xFFF3F4F6);
-final PdfColor pdfCardGrey = PdfColor.fromInt(0xFFFEFEFE);
-final PdfColor pdfMutedGrey = PdfColor.fromInt(0xFFE8EBEF);
-final PdfColor pdfGreenColor = PdfColor.fromInt(0xFF2B8B4A);
-final PdfColor pdfDangerColor = PdfColor.fromInt(0xFFD4483B);
-final PdfColor pdfTableHeaderBgColor = PdfColor.fromInt(0xFFECEFF2);
-final PdfColor pdfTableBorderColor = PdfColor.fromInt(0xFFF0F1F1);
-final PdfColor pdfTableHeaderTextColor = PdfColor.fromInt(0xFF4C5B6B);
-final PdfColor pdfTableCellTextColor = PdfColor.fromInt(0xFF455A64);
-final PdfColor pdfWhiteColor = PdfColors.white;
-final PdfColor pdfBlackColor = PdfColors.black;
+const PdfColor pdfAccentColor = PdfColor.fromInt(0xFF3069BD);
+const PdfColor pdfPrimaryTextColor = PdfColor.fromInt(0xFF2A405F);
+const PdfColor pdfSecondaryTextColor = PdfColor.fromInt(0xFF5E6B7A);
+const PdfColor pdfPageGrey = PdfColor.fromInt(0xFFF3F4F6);
+const PdfColor pdfCardGrey = PdfColor.fromInt(0xFFFEFEFE);
+const PdfColor pdfMutedGrey = PdfColor.fromInt(0xFFE8EBEF);
+const PdfColor pdfGreenColor = PdfColor.fromInt(0xFF2B8B4A);
+const PdfColor pdfDangerColor = PdfColor.fromInt(0xFFD4483B);
+const PdfColor pdfTableHeaderBgColor = PdfColor.fromInt(0xFFECEFF2);
+const PdfColor pdfTableBorderColor = PdfColor.fromInt(0xFFF0F1F1);
+const PdfColor pdfTableHeaderTextColor = PdfColor.fromInt(0xFF4C5B6B);
+const PdfColor pdfTableCellTextColor = PdfColor.fromInt(0xFF455A64);
+const PdfColor pdfWhiteColor = PdfColors.white;
+const PdfColor pdfBlackColor = PdfColors.black;
 
 const List<String> _pdfLogoPaths = [
   'assets/app_icon.png',
@@ -83,7 +83,7 @@ pw.TextStyle _withPdfFont(
   );
 }
 
-final PdfColor pdfBackgroundColor = PdfColor.fromInt(0xFFF5F7F9);
+const PdfColor pdfBackgroundColor = PdfColor.fromInt(0xFFF5F7F9);
 const pw.EdgeInsets exportPdfContentMargin =
     pw.EdgeInsets.symmetric(horizontal: 24);
 
@@ -143,10 +143,10 @@ final pw.BoxDecoration exportPdfTableRowDecoration = pw.BoxDecoration(
   color: pdfCardGrey,
 );
 
-final pw.EdgeInsetsGeometry headerPadding =
-    const pw.EdgeInsets.symmetric(vertical: 18);
-final pw.EdgeInsetsGeometry cellPadding =
-    const pw.EdgeInsets.symmetric(vertical: 10);
+const pw.EdgeInsetsGeometry headerPadding =
+    pw.EdgeInsets.symmetric(vertical: 18);
+const pw.EdgeInsetsGeometry cellPadding =
+    pw.EdgeInsets.symmetric(vertical: 10);
 
 final pw.TextStyle exportPdfTableHeaderTextStyle = pw.TextStyle(
   fontSize: 11,
@@ -160,7 +160,7 @@ final pw.TextStyle exportPdfTableCellTextStyle = pw.TextStyle(
   color: pdfTableCellTextColor,
 );
 
-final pw.Alignment exportPdfTableCellAlignment = pw.Alignment.center;
+const pw.Alignment exportPdfTableCellAlignment = pw.Alignment.center;
 
 pw.Widget exportPdfHeader(
   pw.Context context, {

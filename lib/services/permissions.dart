@@ -127,6 +127,9 @@ class _Permissions extends ObservablePersistingObject {
       if (routeIdentifier == 'patients' || routeIdentifier == 'labworks') {
         return true;
       }
+      if (routeIdentifier == 'dashboard') {
+        return true;
+      }
     }
 
     switch (routeIdentifier) {

@@ -162,7 +162,7 @@ class _DateSelectorRowState extends State<DateSelectorRow> {
                     backgroundColor: ButtonState.all(Colors.blue),
                     foregroundColor: ButtonState.all(Colors.white),
                   ),
-                  child: Row(
+                  child: const Row(
                     children: [
                       Icon(FluentIcons.refresh),
                     ],

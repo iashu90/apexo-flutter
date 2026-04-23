@@ -11,6 +11,8 @@ import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/common_widgets/report_table_modal_v2.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/core/ui/components/app_pagination.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -562,8 +564,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
 
             final ageBuckets = _ageGenderBuckets(allPatients);
             final genderBuckets = _genderBuckets(allPatients);
-            final paymentModeBuckets = _paymentModeBuckets(allAppointments);
-
             final rangeStart = _rangeStart(_topRange, now);
             final topPatientsByVisits = allPatients
                 .map((p) {
@@ -746,24 +746,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
-                        child: FilledButton(
+                        child: AppButton(
                           onPressed: _openAddPatientPopup,
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(
-                              const Color(0xFF2D7BD8),
-                            ),
-                            foregroundColor:
-                                WidgetStateProperty.all(Colors.white),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(FluentIcons.add, size: 12),
-                              SizedBox(width: 6),
-                              Text('Add Patient'),
-                            ],
-                          ),
+                          label: 'Add Patient',
+                          leading: const Icon(FluentIcons.add, size: 12),
+                          expanded: true,
                         ),
                       ),
                     ],
@@ -774,23 +761,11 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                       const Expanded(child: _TopBar()),
                       SizedBox(
                         width: isTablet ? 160 : 180,
-                        child: FilledButton(
+                        child: AppButton(
                           onPressed: _openAddPatientPopup,
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(
-                              const Color(0xFF2D7BD8),
-                            ),
-                            foregroundColor:
-                                WidgetStateProperty.all(Colors.white),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(FluentIcons.add, size: 12),
-                              SizedBox(width: 6),
-                              Text('Add Patient'),
-                            ],
-                          ),
+                          label: 'Add Patient',
+                          leading: const Icon(FluentIcons.add, size: 12),
+                          expanded: true,
                         ),
                       ),
                     ],
@@ -824,26 +799,6 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
                           height: 160,
                           child: _TreatmentJourneyTimelineCard(
                             metrics: journeyMetrics,
-                          ),
-                        ),
-                        SizedBox(
-                          width: metricWidth,
-                          child: _DonutMetricCard(
-                            title: 'Payment Mode',
-                            centerValue:
-                                '${paymentModeBuckets.values.fold<int>(0, (s, v) => s + v)}',
-                            segments: [
-                              _DonutSegment(
-                                label: 'Cash',
-                                value: paymentModeBuckets['Cash'] ?? 0,
-                                color: const Color(0xFF7D8FA7),
-                              ),
-                              _DonutSegment(
-                                label: 'UPI',
-                                value: paymentModeBuckets['UPI'] ?? 0,
-                                color: const Color(0xFF2D7BD8),
-                              ),
-                            ],
                           ),
                         ),
                       ],
@@ -1892,200 +1847,6 @@ class _CompactAgeDistributionCardState
   }
 }
 
-class _AgeDistributionCard extends StatefulWidget {
-  final Map<String, Map<String, int>> buckets;
-
-  const _AgeDistributionCard({required this.buckets});
-
-  @override
-  State<_AgeDistributionCard> createState() => _AgeDistributionCardState();
-}
-
-class _AgeDistributionCardState extends State<_AgeDistributionCard> {
-  String? _hoveredKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final maxValue = widget.buckets.values
-        .map((m) => (m['Male'] ?? 0) + (m['Female'] ?? 0))
-        .fold<int>(0, (m, v) => v > m ? v : m);
-    final sorted = widget.buckets.entries.toList(growable: false)
-      ..sort((a, b) {
-        final aTotal = (a.value['Male'] ?? 0) + (a.value['Female'] ?? 0);
-        final bTotal = (b.value['Male'] ?? 0) + (b.value['Female'] ?? 0);
-        return bTotal.compareTo(aTotal);
-      });
-
-    return _CardShell(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 320, maxHeight: 420),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Patient Age Distribution',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2D7BD8),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Text('Male',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF36557C))),
-                const SizedBox(width: 10),
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2BA58D),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Text('Female',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF36557C))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: sorted.map((entry) {
-                    final male = entry.value['Male'] ?? 0;
-                    final female = entry.value['Female'] ?? 0;
-                    final total = male + female;
-                    final totalRatio = maxValue == 0 ? 0.0 : total / maxValue;
-                    final maleRatio =
-                        total == 0 ? 0.0 : male / total.toDouble();
-                    final isHovered = _hoveredKey == entry.key;
-
-                    return MouseRegion(
-                      onEnter: (_) => setState(() => _hoveredKey = entry.key),
-                      onExit: (_) => setState(() => _hoveredKey = null),
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 46,
-                              child: Text(
-                                entry.key,
-                                style: const TextStyle(
-                                  color: Color(0xFF36557C),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final barWidth =
-                                      constraints.maxWidth * totalRatio;
-                                  final maleWidth = barWidth * maleRatio;
-                                  final femaleWidth =
-                                      barWidth * (1.0 - maleRatio);
-                                  return Stack(
-                                    children: [
-                                      Container(
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFE9F1FC),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      if (maleWidth > 0)
-                                        Positioned(
-                                          left: 0,
-                                          child: Container(
-                                            height: 10,
-                                            width: maleWidth,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF2D7BD8),
-                                              borderRadius: BorderRadius.only(
-                                                topLeft:
-                                                    const Radius.circular(8),
-                                                bottomLeft:
-                                                    const Radius.circular(8),
-                                                topRight: femaleWidth > 0
-                                                    ? Radius.zero
-                                                    : const Radius.circular(8),
-                                                bottomRight: femaleWidth > 0
-                                                    ? Radius.zero
-                                                    : const Radius.circular(8),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      if (femaleWidth > 0)
-                                        Positioned(
-                                          left: maleWidth,
-                                          child: Container(
-                                            height: 10,
-                                            width: femaleWidth,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF2BA58D),
-                                              borderRadius: BorderRadius.only(
-                                                topLeft: maleWidth > 0
-                                                    ? Radius.zero
-                                                    : const Radius.circular(8),
-                                                bottomLeft: maleWidth > 0
-                                                    ? Radius.zero
-                                                    : const Radius.circular(8),
-                                                topRight:
-                                                    const Radius.circular(8),
-                                                bottomRight:
-                                                    const Radius.circular(8),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 64,
-                              child: Text(
-                                isHovered ? 'M:$male F:$female' : '$total',
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  color: isHovered
-                                      ? const Color(0xFF1A5CA3)
-                                      : const Color(0xFF1F446E),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: isHovered ? 11 : 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(growable: false),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _GenderDistributionCard extends StatelessWidget {
   final Map<String, int> buckets;
@@ -3164,27 +2925,11 @@ class _AllPatientsListCard extends StatelessWidget {
 
     Widget behaviorChip(String key, String label) {
       final selected = behaviorFilter == key;
-      return GestureDetector(
-        onTap: () => onBehaviorFilterChanged(key),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color:
-                  selected ? const Color(0xFF2D7BD8) : const Color(0xFFD2E1F2),
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : const Color(0xFF355A84),
-            ),
-          ),
-        ),
+      return AppButton(
+        label: label,
+        variant:
+            selected ? AppButtonVariant.primary : AppButtonVariant.secondary,
+        onPressed: () => onBehaviorFilterChanged(key),
       );
     }
 
@@ -3240,20 +2985,6 @@ class _AllPatientsListCard extends StatelessWidget {
                   child: TextBox(
                     controller: listSearchController,
                     placeholder: 'Search by name or phone',
-                    prefix: const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Icon(
-                        FluentIcons.search,
-                        size: 12,
-                        color: Color(0xFF6D84A8),
-                      ),
-                    ),
-                    suffix: listSearchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(FluentIcons.clear),
-                            onPressed: () => listSearchController.clear(),
-                          )
-                        : null,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -3264,35 +2995,12 @@ class _AllPatientsListCard extends StatelessWidget {
                         .map(
                           (l) => Padding(
                             padding: const EdgeInsets.only(right: 6),
-                            child: GestureDetector(
-                              onTap: () => onSelectAlphabet(l),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: selectedAlphabet == l
-                                      ? const Color(0xFF2D7BD8)
-                                      : const Color(0xFFEFF4FB),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: selectedAlphabet == l
-                                        ? const Color(0xFF2D7BD8)
-                                        : const Color(0xFFD2E1F2),
-                                  ),
-                                ),
-                                child: Text(
-                                  l,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: selectedAlphabet == l
-                                        ? Colors.white
-                                        : const Color(0xFF355A84),
-                                  ),
-                                ),
-                              ),
+                            child: AppButton(
+                              label: l,
+                              variant: selectedAlphabet == l
+                                  ? AppButtonVariant.primary
+                                  : AppButtonVariant.secondary,
+                              onPressed: () => onSelectAlphabet(l),
                             ),
                           ),
                         )
@@ -3355,20 +3063,6 @@ class _AllPatientsListCard extends StatelessWidget {
                   child: TextBox(
                     controller: listSearchController,
                     placeholder: 'Search by name or phone',
-                    prefix: const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Icon(
-                        FluentIcons.search,
-                        size: 12,
-                        color: Color(0xFF6D84A8),
-                      ),
-                    ),
-                    suffix: listSearchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(FluentIcons.clear),
-                            onPressed: () => listSearchController.clear(),
-                          )
-                        : null,
                   ),
                 ),
               ],
@@ -3701,9 +3395,9 @@ class _AllPatientsListCard extends StatelessWidget {
                                               iconColor:
                                                   const Color(0xFFD6455D),
                                               hoverColor:
-                                                  const Color(0xFFFFECEF),
+                                                  const Color(0xFFFCEDEF),
                                               hoverBorderColor:
-                                                  const Color(0xFFF6C8CF),
+                                                  const Color(0xFFF7CDD4),
                                               onTap: () =>
                                                   onDeletePatient(patient),
                                             ),
@@ -3732,106 +3426,19 @@ class _AllPatientsListCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _PageButton(
-                    label: '<',
-                    enabled: currentPage > 1,
-                    selected: false,
-                    onTap: () => onPageChanged(currentPage - 1),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: AppPagination(
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    onPageChanged: onPageChanged,
                   ),
-                  ..._pageNumbers(currentPage, totalPages).map(
-                    (page) {
-                      if (page == null) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 6),
-                          child: Text('...'),
-                        );
-                      }
-                      return _PageButton(
-                        label: '$page',
-                        enabled: true,
-                        selected: page == currentPage,
-                        onTap: () => onPageChanged(page),
-                      );
-                    },
-                  ),
-                  _PageButton(
-                    label: '>',
-                    enabled: currentPage < totalPages,
-                    selected: false,
-                    onTap: () => onPageChanged(currentPage + 1),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  List<int?> _pageNumbers(int current, int total) {
-    if (total <= 7) {
-      return List<int?>.generate(total, (i) => i + 1);
-    }
-
-    final pages = <int?>[1];
-    final start = math.max(2, current - 1);
-    final end = math.min(total - 1, current + 1);
-
-    if (start > 2) pages.add(null);
-    for (int p = start; p <= end; p++) {
-      pages.add(p);
-    }
-    if (end < total - 1) pages.add(null);
-    pages.add(total);
-
-    return pages;
-  }
-}
-
-class _PageButton extends StatelessWidget {
-  final String label;
-  final bool enabled;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PageButton({
-    required this.label,
-    required this.enabled,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 28),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2D7BD8) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD0DEEF),
-          ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: !enabled
-                ? const Color(0xFF9EB2CB)
-                : selected
-                    ? Colors.white
-                    : const Color(0xFF2D4A70),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
       ),
     );
   }
@@ -3840,18 +3447,18 @@ class _PageButton extends StatelessWidget {
 class _HoverActionItem extends StatefulWidget {
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
   final Color iconColor;
   final Color hoverColor;
   final Color hoverBorderColor;
+  final VoidCallback onTap;
 
   const _HoverActionItem({
     required this.icon,
     required this.label,
     required this.onTap,
-    this.iconColor = const Color(0xFF2D7BD8),
-    this.hoverColor = const Color(0xFFE7F1FF),
-    this.hoverBorderColor = const Color(0xFFBFD8F8),
+    this.iconColor = const Color(0xFF2D4A70),
+    this.hoverColor = const Color(0xFFEAF1FB),
+    this.hoverBorderColor = const Color(0xFFD4E1F2),
   });
 
   @override
@@ -3866,26 +3473,34 @@ class _HoverActionItemState extends State<_HoverActionItem> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Tooltip(
-        message: widget.label,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: _hovered ? widget.hoverColor : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: _hovered ? widget.hoverBorderColor : Colors.transparent,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: _hovered ? widget.hoverColor : Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: _hovered
+                  ? widget.hoverBorderColor
+                  : const Color(0xFFD6E2F0),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 12, color: widget.iconColor),
+              const SizedBox(width: 4),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: widget.iconColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            child: Icon(
-              widget.icon,
-              size: 16,
-              color: widget.iconColor,
-            ),
+            ],
           ),
         ),
       ),

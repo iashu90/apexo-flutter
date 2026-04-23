@@ -1,4 +1,5 @@
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -8,7 +9,6 @@ class DashboardDoctorInsightsCard extends StatelessWidget {
   final String allFilterToken;
   final String unassignedFilterToken;
   final ValueChanged<String> onFilterChanged;
-  final VoidCallback onAddAppointment;
 
   const DashboardDoctorInsightsCard({
     super.key,
@@ -17,7 +17,6 @@ class DashboardDoctorInsightsCard extends StatelessWidget {
     required this.allFilterToken,
     required this.unassignedFilterToken,
     required this.onFilterChanged,
-    required this.onAddAppointment,
   });
 
   @override
@@ -119,29 +118,6 @@ class DashboardDoctorInsightsCard extends StatelessWidget {
                   onTap: () => onFilterChanged(row.id),
                 ),
               ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: onAddAppointment,
-            style: ButtonStyle(
-              shape: WidgetStateProperty.all(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(FluentIcons.add, size: 14, color: Colors.white),
-                SizedBox(width: 8),
-                Text(
-                  'Check-in',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -242,18 +218,9 @@ class DashboardTreatmentStatsCard extends StatelessWidget {
             ),
           if (stats.topTreatments.length > 5) ...[
             const SizedBox(height: 8),
-            FilledButton(
+            AppButton(
+              label: showAll ? 'Show Top 5' : 'Show More',
               onPressed: onToggleShowAll,
-              style: ButtonStyle(
-                backgroundColor:
-                    WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              child: Text(showAll ? 'Show Top 5' : 'Show More'),
             ),
           ],
         ],

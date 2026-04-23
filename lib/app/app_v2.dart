@@ -120,11 +120,11 @@ class ApexoAppV2 extends StatelessWidget {
             launch.layoutWidth = constraints.maxWidth;
             final hideSidePanel = routes.panels().isEmpty || !launch.open();
             return Container(
-              color: ApexoThemeColors.appBackground,
+              color: material.Theme.of(context).scaffoldBackgroundColor,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _buildPositionedMainScreen(constraints, hideSidePanel),
+                  _buildPositionedMainScreen(context, constraints, hideSidePanel),
                   if (routes.panels().isNotEmpty && routes.minimizePanels() == false && constraints.maxWidth < 710)
                     ModalBarrier(
                       color: Colors.black.withValues(alpha: 0.28),
@@ -140,7 +140,7 @@ class ApexoAppV2 extends StatelessWidget {
     );
   }
 
-  AnimatedPositioned _buildPositionedMainScreen(BoxConstraints constraints, bool hideSidePanel) {
+  AnimatedPositioned _buildPositionedMainScreen(BuildContext context, BoxConstraints constraints, bool hideSidePanel) {
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       top: 0,
@@ -150,7 +150,7 @@ class ApexoAppV2 extends StatelessWidget {
       width: (!hideSidePanel) && constraints.maxWidth >= 710 ? constraints.maxWidth - 355 : constraints.maxWidth,
       child: Container(
         decoration: BoxDecoration(
-          color: ApexoThemeColors.appBackground,
+          color: material.Theme.of(context).scaffoldBackgroundColor,
           boxShadow: kElevationToShadow[4],
         ),
         child: Column(

@@ -194,7 +194,7 @@ class _ReportSkeletonCard extends StatelessWidget {
       width: width,
       height: 220,
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F7FC),
+        color: FluentTheme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFD7E3F0)),
       ),
