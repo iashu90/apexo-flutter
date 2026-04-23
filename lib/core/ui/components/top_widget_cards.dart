@@ -5,6 +5,8 @@ import 'app_card.dart';
 class TopWidgetSmallCard extends StatelessWidget {
   final String title;
   final String value;
+  final String? subtitle;
+  final Widget? icon;
   final Color valueColor;
   final Color cardColor;
   final Color borderColor;
@@ -15,6 +17,8 @@ class TopWidgetSmallCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.value,
+    this.subtitle,
+    this.icon,
     required this.valueColor,
     this.cardColor = Colors.white,
     this.borderColor = const Color(0xFFD7E3F0),
@@ -30,19 +34,15 @@ class TopWidgetSmallCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         backgroundColor: cardColor,
         borderColor: borderColor,
+        leadingIcon: icon,
+        title: title,
+        subtitle: subtitle,
+        titleColor: titleColor,
         child: SizedBox(
-          height: 66,
+          height: 40,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: titleColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
               const Spacer(),
               Text(
                 value,

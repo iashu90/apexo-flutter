@@ -264,39 +264,61 @@ class _LabworksScreenState extends State<LabworksScreen> {
 
     final cards = [
       (
-        title: 'IN LAB',
+        title: 'In Lab',
+        subtitle: 'cases',
         value: '$inLab',
         color: const Color(0xFFE09C31),
+        bg: const Color(0xFFFFFCF4),
+        border: const Color(0xFFF5E9CC),
+        icon: FluentIcons.test_beaker,
       ),
       (
-        title: 'READY',
+        title: 'Ready',
+        subtitle: 'cases',
         value: '$ready',
-        color: const Color(0xFF2BA58D),
+        color: const Color(0xFF2D7BD8),
+        bg: const Color(0xFFF8FBFF),
+        border: const Color(0xFFE4EEF9),
+        icon: FluentIcons.check_mark,
       ),
       (
-        title: 'FILTERED DUE',
+        title: 'Delivered',
+        subtitle:
+            '${filteredDues.length} due${filteredDues.length == 1 ? '' : 's'}',
         value: filteredDueAmount <= 0
             ? '₹0'
             : '₹${NumberFormat('#,##0').format(filteredDueAmount)}',
         color: filteredDues.isEmpty
-            ? const Color(0xFF1D3E67)
+            ? const Color(0xFF2BA58D)
             : const Color(0xFFD6455D),
+        bg: const Color(0xFFFAFCFB),
+        border: const Color(0xFFE8F2EC),
+        icon: FluentIcons.checkbox_composite,
       ),
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: List.generate(cards.length, (i) {
-          return Padding(
-            padding: EdgeInsets.only(right: i == cards.length - 1 ? 0 : 8),
-            child: TopWidgetSmallCard(
-              title: cards[i].title,
-              value: cards[i].value,
-              valueColor: cards[i].color,
-            ),
-          );
-        }),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: List.generate(cards.length, (i) {
+            return Padding(
+              padding: EdgeInsets.only(right: i == cards.length - 1 ? 0 : 8),
+              child: TopWidgetSmallCard(
+                title: cards[i].title,
+                subtitle: cards[i].subtitle,
+                value: cards[i].value,
+                valueColor: cards[i].color,
+                cardColor: cards[i].bg,
+                borderColor: cards[i].border,
+                icon: Icon(cards[i].icon, size: 14, color: cards[i].color),
+                width: 200,
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
