@@ -2,7 +2,7 @@ import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 
-Future<void> showReportTableModalV2({
+Future<void> showReportTableModal({
   required BuildContext context,
   required String title,
   required List<ReportDetailRow> rows,
@@ -10,7 +10,7 @@ Future<void> showReportTableModalV2({
 }) async {
   await showDialog<void>(
     context: context,
-    builder: (_) => _ReportTableModalV2(
+    builder: (_) => _ReportTableModal(
       title: title,
       rows: rows,
       hiddenColumns: hiddenColumns,
@@ -18,22 +18,22 @@ Future<void> showReportTableModalV2({
   );
 }
 
-class _ReportTableModalV2 extends StatefulWidget {
+class _ReportTableModal extends StatefulWidget {
   final String title;
   final List<ReportDetailRow> rows;
   final List<String> hiddenColumns;
 
-  const _ReportTableModalV2({
+  const _ReportTableModal({
     required this.title,
     required this.rows,
     required this.hiddenColumns,
   });
 
   @override
-  State<_ReportTableModalV2> createState() => _ReportTableModalV2State();
+  State<_ReportTableModal> createState() => _ReportTableModalState();
 }
 
-class _ReportTableModalV2State extends State<_ReportTableModalV2> {
+class _ReportTableModalState extends State<_ReportTableModal> {
   static const int _pageSize = 15;
   int _page = 1;
 

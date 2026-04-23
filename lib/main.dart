@@ -21,7 +21,7 @@ void main() async {
   ));
 
   if (kDebugMode) {
-    runApp(const ApexoAppV2());
+    runApp(const ApexoApp());
   } else {
     await SentryFlutter.init(
       (options) {
@@ -29,7 +29,7 @@ void main() async {
         // options.tracesSampleRate = 1.0;
         // options.profilesSampleRate = 1.0;
       },
-      appRunner: () => runApp(const ApexoAppV2()),
+      appRunner: () => runApp(const ApexoApp()),
     );
   }
 }

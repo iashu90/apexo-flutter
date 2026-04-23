@@ -48,14 +48,14 @@ String _patientDisplayName(Patient patient) {
       : _toTitleCasePatientName(patient.title);
 }
 
-class PatientsScreenV2 extends StatefulWidget {
-  const PatientsScreenV2({super.key});
+class PatientsScreen extends StatefulWidget {
+  const PatientsScreen({super.key});
 
   @override
-  State<PatientsScreenV2> createState() => _PatientsScreenV2State();
+  State<PatientsScreen> createState() => _PatientsScreenState();
 }
 
-class _PatientsScreenV2State extends State<PatientsScreenV2> {
+class _PatientsScreenState extends State<PatientsScreen> {
   final TextEditingController _listSearchController = TextEditingController();
 
   String _listQuery = '';
@@ -138,7 +138,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
   }
 
   void _openPatientHistoryDialog(Patient patient) {
-    showPatientHistoryDialogV2(
+    showPatientHistoryDialog(
       context: context,
       patient: patient,
       rows: patient.patientDetails,
@@ -152,7 +152,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       'date':
           (DateTime.now().millisecondsSinceEpoch / (60 * 60 * 1000)).round(),
     });
-    openLabworkV2Dialog(context, draft);
+    openLabworkDialog(context, draft);
   }
 
   void _showTopPatientsDialog({
@@ -189,7 +189,7 @@ class _PatientsScreenV2State extends State<PatientsScreenV2> {
       return;
     }
 
-    showReportTableModalV2(
+    showReportTableModal(
       context: context,
       title: '$title (${rows.length})',
       rows: detailRows,

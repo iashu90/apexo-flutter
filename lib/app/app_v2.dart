@@ -18,10 +18,10 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' as material;
 
-late BuildContext bContextV2;
+late BuildContext appContext;
 
-class ApexoAppV2 extends StatelessWidget {
-  const ApexoAppV2({super.key});
+class ApexoApp extends StatelessWidget {
+  const ApexoApp({super.key});
 
   @override
   StatelessElement createElement() {
@@ -68,7 +68,7 @@ class ApexoAppV2 extends StatelessWidget {
                       routes.currentRouteIndex.stream,
                     ],
                     builder: (BuildContext context, _) {
-                      bContextV2 = context;
+                      appContext = context;
                       return buildAppLayout();
                     },
                   ),
@@ -81,22 +81,22 @@ class ApexoAppV2 extends StatelessWidget {
   }
 
   void showDialogsIfNeeded() {
-    if (!bContextV2.mounted) return;
+    if (!appContext.mounted) return;
 
     version.update().then((_) {
-      if (version.newVersionAvailable && (!launch.dialogShown()) && bContextV2.mounted) {
+      if (version.newVersionAvailable && (!launch.dialogShown()) && appContext.mounted) {
         launch.dialogShown(true);
         showDialog(
-          context: bContextV2,
+          context: appContext,
           builder: (BuildContext context) => const NewVersionDialog(),
         );
       }
     });
 
-    if (launch.isFirstLaunch() && (!launch.dialogShown()) && bContextV2.mounted) {
+    if (launch.isFirstLaunch() && (!launch.dialogShown()) && appContext.mounted) {
       launch.dialogShown(true);
       showDialog(
-        context: bContextV2,
+        context: appContext,
         builder: (BuildContext context) => const FirstLaunchDialog(),
       );
     }

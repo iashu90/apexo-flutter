@@ -1,20 +1,27 @@
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/services/permissions.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-class PermissionsSettings extends StatelessWidget {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final List<String> permissionsTitles = const [
-    "doctors",
-    "patients",
-    "appointments",
-    "labworks",
-    "expenses",
-    "statistics"
-  ];
+class PermissionsSettings extends StatefulWidget {
+  const PermissionsSettings({super.key});
 
-  PermissionsSettings({super.key});
+  @override
+  State<PermissionsSettings> createState() => _PermissionsSettingsState();
+}
+
+class _PermissionsSettingsState extends State<PermissionsSettings> {
+  int _roleTabIndex = 0;
+
+  static const List<String> _permissionTitles = [
+    'Doctors',
+    'Patients',
+    'Appointments / Checkin',
+    'Labworks',
+    'Expenses',
+    'Reports',
+    'Dashboard',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +36,10 @@ class PermissionsSettings extends StatelessWidget {
           child: StreamBuilder(
               stream: permissions.stream,
               builder: (context, snapshot) {
+                final selectedValues = _roleTabIndex == 0
+                    ? permissions.editingList
+                    : permissions.editingDoctorList;
+
                 return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -42,38 +53,38 @@ class PermissionsSettings extends StatelessWidget {
                         child: Text(permissions.currentRoleLabel),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Receptionist access',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      ...List.generate(
-                        permissions.editingList.length,
-                        (index) => ToggleSwitch(
-                          checked: permissions.editingList[index],
-                          onChanged: (val) {
-                            permissions.editingList[index] = val;
-                            permissions.notifyAndPersist();
-                          },
-                          content: Txt(
-                            "${txt("usersCanAccess")} ${txt(permissionsTitles[index])}",
+                      Row(
+                        children: [
+                          _roleTab(
+                            label: 'Receptionist',
+                            selected: _roleTabIndex == 0,
+                            onTap: () => setState(() => _roleTabIndex = 0),
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          _roleTab(
+                            label: 'Doctor',
+                            selected: _roleTabIndex == 1,
+                            onTap: () => setState(() => _roleTabIndex = 1),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Doctor access',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
                       ...List.generate(
-                        permissions.editingDoctorList.length,
+                        _permissionTitles.length,
                         (index) => ToggleSwitch(
-                          checked: permissions.editingDoctorList[index],
+                          checked: index < selectedValues.length
+                              ? selectedValues[index]
+                              : false,
                           onChanged: (val) {
-                            permissions.editingDoctorList[index] = val;
+                            if (_roleTabIndex == 0) {
+                              permissions.editingList[index] = val;
+                            } else {
+                              permissions.editingDoctorList[index] = val;
+                            }
                             permissions.notifyAndPersist();
                           },
                           content: Txt(
-                            "${txt("usersCanAccess")} ${txt(permissionsTitles[index])}",
+                            "${txt("usersCanAccess")} ${_permissionTitles[index]}",
                           ),
                         ),
                       ),
@@ -81,19 +92,18 @@ class PermissionsSettings extends StatelessWidget {
                         const SizedBox(),
                         Row(
                           children: [
-                            FilledButton(
-                              child: Row(
-                                children: [const Icon(FluentIcons.save), const SizedBox(width: 5), Txt(txt("save"))],
-                              ),
+                            AppButton(
+                              leading: const Icon(FluentIcons.save),
+                              label: txt("save"),
                               onPressed: () {
                                 permissions.save();
                               },
                             ),
                             const SizedBox(width: 10),
-                            FilledButton(
-                              child: Row(
-                                children: [const Icon(FluentIcons.reset), const SizedBox(width: 5), Txt(txt("reset"))],
-                              ),
+                            AppButton(
+                              variant: AppButtonVariant.secondary,
+                              leading: const Icon(FluentIcons.reset),
+                              label: txt("reset"),
                               onPressed: () {
                                 permissions.reset();
                               },
@@ -103,6 +113,36 @@ class PermissionsSettings extends StatelessWidget {
                       ]
                     ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList());
               }),
+        ),
+      ),
+    );
+  }
+
+  Widget _roleTab({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF2D7BD8)
+                : const Color(0xFFD6E2F0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : const Color(0xFF355279),
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
         ),
       ),
     );

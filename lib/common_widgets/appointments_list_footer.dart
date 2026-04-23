@@ -46,7 +46,7 @@ class AppointmentsListFooter extends StatelessWidget {
                 ],
               ),
               onPressed: () {
-                openLabworkV2Dialog(
+                openLabworkDialog(
                   context,
                    Labwork.fromJson({
                     if (forPatientID != null) "patientID": forPatientID,

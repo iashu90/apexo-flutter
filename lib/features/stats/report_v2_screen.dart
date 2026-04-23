@@ -18,14 +18,14 @@ import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 
-class ReportV2Screen extends StatefulWidget {
-  const ReportV2Screen({super.key});
+class ReportScreen extends StatefulWidget {
+  const ReportScreen({super.key});
 
   @override
-  State<ReportV2Screen> createState() => _ReportV2ScreenState();
+  State<ReportScreen> createState() => _ReportScreenState();
 }
 
-class _ReportV2ScreenState extends State<ReportV2Screen> {
+class _ReportScreenState extends State<ReportScreen> {
   bool _showHeavyCards = false;
   int _monthlyOffset = 0;
 

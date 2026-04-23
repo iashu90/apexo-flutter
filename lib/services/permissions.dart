@@ -19,8 +19,10 @@ class _Permissions extends ObservablePersistingObject {
   static const int labworksPermissionIndex = 3;
   static const int expensesPermissionIndex = 4;
   static const int statisticsPermissionIndex = 5;
+  static const int dashboardPermissionIndex = 6;
 
   static const List<bool> _allAccess = [
+    true,
     true,
     true,
     true,
@@ -36,6 +38,7 @@ class _Permissions extends ObservablePersistingObject {
     true,
     true,
     false,
+    true,
   ];
 
   static const List<bool> _doctorDefaults = [
@@ -43,6 +46,7 @@ class _Permissions extends ObservablePersistingObject {
     true,
     true,
     true,
+    false,
     false,
     false,
   ];
@@ -123,15 +127,6 @@ class _Permissions extends ObservablePersistingObject {
       return true;
     }
 
-    if (currentRole == UserRole.receptionist) {
-      if (routeIdentifier == 'patients' || routeIdentifier == 'labworks') {
-        return true;
-      }
-      if (routeIdentifier == 'dashboard') {
-        return true;
-      }
-    }
-
     switch (routeIdentifier) {
       case 'doctors':
         return hasAccess(doctorsPermissionIndex);
@@ -147,6 +142,7 @@ class _Permissions extends ObservablePersistingObject {
       case 'report':
         return hasAccess(statisticsPermissionIndex);
       case 'dashboard':
+        return hasAccess(dashboardPermissionIndex);
       case 'data':
       case 'settings':
         return false;

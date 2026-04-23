@@ -13,7 +13,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-Future<void> showPatientHistoryDialogV2({
+Future<void> showPatientHistoryDialog({
   required BuildContext context,
   required Patient patient,
   required List<ReportDetailRow> rows,
@@ -23,7 +23,7 @@ Future<void> showPatientHistoryDialogV2({
     context: context,
     builder: (_) => Align(
       alignment: Alignment.center,
-      child: PatientHistoryDialogV2(
+      child: PatientHistoryDialog(
         patient: patient,
         rows: rows,
         labsOnly: labsOnly,
@@ -66,12 +66,12 @@ class _LedgerRowData {
   }
 }
 
-class PatientHistoryDialogV2 extends StatefulWidget {
+class PatientHistoryDialog extends StatefulWidget {
   final Patient patient;
   final List<ReportDetailRow> rows;
   final bool labsOnly;
 
-  const PatientHistoryDialogV2({
+  const PatientHistoryDialog({
     super.key,
     required this.patient,
     required this.rows,
@@ -79,10 +79,10 @@ class PatientHistoryDialogV2 extends StatefulWidget {
   });
 
   @override
-  State<PatientHistoryDialogV2> createState() => _PatientHistoryDialogV2State();
+  State<PatientHistoryDialog> createState() => _PatientHistoryDialogState();
 }
 
-class _PatientHistoryDialogV2State extends State<PatientHistoryDialogV2> {
+class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
   static const int _maxRowsPerPdfExport = 120;
   static const Duration _pdfBuildTimeout = Duration(seconds: 45);
   final TextEditingController _searchController = TextEditingController();

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 class AppTextTheme {
-  static const plusJakartaSans = 'Roboto';
+  static const plusJakartaSans = 'Segoe UI';
 
   // Flip this to true to use the platform system font everywhere.
   static const useSystemFont = false;

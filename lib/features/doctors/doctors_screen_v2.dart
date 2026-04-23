@@ -27,14 +27,14 @@ import 'package:intl/intl.dart';
 
 DateTime doctorPersistedDate = DateTime.now();
 
-class DoctorsScreenV2 extends StatefulWidget {
-  const DoctorsScreenV2({super.key});
+class DoctorsScreen extends StatefulWidget {
+  const DoctorsScreen({super.key});
 
   @override
-  State<DoctorsScreenV2> createState() => _DoctorsScreenV2State();
+  State<DoctorsScreen> createState() => _DoctorsScreenState();
 }
 
-class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
+class _DoctorsScreenState extends State<DoctorsScreen> {
   DateTime _selectedDate = DateTime(
     doctorPersistedDate.year,
     doctorPersistedDate.month,
@@ -138,7 +138,7 @@ class _DoctorsScreenV2State extends State<DoctorsScreenV2> {
   }
 
   Future<void> _openAddDoctorModal() async {
-    await _openDoctorEntryModalV2(context);
+    await _openDoctorEntryModal(context);
   }
 
   @override
@@ -265,7 +265,7 @@ String _doctorTitleCase(String input) {
       .join(' ');
 }
 
-Future<void> _openDoctorEntryModalV2(
+Future<void> _openDoctorEntryModal(
   BuildContext context, {
   Doctor? existingDoctor,
 }) async {
@@ -848,7 +848,7 @@ class _DoctorHandledRangeCard extends StatelessWidget {
 
                         return GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onTap: () => _openDoctorEntryModalV2(
+                          onTap: () => _openDoctorEntryModal(
                             context,
                             existingDoctor: row.doctor,
                           ),
@@ -2085,7 +2085,7 @@ class _DoctorsActivityCard extends StatelessWidget {
               ...rows.take(12).map(
                     (row) => GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => _openDoctorEntryModalV2(
+                      onTap: () => _openDoctorEntryModal(
                         context,
                         existingDoctor: row.doctor,
                       ),

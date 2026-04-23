@@ -1,4 +1,5 @@
 import 'package:apexo/services/permissions.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class AccessControlScreen extends StatefulWidget {
@@ -9,13 +10,16 @@ class AccessControlScreen extends StatefulWidget {
 }
 
 class _AccessControlScreenState extends State<AccessControlScreen> {
+  int _roleTabIndex = 0;
+
   static const List<String> _featureLabels = [
+    'Dashboard',
     'Doctors',
     'Patients',
     'Appointments / Checkin',
     'Labwork',
     'Expenses',
-    'Statistics / Report',
+    'Reports',
   ];
 
   @override
@@ -38,8 +42,9 @@ class _AccessControlScreenState extends State<AccessControlScreen> {
     return StreamBuilder(
       stream: permissions.stream,
       builder: (context, _) {
-        final receptionist = permissions.editingList;
-        final doctor = permissions.editingDoctorList;
+        final selectedValues = _roleTabIndex == 0
+            ? permissions.editingList
+            : permissions.editingDoctorList;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -54,29 +59,42 @@ class _AccessControlScreenState extends State<AccessControlScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              _roleCard(
-                title: 'Receptionist Access',
-                values: receptionist,
-                onToggle: (index, value) {
-                  setState(() {
-                    permissions.editingList[index] = value;
-                  });
-                },
+              Row(
+                children: [
+                  _roleTab(
+                    label: 'Receptionist',
+                    selected: _roleTabIndex == 0,
+                    onTap: () => setState(() => _roleTabIndex = 0),
+                  ),
+                  const SizedBox(width: 6),
+                  _roleTab(
+                    label: 'Doctor',
+                    selected: _roleTabIndex == 1,
+                    onTap: () => setState(() => _roleTabIndex = 1),
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               _roleCard(
-                title: 'Doctor Access',
-                values: doctor,
+                title: _roleTabIndex == 0
+                    ? 'Receptionist Access'
+                    : 'Doctor Access',
+                values: selectedValues,
                 onToggle: (index, value) {
                   setState(() {
-                    permissions.editingDoctorList[index] = value;
+                    if (_roleTabIndex == 0) {
+                      permissions.editingList[index] = value;
+                    } else {
+                      permissions.editingDoctorList[index] = value;
+                    }
                   });
                 },
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  FilledButton(
+                  AppButton(
+                    label: 'Save Changes',
                     onPressed: permissions.edited
                         ? () async {
                             await permissions.save();
@@ -91,10 +109,11 @@ class _AccessControlScreenState extends State<AccessControlScreen> {
                             );
                           }
                         : null,
-                    child: const Text('Save Changes'),
                   ),
                   const SizedBox(width: 8),
-                  Button(
+                  AppButton(
+                    label: 'Reset',
+                    variant: AppButtonVariant.secondary,
                     onPressed: permissions.edited
                         ? () {
                             setState(() {
@@ -102,7 +121,6 @@ class _AccessControlScreenState extends State<AccessControlScreen> {
                             });
                           }
                         : null,
-                    child: const Text('Reset'),
                   ),
                 ],
               ),
@@ -161,6 +179,36 @@ class _AccessControlScreenState extends State<AccessControlScreen> {
             );
           }),
         ],
+      ),
+    );
+  }
+
+  Widget _roleTab({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF2D7BD8)
+                : const Color(0xFFD6E2F0),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : const Color(0xFF355279),
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
       ),
     );
   }

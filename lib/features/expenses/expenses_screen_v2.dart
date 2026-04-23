@@ -13,14 +13,14 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
-class ExpensesScreenV2 extends StatefulWidget {
-  const ExpensesScreenV2({super.key});
+class ExpensesScreen extends StatefulWidget {
+  const ExpensesScreen({super.key});
 
   @override
-  State<ExpensesScreenV2> createState() => _ExpensesScreenV2State();
+  State<ExpensesScreen> createState() => _ExpensesScreenState();
 }
 
-class _ExpensesScreenV2State extends State<ExpensesScreenV2> {
+class _ExpensesScreenState extends State<ExpensesScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
 
   String _query = '';
