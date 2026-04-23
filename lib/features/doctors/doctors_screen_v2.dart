@@ -1345,6 +1345,15 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
               ],
             ),
             const SizedBox(height: 10),
+            const Text(
+              'Overview',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
+            ),
+            const SizedBox(height: 6),
             LayoutBuilder(
               builder: (context, constraints) {
                 final cardWidth = (constraints.maxWidth - 24) / 4;
@@ -1395,6 +1404,17 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                 );
               },
             ),
+            const SizedBox(height: 10),
+            const Text(
+              'Doctor List',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF183A67),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Divider(size: 1),
             if (doctorEntries.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 12),

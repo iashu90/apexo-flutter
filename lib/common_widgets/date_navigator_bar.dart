@@ -1,3 +1,4 @@
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 
@@ -111,22 +112,11 @@ class DateNavigatorBar extends StatelessWidget {
               maintainAnimation: true,
               maintainState: true,
               maintainSize: true,
-              child: FilledButton(
+              child: AppButton(
+                label: 'Today',
+                compact: true,
                 onPressed: onToday,
-                style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.pressed)) {
-                      return const Color(0xFF0B5BBC);
-                    }
-                    if (states.contains(WidgetState.hovered)) {
-                      return const Color(0xFF1468CC);
-                    }
-                    return todayButtonColor;
-                  }),
-                  foregroundColor: WidgetStateProperty.all(Colors.white),
-                ),
-                child: const Text('Today'),
+                variant: AppButtonVariant.primary,
               ),
             ),
           ),

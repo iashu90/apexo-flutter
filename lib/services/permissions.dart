@@ -133,7 +133,7 @@ class _Permissions extends ObservablePersistingObject {
     }
 
     switch (routeIdentifier) {
-      case 'doctors_v2':
+      case 'doctors':
         return hasAccess(doctorsPermissionIndex);
       case 'labworks':
         return hasAccess(labworksPermissionIndex);
@@ -144,7 +144,7 @@ class _Permissions extends ObservablePersistingObject {
         return hasAccess(appointmentsPermissionIndex);
       case 'expenses':
         return hasAccess(expensesPermissionIndex);
-      case 'report_v2':
+      case 'report':
         return hasAccess(statisticsPermissionIndex);
       case 'dashboard':
       case 'data':

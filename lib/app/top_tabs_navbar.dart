@@ -1,6 +1,7 @@
 import 'package:apexo/app/routes.dart' as app_routes;
 import 'package:apexo/common_widgets/bulk_update_dialog.dart';
 import 'package:apexo/common_widgets/daily_reminder_modal.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
@@ -55,24 +56,16 @@ class TopTabsNavBar extends StatelessWidget {
               ),
               Tooltip(
                 message: "Today's Briefing",
-                child: IconButton(
-                  icon: const Icon(
-                    CupertinoIcons.bell_fill,
-                    color: Color(0xFF5B6475),
-                    size: 20.0,
-                  ),
+                child: _TopRightActionIcon(
+                  icon: CupertinoIcons.bell_fill,
                   onPressed: () => showDailyReminderModal(context),
                 ),
               ),
               const SizedBox(width: 8),
               Tooltip(
                 message: 'Bulk Update',
-                child: IconButton(
-                  icon: const Icon(
-                    FluentIcons.edit,
-                    color: Color(0xFF5B6475),
-                    size: 18.0,
-                  ),
+                child: _TopRightActionIcon(
+                  icon: FluentIcons.edit,
                   onPressed: () => showBulkUpdateDialog(context),
                 ),
               ),
@@ -94,10 +87,10 @@ class TopTabsNavBar extends StatelessWidget {
       'dashboard',
       'patients',
       'checkin',
-      'doctors_v2',
+      'doctors',
       'labworks',
       'expenses',
-      'report_v2',
+      'report',
       'access_control'
     ];
 
@@ -124,21 +117,48 @@ class _LogoCluster extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!veryCompact)
-          const Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: Icon(
-              FluentIcons.home,
-              size: 14,
-              color: Color(0xFF7D8697),
-            ),
-          ),
         Image.asset(
           'assets/drnowdentallogo.png',
-          height: compact ? 38 : 42,
+          height: compact ? 38 : 52,
           fit: BoxFit.contain,
+          color: const Color(0xFF1E4FBD),
+          colorBlendMode: BlendMode.srcIn,
+          errorBuilder: (_, __, ___) => Image.asset(
+            'assets/images/logo.png',
+            height: compact ? 38 : 52,
+            fit: BoxFit.contain,
+            color: const Color(0xFF1E4FBD),
+            colorBlendMode: BlendMode.srcIn,
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _TopRightActionIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _TopRightActionIcon({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(
+        icon,
+        color: const Color(0xFF5B6475),
+        size: 18,
+      ),
+      onPressed: onPressed,
+      iconButtonMode: IconButtonMode.large,
+      style: ButtonStyle(
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+        ),
+        iconSize: WidgetStateProperty.all(18),
+        backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+      ),
     );
   }
 }
@@ -177,7 +197,8 @@ class _TabButton extends StatelessWidget {
               Icon(
                 route.icon,
                 size: 14.5,
-                color: active ? const Color(0xFF1E4FBD) : const Color(0xFF7D8697),
+                color:
+                    active ? const Color(0xFF1E4FBD) : const Color(0xFF7D8697),
               ),
               const SizedBox(width: 8),
               Text(
@@ -185,7 +206,9 @@ class _TabButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                  color: active ? const Color(0xFF1E4FBD) : const Color(0xFF707A8A),
+                  color: active
+                      ? const Color(0xFF1E4FBD)
+                      : const Color(0xFF707A8A),
                 ),
               ),
             ],
@@ -197,7 +220,7 @@ class _TabButton extends StatelessWidget {
 
   String _displayTitle(app_routes.Route route) {
     if (route.identifier == 'statistics') return txt('reports');
-    if (route.identifier == 'report_v2') return 'Report';
+    if (route.identifier == 'report') return 'Report';
     if (route.identifier == 'labworks') return 'Labwork';
     return route.title;
   }
@@ -220,17 +243,15 @@ class _UserChipState extends State<_UserChip> {
         title: const Text('Logout confirmation'),
         content: const Text('Do you want to logout from this session?'),
         actions: [
-          Button(
+          AppButton(
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(const Color(0xFFD6455D)),
-              foregroundColor: WidgetStateProperty.all(Colors.white),
-            ),
+          AppButton(
+            label: txt('logout'),
+            variant: AppButtonVariant.ghost,
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(txt('logout')),
           ),
         ],
       ),
