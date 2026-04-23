@@ -154,7 +154,7 @@ class _PanelScreenState extends State<PanelScreen> {
                 ],
                 builder: (context, snapshot) {
                   return Column(
-                    key: Key(localSettings.selectedLocale.toString()),
+                    key: const Key('panel_content'),
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildPanelHeader(),

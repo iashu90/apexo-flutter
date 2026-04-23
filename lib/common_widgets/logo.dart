@@ -1,5 +1,6 @@
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 /// Use this widget to display the logo and name of your app
@@ -11,9 +12,11 @@ class AppLogo extends StatefulWidget {
 }
 
 String savedVersion = "";
+String savedBuildDate = "";
 
 class _AppLogoState extends State<AppLogo> {
   String version = savedVersion;
+  String buildDate = savedBuildDate;
 
   @override
   void initState() {
@@ -25,6 +28,16 @@ class _AppLogoState extends State<AppLogo> {
               }))
           .ignore();
     }
+
+    if (buildDate.isEmpty) {
+      final parsedBuildDate = DateTime.tryParse(
+        const String.fromEnvironment('BUILD_DATE', defaultValue: ''),
+      );
+      final resolvedBuildDate = parsedBuildDate ?? DateTime.now();
+      buildDate = DateFormat('d MMMM yyyy').format(resolvedBuildDate);
+      savedBuildDate = buildDate;
+    }
+
     super.initState();
   }
 
@@ -53,7 +66,7 @@ class _AppLogoState extends State<AppLogo> {
                 Text(version, style: textStyle),
                 const SizedBox(height: 2),
                 Text(
-                  "6 March 2026",
+                  buildDate,
                   style: textStyle,
                 ),
               ],

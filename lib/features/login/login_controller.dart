@@ -1,5 +1,4 @@
 import 'package:apexo/core/observable.dart';
-import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -42,15 +41,9 @@ class _LoginScreenState {
     String url = urlField.text.replaceFirst(RegExp(r'/+$'), "");
     String email = emailField.text;
     String password = passwordField.text;
+    loadingIndicator("Signing in...");
+    loginError("");
     login.activate(url, [email, password], online);
-  }
-
-  _LoginScreenState() {
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (launch.isDemo) {
-        loginButton();
-      }
-    });
   }
 }
 

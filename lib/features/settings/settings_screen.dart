@@ -70,23 +70,6 @@ class SettingsScreen extends StatelessWidget {
                 initValue: globalSettings.get("phone__________").value,
                 apply: (newVal) => globalSettings.set(Setting.fromJson({"id": "phone__________", "value": newVal})),
               ),
-            SettingsItem(
-              title: txt("language"),
-              identifier: "language",
-              description: txt("language_desc"),
-              icon: FluentIcons.locale_language,
-              inputType: InputType.dropDown,
-              scope: Scope.device,
-              options: locale.list
-                  .map((e) => ComboBoxItem(value: locale.list.indexOf(e).toString(), child: Txt(e.$name)))
-                  .toList(),
-              initValue: localSettings.selectedLocale.toString(),
-              apply: (newVal) {
-                localSettings.selectedLocale = int.parse(newVal);
-                localSettings.notifyAndPersist();
-                networkActions.resync();
-              },
-            ),
             if (login.isAdmin)
               SettingsItem(
                 title: txt("startingDayOfWeek"),
