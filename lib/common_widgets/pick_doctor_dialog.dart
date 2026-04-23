@@ -1,6 +1,17 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../features/doctors/doctors_store.dart';
 
+String _doctorChipTitleCase(String input) {
+  final cleaned = input.trim();
+  if (cleaned.isEmpty) return cleaned;
+  return cleaned
+    .split(RegExp(r'\s+'))
+    .map((part) => part.isEmpty
+      ? part
+      : '${part[0].toUpperCase()}${part.length > 1 ? part.substring(1).toLowerCase() : ''}')
+    .join(' ');
+}
+
 /// Utility to pick one or more doctors in a dialog.
 Future<List<String>?> pickDoctorDialog(
   BuildContext context, {
@@ -59,7 +70,7 @@ Future<List<String>?> pickDoctorDialog(
                               .map((doctor) {
                             final doctorName = doctor.title.trim().isEmpty
                                 ? 'Unnamed doctor'
-                                : doctor.title;
+                              : _doctorChipTitleCase(doctor.title);
                             return GestureDetector(
                               onTap: () {
                                 setDialogState(() {
@@ -106,7 +117,7 @@ Future<List<String>?> pickDoctorDialog(
                                 .map((doctor) {
                               final doctorName = doctor.title.trim().isEmpty
                                   ? 'Unnamed doctor'
-                                  : doctor.title;
+                                  : _doctorChipTitleCase(doctor.title);
                               return GestureDetector(
                                 onTap: () {
                                   setDialogState(() {

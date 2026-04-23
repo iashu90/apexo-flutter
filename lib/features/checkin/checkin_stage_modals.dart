@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/pick_doctor_dialog.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -174,13 +175,14 @@ class CheckinStageModalRouter {
         title: Text('Checkin $patientName'),
         content: Text(_stagePatientSummary(appointment)),
         actions: [
-          Button(
+          AppButton(
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
+          AppButton(
+            label: 'Check In',
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Check In'),
           ),
         ],
       ),

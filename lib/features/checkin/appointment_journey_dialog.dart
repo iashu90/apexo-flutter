@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 
 typedef AppointmentJourneyStepBuilder = Widget Function(
   BuildContext context,
@@ -28,8 +29,14 @@ Future<void> showAppointmentJourneyDialog({
   AppointmentJourneyBeforeAdvance? onBeforeStepAdvance,
 }) async {
   var currentStep = initialStep.clamp(0, 3);
-  const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4'];
-  const subtitles = ['Treatment', 'Schedule Next', 'Billing', 'Completed'];
+  const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5'];
+  const subtitles = [
+    'Checked In',
+    'Treatment',
+    'Schedule Next',
+    'Billing',
+    'Completed',
+  ];
 
   List<Color> headerGradient(int step) {
     switch (step) {
@@ -72,15 +79,20 @@ Future<void> showAppointmentJourneyDialog({
         final panelHeight = (dialogHeight * 0.58).clamp(320.0, 620.0);
 
         Widget stepNode(int index) {
-          final selected = index == currentStep;
-          final complete = index < currentStep;
-          final selectedColor = stepColor(index);
+          final isCheckinStep = index == 0;
+          final logicalStep = isCheckinStep ? -1 : index - 1;
+          final selected = !isCheckinStep && logicalStep == currentStep;
+          final complete = isCheckinStep || logicalStep < currentStep;
+          final selectedColor = stepColor(logicalStep < 0 ? 0 : logicalStep);
+
           return GestureDetector(
-            onTap: () {
-              setStateDialog(() {
-                currentStep = index;
-              });
-            },
+            onTap: isCheckinStep
+                ? null
+                : () {
+                    setStateDialog(() {
+                      currentStep = logicalStep;
+                    });
+                  },
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -247,7 +259,7 @@ Future<void> showAppointmentJourneyDialog({
                                         (index) => Expanded(
                                           child: Container(
                                             height: 2,
-                                            color: index < currentStep
+                                            color: (index == 0 || index - 1 < currentStep)
                                                 ? const Color(0xFF2BA58D)
                                                 : const Color(0xFFC9D3E0),
                                           ),
@@ -283,24 +295,26 @@ Future<void> showAppointmentJourneyDialog({
                     ),
                     child: Row(
                       children: [
-                        Button(
+                        AppButton(
+                          label: 'Cancel',
+                          variant: AppButtonVariant.secondary,
                           onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text('Cancel'),
                         ),
                         const SizedBox(width: 8),
                         if (currentStep > 0)
-                          Button(
+                          AppButton(
+                            label: 'Back',
+                            variant: AppButtonVariant.secondary,
                             onPressed: () {
                               setStateDialog(() {
                                 currentStep -= 1;
                               });
                             },
-                            child: const Text('Back'),
                           ),
                         const Spacer(),
-                        FilledButton(
+                        AppButton(
+                          label: currentStep == 3 ? 'Done' : 'Continue',
                           onPressed: handleContinue,
-                          child: Text(currentStep == 3 ? 'Done' : 'Continue'),
                         ),
                       ],
                     ),

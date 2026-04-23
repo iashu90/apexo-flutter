@@ -1017,7 +1017,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   }
 
   Future<void> _openAppointmentPopup(Appointment appointment) async {
-    await openCheckinAppointmentModal(context, appointment);
+    await openAppointmentJourneyDialog(context, appointment);
   }
 
   void _selectAndOpenAppointment(Appointment appointment) {
@@ -1833,9 +1833,9 @@ class _WorkflowRow extends StatelessWidget {
     await CheckinStageModalRouter.openForStage(
       context: context,
       appointment: appointment,
-      openTreatmentModal: openCheckinAppointmentModal,
-      openBillingModal: openCheckinAppointmentModal,
-      openCompleteModal: openCheckinAppointmentModal,
+      openTreatmentModal: openAppointmentJourneyDialog,
+      openBillingModal: openAppointmentJourneyDialog,
+      openCompleteModal: openAppointmentJourneyDialog,
       onUpdated: () => onSelect?.call(appointment),
     );
   }
@@ -4411,13 +4411,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   if (a.preOpNotes.trim().isNotEmpty)
                     pw.Bullet(
                       text: a.preOpNotes.trim(),
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                           fontSize: 9, color: pdfSecondaryTextColor),
                     ),
                   if (a.postOpNotes.trim().isNotEmpty)
                     pw.Bullet(
                       text: a.postOpNotes.trim(),
-                      style: pw.TextStyle(
+                      style: const pw.TextStyle(
                           fontSize: 9, color: pdfSecondaryTextColor),
                     ),
                 ],

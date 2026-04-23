@@ -2,6 +2,7 @@ import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
@@ -98,9 +99,28 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
       constraints: const BoxConstraints(maxWidth: 1140, maxHeight: 760),
       title: Row(
         children: [
-          Text(labworks.get(widget.item.id) == null
-              ? 'New Labwork'
-              : 'Edit Labwork'),
+          const Icon(FluentIcons.test_beaker_solid, size: 20, color: Color(0xFF2D7BD8)),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                labworks.get(widget.item.id) == null
+                    ? 'New Labwork'
+                    : 'Edit Labwork',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Create a new lab request with patient and case details',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF6B7F9C),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
           const Spacer(),
           IconButton(
             icon: const Icon(FluentIcons.chrome_close, size: 16),
@@ -136,26 +156,27 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                 _fieldBox(
                   width: isWide ? 330 : 460,
                   label: '${txt('doctors')}:',
-                  child: ComboBox<String>(
-                    isExpanded: true,
-                    value: selectedDoctorId,
-                    items: doctorsList
-                        .map(
-                          (doctor) => ComboBoxItem<String>(
-                            value: doctor.id,
-                            child: Text(
-                              doctor.title.trim().isEmpty
-                                  ? 'Unnamed doctor'
-                                  : doctor.title,
-                            ),
-                          ),
-                        )
-                        .toList(growable: false),
-                    placeholder: const Text('Select doctor'),
+                  child: AppDropdownMenu<String>(
+                    width: double.infinity,
+                    value: selectedDoctorId ?? '__none__',
+                    items: [
+                      const AppDropdownItem<String>(
+                        value: '__none__',
+                        label: 'Select doctor',
+                      ),
+                      ...doctorsList.map(
+                        (doctor) => AppDropdownItem<String>(
+                          value: doctor.id,
+                          label: doctor.title.trim().isEmpty
+                              ? 'Unnamed doctor'
+                              : doctor.title,
+                        ),
+                      ),
+                    ],
                     onChanged: (id) {
                       setState(() {
                         widget.item.operatorsIDs =
-                            id == null ? <String>[] : <String>[id];
+                            id == '__none__' ? <String>[] : <String>[id];
                       });
                     },
                   ),
@@ -170,21 +191,26 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                 _fieldBox(
                   width: isWide ? 330 : 460,
                   label: '${txt('laboratory')}:',
-                  child: ComboBox<String>(
-                    isExpanded: true,
-                    value: widget.item.lab.trim().isEmpty ? null : widget.item.lab,
-                    items: labOptions
-                        .map(
-                          (lab) => ComboBoxItem<String>(
-                            value: lab,
-                            child: Text(lab),
-                          ),
-                        )
-                        .toList(growable: false),
-                    placeholder: const Text('Select laboratory'),
+                  child: AppDropdownMenu<String>(
+                    width: double.infinity,
+                    value: widget.item.lab.trim().isEmpty
+                        ? '__none__'
+                        : widget.item.lab,
+                    items: [
+                      const AppDropdownItem<String>(
+                        value: '__none__',
+                        label: 'Select laboratory',
+                      ),
+                      ...labOptions.map(
+                        (lab) => AppDropdownItem<String>(
+                          value: lab,
+                          label: lab,
+                        ),
+                      ),
+                    ],
                     onChanged: (lab) {
                       setState(() {
-                        widget.item.lab = lab ?? '';
+                        widget.item.lab = lab == '__none__' ? '' : lab;
                       });
                     },
                   ),
@@ -192,63 +218,67 @@ class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
                 _fieldBox(
                   width: isWide ? 330 : 460,
                   label: '${txt('typeOfWork')}:',
-                  child: ComboBox<String>(
+                  child: AppDropdownMenu<String>(
+                    width: double.infinity,
                     value: widget.item.typeOfWork.isEmpty
-                        ? null
+                        ? '__none__'
                         : widget.item.typeOfWork,
                     items: const [
-                      'Zirconia Premium',
-                      'Zirconia',
-                      'PFM',
-                      'DMLS',
-                      'Full Metal',
-                      'PMMA',
-                      'RPD',
-                      'Denture',
-                      'Implant',
-                      'ESSIX',
-                      'Other',
-                    ]
-                        .map((v) =>
-                            ComboBoxItem<String>(value: v, child: Text(v)))
-                        .toList(growable: false),
-                    placeholder: const Text('Select type of work'),
-                    onChanged: (v) =>
-                        setState(() => widget.item.typeOfWork = v ?? ''),
+                      AppDropdownItem<String>(
+                        value: '__none__',
+                        label: 'Select type of work',
+                      ),
+                      AppDropdownItem<String>(
+                          value: 'Zirconia Premium', label: 'Zirconia Premium'),
+                      AppDropdownItem<String>(value: 'Zirconia', label: 'Zirconia'),
+                      AppDropdownItem<String>(value: 'PFM', label: 'PFM'),
+                      AppDropdownItem<String>(value: 'DMLS', label: 'DMLS'),
+                      AppDropdownItem<String>(value: 'Full Metal', label: 'Full Metal'),
+                      AppDropdownItem<String>(value: 'PMMA', label: 'PMMA'),
+                      AppDropdownItem<String>(value: 'RPD', label: 'RPD'),
+                      AppDropdownItem<String>(value: 'Denture', label: 'Denture'),
+                      AppDropdownItem<String>(value: 'Implant', label: 'Implant'),
+                      AppDropdownItem<String>(value: 'ESSIX', label: 'ESSIX'),
+                      AppDropdownItem<String>(value: 'Other', label: 'Other'),
+                    ],
+                    onChanged: (v) => setState(
+                      () => widget.item.typeOfWork = v == '__none__' ? '' : v,
+                    ),
                   ),
                 ),
                 _fieldBox(
                   width: isWide ? 330 : 460,
                   label: '${txt('shade')}:',
-                  child: ComboBox<String>(
-                    value: widget.item.shade.isEmpty ? null : widget.item.shade,
+                  child: AppDropdownMenu<String>(
+                    width: double.infinity,
+                    value: widget.item.shade.isEmpty ? '__none__' : widget.item.shade,
                     items: const [
-                      '0M1',
-                      '0M2',
-                      '0M3',
-                      '1M1',
-                      '1M2',
-                      '2L1.5',
-                      '2L2.5',
-                      '2M1',
-                      '2M2',
-                      '2M3',
-                      '2R1.5',
-                      '2R2.5',
-                      '3L1.5',
-                      '3L2.5',
-                      '3M1',
-                      '3M2',
-                      '3M3',
-                      '3R1.5',
-                      '3R2.5',
-                    ]
-                        .map((v) =>
-                            ComboBoxItem<String>(value: v, child: Text(v)))
-                        .toList(growable: false),
-                    placeholder: const Text('Select shade'),
+                      AppDropdownItem<String>(
+                        value: '__none__',
+                        label: 'Select shade',
+                      ),
+                      AppDropdownItem<String>(value: '0M1', label: '0M1'),
+                      AppDropdownItem<String>(value: '0M2', label: '0M2'),
+                      AppDropdownItem<String>(value: '0M3', label: '0M3'),
+                      AppDropdownItem<String>(value: '1M1', label: '1M1'),
+                      AppDropdownItem<String>(value: '1M2', label: '1M2'),
+                      AppDropdownItem<String>(value: '2L1.5', label: '2L1.5'),
+                      AppDropdownItem<String>(value: '2L2.5', label: '2L2.5'),
+                      AppDropdownItem<String>(value: '2M1', label: '2M1'),
+                      AppDropdownItem<String>(value: '2M2', label: '2M2'),
+                      AppDropdownItem<String>(value: '2M3', label: '2M3'),
+                      AppDropdownItem<String>(value: '2R1.5', label: '2R1.5'),
+                      AppDropdownItem<String>(value: '2R2.5', label: '2R2.5'),
+                      AppDropdownItem<String>(value: '3L1.5', label: '3L1.5'),
+                      AppDropdownItem<String>(value: '3L2.5', label: '3L2.5'),
+                      AppDropdownItem<String>(value: '3M1', label: '3M1'),
+                      AppDropdownItem<String>(value: '3M2', label: '3M2'),
+                      AppDropdownItem<String>(value: '3M3', label: '3M3'),
+                      AppDropdownItem<String>(value: '3R1.5', label: '3R1.5'),
+                      AppDropdownItem<String>(value: '3R2.5', label: '3R2.5'),
+                    ],
                     onChanged: (v) =>
-                        setState(() => widget.item.shade = v ?? ''),
+                        setState(() => widget.item.shade = v == '__none__' ? '' : v),
                   ),
                 ),
               ],

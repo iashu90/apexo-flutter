@@ -6,6 +6,9 @@ import 'package:apexo/common_widgets/lab_bulk_update_dialog.dart';
 import 'package:apexo/common_widgets/month_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
+import 'package:apexo/core/ui/components/app_search_field.dart';
+import 'package:apexo/core/ui/components/top_widget_cards.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
@@ -260,29 +263,40 @@ class _LabworksScreenState extends State<LabworksScreen> {
         filteredDues.fold<double>(0, (sum, l) => sum + l.price);
 
     final cards = [
-      _StatCardData('IN LAB', '$inLab', 'cases'),
-      _StatCardData('READY', '$ready', 'ready'),
-      _StatCardData(
-        'FILTERED DUE',
-        filteredDueAmount <= 0
-            ? 'None'
+      (
+        title: 'IN LAB',
+        value: '$inLab',
+        color: const Color(0xFFE09C31),
+      ),
+      (
+        title: 'READY',
+        value: '$ready',
+        color: const Color(0xFF2BA58D),
+      ),
+      (
+        title: 'FILTERED DUE',
+        value: filteredDueAmount <= 0
+            ? '₹0'
             : '₹${NumberFormat('#,##0').format(filteredDueAmount)}',
-        filteredDues.isEmpty
-            ? ''
-            : '${filteredDues.length} due${filteredDues.length == 1 ? '' : 's'}',
-        valueColor: filteredDues.isEmpty
+        color: filteredDues.isEmpty
             ? const Color(0xFF1D3E67)
             : const Color(0xFFD6455D),
       ),
     ];
 
-    return SizedBox(
-      height: 122,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemBuilder: (context, i) => _StatCard(data: cards[i]),
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemCount: cards.length,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: List.generate(cards.length, (i) {
+          return Padding(
+            padding: EdgeInsets.only(right: i == cards.length - 1 ? 0 : 8),
+            child: TopWidgetSmallCard(
+              title: cards[i].title,
+              value: cards[i].value,
+              valueColor: cards[i].color,
+            ),
+          );
+        }),
       ),
     );
   }
@@ -292,6 +306,15 @@ class _LabworksScreenState extends State<LabworksScreen> {
 
     final labs = ['all', '__unassigned__', ...labworks.allLabs.toSet()]
       ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    final labItems = {
+      for (final v in labs)
+        v: v == 'all'
+            ? 'All Labs'
+            : v == '__unassigned__'
+                ? 'Unassigned Lab'
+                : v,
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -306,18 +329,14 @@ class _LabworksScreenState extends State<LabworksScreen> {
                   children: [
                     SizedBox(
                       width: 390,
-                      child: TextBox(
-                        textAlign: TextAlign.left,
+                      child: AppSearchField(
+                        hint: 'Search patient / phone / teeth / doctor',
                         controller: _searchCtrl,
-                        placeholder: 'Search patient / phone / teeth / doctor',
-                        prefix: const Padding(
-                          padding: EdgeInsets.only(left: 10),
-                          child: Icon(
-                            FluentIcons.search,
-                            size: 12,
-                            color: Color(0xFF6B778C),
-                          ),
-                        ),
+                        width: 390,
+                        onClear: () {
+                          _searchCtrl.clear();
+                          setState(() => _query = '');
+                        },
                       ),
                     ),
                     if (_rangeFilter == 'monthly') ...[
@@ -325,29 +344,11 @@ class _LabworksScreenState extends State<LabworksScreen> {
                       SizedBox(width: 290, child: _buildMonthNavigator()),
                     ],
                     const SizedBox(width: 12),
-                    SizedBox(
+                    _dropFilter(
                       width: 190,
-                      child: ComboBox<String>(
-                        value: _labFilter,
-                        items: labs
-                            .map(
-                              (v) => ComboBoxItem<String>(
-                                value: v,
-                                child: Text(
-                                  v == 'all'
-                                      ? 'All Labs'
-                                      : v == '__unassigned__'
-                                          ? 'Unassigned Lab'
-                                          : v,
-                                ),
-                              ),
-                            )
-                            .toList(growable: false),
-                        onChanged: (v) {
-                          if (v == null) return;
-                          setState(() => _labFilter = v);
-                        },
-                      ),
+                      value: _labFilter,
+                      items: labItems,
+                      onChanged: (v) => setState(() => _labFilter = v),
                     ),
                     const SizedBox(width: 8),
                     _dropFilter(
@@ -397,18 +398,14 @@ class _LabworksScreenState extends State<LabworksScreen> {
               children: [
                 Expanded(
                   flex: 4,
-                  child: TextBox(
-                    textAlign: TextAlign.left,
+                  child: AppSearchField(
+                    hint: 'Search patient / phone / teeth / doctor',
                     controller: _searchCtrl,
-                    placeholder: 'Search patient / phone / teeth / doctor',
-                    prefix: const Padding(
-                      padding: EdgeInsets.only(left: 10),
-                      child: Icon(
-                        FluentIcons.search,
-                        size: 12,
-                        color: Color(0xFF6B778C),
-                      ),
-                    ),
+                    width: double.infinity,
+                    onClear: () {
+                      _searchCtrl.clear();
+                      setState(() => _query = '');
+                    },
                   ),
                 ),
                 if (_rangeFilter == 'monthly')
@@ -424,29 +421,11 @@ class _LabworksScreenState extends State<LabworksScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      SizedBox(
+                      _dropFilter(
                         width: 190,
-                        child: ComboBox<String>(
-                          value: _labFilter,
-                          items: labs
-                              .map(
-                                (v) => ComboBoxItem<String>(
-                                  value: v,
-                                  child: Text(
-                                    v == 'all'
-                                        ? 'All Labs'
-                                        : v == '__unassigned__'
-                                            ? 'Unassigned Lab'
-                                            : v,
-                                  ),
-                                ),
-                              )
-                              .toList(growable: false),
-                          onChanged: (v) {
-                            if (v == null) return;
-                            setState(() => _labFilter = v);
-                          },
-                        ),
+                        value: _labFilter,
+                        items: labItems,
+                        onChanged: (v) => setState(() => _labFilter = v),
                       ),
                       const SizedBox(width: 8),
                       _dropFilter(
@@ -723,23 +702,18 @@ class _LabworksScreenState extends State<LabworksScreen> {
     required Map<String, String> items,
     required void Function(String) onChanged,
   }) {
-    return SizedBox(
+    return AppDropdownMenu<String>(
       width: width,
-      child: ComboBox<String>(
-        value: value,
-        items: items.entries
-            .map(
-              (entry) => ComboBoxItem<String>(
-                value: entry.key,
-                child: Text(entry.value),
-              ),
-            )
-            .toList(growable: false),
-        onChanged: (v) {
-          if (v == null) return;
-          onChanged(v);
-        },
-      ),
+      value: value,
+      items: items.entries
+          .map(
+            (entry) => AppDropdownItem<String>(
+              value: entry.key,
+              label: entry.value,
+            ),
+          )
+          .toList(growable: false),
+      onChanged: onChanged,
     );
   }
 
@@ -856,82 +830,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
       _fromDate = null;
       _toDate = null;
     });
-  }
-}
-
-class _StatCardData {
-  final String title;
-  final String value;
-  final String subtitle;
-  final Color valueColor;
-
-  const _StatCardData(
-    this.title,
-    this.value,
-    this.subtitle, {
-    this.valueColor = const Color(0xFF1D3E67),
-  });
-}
-
-class _StatCard extends StatelessWidget {
-  final _StatCardData data;
-
-  const _StatCard({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E3F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x160D2F5B),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: SizedBox(
-        width: 176,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                data.title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF3C5E87),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                data.value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: data.value.length > 12 ? 22 : 28,
-                  fontWeight: FontWeight.w700,
-                  color: data.valueColor,
-                ),
-              ),
-              if (data.subtitle.isNotEmpty)
-                Text(
-                  data.subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF6B778C),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

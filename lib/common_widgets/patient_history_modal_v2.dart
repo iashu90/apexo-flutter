@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patient_report.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/utils/pdf_export_layout.dart';
 import 'package:apexo/utils/share_actions.dart';
@@ -691,7 +692,8 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  FilledButton(
+                  AppButton(
+                    label: 'WhatsApp',
                     onPressed: () async {
                       try {
                         await openWhatsApp(widget.patient.phone, message);
@@ -710,9 +712,10 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                         );
                       }
                     },
-                    child: const Text('WhatsApp'),
                   ),
-                  Button(
+                  AppButton(
+                    label: canEmail ? 'Email' : 'Email (No address)',
+                    variant: AppButtonVariant.secondary,
                     onPressed: canEmail
                         ? () async {
                             try {
@@ -738,11 +741,11 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                             }
                           }
                         : null,
-                    child: Text(canEmail ? 'Email' : 'Email (No address)'),
                   ),
-                  const Button(
+                  const AppButton(
+                    label: 'SMS (Coming Soon)',
+                    variant: AppButtonVariant.secondary,
                     onPressed: null,
-                    child: Text('SMS (Coming Soon)'),
                   ),
                 ],
               ),
@@ -750,9 +753,10 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
           ],
         ),
         actions: [
-          Button(
+          AppButton(
+            label: 'Close',
+            variant: AppButtonVariant.secondary,
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
           ),
         ],
       ),
@@ -867,29 +871,21 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                   runSpacing: 8,
                   alignment: WrapAlignment.end,
                   children: [
-                    FilledButton(
-                      style: ButtonStyle(
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFF2563EB)),
-                      ),
+                    AppButton(
+                      label: _historyTab == 'labs'
+                          ? '+ Add Lab Record'
+                          : '+ Add Treatment',
                       onPressed: () {},
-                      child: Text(
-                        _historyTab == 'labs'
-                            ? '+ Add Lab Record'
-                            : '+ Add Treatment',
-                      ),
                     ),
-                    FilledButton(
-                      style: ButtonStyle(
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFF16A34A)),
-                      ),
+                    AppButton(
+                      label: 'Collect Payment',
                       onPressed: () {},
-                      child: const Text('Collect Payment'),
                     ),
-                    Button(
-                        onPressed: _openShareOptions,
-                        child: const Text('Share')),
+                    AppButton(
+                      label: 'Share',
+                      variant: AppButtonVariant.secondary,
+                      onPressed: _openShareOptions,
+                    ),
                     ExportFileActionButton(
                       type: ExportFileType.csv,
                       busy: _isExportingCsv,

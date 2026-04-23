@@ -8,26 +8,31 @@ class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
   final VoidCallback? onTap;
+  final Color backgroundColor;
+  final Color? borderColor;
 
   const AppCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.onTap,
+    this.backgroundColor = AppColors.bgCard,
+    this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: AppRadius.card,
+    return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: padding,
-        decoration: const BoxDecoration(
-          color: AppColors.bgCard,
+        decoration: BoxDecoration(
+          color: backgroundColor,
           borderRadius: AppRadius.card,
           boxShadow: AppShadows.sm,
+          border: borderColor == null ? null : Border.all(color: borderColor!),
         ),
         child: child,
       ),

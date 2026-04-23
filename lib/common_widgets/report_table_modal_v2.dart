@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/patient_report.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 
@@ -197,23 +198,24 @@ class _ReportTableModalState extends State<_ReportTableModal> {
                     ),
                   ),
                   const Spacer(),
-                  Button(
-                    onPressed: _page > 1
-                        ? () => setState(() => _page -= 1)
-                        : null,
-                    child: const Text('Previous'),
+                  AppButton(
+                    label: 'Previous',
+                    variant: AppButtonVariant.secondary,
+                    onPressed:
+                        _page > 1 ? () => setState(() => _page -= 1) : null,
                   ),
                   const SizedBox(width: 8),
-                  Button(
+                  AppButton(
+                    label: 'Next',
+                    variant: AppButtonVariant.secondary,
                     onPressed: _page < _pageCount
                         ? () => setState(() => _page += 1)
                         : null,
-                    child: const Text('Next'),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton(
+                  AppButton(
+                    label: 'Close',
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
                   ),
                 ],
               ),
