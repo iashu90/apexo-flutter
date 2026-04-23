@@ -7,6 +7,7 @@ import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:flutter/material.dart' show showTimePicker, TimeOfDay, Card;
@@ -926,7 +927,8 @@ class AppointmentCalendarTile<Item extends Appointment>
                       TimeOfDay? res = await showTimePicker(
                           context: context,
                           initialTime: TimeOfDay(
-                              hour: item.date.hour, minute: item.date.minute));
+                            hour: item.date.hour, minute: item.date.minute),
+                          builder: apexoDatePickerBuilder(context));
                       if (res != null) {
                         item.date = DateTime(item.date.year, item.date.month,
                             item.date.day, res.hour, res.minute);

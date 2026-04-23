@@ -2,7 +2,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/acrylic_button.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' show showTimePicker, showDatePicker, TimeOfDay;
+import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
 class DateTimePicker extends StatefulWidget {
@@ -60,19 +60,21 @@ class DateTimePickerState extends State<DateTimePicker> {
     DateTime selected = value;
 
     if (widget.pickTime) {
-      TimeOfDay time = await showTimePicker(
+      material.TimeOfDay time = await material.showTimePicker(
             context: context,
-            initialTime: TimeOfDay(hour: value.hour, minute: value.minute),
+            initialTime:
+                material.TimeOfDay(hour: value.hour, minute: value.minute),
+            builder: apexoDatePickerBuilder(context),
           ) ??
-          TimeOfDay(hour: selected.hour, minute: selected.minute);
+          material.TimeOfDay(hour: selected.hour, minute: selected.minute);
       selected = DateTime(selected.year, selected.month, selected.day, time.hour, time.minute);
     } else {
-      selected = await showDatePicker(
+      selected = await material.showDatePicker(
             context: context,
             initialDate: value,
             firstDate: DateTime.now().subtract(const Duration(days: 9999)),
             lastDate: DateTime.now().add(const Duration(days: 9999)),
-        builder: apexoDatePickerBuilder(context),
+            builder: apexoDatePickerBuilder(context),
           ) ??
           selected;
     }

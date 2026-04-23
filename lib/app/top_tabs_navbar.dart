@@ -5,6 +5,7 @@ import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/permissions.dart';
 import 'package:apexo/theme/apexo_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -41,14 +42,19 @@ class TopTabsNavBar extends StatelessWidget {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: StreamBuilder(
-                    stream: app_routes.routes.currentRouteIndex.stream,
+                    stream: permissions.stream,
                     builder: (context, _) {
-                      return Row(
-                        children: [
-                          ..._primaryRoutes.map(
-                            (r) => _TabButton(route: r),
-                          ),
-                        ],
+                      return StreamBuilder(
+                        stream: app_routes.routes.currentRouteIndex.stream,
+                        builder: (context, _) {
+                          return Row(
+                            children: [
+                              ..._primaryRoutes.map(
+                                (r) => _TabButton(route: r),
+                              ),
+                            ],
+                          );
+                        },
                       );
                     },
                   ),

@@ -158,6 +158,7 @@ Future<void> _showNextAppointmentPromptDialog(
                         final picked = await material.showTimePicker(
                           context: context,
                           initialTime: nextTime,
+                          builder: apexoDatePickerBuilder(context),
                         );
                         if (picked == null) return;
                         setStateDialog(() {
@@ -267,6 +268,72 @@ Future<void> _showNextAppointmentPromptDialog(
       },
     ),
   );
+}
+
+Future<void> _upsertScheduledFollowUpAppointment(
+  BuildContext context,
+  Appointment baseAppointment, {
+  Appointment? existingScheduled,
+}) async {
+  if ((baseAppointment.patientID ?? '').trim().isEmpty) return;
+
+  final initialDate =
+      existingScheduled?.date ?? DateTime.now().add(const Duration(days: 7));
+  final pickedDate = await material.showDatePicker(
+    context: context,
+    initialDate: initialDate,
+    firstDate: DateTime.now(),
+    lastDate: DateTime(2100, 12, 31),
+    builder: apexoDatePickerBuilder(context),
+  );
+  if (pickedDate == null || !context.mounted) return;
+
+  final pickedTime = await material.showTimePicker(
+    context: context,
+    initialTime: material.TimeOfDay(
+      hour: existingScheduled?.date.hour ?? 10,
+      minute: existingScheduled?.date.minute ?? 0,
+    ),
+    builder: apexoDatePickerBuilder(context),
+  );
+  if (pickedTime == null || !context.mounted) return;
+
+  final scheduledAt = DateTime(
+    pickedDate.year,
+    pickedDate.month,
+    pickedDate.day,
+    pickedTime.hour,
+    pickedTime.minute,
+  );
+  if (scheduledAt.isBefore(DateTime.now())) {
+    displayInfoBar(
+      context,
+      builder: (ctx, close) => InfoBar(
+        title: const Text('Invalid schedule time'),
+        content: const Text('Please pick a future date and time.'),
+        severity: InfoBarSeverity.warning,
+        action: IconButton(
+          icon: const Icon(FluentIcons.clear),
+          onPressed: close,
+        ),
+      ),
+    );
+    return;
+  }
+
+  final targetAppointment =
+      existingScheduled ?? Appointment.fromJson({'id': uuid()});
+  targetAppointment.patientID = baseAppointment.patientID;
+  targetAppointment.date = scheduledAt;
+  targetAppointment.checkinStage = 'scheduled';
+  targetAppointment.isCheckedIn = false;
+  if (targetAppointment.operatorsIDs.isEmpty) {
+    targetAppointment.operatorsIDs = [...baseAppointment.operatorsIDs];
+  }
+  if (targetAppointment.preOpNotes.trim().isEmpty) {
+    targetAppointment.preOpNotes = 'Follow-up visit';
+  }
+  appointments.set(targetAppointment);
 }
 
 List<Widget> _buildBillingSummaryLines(
@@ -645,6 +712,7 @@ class _CheckinScheduledStageScreen extends StatelessWidget {
                         hour: nextVisitDateTime.hour,
                         minute: nextVisitDateTime.minute,
                       ),
+                      builder: apexoDatePickerBuilder(context),
                     );
                     if (picked == null) return;
                     onTimeChanged(picked);
@@ -741,6 +809,23 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final upcomingForPatient = appointments.present.values
+        .where(
+          (candidate) =>
+              (candidate.patientID ?? '').trim() ==
+                  (appointment.patientID ?? '').trim() &&
+              candidate.id != appointment.id &&
+              !candidate.isCheckedIn &&
+              candidate.checkinStage == 'scheduled' &&
+              candidate.date.isAfter(DateTime.now().subtract(
+                const Duration(minutes: 1),
+              )),
+        )
+        .toList(growable: true)
+      ..sort((a, b) => a.date.compareTo(b.date));
+    final scheduledNext =
+        upcomingForPatient.isNotEmpty ? upcomingForPatient.first : null;
+
     final content = SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -762,15 +847,52 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          TodayAppointmentInsightCard(appointment: appointment),
-          const SizedBox(height: 8),
-          _LastAppointmentInsightCard(lastAppointment: lastVisit),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 860;
+              if (stacked) {
+                return Column(
+                  children: [
+                    TodayAppointmentInsightCard(appointment: appointment),
+                    const SizedBox(height: 8),
+                    _LastAppointmentInsightCard(lastAppointment: lastVisit),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child:
+                        TodayAppointmentInsightCard(appointment: appointment),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child:
+                        _LastAppointmentInsightCard(lastAppointment: lastVisit),
+                  ),
+                ],
+              );
+            },
+          ),
           const SizedBox(height: 12),
           _CheckoutBillingSummaryPanel(
             appointment: appointment,
             discountEnabled: appointment.discount > 0,
             totalPaidOverride: appointment.paid,
             includeTodayInOutstanding: true,
+            showTreatmentAndToothSection: false,
+            separateScheduleSection: true,
+            scheduledAppointmentText: scheduledNext != null
+                ? DateFormat('dd MMM yyyy • h:mm a').format(scheduledNext.date)
+                : null,
+            onScheduleAppointment: () {
+              _upsertScheduledFollowUpAppointment(
+                context,
+                appointment,
+                existingScheduled: scheduledNext,
+              );
+            },
           ),
         ],
       ),
@@ -1576,6 +1698,7 @@ class _WorkflowRow extends StatelessWidget {
                           final picked = await material.showTimePicker(
                             context: context,
                             initialTime: selectedTime,
+                            builder: apexoDatePickerBuilder(context),
                           );
                           if (picked == null) return;
                           setStateDialog(() {
@@ -2813,6 +2936,8 @@ class TodayAppointmentInsightCard extends StatelessWidget {
     final treatments = appointment.selectedTreatments
         .where((row) => row.trim().isNotEmpty)
         .join(', ');
+    final teethSummary =
+      appointment.selectedTeeth.map((id) => id.toString()).join(', ');
 
     return Container(
       width: double.infinity,
@@ -2851,6 +2976,14 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Treatment: ${treatments.isEmpty ? '-' : treatments}',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Teeth: ${teethSummary.isEmpty ? '-' : teethSummary}',
             style: const TextStyle(
               color: Color(0xFF5B7394),
               fontWeight: FontWeight.w600,
@@ -3530,12 +3663,12 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         runSpacing: 6,
                         children: _consultationSubTypes
                             .map(
-                              (type) => _quickChip(
+                              (type) => _hierarchyChip(
                                 label: type,
                                 selected:
                                     _selectedConsultationTypes.contains(type),
-                                selectedVariant: AppButtonVariant.ghost,
-                                normalVariant: AppButtonVariant.secondary,
+                                selectedTextColor: const Color(0xFF0D4AA4),
+                                normalTextColor: const Color(0xFF34557E),
                                 onTap: () {
                                   setState(() {
                                     if (_selectedConsultationTypes
@@ -3572,12 +3705,12 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         runSpacing: 6,
                         children: _rctSubTypes
                             .map(
-                              (type) => _quickChip(
+                              (type) => _hierarchyChip(
                                 label: type,
                                 selected:
                                     _selectedConsultationTypes.contains(type),
-                                selectedVariant: AppButtonVariant.ghost,
-                                normalVariant: AppButtonVariant.secondary,
+                                selectedTextColor: const Color(0xFF0D4AA4),
+                                normalTextColor: const Color(0xFF34557E),
                                 onTap: () {
                                   setState(() {
                                     if (_selectedConsultationTypes
@@ -3663,9 +3796,11 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       runSpacing: 6,
                       children: _postOpSuggestions.keys
                           .map(
-                            (parent) => _quickChip(
+                            (parent) => _hierarchyChip(
                               label: parent,
                               selected: _selectedPostOpParent == parent,
+                              selectedTextColor: const Color(0xFF0E6B57),
+                              normalTextColor: const Color(0xFF2B5A4F),
                               onTap: () {
                                 setState(() => _selectedPostOpParent = parent);
                               },
@@ -3681,10 +3816,11 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         runSpacing: 8,
                         children: _postOpSuggestions[_selectedPostOpParent!]!
                             .map(
-                              (child) => _quickChip(
+                              (child) => _hierarchyChip(
                                 label: child,
-                                selectedVariant: AppButtonVariant.ghost,
-                                normalVariant: AppButtonVariant.secondary,
+                                selected: false,
+                                selectedTextColor: const Color(0xFF6D28D9),
+                                normalTextColor: const Color(0xFF6D28D9),
                                 onTap: () {
                                   final parent = _selectedPostOpParent;
                                   if (parent == null) return;
@@ -3702,6 +3838,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                       : (current.isEmpty
                                           ? '$parentLine\n$childLine'
                                           : '$current\n$parentLine\n$childLine');
+                                  setState(() {});
                                   a.postOpNotes = _postOpController.text;
                                   _scheduleAutosave();
                                 },
@@ -3815,6 +3952,38 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       compact: true,
       variant: selected ? selectedVariant : normalVariant,
       onPressed: onTap,
+    );
+  }
+
+  Widget _hierarchyChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    required Color selectedTextColor,
+    required Color normalTextColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color:
+              selected ? const Color(0xFFE6F0FF) : const Color(0xFFF7FAFF),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? const Color(0xFF9ABAF2) : const Color(0xFFD8E6FA),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? selectedTextColor : normalTextColor,
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 
@@ -4024,6 +4193,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         hour: existingScheduled?.date.hour ?? 10,
         minute: existingScheduled?.date.minute ?? 0,
       ),
+      builder: apexoDatePickerBuilder(context),
     );
     if (pickedTime == null) return;
     if (!mounted) return;
@@ -4961,6 +5131,8 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
   final String? scheduledAppointmentText;
   final VoidCallback? onScheduleAppointment;
   final bool includeTodayInOutstanding;
+  final bool showTreatmentAndToothSection;
+  final bool separateScheduleSection;
 
   const _CheckoutBillingSummaryPanel({
     required this.appointment,
@@ -4972,6 +5144,8 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     this.scheduledAppointmentText,
     this.onScheduleAppointment,
     this.includeTodayInOutstanding = true,
+    this.showTreatmentAndToothSection = true,
+    this.separateScheduleSection = false,
   });
 
   @override
@@ -5113,70 +5287,107 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
               'Patient ID: ${a.patientID ?? '-'}',
               style: const TextStyle(color: Color(0xFF5A7397)),
             ),
-            const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFDCE8F8)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      scheduledAppointmentText == null
-                          ? 'No scheduled appointment'
-                          : 'Next: $scheduledAppointmentText',
-                      style: TextStyle(
-                        color: scheduledAppointmentText == null
-                            ? const Color(0xFF5A7397)
-                            : const Color(0xFF184A9C),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
+            if (!separateScheduleSection) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFDCE8F8)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        scheduledAppointmentText == null
+                            ? 'No scheduled appointment'
+                            : 'Next: $scheduledAppointmentText',
+                        style: TextStyle(
+                          color: scheduledAppointmentText == null
+                              ? const Color(0xFF5A7397)
+                              : const Color(0xFF184A9C),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
                       ),
+                    ),
+                    if (onScheduleAppointment != null)
+                      Tooltip(
+                        message: scheduledAppointmentText == null
+                            ? 'Add Scheduled Appointment'
+                            : 'Edit Scheduled Appointment',
+                        child: IconButton(
+                          icon: Icon(
+                            scheduledAppointmentText == null
+                                ? FluentIcons.add
+                                : FluentIcons.edit,
+                            size: 14,
+                          ),
+                          onPressed: onScheduleAppointment,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        if (separateScheduleSection)
+          sectionCard(
+            title: 'Scheduled Appointment',
+            trailing: onScheduleAppointment == null
+                ? null
+                : Tooltip(
+                    message: scheduledAppointmentText == null
+                        ? 'Add Scheduled Appointment'
+                        : 'Edit Scheduled Appointment',
+                    child: IconButton(
+                      icon: Icon(
+                        scheduledAppointmentText == null
+                            ? FluentIcons.add
+                            : FluentIcons.edit,
+                        size: 14,
+                      ),
+                      onPressed: onScheduleAppointment,
                     ),
                   ),
-                  if (onScheduleAppointment != null)
-                    Tooltip(
-                      message: scheduledAppointmentText == null
-                          ? 'Add Scheduled Appointment'
-                          : 'Edit Scheduled Appointment',
-                      child: IconButton(
-                        icon: Icon(
-                          scheduledAppointmentText == null
-                              ? FluentIcons.add
-                              : FluentIcons.edit,
-                          size: 14,
-                        ),
-                        onPressed: onScheduleAppointment,
-                      ),
-                    ),
-                ],
+            children: [
+              Text(
+                scheduledAppointmentText == null
+                    ? 'No scheduled appointment'
+                    : 'Next: $scheduledAppointmentText',
+                style: TextStyle(
+                  color: scheduledAppointmentText == null
+                      ? const Color(0xFF5A7397)
+                      : const Color(0xFF184A9C),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-          ],
-        ),
-        sectionCard(
-          title: 'Treatment & Tooth Info',
-          children: [
-            _checkoutSummaryLine(
-              'Doctor',
-              resolvedDoctorNames.isEmpty
-                  ? '-'
-                  : resolvedDoctorNames.join(', '),
-            ),
-            _checkoutSummaryLine(
-              'Treatment',
-              treatmentSummary.isEmpty ? '-' : treatmentSummary,
-            ),
-            _checkoutSummaryLine(
-              'Tooth/Area',
-              toothSummary.isEmpty ? '-' : toothSummary,
-            ),
-          ],
-        ),
+            ],
+          ),
+        if (showTreatmentAndToothSection)
+          sectionCard(
+            title: 'Treatment & Tooth Info',
+            children: [
+              _checkoutSummaryLine(
+                'Doctor',
+                resolvedDoctorNames.isEmpty
+                    ? '-'
+                    : resolvedDoctorNames.join(', '),
+              ),
+              _checkoutSummaryLine(
+                'Treatment',
+                treatmentSummary.isEmpty ? '-' : treatmentSummary,
+              ),
+              _checkoutSummaryLine(
+                'Tooth/Area',
+                toothSummary.isEmpty ? '-' : toothSummary,
+              ),
+            ],
+          ),
         sectionCard(
           title: 'Billing Summary',
           children: [
