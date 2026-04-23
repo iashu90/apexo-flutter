@@ -3,6 +3,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
@@ -77,6 +78,7 @@ Future<DateTime?> _pickScheduleDateTime(
                           firstDate: DateTime(now.year - 1, 1, 1),
                           lastDate: DateTime(now.year + 5, 12, 31),
                           helpText: 'Select appointment date',
+                          builder: apexoDatePickerBuilder(context),
                         );
                         if (next == null) return;
                         setStateDialog(() {
@@ -102,6 +104,7 @@ Future<DateTime?> _pickScheduleDateTime(
                           context: context,
                           initialTime: pickedTime,
                           helpText: 'Select appointment time',
+                          builder: apexoDatePickerBuilder(context),
                         );
                         if (next == null) return;
                         setStateDialog(() => pickedTime = next);
