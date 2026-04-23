@@ -25,14 +25,14 @@ String _lwTitleCase(String input) {
   }).join(' ');
 }
 
-class LabworksV2Screen extends StatefulWidget {
-  const LabworksV2Screen({super.key});
+class LabworksScreen extends StatefulWidget {
+  const LabworksScreen({super.key});
 
   @override
-  State<LabworksV2Screen> createState() => _LabworksV2ScreenState();
+  State<LabworksScreen> createState() => _LabworksScreenState();
 }
 
-class _LabworksV2ScreenState extends State<LabworksV2Screen> {
+class _LabworksScreenState extends State<LabworksScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
 
   String _query = '';
@@ -114,11 +114,11 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
                           onToggleDelivered: () => setState(
                             () => _deliveredCollapsed = !_deliveredCollapsed,
                           ),
-                          onOpen: (item) => openLabworkV2Dialog(context, item),
+                          onOpen: (item) => openLabworkDialog(context, item),
                           onHistory: (item) {
                             final patient = item.patient;
                             if (patient == null) return;
-                            showPatientHistoryDialogV2(
+                            showPatientHistoryDialog(
                               context: context,
                               patient: patient,
                               rows: patient.patientDetails,
@@ -171,7 +171,7 @@ class _LabworksV2ScreenState extends State<LabworksV2Screen> {
         ),
         const SizedBox(width: 8),
         AppButton(
-          onPressed: () => openLabworkV2Dialog(context),
+          onPressed: () => openLabworkDialog(context),
           label: 'New Labwork',
           leading: const Icon(FluentIcons.add, size: 14),
         ),

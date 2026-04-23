@@ -134,7 +134,7 @@ class _Routes {
           title: txt("dashboard"),
           identifier: "dashboard",
           icon: FluentIcons.home,
-          screen: DashboardScreenV2.new,
+          screen: DashboardScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('dashboard'),
           navbarTitle: txt("home"),
           onSelect: () {
@@ -147,7 +147,7 @@ class _Routes {
           title: 'Doctors',
           identifier: 'doctors',
           icon: FluentIcons.medical,
-          screen: DoctorsScreenV2.new,
+          screen: DoctorsScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('doctors'),
           navbarTitle: 'Doctors',
           onSelect: () async {
@@ -161,7 +161,7 @@ class _Routes {
           identifier: "labworks",
           navbarTitle: txt("labworks"),
           icon: FluentIcons.test_beaker,
-          screen: LabworksV2Screen.new,
+          screen: LabworksScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('labworks'),
           onSelect: () async {
             await doctors.synchronize();
@@ -174,7 +174,7 @@ class _Routes {
           identifier: "patients",
           navbarTitle: txt("patients"),
           icon: FluentIcons.medication_admin,
-          screen: PatientsScreenV2.new,
+          screen: PatientsScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('patients'),
           onSelect: () async {
             await doctors.synchronize();
@@ -213,7 +213,7 @@ class _Routes {
           identifier: "expenses",
           navbarTitle: txt("expenses"),
           icon: FluentIcons.receipt_processing,
-          screen: ExpensesScreenV2.new,
+          screen: ExpensesScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('expenses'),
           onSelect: () async {
             await doctors.synchronize();
@@ -225,7 +225,7 @@ class _Routes {
           title: 'Report',
           identifier: 'report',
           icon: FluentIcons.report_document,
-          screen: ReportV2Screen.new,
+          screen: ReportScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('report'),
           onSelect: () async {
             await doctors.synchronize();

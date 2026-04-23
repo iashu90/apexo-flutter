@@ -27,7 +27,7 @@ import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 import 'package:apexo/features/dashboard/outstanding_balance_modal.dart';
 
-DateTime dashboardV2PersistedDate = DateTime.now();
+DateTime dashboardPersistedDate = DateTime.now();
 const String dashboardDoctorFilterAll = '__all__';
 const String dashboardDoctorFilterUnassigned = '__unassigned__';
 const String dashboardTreatmentFilterAll = '__all_treatments__';
@@ -41,14 +41,14 @@ String _toTitleCase(String text) {
       .join(' ');
 }
 
-class DashboardScreenV2 extends StatefulWidget {
-  const DashboardScreenV2({super.key});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreenV2> createState() => _DashboardScreenV2State();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenV2State extends State<DashboardScreenV2> {
+class _DashboardScreenState extends State<DashboardScreen> {
   late DateTime selectedDate;
   String _sortBy = 'time';
   bool _sortAscending = true;
@@ -75,7 +75,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   @override
   void initState() {
     super.initState();
-    selectedDate = _dateOnly(dashboardV2PersistedDate);
+    selectedDate = _dateOnly(dashboardPersistedDate);
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text;
@@ -92,14 +92,14 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
   void _changeDate(int days) {
     setState(() {
       selectedDate = _dateOnly(selectedDate.add(Duration(days: days)));
-      dashboardV2PersistedDate = selectedDate;
+      dashboardPersistedDate = selectedDate;
     });
   }
 
   void _goToday() {
     setState(() {
       selectedDate = _dateOnly(DateTime.now());
-      dashboardV2PersistedDate = selectedDate;
+      dashboardPersistedDate = selectedDate;
     });
   }
 
@@ -116,7 +116,7 @@ class _DashboardScreenV2State extends State<DashboardScreenV2> {
     if (picked == null) return;
     setState(() {
       selectedDate = _dateOnly(picked);
-      dashboardV2PersistedDate = selectedDate;
+      dashboardPersistedDate = selectedDate;
     });
   }
 
@@ -1419,7 +1419,7 @@ class _AppointmentRow extends StatelessWidget {
   void _openPatientHistoryDialog(BuildContext context) {
     final patient = appointment.patient;
     if (patient == null) return;
-    showPatientHistoryDialogV2(
+    showPatientHistoryDialog(
       context: context,
       patient: patient,
       rows: patient.patientDetails,
@@ -1464,7 +1464,7 @@ class _AppointmentRow extends StatelessWidget {
           : appointment.selectedTreatments.first,
       'selectedTeeth': appointment.selectedTeeth,
     });
-    openLabworkV2Dialog(context, draft);
+    openLabworkDialog(context, draft);
   }
 
   Future<void> _openEditTreatmentModal(BuildContext context) async {
@@ -3149,7 +3149,7 @@ class _SessionRevenueCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                _DashboardScreenV2State._money(total),
+                _DashboardScreenState._money(total),
                 style: const TextStyle(
                   fontSize: 30,
                   color: Color(0xFF1468CC),
@@ -3162,7 +3162,7 @@ class _SessionRevenueCard extends StatelessWidget {
                   Expanded(
                     child: _paymentBlock(
                       label: 'Cash',
-                      amount: _DashboardScreenV2State._money(cash),
+                      amount: _DashboardScreenState._money(cash),
                       fg: cashFg,
                       bg: cashBg,
                     ),
@@ -3171,7 +3171,7 @@ class _SessionRevenueCard extends StatelessWidget {
                   Expanded(
                     child: _paymentBlock(
                       label: 'UPI',
-                      amount: _DashboardScreenV2State._money(upi),
+                      amount: _DashboardScreenState._money(upi),
                       fg: upiFg,
                       bg: upiBg,
                     ),

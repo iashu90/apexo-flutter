@@ -160,7 +160,7 @@ class LabworkCard extends StatelessWidget {
                                 IconButton(
                                   icon: const Icon(FluentIcons.edit, size: 17),
                                   onPressed: () {
-                                    openLabworkV2Dialog(context, labwork);
+                                    openLabworkDialog(context, labwork);
                                   },
                                   iconButtonMode: IconButtonMode.large,
                                 ),

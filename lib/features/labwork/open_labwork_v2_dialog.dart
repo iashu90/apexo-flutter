@@ -10,7 +10,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
-Future<void> openLabworkV2Dialog(BuildContext context, [Labwork? labwork]) {
+Future<void> openLabworkDialog(BuildContext context, [Labwork? labwork]) {
   final editingCopy = Labwork.fromJson(labwork?.toJson() ?? {});
   return showDialog<void>(
     context: context,
