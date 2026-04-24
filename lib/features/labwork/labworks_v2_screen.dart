@@ -74,11 +74,9 @@ class _LabworksScreenState extends State<LabworksScreen> {
       key: WK.labworksScreenV2,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       children: [
-        Container(
-          color: FluentTheme.of(context).scaffoldBackgroundColor,
-          child: StreamBuilder(
-            stream: labworks.observableMap.stream,
-            builder: (context, _) {
+        StreamBuilder(
+          stream: labworks.observableMap.stream,
+          builder: (context, _) {
               final all = labworks.present.values.toList(growable: false)
                 ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -93,46 +91,45 @@ class _LabworksScreenState extends State<LabworksScreen> {
                   .where((l) => l.deliveredToPatient)
                   .toList(growable: false);
 
-              return Column(
-                children: [
-                  _buildHeader(filtered),
-                  const SizedBox(height: 10),
-                  _buildStatStrip(all, filtered),
-                  const SizedBox(height: 10),
-                  _buildSearchAndDateFilters(filtered),
-                  const SizedBox(height: 10),
-                  filtered.isEmpty
-                      ? _EmptyState(onClear: _clearFilters)
-                      : _LabworkBoard(
-                          inLab: inLab,
-                          ready: ready,
-                          delivered: delivered,
-                          inLabCollapsed: _inLabCollapsed,
-                          readyCollapsed: _readyCollapsed,
-                          deliveredCollapsed: _deliveredCollapsed,
-                          onToggleInLab: () =>
-                              setState(() => _inLabCollapsed = !_inLabCollapsed),
-                          onToggleReady: () =>
-                              setState(() => _readyCollapsed = !_readyCollapsed),
-                          onToggleDelivered: () => setState(
-                            () => _deliveredCollapsed = !_deliveredCollapsed,
-                          ),
-                          onOpen: (item) => openLabworkDialog(context, item),
-                          onHistory: (item) {
-                            final patient = item.patient;
-                            if (patient == null) return;
-                            showPatientHistoryDialog(
-                              context: context,
-                              patient: patient,
-                              rows: patient.patientDetails,
-                              labsOnly: true,
-                            );
-                          },
+            return Column(
+              children: [
+                _buildHeader(filtered),
+                const SizedBox(height: 10),
+                _buildStatStrip(all, filtered),
+                const SizedBox(height: 10),
+                _buildSearchAndDateFilters(filtered),
+                const SizedBox(height: 10),
+                filtered.isEmpty
+                    ? _EmptyState(onClear: _clearFilters)
+                    : _LabworkBoard(
+                        inLab: inLab,
+                        ready: ready,
+                        delivered: delivered,
+                        inLabCollapsed: _inLabCollapsed,
+                        readyCollapsed: _readyCollapsed,
+                        deliveredCollapsed: _deliveredCollapsed,
+                        onToggleInLab: () =>
+                            setState(() => _inLabCollapsed = !_inLabCollapsed),
+                        onToggleReady: () =>
+                            setState(() => _readyCollapsed = !_readyCollapsed),
+                        onToggleDelivered: () => setState(
+                          () => _deliveredCollapsed = !_deliveredCollapsed,
                         ),
-                ],
-              );
-            },
-          ),
+                        onOpen: (item) => openLabworkDialog(context, item),
+                        onHistory: (item) {
+                          final patient = item.patient;
+                          if (patient == null) return;
+                          showPatientHistoryDialog(
+                            context: context,
+                            patient: patient,
+                            rows: patient.patientDetails,
+                            labsOnly: true,
+                          );
+                        },
+                      ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -153,17 +150,15 @@ class _LabworksScreenState extends State<LabworksScreen> {
         ExportFileActionButton(
           type: ExportFileType.csv,
           busy: _isExportingCsv,
-          onPressed: (_isExportingCsv || rows.isEmpty)
-              ? null
-              : () => _exportCsv(rows),
+          onPressed:
+              (_isExportingCsv || rows.isEmpty) ? null : () => _exportCsv(rows),
         ),
         const SizedBox(width: 8),
         ExportFileActionButton(
           type: ExportFileType.pdf,
           busy: _isExportingPdf,
-          onPressed: (_isExportingPdf || rows.isEmpty)
-              ? null
-              : () => _exportPdf(rows),
+          onPressed:
+              (_isExportingPdf || rows.isEmpty) ? null : () => _exportPdf(rows),
         ),
         const SizedBox(width: 8),
         AppButton(
@@ -187,7 +182,16 @@ class _LabworksScreenState extends State<LabworksScreen> {
     setState(() => _isExportingCsv = true);
     try {
       final csvRows = <List<String>>[
-        ['Date', 'Patient', 'Lab', 'Type', 'Teeth', 'Amount', 'Paid', 'Delivered'],
+        [
+          'Date',
+          'Patient',
+          'Lab',
+          'Type',
+          'Teeth',
+          'Amount',
+          'Paid',
+          'Delivered'
+        ],
         ...rows.map((item) {
           final patient = item.patient?.title.trim().isNotEmpty == true
               ? item.patient!.title
@@ -210,7 +214,8 @@ class _LabworksScreenState extends State<LabworksScreen> {
 
       await CsvExportUtility.saveCsv(
         rows: csvRows,
-        fileName: 'labwork_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv',
+        fileName:
+            'labwork_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv',
       );
     } finally {
       if (mounted) setState(() => _isExportingCsv = false);
@@ -222,7 +227,16 @@ class _LabworksScreenState extends State<LabworksScreen> {
     setState(() => _isExportingPdf = true);
     try {
       final pdfRows = <List<String>>[
-        ['Date', 'Patient', 'Lab', 'Type', 'Teeth', 'Amount', 'Paid', 'Delivered'],
+        [
+          'Date',
+          'Patient',
+          'Lab',
+          'Type',
+          'Teeth',
+          'Amount',
+          'Paid',
+          'Delivered'
+        ],
         ...rows.map((item) {
           final patient = item.patient?.title.trim().isNotEmpty == true
               ? item.patient!.title
@@ -247,7 +261,8 @@ class _LabworksScreenState extends State<LabworksScreen> {
         title: 'Labwork Export',
         subtitle: DateFormat('dd MMM yyyy').format(DateTime.now()),
         data: pdfRows,
-        fileName: 'labwork_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+        fileName:
+            'labwork_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
       );
     } finally {
       if (mounted) setState(() => _isExportingPdf = false);
@@ -268,8 +283,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
         subtitle: 'cases',
         value: '$inLab',
         color: const Color(0xFFE09C31),
-        bg: const Color(0xFFFFFCF4),
-        border: const Color(0xFFF5E9CC),
         icon: FluentIcons.test_beaker,
       ),
       (
@@ -277,8 +290,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
         subtitle: 'cases',
         value: '$ready',
         color: const Color(0xFF2D7BD8),
-        bg: const Color(0xFFF8FBFF),
-        border: const Color(0xFFE4EEF9),
         icon: FluentIcons.check_mark,
       ),
       (
@@ -291,8 +302,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
         color: filteredDues.isEmpty
             ? const Color(0xFF2BA58D)
             : const Color(0xFFD6455D),
-        bg: const Color(0xFFFAFCFB),
-        border: const Color(0xFFE8F2EC),
         icon: FluentIcons.checkbox_composite,
       ),
     ];
@@ -311,8 +320,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
                 subtitle: cards[i].subtitle,
                 value: cards[i].value,
                 valueColor: cards[i].color,
-                cardColor: cards[i].bg,
-                borderColor: cards[i].border,
                 icon: Icon(cards[i].icon, size: 14, color: cards[i].color),
                 width: 200,
               ),
@@ -435,7 +442,8 @@ class _LabworksScreenState extends State<LabworksScreen> {
                     flex: 3,
                     child: Align(
                       alignment: Alignment.center,
-                      child: SizedBox(width: 290, child: _buildMonthNavigator()),
+                      child:
+                          SizedBox(width: 290, child: _buildMonthNavigator()),
                     ),
                   ),
                 Expanded(

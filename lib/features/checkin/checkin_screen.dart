@@ -11,12 +11,18 @@ import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/common_widgets/patient_timeline_card.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/core/ui/components/app_badge.dart';
+import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
+import 'package:apexo/core/ui/components/status_pill.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/checkin/odontogram/odontogram_picker.dart';
 import 'package:apexo/features/checkin/appointment_journey_dialog.dart';
 import 'package:apexo/features/checkin/checkin_stage_modals.dart';
+import 'package:apexo/features/checkin/checkin_timeline_mapper.dart';
 import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
@@ -123,7 +129,9 @@ Future<void> _showNextAppointmentPromptDialog(
                     const Text('Date:',
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
-                    Button(
+                    AppButton(
+                      label: DateFormat('dd MMM yyyy').format(nextDate),
+                      variant: AppButtonVariant.secondary,
                       onPressed: () async {
                         final picked = await material.showDatePicker(
                           context: context,
@@ -143,7 +151,6 @@ Future<void> _showNextAppointmentPromptDialog(
                           );
                         });
                       },
-                      child: Text(DateFormat('dd MMM yyyy').format(nextDate)),
                     ),
                   ],
                 ),
@@ -153,7 +160,9 @@ Future<void> _showNextAppointmentPromptDialog(
                     const Text('Time:',
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
-                    Button(
+                    AppButton(
+                      label: nextTime.format(context),
+                      variant: AppButtonVariant.secondary,
                       onPressed: () async {
                         final picked = await material.showTimePicker(
                           context: context,
@@ -172,7 +181,6 @@ Future<void> _showNextAppointmentPromptDialog(
                           );
                         });
                       },
-                      child: Text(nextTime.format(context)),
                     ),
                   ],
                 ),
@@ -239,11 +247,13 @@ Future<void> _showNextAppointmentPromptDialog(
             ),
           ),
           actions: [
-            Button(
+            AppButton(
+              label: 'Skip',
+              variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Skip'),
             ),
-            FilledButton(
+            AppButton(
+              label: 'Schedule',
               onPressed: () {
                 final scheduledDate = DateTime(
                   nextDate.year,
@@ -261,7 +271,6 @@ Future<void> _showNextAppointmentPromptDialog(
                 });
                 appointments.set(nextAppointment);
               },
-              child: const Text('Schedule'),
             ),
           ],
         );
@@ -388,16 +397,14 @@ Future<bool> _confirmMoveToCompleted(
         ],
       ),
       actions: [
-        Button(
+        AppButton(
+          label: 'Cancel',
+          variant: AppButtonVariant.secondary,
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('Cancel'),
         ),
-        FilledButton(
+        AppButton(
+          label: 'Complete',
           onPressed: () => Navigator.pop(dialogContext, true),
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.all(const Color(0xFF3B9A42)),
-          ),
-          child: const Text('Complete'),
         ),
       ],
     ),
@@ -411,10 +418,10 @@ int _stepIndexFromStageValue(String stage) {
     return 0;
   }
   if (normalized == 'checkout' || normalized == 'billing') {
-    return 2;
+    return 1;
   }
   if (normalized == 'completed') {
-    return 3;
+    return 2;
   }
   return 0;
 }
@@ -433,115 +440,15 @@ Future<void> openAppointmentJourneyDialog(
       .where((row) => row.patientID == appointment.patientID)
       .toList(growable: false)
     ..sort((a, b) => b.date.compareTo(a.date));
-  DateTime nextVisitDateTime = appointment.date.add(const Duration(days: 7));
-  bool scheduledNextVisit = false;
-  String? scheduledNextAppointmentId;
-  String? nextDoctorId = appointment.operatorsIDs.isNotEmpty
-      ? appointment.operatorsIDs.first
-      : null;
-  String scheduleError = '';
-  final nextReasonController = TextEditingController(
-    text: 'Follow-up visit',
-  );
-
-  void saveNextAppointment({
-    required DateTime scheduledAt,
-    String? doctorId,
-    String reason = '',
-  }) {
-    nextVisitDateTime = scheduledAt;
-    final nextAppointment = scheduledNextAppointmentId != null
-        ? (appointments.get(scheduledNextAppointmentId!) ??
-            Appointment.fromJson({'id': scheduledNextAppointmentId!}))
-        : Appointment.fromJson({'id': uuid()});
-    nextAppointment.patientID = appointment.patientID;
-    nextAppointment.date = nextVisitDateTime;
-    nextAppointment.checkinStage = 'scheduled';
-    nextAppointment.isCheckedIn = false;
-    nextAppointment.operatorsIDs =
-        doctorId == null ? [...appointment.operatorsIDs] : [doctorId];
-    if (reason.trim().isNotEmpty) {
-      nextAppointment.preOpNotes = reason.trim();
-    }
-    appointments.set(nextAppointment);
-    scheduledNextAppointmentId = nextAppointment.id;
-    scheduledNextVisit = true;
-  }
-
   Widget stageBody(BuildContext context, int currentStep, double panelHeight) {
-    if (currentStep == 0 || currentStep == 2) {
+    if (currentStep == 0 || currentStep == 1) {
       return _CheckinTreatmentStageScreen(
         appointment: appointment,
         allAppointmentsForPatient: allAppointmentsForPatient,
-        forcedStage: currentStep == 2 ? 'checkout' : 'with_doctor',
+        forcedStage: currentStep == 1 ? 'checkout' : 'with_doctor',
         showInlineBottomActions: false,
         boxed: true,
         panelHeight: panelHeight,
-      );
-    }
-
-    if (currentStep == 1) {
-      final doctorRows = doctors.present.values.toList(growable: false)
-        ..sort(
-          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-        );
-
-      return StatefulBuilder(
-        builder: (context, setStepState) => _CheckinScheduledStageScreen(
-          nextVisitDateTime: nextVisitDateTime,
-          scheduledNextVisit: scheduledNextVisit,
-          nextDoctorId: nextDoctorId,
-          doctorRows: doctorRows,
-          nextReasonController: nextReasonController,
-          scheduleError: scheduleError,
-          boxed: true,
-          onDateChanged: (value) {
-            setStepState(() {
-              nextVisitDateTime = value;
-              scheduleError = '';
-            });
-          },
-          onTimeChanged: (picked) {
-            setStepState(() {
-              nextVisitDateTime = DateTime(
-                nextVisitDateTime.year,
-                nextVisitDateTime.month,
-                nextVisitDateTime.day,
-                picked.hour,
-                picked.minute,
-              );
-              scheduleError = '';
-            });
-          },
-          onDoctorChanged: (value) {
-            setStepState(() {
-              nextDoctorId = value;
-            });
-          },
-          onReasonChanged: () {
-            setStepState(() {
-              scheduleError = '';
-            });
-          },
-          onSchedule: () {
-            if (nextVisitDateTime.isBefore(DateTime.now())) {
-              setStepState(() {
-                scheduleError =
-                    'Next appointment must be now or in the future.';
-              });
-              return;
-            }
-            setStepState(() {
-              scheduleError = '';
-            });
-            saveNextAppointment(
-              scheduledAt: nextVisitDateTime,
-              doctorId: nextDoctorId,
-              reason: nextReasonController.text,
-            );
-            setStepState(() {});
-          },
-        ),
       );
     }
 
@@ -612,185 +519,6 @@ class _CheckinTreatmentStageScreen extends StatelessWidget {
         border: Border.all(color: const Color(0xFFD7E5F6)),
       ),
       padding: const EdgeInsets.all(10),
-      child: content,
-    );
-  }
-}
-
-class _CheckinScheduledStageScreen extends StatelessWidget {
-  final DateTime nextVisitDateTime;
-  final bool scheduledNextVisit;
-  final String? nextDoctorId;
-  final List<Doctor?> doctorRows;
-  final TextEditingController nextReasonController;
-  final String scheduleError;
-  final ValueChanged<DateTime> onDateChanged;
-  final ValueChanged<material.TimeOfDay> onTimeChanged;
-  final ValueChanged<String?> onDoctorChanged;
-  final VoidCallback onReasonChanged;
-  final VoidCallback onSchedule;
-  final bool boxed;
-
-  const _CheckinScheduledStageScreen({
-    required this.nextVisitDateTime,
-    required this.scheduledNextVisit,
-    required this.nextDoctorId,
-    required this.doctorRows,
-    required this.nextReasonController,
-    required this.scheduleError,
-    required this.onDateChanged,
-    required this.onTimeChanged,
-    required this.onDoctorChanged,
-    required this.onReasonChanged,
-    required this.onSchedule,
-    this.boxed = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Schedule Next Appointment',
-          style: TextStyle(
-            color: Color(0xFF0F4B66),
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          scheduledNextVisit
-              ? 'Next appointment scheduled at ${DateFormat('dd MMM yyyy • h:mm a').format(nextVisitDateTime)}'
-              : 'Enter next appointment details below, then schedule. Or skip with Continue.',
-          style: const TextStyle(
-            color: Color(0xFF3E5F7D),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: InfoLabel(
-                label: 'Date',
-                child: Button(
-                  onPressed: () async {
-                    final picked = await material.showDatePicker(
-                      context: context,
-                      initialDate: nextVisitDateTime,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime(2100, 12, 31),
-                      builder: apexoDatePickerBuilder(context),
-                    );
-                    if (picked == null) return;
-                    onDateChanged(
-                      DateTime(
-                        picked.year,
-                        picked.month,
-                        picked.day,
-                        nextVisitDateTime.hour,
-                        nextVisitDateTime.minute,
-                      ),
-                    );
-                  },
-                  child:
-                      Text(DateFormat('dd MMM yyyy').format(nextVisitDateTime)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: InfoLabel(
-                label: 'Time',
-                child: Button(
-                  onPressed: () async {
-                    final picked = await material.showTimePicker(
-                      context: context,
-                      initialTime: material.TimeOfDay(
-                        hour: nextVisitDateTime.hour,
-                        minute: nextVisitDateTime.minute,
-                      ),
-                      builder: apexoDatePickerBuilder(context),
-                    );
-                    if (picked == null) return;
-                    onTimeChanged(picked);
-                  },
-                  child: Text(DateFormat('h:mm a').format(nextVisitDateTime)),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ComboBox<String>(
-          isExpanded: true,
-          placeholder: const Text('Select doctor'),
-          value: doctorRows.any((d) => d?.id == nextDoctorId)
-              ? nextDoctorId
-              : null,
-          items: doctorRows
-              .map(
-                (doctor) => ComboBoxItem<String>(
-                  value: doctor?.id,
-                  child: Text(
-                    (doctor?.title.trim().isEmpty ?? true)
-                        ? 'Unnamed doctor'
-                        : doctor!.title,
-                  ),
-                ),
-              )
-              .toList(growable: false),
-          onChanged: onDoctorChanged,
-        ),
-        const SizedBox(height: 8),
-        InfoLabel(
-          label: 'Reason',
-          child: TextBox(
-            controller: nextReasonController,
-            placeholder: 'Reason for next appointment',
-            onChanged: (_) => onReasonChanged(),
-          ),
-        ),
-        if (scheduleError.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            scheduleError,
-            style: const TextStyle(
-              color: Color(0xFFD4483B),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            FilledButton(
-              onPressed: onSchedule,
-              child: Text(
-                scheduledNextVisit
-                    ? 'Update Scheduled Appointment'
-                    : 'Schedule Next Appointment',
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-
-    if (!boxed) {
-      return content;
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E5F6)),
-      ),
       child: content,
     );
   }
@@ -1661,7 +1389,9 @@ class _WorkflowRow extends StatelessWidget {
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(width: 8),
-                      Button(
+                      AppButton(
+                        label: DateFormat('dd MMM yyyy').format(selectedDate),
+                        variant: AppButtonVariant.secondary,
                         onPressed: () async {
                           final picked = await material.showDatePicker(
                             context: context,
@@ -1679,9 +1409,6 @@ class _WorkflowRow extends StatelessWidget {
                             );
                           });
                         },
-                        child: Text(
-                          DateFormat('dd MMM yyyy').format(selectedDate),
-                        ),
                       ),
                     ],
                   ),
@@ -1693,7 +1420,9 @@ class _WorkflowRow extends StatelessWidget {
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(width: 8),
-                      Button(
+                      AppButton(
+                        label: selectedTime.format(context),
+                        variant: AppButtonVariant.secondary,
                         onPressed: () async {
                           final picked = await material.showTimePicker(
                             context: context,
@@ -1705,7 +1434,6 @@ class _WorkflowRow extends StatelessWidget {
                             selectedTime = picked;
                           });
                         },
-                        child: Text(selectedTime.format(context)),
                       ),
                     ],
                   ),
@@ -1752,25 +1480,13 @@ class _WorkflowRow extends StatelessWidget {
               ),
             ),
             actions: [
-              Button(
+              AppButton(
+                label: 'Close',
+                variant: AppButtonVariant.secondary,
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Close'),
               ),
-              FilledButton(
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.disabled)) {
-                      return const Color(0xFFD0D5DD);
-                    }
-                    return const Color(0xFF2D7BD8);
-                  }),
-                  foregroundColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.disabled)) {
-                      return const Color(0xFF667085);
-                    }
-                    return Colors.white;
-                  }),
-                ),
+              AppButton(
+                label: 'Update',
                 onPressed: hasChanged
                     ? () {
                         appointment.date = updatedDateTime;
@@ -1779,13 +1495,10 @@ class _WorkflowRow extends StatelessWidget {
                         Navigator.of(dialogContext, rootNavigator: true).pop();
                       }
                     : null,
-                child: const Text('Update'),
               ),
-              FilledButton(
-                style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFFD6455D)),
-                ),
+              AppButton(
+                label: confirmDelete ? 'Confirm Delete' : 'Delete',
+                variant: AppButtonVariant.danger,
                 onPressed: () async {
                   if (!confirmDelete) {
                     setStateDialog(() => confirmDelete = true);
@@ -1796,7 +1509,6 @@ class _WorkflowRow extends StatelessWidget {
                     Navigator.pop(dialogContext);
                   }
                 },
-                child: Text(confirmDelete ? 'Confirm Delete' : 'Delete'),
               ),
             ],
           );
@@ -1828,13 +1540,15 @@ class _WorkflowRow extends StatelessWidget {
             'Doctor assignment will be removed for $patientName.',
           ),
           actions: [
-            Button(
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
             ),
-            FilledButton(
+            AppButton(
+              label: 'Move to Waiting',
+              variant: AppButtonVariant.danger,
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Move to Waiting'),
             ),
           ],
         ),
@@ -1856,13 +1570,15 @@ class _WorkflowRow extends StatelessWidget {
             'This appointment will be moved back to Treatment for $patientName.',
           ),
           actions: [
-            Button(
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
             ),
-            FilledButton(
+            AppButton(
+              label: 'Move to Treatment',
+              variant: AppButtonVariant.danger,
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Move to Treatment'),
             ),
           ],
         ),
@@ -1883,13 +1599,15 @@ class _WorkflowRow extends StatelessWidget {
             'This appointment will be moved back to Billing for $patientName.',
           ),
           actions: [
-            Button(
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
             ),
-            FilledButton(
+            AppButton(
+              label: 'Move to Billing',
+              variant: AppButtonVariant.danger,
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Move to Billing'),
             ),
           ],
         ),
@@ -1954,12 +1672,9 @@ class _WorkflowRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: stage == 'scheduled'
-            ? const Color(0xFFFCF4E3) // Mild Orange (Orange 50)
-            : stage == 'completed'
-                ? const Color.fromARGB(
-                    255, 235, 250, 230) // Mild Green (Green 50)
-                : Colors.transparent,
+        color: stage == 'completed'
+            ? const Color.fromARGB(255, 235, 250, 230) // Mild Green (Green 50)
+            : Colors.transparent,
         border: const Border(
           top: BorderSide(color: Color(0xFFE2ECF8)),
         ),
@@ -1999,59 +1714,24 @@ class _WorkflowRow extends StatelessWidget {
                       const SizedBox(width: 12),
                       if (stage == 'waiting') ...[
                         const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFE8A3),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            _waitingLabel(),
-                            style: const TextStyle(
-                              color: Color(0xFF7A5A00),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                        StatusPill(
+                          label: _waitingLabel(),
+                          color: AppColors.warning,
                         ),
                       ],
                       if (stage == 'scheduled') ...[
                         const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0EEFF),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            'Scheduled · ${DateFormat('h:mm a').format(appointment.date)}',
-                            style: const TextStyle(
-                              color: Color(0xFF1459AD),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                        AppBadge(
+                          text:
+                              'Scheduled · ${DateFormat('h:mm a').format(appointment.date)}',
+                          type: BadgeType.primary,
                         ),
                       ],
                       if (duplicateRecord) ...[
                         const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEE2E2),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: const Text(
-                            'Duplicate',
-                            style: TextStyle(
-                              color: Color(0xFFB91C1C),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                        const AppBadge(
+                          text: 'Duplicate',
+                          type: BadgeType.error,
                         ),
                       ],
                     ],
@@ -2210,9 +1890,10 @@ class _WorkflowRow extends StatelessWidget {
             ),
             if (showHistoryAction) ...[
               const SizedBox(width: 8),
-              Button(
+              AppButton(
+                label: 'History',
+                variant: AppButtonVariant.secondary,
                 onPressed: () => _openPatientHistoryDialog(context),
-                child: const Text('History'),
               ),
             ],
           ],
@@ -2382,14 +2063,15 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                       ),
               ),
               actions: [
-                Button(
+                AppButton(
+                  label: 'Cancel',
+                  variant: AppButtonVariant.secondary,
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
                 ),
-                FilledButton(
+                AppButton(
+                  label: 'Save',
                   onPressed: () => Navigator.pop(
                       dialogContext, selected.toList(growable: false)),
-                  child: const Text('Save'),
                 ),
               ],
             );
@@ -2413,16 +2095,15 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
           'This appointment will be moved back to Billing stage for $patientName.',
         ),
         actions: [
-          Button(
+          AppButton(
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
+          AppButton(
+            label: 'Billing',
+            variant: AppButtonVariant.danger,
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(const Color(0xFFE56E7D)),
-            ),
-            child: const Text('Billing'),
           ),
         ],
       ),
@@ -2549,8 +2230,11 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _PatientJourneyTimeline(
-                          appointments: timelineRows,
+                        child: PatientTimelineCard(
+                          items: CheckinTimelineMapper.fromAppointments(
+                            timelineRows,
+                          ),
+                          collapsedVisibleCount: 3,
                         ),
                       ),
                     ],
@@ -2598,10 +2282,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         ),
         child: SizedBox(
           width: double.infinity,
-          child: FilledButton(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-            ),
+          child: AppButton(
+            label: 'Check-in',
             onPressed: () async {
               Navigator.of(context).pop();
               final pickedDoctorIds = await pickDoctorDialog(
@@ -2617,7 +2299,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               appointments.set(appointment);
               if (mounted) setState(() {});
             },
-            child: const Text('Check-in'),
           ),
         ),
       );
@@ -2633,12 +2314,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         child: Row(
           children: [
             Expanded(
-              child: FilledButton(
-                style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFFD6455D)),
-                  foregroundColor: WidgetStateProperty.all(Colors.white),
-                ),
+              child: AppButton(
+                label: 'Move Back to Waiting',
+                variant: AppButtonVariant.danger,
                 onPressed: () async {
                   final shouldMove = await showDialog<bool>(
                     context: context,
@@ -2648,13 +2326,15 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                         '$patientName will be moved back to Waiting and doctor assignment will be removed.',
                       ),
                       actions: [
-                        Button(
+                        AppButton(
+                          label: 'Cancel',
+                          variant: AppButtonVariant.secondary,
                           onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('Cancel'),
                         ),
-                        FilledButton(
+                        AppButton(
+                          label: 'Move',
+                          variant: AppButtonVariant.danger,
                           onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('Move'),
                         ),
                       ],
                     ),
@@ -2669,17 +2349,12 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   }
                   if (mounted) setState(() {});
                 },
-                child: const Text('Move Back to Waiting'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: FilledButton(
-                style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFF7C3AED)),
-                  foregroundColor: WidgetStateProperty.all(Colors.white),
-                ),
+              child: AppButton(
+                label: 'Proceed to Billing',
                 onPressed: () {
                   appointment.checkinStage = 'checkout';
                   appointment.isDone = false;
@@ -2689,7 +2364,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   }
                   if (mounted) setState(() {});
                 },
-                child: const Text('Proceed to Billing'),
               ),
             ),
           ],
@@ -2707,7 +2381,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         child: Row(
           children: [
             Expanded(
-              child: Button(
+              child: AppButton(
+                label: 'Move Back to Treatment',
+                variant: AppButtonVariant.secondary,
                 onPressed: () async {
                   final shouldMove = await showDialog<bool>(
                     context: context,
@@ -2717,13 +2393,15 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                         'This appointment will be moved back to Treatment for $patientName.',
                       ),
                       actions: [
-                        Button(
+                        AppButton(
+                          label: 'Cancel',
+                          variant: AppButtonVariant.secondary,
                           onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('Cancel'),
                         ),
-                        FilledButton(
+                        AppButton(
+                          label: 'Move to Treatment',
+                          variant: AppButtonVariant.danger,
                           onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('Move to Treatment'),
                         ),
                       ],
                     ),
@@ -2737,16 +2415,12 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   }
                   if (mounted) setState(() {});
                 },
-                child: const Text('Move Back to Treatment'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: FilledButton(
-                style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFF3B9A42)),
-                ),
+              child: AppButton(
+                label: 'Collect',
                 onPressed: () async {
                   final shouldComplete = await _confirmMoveToCompleted(
                     context,
@@ -2762,14 +2436,14 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   await _openNextAppointmentPrompt(appointment);
                   if (mounted) setState(() {});
                 },
-                child: StreamBuilder(
+                leading: StreamBuilder(
                   stream: appointments.observableMap.stream,
                   builder: (context, _) {
                     final latest = appointments.present.values.firstWhere(
                         (a) => a.id == appointment.id,
                         orElse: () => appointment);
                     final paid = latest.paid;
-                    return Text('Collect (₹${paid.toStringAsFixed(0)})');
+                    return Text('₹${paid.toStringAsFixed(0)}');
                   },
                 ),
               ),
@@ -2789,22 +2463,16 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         child: Row(
           children: [
             Expanded(
-              child: FilledButton(
-                style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFFE56E7D)),
-                ),
+              child: AppButton(
+                label: 'Move Back to Billing',
+                variant: AppButtonVariant.danger,
                 onPressed: () => _moveCompletedToBilling(appointment),
-                child: const Text('Move Back to Billing'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: FilledButton(
-                style: ButtonStyle(
-                  backgroundColor:
-                      WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                ),
+              child: AppButton(
+                label: 'New Appointment',
                 onPressed: () {
                   final patient = appointment.patient;
                   if (patient == null) return;
@@ -2817,7 +2485,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   });
                   _openNextAppointmentPrompt(appointment);
                 },
-                child: const Text('New Appointment'),
               ),
             ),
           ],
@@ -2937,7 +2604,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
         .where((row) => row.trim().isNotEmpty)
         .join(', ');
     final teethSummary =
-      appointment.selectedTeeth.map((id) => id.toString()).join(', ');
+        appointment.selectedTeeth.map((id) => id.toString()).join(', ');
 
     return Container(
       width: double.infinity,
@@ -3302,13 +2969,15 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
           '$patientName will be moved back to Waiting and doctor assignment will be removed.',
         ),
         actions: [
-          Button(
+          AppButton(
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
+          AppButton(
+            label: 'Move to Waiting',
+            variant: AppButtonVariant.danger,
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Move to Waiting'),
           ),
         ],
       ),
@@ -3330,13 +2999,15 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         content: Text(
             'This patient will be moved back to Treatment stage for $patientName.'),
         actions: [
-          Button(
+          AppButton(
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
           ),
-          FilledButton(
+          AppButton(
+            label: 'Move to Treatment',
+            variant: AppButtonVariant.danger,
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Move to Treatment'),
           ),
         ],
       ),
@@ -3667,8 +3338,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 label: type,
                                 selected:
                                     _selectedConsultationTypes.contains(type),
-                                selectedTextColor: const Color(0xFF0D4AA4),
-                                normalTextColor: const Color(0xFF34557E),
                                 onTap: () {
                                   setState(() {
                                     if (_selectedConsultationTypes
@@ -3709,8 +3378,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 label: type,
                                 selected:
                                     _selectedConsultationTypes.contains(type),
-                                selectedTextColor: const Color(0xFF0D4AA4),
-                                normalTextColor: const Color(0xFF34557E),
                                 onTap: () {
                                   setState(() {
                                     if (_selectedConsultationTypes
@@ -3799,8 +3466,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                             (parent) => _hierarchyChip(
                               label: parent,
                               selected: _selectedPostOpParent == parent,
-                              selectedTextColor: const Color(0xFF0E6B57),
-                              normalTextColor: const Color(0xFF2B5A4F),
                               onTap: () {
                                 setState(() => _selectedPostOpParent = parent);
                               },
@@ -3819,8 +3484,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                               (child) => _hierarchyChip(
                                 label: child,
                                 selected: false,
-                                selectedTextColor: const Color(0xFF6D28D9),
-                                normalTextColor: const Color(0xFF6D28D9),
                                 onTap: () {
                                   final parent = _selectedPostOpParent;
                                   if (parent == null) return;
@@ -3852,14 +3515,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       Row(
                         children: [
                           Expanded(
-                            child: FilledButton(
-                              style: ButtonStyle(
-                                backgroundColor: WidgetStateProperty.all(
-                                  const Color(0xFF2BA58D),
-                                ),
-                                foregroundColor:
-                                    WidgetStateProperty.all(Colors.white),
-                              ),
+                            child: AppButton(
+                              label: 'Proceed to Billing',
                               onPressed: () async {
                                 final navigator = Navigator.of(context);
                                 final patientName = _patientDisplayName(a);
@@ -3873,15 +3530,16 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                       'This appointment will be moved to Billing stage for $patientName.',
                                     ),
                                     actions: [
-                                      Button(
+                                      AppButton(
+                                        label: 'Cancel',
+                                        variant: AppButtonVariant.secondary,
                                         onPressed: () =>
                                             Navigator.pop(dialogContext, false),
-                                        child: const Text('Cancel'),
                                       ),
-                                      FilledButton(
+                                      AppButton(
+                                        label: 'Proceed',
                                         onPressed: () =>
                                             Navigator.pop(dialogContext, true),
-                                        child: const Text('Proceed'),
                                       ),
                                     ],
                                   ),
@@ -3893,14 +3551,14 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                                 if (!mounted) return;
                                 navigator.maybePop();
                               },
-                              child: const Text('Proceed to Billing'),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Button(
+                            child: AppButton(
+                              label: 'Move Back to Waiting',
+                              variant: AppButtonVariant.danger,
                               onPressed: _moveBackToWaiting,
-                              child: const Text('Move Back to Waiting'),
                             ),
                           ),
                         ],
@@ -3909,6 +3567,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   ],
                 );
 
+                final scheduler = _InlineNextAppointmentCard(
+                  appointment: a,
+                );
                 final todaySummary = _buildTodaySummaryCard(a);
 
                 if (constraints.maxWidth >= 1180) {
@@ -3919,7 +3580,16 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       const SizedBox(width: 12),
                       Expanded(flex: 42, child: secondColumn),
                       const SizedBox(width: 12),
-                      SizedBox(width: 260, child: todaySummary),
+                      SizedBox(
+                        width: 260,
+                        child: Column(
+                          children: [
+                            scheduler,
+                            const SizedBox(height: 10),
+                            todaySummary,
+                          ],
+                        ),
+                      ),
                     ],
                   );
                 }
@@ -3930,6 +3600,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     const SizedBox(height: 16),
                     secondColumn,
                     const SizedBox(height: 16),
+                    scheduler,
+                    const SizedBox(height: 10),
                     todaySummary,
                   ],
                 );
@@ -3959,8 +3631,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     required String label,
     required bool selected,
     required VoidCallback onTap,
-    required Color selectedTextColor,
-    required Color normalTextColor,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -3968,17 +3638,16 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color:
-              selected ? const Color(0xFFE6F0FF) : const Color(0xFFF7FAFF),
+          color: selected ? AppColors.primary50 : AppColors.bgMain,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? const Color(0xFF9ABAF2) : const Color(0xFFD8E6FA),
+            color: selected ? AppColors.primary300 : AppColors.borderSoft,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? selectedTextColor : normalTextColor,
+            color: selected ? AppColors.primary700 : AppColors.textSecondary,
             fontSize: 12,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
           ),
@@ -4572,15 +4241,17 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            FilledButton(
+            AppButton(
+              label: 'WhatsApp',
               onPressed: () async {
                 try {
                   await openWhatsApp(patient?.phone ?? '', message);
                 } catch (_) {}
               },
-              child: const Text('WhatsApp'),
             ),
-            Button(
+            AppButton(
+              label: email.isEmpty ? 'Email (No address)' : 'Email',
+              variant: AppButtonVariant.secondary,
               onPressed: email.isEmpty
                   ? null
                   : () async {
@@ -4592,14 +4263,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         );
                       } catch (_) {}
                     },
-              child: Text(email.isEmpty ? 'Email (No address)' : 'Email'),
             ),
           ],
         ),
         actions: [
-          Button(
+          AppButton(
+            label: 'Close',
+            variant: AppButtonVariant.secondary,
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
           ),
         ],
       ),
@@ -4699,17 +4370,15 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     runSpacing: 8,
                     children: [100, 200, 500, 1000, 2000, 2500]
                         .map(
-                          (v) => Button(
-                            style: _pillStyle(
-                              selected: false,
-                              accent: const Color(0xFF2D7BD8),
-                            ),
+                          (v) => AppButton(
+                            label: '₹$v',
+                            compact: true,
+                            variant: AppButtonVariant.secondary,
                             onPressed: () {
                               _basePrice = v.toDouble();
                               widget.priceController.text = '$v';
                               _recalculatePrice();
                             },
-                            child: Text('₹$v'),
                           ),
                         )
                         .toList(growable: false),
@@ -4743,30 +4412,29 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Button(
-                          style: _pillStyle(
-                            selected: _discountMode == 'flat',
-                            accent: const Color(0xFF2D7BD8),
-                          ),
+                        AppButton(
+                          label: _discountMode == 'flat' ? '₹ Flat' : 'Flat',
+                          compact: true,
+                          variant: _discountMode == 'flat'
+                              ? AppButtonVariant.primary
+                              : AppButtonVariant.secondary,
                           onPressed: () {
                             setState(() => _discountMode = 'flat');
                             _recalculatePrice();
                           },
-                          child:
-                              Text(_discountMode == 'flat' ? '₹ Flat' : 'Flat'),
                         ),
-                        Button(
-                          style: _pillStyle(
-                            selected: _discountMode == 'percent',
-                            accent: const Color(0xFF2D7BD8),
-                          ),
+                        AppButton(
+                          label: _discountMode == 'percent'
+                              ? '% Percent'
+                              : 'Percent',
+                          compact: true,
+                          variant: _discountMode == 'percent'
+                              ? AppButtonVariant.primary
+                              : AppButtonVariant.secondary,
                           onPressed: () {
                             setState(() => _discountMode = 'percent');
                             _recalculatePrice();
                           },
-                          child: Text(_discountMode == 'percent'
-                              ? '% Percent'
-                              : 'Percent'),
                         ),
                       ],
                     ),
@@ -4787,16 +4455,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         runSpacing: 8,
                         children: [5, 10, 20, 25, 50]
                             .map(
-                              (v) => Button(
-                                style: _pillStyle(
-                                  selected: false,
-                                  accent: const Color(0xFF2D7BD8),
-                                ),
+                              (v) => AppButton(
+                                label: '$v%',
+                                compact: true,
+                                variant: AppButtonVariant.secondary,
                                 onPressed: () {
                                   widget.discountController.text = '$v';
                                   _recalculatePrice();
                                 },
-                                child: Text('$v%'),
                               ),
                             )
                             .toList(growable: false),
@@ -4807,16 +4473,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         runSpacing: 8,
                         children: [100, 200, 500, 1000]
                             .map(
-                              (v) => Button(
-                                style: _pillStyle(
-                                  selected: false,
-                                  accent: const Color(0xFF2D7BD8),
-                                ),
+                              (v) => AppButton(
+                                label: '₹$v',
+                                compact: true,
+                                variant: AppButtonVariant.secondary,
                                 onPressed: () {
                                   widget.discountController.text = '$v';
                                   _recalculatePrice();
                                 },
-                                child: Text('₹$v'),
                               ),
                             )
                             .toList(growable: false),
@@ -4863,27 +4527,23 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     runSpacing: 8,
                     children: [
                       ...[100, 200, 500, 1000, 2000, 2500].map(
-                        (v) => Button(
-                          style: _pillStyle(
-                            selected: false,
-                            accent: const Color(0xFF2D7BD8),
-                          ),
+                        (v) => AppButton(
+                          label: '₹$v',
+                          compact: true,
+                          variant: AppButtonVariant.secondary,
                           onPressed: () {
                             widget.paidController.text = '$v';
                             a.paid = v.toDouble();
                             _scheduleAutosave();
                             setState(() {});
                           },
-                          child: Text('₹$v'),
                         ),
                       ),
-                      Button(
-                        style: _pillStyle(
-                          selected: false,
-                          accent: const Color(0xFF2D7BD8),
-                        ),
+                      AppButton(
+                        label: 'Full',
+                        compact: true,
+                        variant: AppButtonVariant.secondary,
                         onPressed: widget.onCollectFullBalance,
-                        child: const Text('Full'),
                       ),
                     ],
                   ),
@@ -4908,8 +4568,12 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                               runSpacing: 8,
                               children: ['Cash', 'UPI'].map((mode) {
                                 final selected = _paymentMode == mode;
-                                return Button(
-                                  style: _pillStyle(selected: selected),
+                                return AppButton(
+                                  label: mode,
+                                  compact: true,
+                                  variant: selected
+                                      ? AppButtonVariant.primary
+                                      : AppButtonVariant.secondary,
                                   onPressed: () {
                                     setState(() => _paymentMode = mode);
                                     final isDigital = mode == 'UPI';
@@ -4917,15 +4581,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                                     a.prescriptionGpayPaid = isDigital;
                                     _scheduleAutosave();
                                   },
-                                  child: Text(
-                                    mode,
-                                    style: TextStyle(
-                                      color: selected
-                                          ? const Color(0xFF1459AD)
-                                          : const Color(0xFF5A7397),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
                                 );
                               }).toList(growable: false),
                             ),
@@ -4944,7 +4599,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Button(
+                          AppButton(
+                            label:
+                                DateFormat('dd MMM yyyy').format(_paymentDate),
+                            variant: AppButtonVariant.secondary,
                             onPressed: () async {
                               final picked = await material.showDatePicker(
                                 context: context,
@@ -4956,8 +4614,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                               if (picked == null) return;
                               setState(() => _paymentDate = picked);
                             },
-                            child: Text(
-                                DateFormat('dd MMM yyyy').format(_paymentDate)),
                           ),
                         ],
                       ),
@@ -4976,26 +4632,23 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     children: [
                       Expanded(
                         flex: 5,
-                        child: ComboBox<String>(
-                          isExpanded: true,
-                          placeholder: const Text('Select consultant'),
+                        child: AppDropdownMenu<String?>(
+                          width: double.infinity,
                           value: consultantDoctors.any(
                                   (d) => d.id == _selectedConsultantDoctorId)
                               ? _selectedConsultantDoctorId
-                              : null,
+                              : '__none__',
                           items: [
-                            const ComboBoxItem<String>(
+                            const AppDropdownItem<String?>(
                               value: '__none__',
-                              child: Text('None'),
+                              label: 'None',
                             ),
                             ...consultantDoctors.map(
-                              (doctor) => ComboBoxItem<String>(
+                              (doctor) => AppDropdownItem<String?>(
                                 value: doctor.id,
-                                child: Text(
-                                  doctor.title.trim().isEmpty
-                                      ? 'Unnamed doctor'
-                                      : doctor.title,
-                                ),
+                                label: doctor.title.trim().isEmpty
+                                    ? 'Unnamed doctor'
+                                    : doctor.title,
                               ),
                             ),
                           ],
@@ -5616,312 +5269,65 @@ class _CheckinSearchableTagInput extends StatelessWidget {
   }
 }
 
-class SvgOdontogramCard extends StatelessWidget {
-  final Map<String, ToothState> teeth;
-  final String selectedToothId;
-  final String selectedToothNote;
-  final ValueChanged<String> onSelectTooth;
-  final ValueChanged<String> onToothNoteChanged;
-  final void Function(String toothId, ToothSurface surface) onSurfaceTap;
+class _InlineNextAppointmentCard extends StatelessWidget {
+  final Appointment appointment;
 
-  const SvgOdontogramCard({
-    super.key,
-    required this.teeth,
-    required this.selectedToothId,
-    required this.selectedToothNote,
-    required this.onSelectTooth,
-    required this.onToothNoteChanged,
-    required this.onSurfaceTap,
-  });
+  const _InlineNextAppointmentCard({required this.appointment});
 
   @override
   Widget build(BuildContext context) {
+    final upcomingRows = appointments.present.values
+        .where(
+          (row) =>
+              row.patientID == appointment.patientID &&
+              row.id != appointment.id &&
+              row.checkinStage == 'scheduled' &&
+              row.date.isAfter(DateTime.now()),
+        )
+        .toList(growable: true)
+      ..sort((a, b) => a.date.compareTo(b.date));
+    final scheduled = upcomingRows.isEmpty ? null : upcomingRows.first;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF5FAFF), Color(0xFFEDF6FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD4E6FA)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E0EB)),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 980;
-
-          final centerPanel = Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4F8FF),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFD3E1F3)),
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Odontogram',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF2C4E76),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: OdontogramPicker(
-                        teeth: teeth,
-                        onToothTap: onSelectTooth,
-                        onSurfaceTap: onSurfaceTap,
-                        toothSize: 48,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-
-          final rightPanel = Container(
-            width: 260,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF4FC),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFD3E1F3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Tooth Details',
-                  style: TextStyle(
-                    color: Color(0xFF2C4E76),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tooth #$selectedToothId',
-                  style: const TextStyle(
-                    color: Color(0xFF2C4E76),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 20,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Notes:',
-                  style: TextStyle(
-                    color: Color(0xFF2C4E76),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                TextBox(
-                  key: ValueKey(selectedToothId),
-                  controller: TextEditingController(text: selectedToothNote),
-                  placeholder: 'Add notes here...',
-                  maxLines: 3,
-                  onChanged: onToothNoteChanged,
-                ),
-                const SizedBox(height: 8),
-                FilledButton(
-                  onPressed: () {},
-                  child: const SizedBox(
-                    width: double.infinity,
-                    child: Center(
-                      child: Text('Save'),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-
-          if (!isDesktop) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(height: 280, child: centerPanel),
-                const SizedBox(height: 8),
-                rightPanel,
-              ],
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                height: 360,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    centerPanel,
-                    const SizedBox(width: 8),
-                    rightPanel,
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _PatientJourneyTimeline extends StatelessWidget {
-  final List<Appointment> appointments;
-
-  const _PatientJourneyTimeline({required this.appointments});
-
-  @override
-  Widget build(BuildContext context) {
-    final points = appointments.take(8).toList(growable: false);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Journey Timeline',
+            'Next Appointment',
             style: TextStyle(
-              color: Color(0xFF2C4E76),
+              color: Color(0xFF223B5E),
               fontWeight: FontWeight.w800,
-              fontSize: 15,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            scheduled == null
+                ? 'Not scheduled'
+                : DateFormat('dd MMM yyyy • h:mm a').format(scheduled.date),
+            style: TextStyle(
+              color: scheduled == null
+                  ? const Color(0xFF5A6B7F)
+                  : const Color(0xFF1459AD),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
             ),
           ),
           const SizedBox(height: 8),
-          if (points.isEmpty)
-            const Text(
-              'No timeline data available.',
-              style: TextStyle(color: Color(0xFF6D84A8), fontSize: 12),
-            )
-          else
-            ...points.asMap().entries.map((entry) {
-              final item = entry.value;
-              final treatments = item.selectedTreatments
-                  .where((t) => t.trim().isNotEmpty)
-                  .join(', ');
-              final doctorNames = item.operators.isEmpty
-                  ? 'Unassigned'
-                  : item.operators.map((d) => d.title).join(', ');
-              final teeth = item.selectedTeeth
-                  .where((t) => t.trim().isNotEmpty)
-                  .join(', ');
-              final isLast = entry.key == points.length - 1;
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Column(
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF2D7BD8),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      if (!isLast)
-                        Container(
-                          width: 2,
-                          height: 28,
-                          color: const Color(0xFFCFE0F3),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            DateFormat('dd MMM yyyy • h:mm a')
-                                .format(item.date),
-                            style: const TextStyle(
-                              color: Color(0xFF1F446E),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            treatments.isEmpty ? '-' : treatments,
-                            style: const TextStyle(
-                              color: Color(0xFF5F789B),
-                              fontSize: 11,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEAF2FC),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: const Color(0xFFD5E5F7),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Doctor: $doctorNames',
-                                  style: const TextStyle(
-                                    color: Color(0xFF355279),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                              if (teeth.isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF2F8E9),
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: const Color(0xFFD9EBC0),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Teeth: $teeth',
-                                    style: const TextStyle(
-                                      color: Color(0xFF456824),
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }),
+          AppButton(
+            label: scheduled == null ? 'Schedule' : 'Edit Scheduled',
+            variant: AppButtonVariant.secondary,
+            expanded: true,
+            onPressed: () =>
+                _showNextAppointmentPromptDialog(context, appointment),
+          ),
         ],
       ),
     );

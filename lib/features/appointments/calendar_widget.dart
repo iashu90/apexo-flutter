@@ -4,6 +4,7 @@ import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
 import 'package:apexo/core/activity_logger.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -177,8 +178,9 @@ class WeekAgendaCalendarState<Item extends Appointment>
                           content: Text(
                               'Are you sure you want to permanently delete ${selectedAppointmentIds.length} appointment(s)? This action cannot be undone.'),
                           actions: [
-                            Button(
-                              child: const Text('Cancel'),
+                            AppButton(
+                              label: 'Cancel',
+                              variant: AppButtonVariant.secondary,
                               onPressed: () {
                                 ActivityLogger.logAction(
                                   "Delete Appointments Cancelled",
@@ -193,12 +195,9 @@ class WeekAgendaCalendarState<Item extends Appointment>
                                 Navigator.pop(ctx, false);
                               },
                             ),
-                            FilledButton(
-                              style: ButtonStyle(
-                                backgroundColor: ButtonState.all(
-                                    Colors.red), // Make button red
-                              ),
-                              child: const Text('Delete'),
+                            AppButton(
+                              label: 'Delete',
+                              variant: AppButtonVariant.danger,
                               onPressed: () {
                                 ActivityLogger.logAction(
                                   "Delete Appointments Confirmed",
