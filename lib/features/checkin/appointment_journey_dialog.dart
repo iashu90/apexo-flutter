@@ -85,13 +85,8 @@ Future<void> showAppointmentJourneyDialog({
           final selectedColor = stepColor(logicalStep < 0 ? 0 : logicalStep);
 
           return GestureDetector(
-            onTap: isCheckinStep
-                ? null
-                : () {
-                    setStateDialog(() {
-                      currentStep = logicalStep;
-                    });
-                  },
+            // Keep top stepper display-only; progression is controlled by footer actions.
+            onTap: null,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -165,6 +160,12 @@ Future<void> showAppointmentJourneyDialog({
           }
 
           Navigator.pop(dialogContext);
+        }
+
+        String? currentPrimaryLabel() {
+          if (currentStep == 0) return 'Treatment Complete';
+          if (currentStep == 1) return 'Billing Complete';
+          return null;
         }
 
         return SafeArea(
@@ -286,38 +287,39 @@ Future<void> showAppointmentJourneyDialog({
                       ),
                     ),
                   ),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    decoration: const BoxDecoration(
-                      border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
-                    ),
-                    child: Row(
-                      children: [
-                        AppButton(
-                          label: 'Cancel',
-                          variant: AppButtonVariant.secondary,
-                          onPressed: () => Navigator.pop(dialogContext),
-                        ),
-                        const SizedBox(width: 8),
-                        if (currentStep > 0)
+                  if (currentPrimaryLabel() != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                      decoration: const BoxDecoration(
+                        border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+                      ),
+                      child: Row(
+                        children: [
                           AppButton(
-                            label: 'Back',
+                            label: 'Cancel',
                             variant: AppButtonVariant.secondary,
-                            onPressed: () {
-                              setStateDialog(() {
-                                currentStep -= 1;
-                              });
-                            },
+                            onPressed: () => Navigator.pop(dialogContext),
                           ),
-                        const Spacer(),
-                        AppButton(
-                          label: currentStep == 3 ? 'Done' : 'Continue',
-                          onPressed: handleContinue,
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          if (currentStep > 0)
+                            AppButton(
+                              label: 'Back',
+                              variant: AppButtonVariant.secondary,
+                              onPressed: () {
+                                setStateDialog(() {
+                                  currentStep -= 1;
+                                });
+                              },
+                            ),
+                          const Spacer(),
+                          AppButton(
+                            label: currentPrimaryLabel()!,
+                            onPressed: handleContinue,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
