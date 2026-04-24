@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/utils/get_deterministic_item.dart';
 import 'package:apexo/common_widgets/transitions/border.dart';
@@ -232,9 +233,9 @@ class BackupsSettings extends StatelessWidget {
             ),
             actions: [
               const CloseButtonInDialog(),
-              FilledButton(
-                style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.red)),
-                child: Txt(txt("delete")),
+                  AppButton(
+                    label: txt("delete"),
+                    variant: AppButtonVariant.danger,
                 onPressed: () async {
                   Navigator.pop(context);
                   await backups.delete(element.key);

@@ -183,7 +183,7 @@ bool Win32Window::Create(const std::wstring& title,
   const RECT bounds = monitor_info.rcWork;
 
     HWND window = CreateWindow(
-      window_class, title.c_str(),  WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+      window_class, title.c_str(),  WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX,
       bounds.left, bounds.top,
       bounds.right - bounds.left, bounds.bottom - bounds.top,
       nullptr, nullptr, GetModuleHandle(nullptr), this);
@@ -230,7 +230,6 @@ Win32Window::MessageHandler(HWND hwnd,
     case WM_SYSCOMMAND:
       switch (wparam & 0xFFF0) {
         case SC_SIZE:
-        case SC_MAXIMIZE:
           return 0;
       }
       break;

@@ -28,12 +28,11 @@ Future<void> showAppointmentJourneyDialog({
   AppointmentJourneyAssignHandler? onAssignFromWaiting,
   AppointmentJourneyBeforeAdvance? onBeforeStepAdvance,
 }) async {
-  var currentStep = initialStep.clamp(0, 3);
-  const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5'];
+  var currentStep = initialStep.clamp(0, 2);
+  const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4'];
   const subtitles = [
     'Checked In',
     'Treatment',
-    'Schedule Next',
     'Billing',
     'Completed',
   ];
@@ -154,7 +153,7 @@ Future<void> showAppointmentJourneyDialog({
         }
 
         Future<void> handleContinue() async {
-          if (currentStep < 3) {
+          if (currentStep < 2) {
             final beforeAdvance = onBeforeStepAdvance;
             if (beforeAdvance != null) {
               await beforeAdvance(context, currentStep, currentStep + 1);

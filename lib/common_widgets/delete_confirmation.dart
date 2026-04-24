@@ -1,4 +1,5 @@
 import 'package:apexo/core/activity_logger.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 
@@ -22,9 +23,9 @@ Future<bool?> showConfirmDeleteDialog(
         margin: const EdgeInsets.only(top: 12),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(0.08),
+          color: Colors.orange.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.orange.withOpacity(0.18)),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.18)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,8 +60,9 @@ Future<bool?> showConfirmDeleteDialog(
         ],
       ),
       actions: [
-        Button(
-          child: const Text('Cancel'),
+        AppButton(
+          label: 'Cancel',
+          variant: AppButtonVariant.secondary,
           onPressed: () {
             ActivityLogger.logAction(
               "Delete Confirmation Cancelled",
@@ -70,12 +72,9 @@ Future<bool?> showConfirmDeleteDialog(
             Navigator.pop(context, false);
           },
         ),
-        FilledButton(
-          style: ButtonStyle(
-            backgroundColor:
-                ButtonState.all(material.Colors.red), // Make button red
-          ),
-          child: const Text('Delete'),
+        AppButton(
+          label: 'Delete',
+          variant: AppButtonVariant.danger,
           onPressed: () {
             ActivityLogger.logAction(
               "Delete Confirmed",

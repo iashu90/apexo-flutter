@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/utils/colors_without_yellow.dart';
 import 'package:apexo/utils/get_deterministic_item.dart';
@@ -534,17 +535,15 @@ class AppointmentCard extends StatelessWidget {
                     content: const Text(
                         'Are you sure you want to permanently delete this appointment? This action cannot be undone.'),
                     actions: [
-                      Button(
-                        child: const Text('Cancel'),
+                      AppButton(
+                        label: 'Cancel',
+                        variant: AppButtonVariant.secondary,
                         onPressed: () => Navigator.pop(ctx, false),
                       ),
-                      FilledButton(
-                        style: ButtonStyle(
-                          backgroundColor:
-                              ButtonState.all(Colors.red), // Make button red
-                        ),
-                        child: const Text('Delete'),
-                        onPressed: () => Navigator.pop(context, true),
+                      AppButton(
+                        label: 'Delete',
+                        variant: AppButtonVariant.danger,
+                        onPressed: () => Navigator.pop(ctx, true),
                       ),
                     ],
                   ),
@@ -553,6 +552,7 @@ class AppointmentCard extends StatelessWidget {
                   // Perform hard delete logic here
                   await appointments
                       .hardDelete(appointment.id); // or your delete method
+                  if (!context.mounted) return;
                   if (Navigator.canPop(context)) Navigator.pop(context);
                 }
               },

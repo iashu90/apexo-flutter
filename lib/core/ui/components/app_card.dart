@@ -68,17 +68,6 @@ class AppCard extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle!,
-                            style: TextStyle(
-                              color: subtitleColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -87,6 +76,17 @@ class AppCard extends StatelessWidget {
             if (title != null || subtitle != null || leadingIcon != null)
               const SizedBox(height: 6),
             child,
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                style: TextStyle(
+                  color: subtitleColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -129,19 +130,18 @@ class LabworkCard extends StatelessWidget {
                                           ),
                                         ),
                                         actions: [
-                                          Button(
-                                            child: const Text('Cancel'),
+                                          AppButton(
+                                            label: 'Cancel',
+                                            variant:
+                                                AppButtonVariant.secondary,
                                             onPressed: () =>
                                                 Navigator.pop(ctx, false),
                                           ),
-                                          FilledButton(
-                                            style: ButtonStyle(
-                                              backgroundColor:
-                                                  ButtonState.all(Colors.red),
-                                            ),
-                                            child: const Text('Delete'),
+                                          AppButton(
+                                            label: 'Delete',
+                                            variant: AppButtonVariant.danger,
                                             onPressed: () =>
-                                                Navigator.pop(context, true),
+                                                Navigator.pop(ctx, true),
                                           ),
                                         ],
                                       ),
@@ -150,6 +150,7 @@ class LabworkCard extends StatelessWidget {
                                       // Perform hard delete logic here
                                       await labworks.hardDelete(
                                           labwork.id); // or your delete method
+                                      if (!context.mounted) return;
                                       if (Navigator.canPop(context)) {
                                         Navigator.pop(context);
                                       }
