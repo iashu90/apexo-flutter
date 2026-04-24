@@ -126,6 +126,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                             labsOnly: true,
                           );
                         },
+                        onDelete: (item) => _confirmDeleteLabwork(item),
                       ),
               ],
             );
@@ -321,7 +322,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
                 value: cards[i].value,
                 valueColor: cards[i].color,
                 icon: Icon(cards[i].icon, size: 14, color: cards[i].color),
-                width: 200,
               ),
             );
           }),
@@ -861,6 +861,33 @@ class _LabworksScreenState extends State<LabworksScreen> {
       _toDate = null;
     });
   }
+
+  Future<void> _confirmDeleteLabwork(Labwork item) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: const Text('Delete Labwork'),
+        content: Text(
+          'Delete this labwork from ${DateFormat('dd MMM yyyy').format(item.date)}? This action cannot be undone.',
+        ),
+        actions: [
+          AppButton(
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
+            onPressed: () => Navigator.pop(dialogContext, false),
+          ),
+          AppButton(
+            label: 'Delete',
+            variant: AppButtonVariant.danger,
+            onPressed: () => Navigator.pop(dialogContext, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+    await labworks.hardDelete(item.id);
+  }
 }
 
 class _LabworkBoard extends StatelessWidget {
@@ -875,6 +902,7 @@ class _LabworkBoard extends StatelessWidget {
   final VoidCallback onToggleDelivered;
   final void Function(Labwork?) onOpen;
   final void Function(Labwork) onHistory;
+  final Future<void> Function(Labwork) onDelete;
 
   const _LabworkBoard({
     required this.inLab,
@@ -888,6 +916,7 @@ class _LabworkBoard extends StatelessWidget {
     required this.onToggleDelivered,
     required this.onOpen,
     required this.onHistory,
+    required this.onDelete,
   });
 
   @override
@@ -905,6 +934,7 @@ class _LabworkBoard extends StatelessWidget {
           onToggle: onToggleInLab,
           onOpen: onOpen,
           onHistory: onHistory,
+          onDelete: onDelete,
         );
         final readyColumn = _LabworkBoardColumn(
           title: 'Ready',
@@ -915,9 +945,10 @@ class _LabworkBoard extends StatelessWidget {
           onToggle: onToggleReady,
           onOpen: onOpen,
           onHistory: onHistory,
+          onDelete: onDelete,
         );
         final deliveredColumn = _LabworkBoardColumn(
-          title: 'Delivered',
+          title: 'Filtered Due',
           count: delivered.length,
           color: const Color(0xFF2BA58D),
           items: delivered,
@@ -925,6 +956,7 @@ class _LabworkBoard extends StatelessWidget {
           onToggle: onToggleDelivered,
           onOpen: onOpen,
           onHistory: onHistory,
+          onDelete: onDelete,
         );
 
         if (stacked) {
@@ -953,6 +985,7 @@ class _LabworkBoard extends StatelessWidget {
                 onToggle: onToggleInLab,
                 onOpen: onOpen,
                 onHistory: onHistory,
+                onDelete: onDelete,
               ),
             ),
             const SizedBox(width: 10),
@@ -966,6 +999,7 @@ class _LabworkBoard extends StatelessWidget {
                 onToggle: onToggleReady,
                 onOpen: onOpen,
                 onHistory: onHistory,
+                onDelete: onDelete,
               ),
             ),
             const SizedBox(width: 10),
@@ -979,6 +1013,7 @@ class _LabworkBoard extends StatelessWidget {
                 onToggle: onToggleDelivered,
                 onOpen: onOpen,
                 onHistory: onHistory,
+                onDelete: onDelete,
               ),
             ),
           ],
@@ -997,6 +1032,7 @@ class _LabworkBoardColumn extends StatelessWidget {
   final VoidCallback onToggle;
   final void Function(Labwork?) onOpen;
   final void Function(Labwork) onHistory;
+  final Future<void> Function(Labwork) onDelete;
 
   const _LabworkBoardColumn({
     required this.title,
@@ -1007,6 +1043,7 @@ class _LabworkBoardColumn extends StatelessWidget {
     required this.onToggle,
     required this.onOpen,
     required this.onHistory,
+    required this.onDelete,
   });
 
   @override
@@ -1076,6 +1113,7 @@ class _LabworkBoardColumn extends StatelessWidget {
                         item: entry.value,
                         onOpen: onOpen,
                         onHistory: onHistory,
+                        onDelete: onDelete,
                       ),
                       if (entry.key < items.length - 1)
                         Container(
@@ -1275,11 +1313,13 @@ class _LabworkRow extends StatelessWidget {
   final Labwork item;
   final void Function(Labwork?) onOpen;
   final void Function(Labwork) onHistory;
+  final Future<void> Function(Labwork)? onDelete;
 
   const _LabworkRow({
     required this.item,
     required this.onOpen,
     required this.onHistory,
+    this.onDelete,
   });
 
   @override
@@ -1390,11 +1430,24 @@ class _LabworkRow extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(width: 2),
-                if (item.patient != null)
-                  IconButton(
-                    icon: const Icon(FluentIcons.history, size: 15),
-                    onPressed: () => onHistory(item),
-                  ),
+                Column(
+                  children: [
+                    if (item.patient != null)
+                      IconButton(
+                        icon: const Icon(FluentIcons.history, size: 15),
+                        onPressed: () => onHistory(item),
+                      ),
+                    if (onDelete != null)
+                      IconButton(
+                        icon: const Icon(
+                          FluentIcons.delete,
+                          size: 15,
+                          color: Color(0xFFD6455D),
+                        ),
+                        onPressed: () => onDelete!(item),
+                      ),
+                  ],
+                ),
               ],
             );
 

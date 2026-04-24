@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
@@ -316,7 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: Text(
                                     patientName,
                                     style: const TextStyle(
-                                      color: Color(0xFF1459AD),
+                                      color: AppColors.textActive,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -329,7 +330,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     Text(
                                       age > 0 ? 'Age: $age' : 'Age: -',
                                       style: const TextStyle(
-                                        color: Color(0xFF5B7498),
+                                        color: AppColors.textSecondary,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -338,7 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       Text(
                                         phone,
                                         style: const TextStyle(
-                                          color: Color(0xFF5B7498),
+                                          color: AppColors.textSecondary,
                                           fontSize: 12,
                                         ),
                                       ),

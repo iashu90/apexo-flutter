@@ -11,6 +11,7 @@ import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patients_report_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/common_widgets/report_table_modal_v2.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_pagination.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -31,15 +32,12 @@ import 'package:intl/intl.dart';
 String _toTitleCasePatientName(String input) {
   final cleaned = input.trim();
   if (cleaned.isEmpty) return cleaned;
-  return cleaned
-      .split(RegExp(r'\s+'))
-      .map((word) {
-        if (word.isEmpty) return word;
-        final first = word.substring(0, 1).toUpperCase();
-        final rest = word.length > 1 ? word.substring(1).toLowerCase() : '';
-        return '$first$rest';
-      })
-      .join(' ');
+  return cleaned.split(RegExp(r'\s+')).map((word) {
+    if (word.isEmpty) return word;
+    final first = word.substring(0, 1).toUpperCase();
+    final rest = word.length > 1 ? word.substring(1).toLowerCase() : '';
+    return '$first$rest';
+  }).join(' ');
 }
 
 String _patientDisplayName(Patient patient) {
@@ -240,7 +238,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
           }
 
           final buffer = StringBuffer();
-            buffer.writeln(
+          buffer.writeln(
               'ID,Patient,Phone,Age,Visits,Last Visit,Paid,Outstanding');
 
           for (int i = 0; i < rows.length; i++) {
@@ -550,8 +548,8 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   a.date.year == now.year &&
                   a.date.month == now.month &&
                   a.date.day == now.day);
-              final visitedThisMonth =
-                  rows.any((a) => a.date.year == now.year && a.date.month == now.month);
+              final visitedThisMonth = rows.any(
+                  (a) => a.date.year == now.year && a.date.month == now.month);
               patientAnalytics[patient.id] = (
                 visits: rows.length,
                 firstVisit: firstVisit,
@@ -696,9 +694,9 @@ class _PatientsScreenState extends State<PatientsScreen> {
                     return a.age.compareTo(b.age);
                   case 'lastVisit':
                     final aLast = patientAnalytics[a.id]?.lastVisit ??
-                      DateTime.fromMillisecondsSinceEpoch(0);
+                        DateTime.fromMillisecondsSinceEpoch(0);
                     final bLast = patientAnalytics[b.id]?.lastVisit ??
-                      DateTime.fromMillisecondsSinceEpoch(0);
+                        DateTime.fromMillisecondsSinceEpoch(0);
                     return aLast.compareTo(bLast);
                   case 'paidSoFar':
                     final aPaid = patientAnalytics[a.id]?.totalSpent ?? 0;
@@ -1849,7 +1847,6 @@ class _CompactAgeDistributionCardState
   }
 }
 
-
 class _GenderDistributionCard extends StatelessWidget {
   final Map<String, int> buckets;
 
@@ -2947,7 +2944,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF183A67),
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -2973,7 +2970,7 @@ class _AllPatientsListCard extends StatelessWidget {
             '$totalItems matching patients',
             style: const TextStyle(
               fontSize: 12,
-              color: Color(0xFF5A7397),
+              color: AppColors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -3093,8 +3090,8 @@ class _AllPatientsListCard extends StatelessWidget {
                         horizontal: 10, vertical: 10),
                     decoration: BoxDecoration(
                       color: isHeaderHighlighted
-                          ? const Color(0xFF1A74DB)
-                          : const Color(0xFFEFF4FB),
+                          ? AppColors.primary600
+                          : AppColors.primary50,
                       borderRadius:
                           const BorderRadius.vertical(top: Radius.circular(10)),
                     ),
@@ -3147,7 +3144,7 @@ class _AllPatientsListCard extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                               color: isHeaderHighlighted
                                   ? Colors.white
-                                  : const Color(0xFF2C4468),
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -3180,7 +3177,7 @@ class _AllPatientsListCard extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                               color: isHeaderHighlighted
                                   ? Colors.white
-                                  : const Color(0xFF2C4468),
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -3189,7 +3186,7 @@ class _AllPatientsListCard extends StatelessWidget {
                   ),
                   Container(
                     decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFD6E2F0)),
+                      border: Border.all(color: AppColors.borderSoft),
                       borderRadius: const BorderRadius.vertical(
                           bottom: Radius.circular(10)),
                     ),
@@ -3198,7 +3195,7 @@ class _AllPatientsListCard extends StatelessWidget {
                             padding: EdgeInsets.all(16),
                             child: Text(
                               'No matching patients',
-                              style: TextStyle(color: Color(0xFF607B9F)),
+                              style: TextStyle(color: AppColors.textSecondary),
                             ),
                           )
                         : Column(
@@ -3222,13 +3219,13 @@ class _AllPatientsListCard extends StatelessWidget {
                                 (sum, visit) =>
                                     sum + visit.paid + visit.prescriptionPaid,
                               );
-                                final treatments = patientVisits
+                              final treatments = patientVisits
                                   .expand((visit) => visit.selectedTreatments)
                                   .map((t) => t.trim())
                                   .where((t) => t.isNotEmpty)
                                   .toSet()
                                   .toList(growable: false);
-                                final treatmentSummary = treatments.isEmpty
+                              final treatmentSummary = treatments.isEmpty
                                   ? 'No treatments'
                                   : treatments.take(3).join(', ');
                               final outstanding = patient.outstandingPayments;
@@ -3248,7 +3245,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                       child: Text(
                                         '$serial',
                                         style: const TextStyle(
-                                          color: Color(0xFF2D476D),
+                                          color: AppColors.textPrimary,
                                         ),
                                       ),
                                     ),
@@ -3264,7 +3261,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                               _patientDisplayName(patient),
                                               overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
-                                                color: Color(0xFF1459AD),
+                                                color: AppColors.textActive,
                                                 fontWeight: FontWeight.w600,
                                               ),
                                             ),
@@ -3273,7 +3270,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                               '${patient.phone} • ${patient.age}y',
                                               overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
-                                                color: Color(0xFF7A8FAE),
+                                                color: AppColors.textSecondary,
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w500,
                                               ),
@@ -3287,8 +3284,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                       child: Text(
                                         '$visits',
                                         style: const TextStyle(
-                                          color: Color(0xFF2D476D),
-                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary,
                                         ),
                                       ),
                                     ),
@@ -3297,8 +3293,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                       child: Text(
                                         lastVisit,
                                         style: const TextStyle(
-                                          color: Color(0xFF2D476D),
-                                          fontSize: 12,
+                                          color: AppColors.textPrimary,
                                         ),
                                       ),
                                     ),
@@ -3315,7 +3310,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
-                                            color: Color(0xFF355279),
+                                            color: AppColors.textPrimary,
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -3327,7 +3322,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                       child: Text(
                                         '₹${paidSoFar.toStringAsFixed(0)}',
                                         style: const TextStyle(
-                                          color: Color(0xFF1459AD),
+                                          color: AppColors.textActive,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -3338,8 +3333,8 @@ class _AllPatientsListCard extends StatelessWidget {
                                         '₹${outstanding.toStringAsFixed(0)}',
                                         style: TextStyle(
                                           color: outstanding > 0
-                                              ? const Color(0xFFD6455D)
-                                              : const Color(0xFF2D476D),
+                                              ? AppColors.error
+                                              : AppColors.textPrimary,
                                         ),
                                       ),
                                     ),
@@ -3463,9 +3458,8 @@ class _HoverActionItemState extends State<_HoverActionItem> {
             color: _hovered ? widget.hoverColor : Colors.white,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: _hovered
-                  ? widget.hoverBorderColor
-                  : const Color(0xFFD6E2F0),
+              color:
+                  _hovered ? widget.hoverBorderColor : const Color(0xFFD6E2F0),
             ),
           ),
           child: Row(

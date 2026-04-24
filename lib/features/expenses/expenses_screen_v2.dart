@@ -247,20 +247,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildSummaryStrip(List<_ExpenseSummaryCardData> cards) {
-    return SizedBox(
-      height: 82,
-      child: ListView.separated(
+        return Align(
+      alignment: Alignment.centerLeft,
+      child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        itemCount: cards.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final card = cards[index];
-          return TopWidgetSmallCard(
-            title: card.title,
-            value: '₹${NumberFormat('#,##0').format(card.value)}',
-            valueColor: card.valueColor,
-          );
-        },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: List.generate(cards.length, (i) {
+            return Padding(
+              padding: EdgeInsets.only(right: i == cards.length - 1 ? 0 : 8),
+              child: TopWidgetSmallCard(
+                title: cards[i].title,
+                value: '₹${NumberFormat('#,##0').format(cards[i].value)}',
+                valueColor: cards[i].valueColor,
+              ),
+            );
+          }),
+        ),
       ),
     );
   }

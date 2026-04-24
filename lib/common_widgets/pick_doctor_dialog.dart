@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import '../../features/doctors/doctors_store.dart';
 
 String _doctorChipTitleCase(String input) {
@@ -153,14 +154,15 @@ Future<List<String>?> pickDoctorDialog(
                   ),
           ),
           actions: [
-            Button(
+            AppButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
             ),
-            FilledButton(
+            AppButton(
               onPressed: () =>
                   Navigator.pop(dialogContext, selected.toList(growable: false)),
-              child: const Text('Save'),
+              label: 'Save',
             ),
           ],
         ),
