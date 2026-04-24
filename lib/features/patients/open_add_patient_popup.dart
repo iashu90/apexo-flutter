@@ -202,15 +202,30 @@ Future<Patient?> openAddPatientPopup({
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _popupFieldLabel('Gender:'),
-                          ComboBox<int>(
-                            value: gender,
-                            isExpanded: true,
-                            items: const [
-                              ComboBoxItem(value: 1, child: Text('Male')),
-                              ComboBoxItem(value: 0, child: Text('Female')),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AppButton(
+                                  label: 'Male',
+                                  variant: gender == 1
+                                      ? AppButtonVariant.primary
+                                      : AppButtonVariant.secondary,
+                                  onPressed: () =>
+                                      setStateDialog(() => gender = 1),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: AppButton(
+                                  label: 'Female',
+                                  variant: gender == 0
+                                      ? AppButtonVariant.primary
+                                      : AppButtonVariant.secondary,
+                                  onPressed: () =>
+                                      setStateDialog(() => gender = 0),
+                                ),
+                              ),
                             ],
-                            onChanged: (v) =>
-                                setStateDialog(() => gender = v ?? 0),
                           ),
                         ],
                       ),

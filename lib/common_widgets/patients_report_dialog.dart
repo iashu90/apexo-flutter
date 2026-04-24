@@ -1,7 +1,6 @@
 import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/patients/patient_model.dart';
-import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';

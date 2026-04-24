@@ -80,13 +80,17 @@ Future<void> showAppointmentJourneyDialog({
         Widget stepNode(int index) {
           final isCheckinStep = index == 0;
           final logicalStep = isCheckinStep ? -1 : index - 1;
+          final targetStep = logicalStep < 0 ? 0 : logicalStep;
           final selected = !isCheckinStep && logicalStep == currentStep;
           final complete = isCheckinStep || logicalStep < currentStep;
           final selectedColor = stepColor(logicalStep < 0 ? 0 : logicalStep);
 
           return GestureDetector(
-            // Keep top stepper display-only; progression is controlled by footer actions.
-            onTap: null,
+            onTap: () {
+              setStateDialog(() {
+                currentStep = targetStep.clamp(0, 2);
+              });
+            },
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

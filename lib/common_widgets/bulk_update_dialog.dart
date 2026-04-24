@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/password_guard_dialog.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -404,22 +405,15 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
             const SizedBox(height: 8),
             Row(
               children: [
-                FilledButton(
+                AppButton(
                   onPressed: _finding || _updating ? null : _findMatches,
-                  child: Text(_finding ? 'Finding...' : 'Find'),
+                  label: _finding ? 'Finding...' : 'Find',
+                  variant: AppButtonVariant.secondary,
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.disabled)) {
-                        return const Color(0xFFD0D5DD);
-                      }
-                      return const Color(0xFF2D7BD8);
-                    }),
-                  ),
+                AppButton(
                   onPressed: _updating || _matches.isEmpty ? null : _updateAll,
-                  child: Text(_updating ? 'Updating...' : 'Update All'),
+                  label: _updating ? 'Updating...' : 'Update All',
                 ),
               ],
             ),
@@ -496,11 +490,11 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
                                   Text('New: ${m.newValue}'),
                                 ],
                               ),
-                              trailing: Button(
-                                onPressed: _updating || _finding
-                                    ? null
-                                    : () => _updateOne(m),
-                                child: const Text('Update'),
+                              trailing: AppButton(
+                                onPressed:
+                                    _updating || _finding ? null : () => _updateOne(m),
+                                label: 'Update',
+                                compact: true,
                               ),
                             );
                           },
@@ -510,9 +504,11 @@ class _BulkUpdateDialogState extends State<_BulkUpdateDialog> {
         ),
       ),
       actions: [
-        Button(
-          onPressed: _finding || _updating ? null : () => Navigator.pop(context),
-          child: const Text('Close'),
+        AppButton(
+          onPressed:
+              _finding || _updating ? null : () => Navigator.pop(context),
+          label: 'Close',
+          variant: AppButtonVariant.secondary,
         ),
       ],
     );

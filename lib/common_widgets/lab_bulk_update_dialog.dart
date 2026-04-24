@@ -3,6 +3,7 @@ import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -291,14 +292,16 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
             const SizedBox(height: 8),
             Row(
               children: [
-                FilledButton(
+                AppButton(
                   onPressed: _finding || _updating ? null : _findMatches,
-                  child: Text(_finding ? 'Finding...' : 'Find Due Records'),
+                  label: _finding ? 'Finding...' : 'Find Due Records',
+                  variant: AppButtonVariant.secondary,
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _updating || _matches.isEmpty ? null : _markAllPaid,
-                  child: Text(_updating ? 'Updating...' : 'Mark All As Paid'),
+                AppButton(
+                  onPressed:
+                      _updating || _matches.isEmpty ? null : _markAllPaid,
+                  label: _updating ? 'Updating...' : 'Mark All As Paid',
                 ),
               ],
             ),
@@ -362,9 +365,11 @@ class _LabBulkUpdateDialogState extends State<_LabBulkUpdateDialog> {
         ),
       ),
       actions: [
-        Button(
-          onPressed: _finding || _updating ? null : () => Navigator.pop(context),
-          child: const Text('Close'),
+        AppButton(
+          onPressed:
+              _finding || _updating ? null : () => Navigator.pop(context),
+          label: 'Close',
+          variant: AppButtonVariant.secondary,
         ),
       ],
     );

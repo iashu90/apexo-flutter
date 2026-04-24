@@ -145,7 +145,8 @@ Future<void> _showNextAppointmentPromptDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setStateDialog) {
         final doctorRows = doctors.present.values.toList(growable: false)
-          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+          ..sort(
+              (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
         return ContentDialog(
           title: const Text('Schedule Appointment'),
@@ -160,12 +161,14 @@ Future<void> _showNextAppointmentPromptDialog(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Text(
                     '${_patientDisplayName(appointment)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 15),
                   ),
                 ),
                 Row(
                   children: [
-                    const Text('Date:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Text('Date:',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     AppButton(
                       label: DateFormat('dd MMM yyyy').format(nextDate),
@@ -195,7 +198,8 @@ Future<void> _showNextAppointmentPromptDialog(
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Text('Time:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Text('Time:',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     AppButton(
                       label: nextTime.format(context),
@@ -244,17 +248,23 @@ Future<void> _showNextAppointmentPromptDialog(
                             if (selected) {
                               selectedDoctors.remove(doctor.id);
                             } else {
-                              selectedDoctors.add(doctor.id); // allow multi-select
+                              selectedDoctors
+                                  .add(doctor.id); // allow multi-select
                             }
                           });
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+                            color: selected
+                                ? const Color(0xFF2D7BD8)
+                                : const Color(0xFFEFF4FB),
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
-                              color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD4E2F3),
+                              color: selected
+                                  ? const Color(0xFF2D7BD8)
+                                  : const Color(0xFFD4E2F3),
                             ),
                           ),
                           child: Text(
@@ -262,7 +272,9 @@ Future<void> _showNextAppointmentPromptDialog(
                                 ? 'Unnamed doctor'
                                 : _toTitleCase(doctor.title),
                             style: TextStyle(
-                              color: selected ? Colors.white : const Color(0xFF355A84),
+                              color: selected
+                                  ? Colors.white
+                                  : const Color(0xFF355A84),
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
                             ),
@@ -371,6 +383,36 @@ Future<void> _upsertScheduledFollowUpAppointment(
     targetAppointment.preOpNotes = 'Follow-up visit';
   }
   appointments.set(targetAppointment);
+}
+
+Future<void> _confirmDeleteScheduledFollowUpAppointment(
+  BuildContext context,
+  Appointment scheduledAppointment,
+) async {
+  final shouldDelete = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => ContentDialog(
+      title: const Text('Delete Scheduled Appointment'),
+      content: Text(
+        'Delete appointment on ${DateFormat('dd MMM yyyy • h:mm a').format(scheduledAppointment.date)}?',
+      ),
+      actions: [
+        AppButton(
+          label: 'Cancel',
+          variant: AppButtonVariant.secondary,
+          onPressed: () => Navigator.pop(dialogContext, false),
+        ),
+        AppButton(
+          label: 'Delete',
+          variant: AppButtonVariant.danger,
+          onPressed: () => Navigator.pop(dialogContext, true),
+        ),
+      ],
+    ),
+  );
+
+  if (shouldDelete != true) return;
+  await appointments.hardDelete(scheduledAppointment.id);
 }
 
 List<Widget> _buildBillingSummaryLines(
@@ -572,185 +614,210 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final upcomingForPatient = appointments.present.values
-        .where(
-          (candidate) =>
-              (candidate.patientID ?? '').trim() ==
-                  (appointment.patientID ?? '').trim() &&
-              candidate.id != appointment.id &&
-              !candidate.isCheckedIn &&
-              candidate.checkinStage == 'scheduled' &&
-              candidate.date.isAfter(DateTime.now().subtract(
-                const Duration(minutes: 1),
-              )),
-        )
-        .toList(growable: true)
-      ..sort((a, b) => a.date.compareTo(b.date));
-    final scheduledNext =
-        upcomingForPatient.isNotEmpty ? upcomingForPatient.first : null;
+    return StreamBuilder(
+      stream: appointments.observableMap.stream,
+      builder: (context, _) {
+        final upcomingForPatient = appointments.present.values
+            .where(
+              (candidate) =>
+                  (candidate.patientID ?? '').trim() ==
+                      (appointment.patientID ?? '').trim() &&
+                  candidate.id != appointment.id &&
+                  !candidate.isCheckedIn &&
+                  candidate.checkinStage == 'scheduled' &&
+                  candidate.date.isAfter(DateTime.now().subtract(
+                    const Duration(minutes: 1),
+                  )),
+            )
+            .toList(growable: true)
+          ..sort((a, b) => a.date.compareTo(b.date));
+        final scheduledNext =
+            upcomingForPatient.isNotEmpty ? upcomingForPatient.first : null;
 
-    final content = SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _patientDisplayName(appointment),
-            style: const TextStyle(
-              color: Color(0xFF163F70),
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _patientFocusSummary(appointment),
-            style: const TextStyle(
-              color: Color(0xFF4F6C90),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final stacked = constraints.maxWidth < 860;
-              if (stacked) {
-                return Column(
-                  children: [
-                    TodayAppointmentInsightCard(appointment: appointment),
-                    const SizedBox(height: 8),
-                    _LastAppointmentInsightCard(lastAppointment: lastVisit),
-                  ],
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child:
+        final content = SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _patientDisplayName(appointment),
+                style: const TextStyle(
+                  color: Color(0xFF163F70),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _patientFocusSummary(appointment),
+                style: const TextStyle(
+                  color: Color(0xFF4F6C90),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final stacked = constraints.maxWidth < 860;
+                  if (stacked) {
+                    return Column(
+                      children: [
                         TodayAppointmentInsightCard(appointment: appointment),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child:
+                        const SizedBox(height: 8),
                         _LastAppointmentInsightCard(lastAppointment: lastVisit),
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FBFF),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFDCE8F8)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+                      ],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TodayAppointmentInsightCard(
+                            appointment: appointment),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _LastAppointmentInsightCard(
+                            lastAppointment: lastVisit),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FBFF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFDCE8F8)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Expanded(
-                      child: Text(
-                        'Next Appointments',
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Next Appointments',
+                            style: TextStyle(
+                              color: Color(0xFF2D476D),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        AppButton(
+                          label: '+ Add',
+                          compact: true,
+                          variant: AppButtonVariant.secondary,
+                          onPressed: () => _upsertScheduledFollowUpAppointment(
+                            context,
+                            appointment,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (upcomingForPatient.isEmpty)
+                      const Text(
+                        'No scheduled appointments',
                         style: TextStyle(
-                          color: Color(0xFF2D476D),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
+                          color: Color(0xFF5A7397),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    else
+                      ...upcomingForPatient.map(
+                        (row) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  DateFormat('dd MMM yyyy • h:mm a')
+                                      .format(row.date),
+                                  style: const TextStyle(
+                                    color: Color(0xFF184A9C),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              AppButton(
+                                label: 'Edit',
+                                compact: true,
+                                variant: AppButtonVariant.secondary,
+                                onPressed: () =>
+                                    _upsertScheduledFollowUpAppointment(
+                                  context,
+                                  appointment,
+                                  existingScheduled: row,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              AppButton(
+                                label: 'Delete',
+                                compact: true,
+                                variant: AppButtonVariant.danger,
+                                onPressed: () =>
+                                    _confirmDeleteScheduledFollowUpAppointment(
+                                  context,
+                                  row,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    AppButton(
-                      label: '+ Add',
-                      compact: true,
-                      variant: AppButtonVariant.secondary,
-                      onPressed: () => _upsertScheduledFollowUpAppointment(
-                        context,
-                        appointment,
-                      ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                if (upcomingForPatient.isEmpty)
-                  const Text(
-                    'No scheduled appointments',
-                    style: TextStyle(
-                      color: Color(0xFF5A7397),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                else
-                  ...upcomingForPatient.map(
-                    (row) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              DateFormat('dd MMM yyyy • h:mm a').format(row.date),
-                              style: const TextStyle(
-                                color: Color(0xFF184A9C),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          AppButton(
-                            label: 'Edit',
-                            compact: true,
-                            variant: AppButtonVariant.secondary,
-                            onPressed: () => _upsertScheduledFollowUpAppointment(
-                              context,
-                              appointment,
-                              existingScheduled: row,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              _CheckoutBillingSummaryPanel(
+                appointment: appointment,
+                discountEnabled: appointment.discount > 0,
+                totalPaidOverride: appointment.paid,
+                includeTodayInOutstanding: true,
+                showTreatmentAndToothSection: false,
+                separateScheduleSection: true,
+                scheduledAppointmentText: scheduledNext != null
+                    ? DateFormat('dd MMM yyyy • h:mm a')
+                        .format(scheduledNext.date)
+                    : null,
+                onScheduleAppointment: () {
+                  _upsertScheduledFollowUpAppointment(
+                    context,
+                    appointment,
+                    existingScheduled: scheduledNext,
+                  );
+                },
+                onDeleteScheduledAppointment: scheduledNext == null
+                    ? null
+                    : () => _confirmDeleteScheduledFollowUpAppointment(
+                          context,
+                          scheduledNext,
+                        ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          _CheckoutBillingSummaryPanel(
-            appointment: appointment,
-            discountEnabled: appointment.discount > 0,
-            totalPaidOverride: appointment.paid,
-            includeTodayInOutstanding: true,
-            showTreatmentAndToothSection: false,
-            separateScheduleSection: true,
-            scheduledAppointmentText: scheduledNext != null
-                ? DateFormat('dd MMM yyyy • h:mm a').format(scheduledNext.date)
-                : null,
-            onScheduleAppointment: () {
-              _upsertScheduledFollowUpAppointment(
-                context,
-                appointment,
-                existingScheduled: scheduledNext,
-              );
-            },
+        );
+
+        if (!boxed) {
+          return content;
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD7E5F6)),
           ),
-        ],
-      ),
-    );
-
-    if (!boxed) {
-      return content;
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E5F6)),
-      ),
-      child: content,
+          child: content,
+        );
+      },
     );
   }
 }
@@ -1826,8 +1893,8 @@ class _WorkflowRow extends StatelessWidget {
                       const SizedBox(width: 12),
                       if (stage == 'waiting') ...[
                         const SizedBox(width: 10),
-                        StatusPill(
-                          label: _waitingLabel(),
+                        AppBadge(
+                          text: _waitingLabel(),
                           color: AppColors.warning,
                         ),
                       ],
@@ -1851,7 +1918,7 @@ class _WorkflowRow extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                      behavior: HitTestBehavior.deferToChild,
                       onTap: (stage == 'with_doctor' && selected)
                           ? () async {
                               final pickedDoctorIds = await pickDoctorDialog(
@@ -1868,6 +1935,7 @@ class _WorkflowRow extends StatelessWidget {
                             }
                           : null,
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
                             FluentIcons.contact,
@@ -3741,7 +3809,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   }) {
     return AppButton(
       label: label,
-      compact: true,
+      compact: false,
       variant: selected ? selectedVariant : normalVariant,
       onPressed: onTap,
     );
@@ -3767,9 +3835,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? AppColors.primary700 : AppColors.textSecondary,
+            color: selected ? AppColors.primary500 : AppColors.textSecondary,
             fontSize: 12,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w700,
           ),
         ),
       ),
@@ -4661,8 +4729,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       ),
                       AppButton(
                         label: 'Full',
-                        compact: true,
-                        variant: AppButtonVariant.secondary,
+                        compact: false,
+                        variant: AppButtonVariant.primary,
                         onPressed: widget.onCollectFullBalance,
                       ),
                     ],
@@ -4690,7 +4758,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                                 final selected = _paymentMode == mode;
                                 return AppButton(
                                   label: mode,
-                                  compact: true,
+                                  compact: false,
                                   variant: selected
                                       ? AppButtonVariant.primary
                                       : AppButtonVariant.secondary,
@@ -4832,6 +4900,12 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   onScheduleAppointment: (a.patientID ?? '').trim().isEmpty
                       ? null
                       : _scheduleAppointmentFromBilling,
+                  onDeleteScheduledAppointment: nextScheduled == null
+                      ? null
+                      : () => _confirmDeleteScheduledFollowUpAppointment(
+                            context,
+                            nextScheduled,
+                          ),
                 ),
               );
 
@@ -4903,6 +4977,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
   final List<String>? doctorNames;
   final String? scheduledAppointmentText;
   final VoidCallback? onScheduleAppointment;
+  final VoidCallback? onDeleteScheduledAppointment;
   final bool includeTodayInOutstanding;
   final bool showTreatmentAndToothSection;
   final bool separateScheduleSection;
@@ -4916,6 +4991,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     this.doctorNames,
     this.scheduledAppointmentText,
     this.onScheduleAppointment,
+    this.onDeleteScheduledAppointment,
     this.includeTodayInOutstanding = true,
     this.showTreatmentAndToothSection = true,
     this.separateScheduleSection = false,
@@ -5087,20 +5163,41 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (onScheduleAppointment != null)
-                      Tooltip(
-                        message: scheduledAppointmentText == null
-                            ? 'Add Scheduled Appointment'
-                            : 'Edit Scheduled Appointment',
-                        child: IconButton(
-                          icon: Icon(
-                            scheduledAppointmentText == null
-                                ? FluentIcons.add
-                                : FluentIcons.edit,
-                            size: 14,
-                          ),
-                          onPressed: onScheduleAppointment,
-                        ),
+                    if (onScheduleAppointment != null ||
+                        (onDeleteScheduledAppointment != null &&
+                            scheduledAppointmentText != null))
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (onScheduleAppointment != null)
+                            Tooltip(
+                              message: scheduledAppointmentText == null
+                                  ? 'Add Scheduled Appointment'
+                                  : 'Edit Scheduled Appointment',
+                              child: IconButton(
+                                icon: Icon(
+                                  scheduledAppointmentText == null
+                                      ? FluentIcons.add
+                                      : FluentIcons.edit,
+                                  size: 14,
+                                ),
+                                onPressed: onScheduleAppointment,
+                              ),
+                            ),
+                          if (onDeleteScheduledAppointment != null &&
+                              scheduledAppointmentText != null)
+                            Tooltip(
+                              message: 'Delete Scheduled Appointment',
+                              child: IconButton(
+                                icon: const Icon(
+                                  FluentIcons.delete,
+                                  size: 14,
+                                  color: Color(0xFFD6455D),
+                                ),
+                                onPressed: onDeleteScheduledAppointment,
+                              ),
+                            ),
+                        ],
                       ),
                   ],
                 ),
@@ -5111,21 +5208,42 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
         if (separateScheduleSection)
           sectionCard(
             title: 'Scheduled Appointment',
-            trailing: onScheduleAppointment == null
+            trailing: (onScheduleAppointment == null &&
+                    (onDeleteScheduledAppointment == null ||
+                        scheduledAppointmentText == null))
                 ? null
-                : Tooltip(
-                    message: scheduledAppointmentText == null
-                        ? 'Add Scheduled Appointment'
-                        : 'Edit Scheduled Appointment',
-                    child: IconButton(
-                      icon: Icon(
-                        scheduledAppointmentText == null
-                            ? FluentIcons.add
-                            : FluentIcons.edit,
-                        size: 14,
-                      ),
-                      onPressed: onScheduleAppointment,
-                    ),
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (onScheduleAppointment != null)
+                        Tooltip(
+                          message: scheduledAppointmentText == null
+                              ? 'Add Scheduled Appointment'
+                              : 'Edit Scheduled Appointment',
+                          child: IconButton(
+                            icon: Icon(
+                              scheduledAppointmentText == null
+                                  ? FluentIcons.add
+                                  : FluentIcons.edit,
+                              size: 14,
+                            ),
+                            onPressed: onScheduleAppointment,
+                          ),
+                        ),
+                      if (onDeleteScheduledAppointment != null &&
+                          scheduledAppointmentText != null)
+                        Tooltip(
+                          message: 'Delete Scheduled Appointment',
+                          child: IconButton(
+                            icon: const Icon(
+                              FluentIcons.delete,
+                              size: 14,
+                              color: Color(0xFFD6455D),
+                            ),
+                            onPressed: onDeleteScheduledAppointment,
+                          ),
+                        ),
+                    ],
                   ),
             children: [
               Text(
@@ -5396,110 +5514,129 @@ class _InlineNextAppointmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final upcomingRows = appointments.present.values
-        .where(
-          (row) =>
-              row.patientID == appointment.patientID &&
-              row.id != appointment.id &&
-              (row.checkinStage == 'scheduled' || row.checkinStage == 'pending') &&
-              !row.isCheckedIn &&
-              row.date.isAfter(DateTime.now()),
-        )
-        .toList(growable: true)
-      ..sort((a, b) => a.date.compareTo(b.date));
+    return StreamBuilder(
+      stream: appointments.observableMap.stream,
+      builder: (context, _) {
+        final upcomingRows = appointments.present.values
+            .where(
+              (row) =>
+                  row.patientID == appointment.patientID &&
+                  row.id != appointment.id &&
+                  (row.checkinStage == 'scheduled' ||
+                      row.checkinStage == 'pending') &&
+                  !row.isCheckedIn &&
+                  row.date.isAfter(DateTime.now()),
+            )
+            .toList(growable: true)
+          ..sort((a, b) => a.date.compareTo(b.date));
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E0EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Next Appointment',
-            style: TextStyle(
-              color: Color(0xFF223B5E),
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-            ),
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD7E0EB)),
           ),
-          const SizedBox(height: 6),
-          Text(
-            upcomingRows.isEmpty
-                ? 'Not scheduled'
-                : '${upcomingRows.length} future appointment(s)',
-            style: TextStyle(
-              color: upcomingRows.isEmpty
-                  ? const Color(0xFF5A6B7F)
-                  : const Color(0xFF1459AD),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-          if (upcomingRows.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            ...upcomingRows.map(
-              (row) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        DateFormat('dd MMM yyyy • h:mm a').format(row.date),
-                        style: const TextStyle(
-                          color: Color(0xFF184A9C),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Next Appointment',
+                style: TextStyle(
+                  color: Color(0xFF223B5E),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                upcomingRows.isEmpty
+                    ? 'Not scheduled'
+                    : '${upcomingRows.length} future appointment(s)',
+                style: TextStyle(
+                  color: upcomingRows.isEmpty
+                      ? const Color(0xFF5A6B7F)
+                      : const Color(0xFF1459AD),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+              if (upcomingRows.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                ...upcomingRows.map(
+                  (row) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            DateFormat('dd MMM yyyy • h:mm a').format(row.date),
+                            style: const TextStyle(
+                              color: Color(0xFF184A9C),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                      ),
+                        AppButton(
+                          label: 'Edit',
+                          compact: true,
+                          variant: AppButtonVariant.secondary,
+                          onPressed: () => _upsertScheduledFollowUpAppointment(
+                            context,
+                            appointment,
+                            existingScheduled: row,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        AppButton(
+                          label: 'Delete',
+                          compact: true,
+                          variant: AppButtonVariant.danger,
+                          onPressed: () =>
+                              _confirmDeleteScheduledFollowUpAppointment(
+                            context,
+                            row,
+                          ),
+                        ),
+                      ],
                     ),
-                    AppButton(
-                      label: 'Edit',
-                      compact: true,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      label: '+ Add',
                       variant: AppButtonVariant.secondary,
+                      expanded: true,
                       onPressed: () => _upsertScheduledFollowUpAppointment(
                         context,
                         appointment,
-                        existingScheduled: row,
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  label: '+ Add',
-                  variant: AppButtonVariant.secondary,
-                  expanded: true,
-                  onPressed: () =>
-                      _upsertScheduledFollowUpAppointment(context, appointment),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: AppButton(
-                  label: 'Timeline',
-                  variant: AppButtonVariant.secondary,
-                  expanded: true,
-                  onPressed: () => _openPatientTimelineExperimentModal(
-                    context,
-                    appointment,
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: AppButton(
+                      label: 'Timeline',
+                      variant: AppButtonVariant.secondary,
+                      expanded: true,
+                      onPressed: () => _openPatientTimelineExperimentModal(
+                        context,
+                        appointment,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

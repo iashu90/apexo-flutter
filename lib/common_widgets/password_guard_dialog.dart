@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:apexo/core/ui/components/app_button.dart';
 
 const String kBulkUpdatePassword = '0001';
 
@@ -49,11 +50,12 @@ Future<bool> showPasswordGuardDialog(
           ),
         ),
         actions: [
-          Button(
+          AppButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
           ),
-          FilledButton(
+          AppButton(
             onPressed: () {
               if (passwordController.text.trim() != password) {
                 setStateDialog(() => error = 'Invalid password.');
@@ -61,7 +63,7 @@ Future<bool> showPasswordGuardDialog(
               }
               Navigator.pop(dialogContext, true);
             },
-            child: Text(confirmLabel),
+            label: confirmLabel,
           ),
         ],
       ),
