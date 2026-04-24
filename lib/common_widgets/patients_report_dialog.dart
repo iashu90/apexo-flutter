@@ -31,6 +31,7 @@ class PatientDetailsDialog extends StatefulWidget {
 }
 
 class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
+    int? genderValue;
   late DateTime selectedDate;
   late DateTime doctorFilterDate;
   String modeFilter = 'All';
@@ -42,6 +43,9 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
     super.initState();
     selectedDate = widget.initialDate ?? DateTime.now();
     doctorFilterDate = widget.doctorFilterDate ?? DateTime.now();
+
+    // Initialize gender toggle from patient if available
+    genderValue = widget.patient?.gender;
   }
 
   List<ReportDetailRow> get filteredRows {
@@ -100,6 +104,36 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
   @override
   Widget build(BuildContext context) {
     final isFromDoctor = widget.fromWhere == PatientDetailsSource.doctor;
+
+    // Gender toggle widget
+    Widget genderToggle = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        material.ToggleButtons(
+          isSelected: [genderValue == 1, genderValue == 0],
+          onPressed: (index) {
+            setState(() {
+              genderValue = index == 0 ? 1 : 0;
+            });
+          },
+          borderRadius: BorderRadius.circular(999),
+          selectedColor: material.Colors.white,
+          fillColor: material.Colors.blue.shade600,
+          color: material.Colors.blueGrey,
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 36),
+          children: const [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Text('Male'),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Text('Female'),
+            ),
+          ],
+        ),
+      ],
+    );
 
     double totalCost = 0;
     double totalPaid = 0;
@@ -163,8 +197,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                           Text(
                             widget.fromWhere == PatientDetailsSource.doctor
                                 ? "Doctor Details"
-                                : (widget.patient != null &&
-                                        widget.patient!.title.isNotEmpty)
+                                : (widget.patient != null && widget.patient!.title.isNotEmpty)
                                     ? "${widget.patient!.title}'s Details"
                                     : "Patient Details",
                             style: const TextStyle(
@@ -192,44 +225,7 @@ class _PatientDetailsDialogState extends State<PatientDetailsDialog> {
                   Expanded(
                     flex: 1,
                     child: Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            globalSettings.get("prescriptionFot").value,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                              color: material.Colors.blue.shade600,
-                            ),
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                          if (widget.fromWhere ==
-                              PatientDetailsSource.doctor) ...[
-                            const SizedBox(width: 16),
-                            Checkbox(
-                              checked: doctorOnlyToday,
-                              onChanged: (val) {
-                                setState(() {
-                                  doctorOnlyToday = val ?? false;
-                                  // You can add your filter logic here if needed
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              "Only Today",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                      child: genderToggle,
                     ),
                   ),
                   Flexible(
