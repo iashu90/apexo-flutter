@@ -1,7 +1,6 @@
 import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/appointments/treatment_model.dart';
-import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
@@ -109,15 +108,6 @@ class Appointments extends Store<Appointment> {
       }
 
       return () async {
-        loginCtrl.loadingIndicator("Synchronizing appointments");
-        print("Before clear: ${docs.length}");
-        await local?.clear();
-        print(
-            "Local Appointments box keys after clear: ${(await local!.mainHiveBox).keys}");
-        await deleteMemoryAndLoadFromPersistence();
-        print("After clear: ${docs.length}");
-        await synchronize();
-        print("After sync: ${docs.length}");
         networkActions.syncCallbacks[_storeName] = synchronize;
         networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
 

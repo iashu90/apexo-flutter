@@ -1,7 +1,7 @@
 import 'package:apexo/common_widgets/patient_timeline_card.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class CheckinTimelineMapper {
   static List<TimelineItem> fromAppointments(List<Appointment> rows) {
@@ -21,8 +21,8 @@ class CheckinTimelineMapper {
 
       return TimelineItem(
         title: treatments.isEmpty ? 'Consultation' : treatments.join(', '),
-        date: DateFormat('dd MMM yyyy').format(row.date),
-        time: DateFormat('h:mm a').format(row.date),
+        date: formatClinicDate(row.date, pattern: 'dd MMM yyyy'),
+        time: formatClinicDateTime(row.date, pattern: 'h:mm a'),
         color: _colorForIndex(entry.key),
         doctor: doctorNames.isEmpty ? 'Unassigned' : doctorNames.join(', '),
         visitType: row.visitType.trim().isEmpty

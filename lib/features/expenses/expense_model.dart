@@ -3,7 +3,7 @@ import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
-import 'package:intl/intl.dart';
+import 'package:apexo/utils/clinic_time.dart';
 
 class Expense extends Model {
   List<Doctor> get operators {
@@ -29,7 +29,7 @@ class Expense extends Model {
     Map<String, String> buildingLabels = {
       "issuer": issuer,
       "status": paid ? txt("paid") : txt("due"),
-      "month": DateFormat("MMM yyyy", locale.s.$code).format(date),
+      "month": formatClinicDate(date, pattern: "MMM yyyy"),
       "amount": amount.toString(),
     };
     for (var i = 0; i < tags.length; i++) {
@@ -40,7 +40,7 @@ class Expense extends Model {
 
   @override
   String get title {
-    return DateFormat("yyyy-MM-dd").format(date);
+    return formatClinicDate(date, pattern: "yyyy-MM-dd");
   }
 
   // id: id of the labwork (inherited from Model)

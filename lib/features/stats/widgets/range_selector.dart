@@ -2,8 +2,8 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/stats/charts_controller.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:intl/intl.dart';
 
 class ChartsRangeSelector extends StatelessWidget {
   const ChartsRangeSelector({
@@ -46,7 +46,13 @@ class ChartsRangeSelector extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Txt(txt("start"), style: _textStyle),
-                          Txt(DateFormat("$df/yyyy", locale.s.$code).format(chartsCtrl.start()), style: _textStyle),
+                          Txt(
+                            formatClinicDate(
+                              chartsCtrl.start(),
+                              pattern: "$df/yyyy",
+                            ),
+                            style: _textStyle,
+                          ),
                         ],
                       ),
                     ],
@@ -81,7 +87,13 @@ class ChartsRangeSelector extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Txt(txt("end"), style: _textStyle),
-                          Txt(DateFormat("$df/yyyy", locale.s.$code).format(chartsCtrl.end()), style: _textStyle),
+                          Txt(
+                            formatClinicDate(
+                              chartsCtrl.end(),
+                              pattern: "$df/yyyy",
+                            ),
+                            style: _textStyle,
+                          ),
                         ],
                       ),
                       const SizedBox(width: 10),

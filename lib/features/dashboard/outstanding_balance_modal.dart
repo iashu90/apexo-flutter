@@ -3,6 +3,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
@@ -320,7 +321,10 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
               r.due.toStringAsFixed(2),
               r.lastAppointmentDate == null
                   ? '-'
-                  : DateFormat('dd MMM yyyy').format(r.lastAppointmentDate!),
+                  : formatClinicDate(
+                    r.lastAppointmentDate!,
+                    pattern: 'dd MMM yyyy',
+                  ),
               '${r.dueDays}',
               r.hasUpiPayment ? 'UPI' : 'Cash',
               r.treatments.join(', '),
@@ -370,7 +374,10 @@ class _OutstandingBalanceModalState extends State<_OutstandingBalanceModal> {
               r.due.toStringAsFixed(2),
               r.lastAppointmentDate == null
                   ? '-'
-                  : DateFormat('dd MMM yyyy').format(r.lastAppointmentDate!),
+                  : formatClinicDate(
+                    r.lastAppointmentDate!,
+                    pattern: 'dd MMM yyyy',
+                  ),
               '${r.dueDays}',
               r.isUnpaid ? 'Unpaid' : (r.isPartial ? 'Partial' : 'Paid'),
               r.hasUpiPayment ? 'UPI' : 'Cash',

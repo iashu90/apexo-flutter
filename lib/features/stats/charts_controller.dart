@@ -1,14 +1,13 @@
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/services/archived.dart';
-import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/material.dart' show showDateRangePicker;
 import 'package:table_calendar/table_calendar.dart';
 
@@ -263,15 +262,15 @@ class _ChartsController {
     final df = localSettings.dateFormat.startsWith("d") == true ? "dd/MM" : "MM/dd";
     switch (interval()) {
       case StatsInterval.days:
-        return DateFormat("$df/yy", locale.s.$code).format(start);
+        return formatClinicDate(start, pattern: "$df/yy");
       case StatsInterval.weeks:
-        return "W${DateFormat("${_weekOfMonth(start)} MM/yy", locale.s.$code).format(start)}";
+        return "W${_weekOfMonth(start)} ${formatClinicDate(start, pattern: 'MM/yy')}";
       case StatsInterval.months:
-        return DateFormat("MMM/yy", locale.s.$code).format(start);
+        return formatClinicDate(start, pattern: "MMM/yy");
       case StatsInterval.quarters:
-        return "Q${DateFormat("Q yyyy", locale.s.$code).format(start)}";
+        return "Q${formatClinicDate(start, pattern: 'Q yyyy')}";
       default:
-        return DateFormat("yyyy", locale.s.$code).format(start);
+        return formatClinicDate(start, pattern: "yyyy");
     }
   }
 

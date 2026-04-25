@@ -2,6 +2,7 @@ import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/get_deterministic_item.dart';
 import 'package:apexo/common_widgets/transitions/border.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -10,7 +11,6 @@ import 'package:apexo/services/backups.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:intl/intl.dart';
 
 class BackupsSettings extends StatelessWidget {
   const BackupsSettings({
@@ -65,7 +65,7 @@ class BackupsSettings extends StatelessWidget {
   Widget buildBackupTile(BackupFile element, BuildContext context) {
     final df = localSettings.dateFormat.startsWith("d") == true ? "d/MM" : "MM/d";
     return ServicesListItem(
-      title: DateFormat("$df/yy hh:mm a", locale.s.$code).format(element.date),
+      title: formatClinicDateTime(element.date, pattern: "$df/yy hh:mm a"),
       subtitle: element.key,
       actions: [
         buildDownloadButton(element, context),
@@ -184,7 +184,7 @@ class BackupsSettings extends StatelessWidget {
             title: Txt(txt("restoreBackup")),
             style: dialogStyling(context, true),
             content: Txt(
-                "${txt("restoreBackupWarning1")} (${DateFormat().format(element.date)}) ${txt("restoreBackupWarning2")}"),
+              "${txt("restoreBackupWarning1")} (${formatClinicDateTime(element.date, pattern: 'dd MMM yyyy, hh:mm a')}) ${txt("restoreBackupWarning2")}"),
             actions: [
               const CloseButtonInDialog(),
               FilledButton(
@@ -228,7 +228,7 @@ class BackupsSettings extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Txt("${txt("sureDeleteBackup")}: '${element.key}'?"),
-                Txt("${txt("backupDate")}: ${DateFormat().format(element.date)}"),
+                Txt("${txt("backupDate")}: ${formatClinicDateTime(element.date, pattern: 'dd MMM yyyy, hh:mm a')}"),
               ],
             ),
             actions: [

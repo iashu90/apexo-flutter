@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
@@ -71,17 +70,6 @@ class Patients extends Store<Patient> {
       }
 
       return () async {
-        loginCtrl.loadingIndicator("Synchronizing patients");
-        print("Before clear: ${docs.length}");
-        await local?.clear();
-        print(
-            "Local patient box keys after clear: ${(await local!.mainHiveBox).keys}");
-        await deleteMemoryAndLoadFromPersistence();
-        _primeSnapshot();
-        print("After clear: ${docs.length}");
-        await synchronize();
-        _primeSnapshot();
-        print("After sync: ${docs.length}");
         networkActions.syncCallbacks[_storeName] = synchronize;
         networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
         network.onOnline[_storeName] = synchronize;

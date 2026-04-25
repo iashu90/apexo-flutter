@@ -12,6 +12,7 @@ import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/appointment_analytics.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
@@ -41,7 +42,7 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage.scrollable(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 14),
       children: [
         MStreamBuilder(
           streams: [
@@ -57,8 +58,8 @@ class _ReportScreenState extends State<ReportScreen> {
             return LayoutBuilder(
               builder: (context, constraints) {
                 final available = constraints.maxWidth;
-                const spacing = 10.0;
-                const maxCrossAxisExtent = 620.0;
+                const spacing = 8.0;
+                const maxCrossAxisExtent = 360.0;
                 final columnCount = math.max(
                   1,
                   ((available + spacing) / (maxCrossAxisExtent + spacing))
@@ -68,121 +69,133 @@ class _ReportScreenState extends State<ReportScreen> {
                     (available - ((columnCount - 1) * spacing)) / columnCount;
 
                 Widget responsiveGrid(List<Widget> cards) {
+                  final allowWideTiles = columnCount >= 3;
                   return Wrap(
                     spacing: spacing,
                     runSpacing: spacing,
-                    children: cards
-                        .map((card) => SizedBox(width: tileWidth, child: card))
-                        .toList(growable: false),
+                    children: [
+                      for (int i = 0; i < cards.length; i++)
+                        SizedBox(
+                          width: allowWideTiles && (i % 7 == 0 || i % 11 == 0)
+                              ? (tileWidth * 2) + spacing
+                              : tileWidth,
+                          child: cards[i],
+                        ),
+                    ],
                   );
                 }
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Reports',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF12355F),
+                return MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(textScaler: const TextScaler.linear(0.93)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Reports',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF12355F),
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Advanced analytics for appointments, traffic, and doctor outputs',
-                                style: TextStyle(
-                                  color: Color(0xFF5A7397),
-                                  fontWeight: FontWeight.w600,
+                                SizedBox(height: 2),
+                                Text(
+                                  'Compact analytics view',
+                                  style: TextStyle(
+                                    color: Color(0xFF5A7397),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        _ReportMonthNavigator(
-                          label: DateFormat('MMMM yyyy').format(
-                            DateTime(
-                              DateTime.now().year,
-                              DateTime.now().month - _monthlyOffset,
-                              1,
+                              ],
                             ),
                           ),
-                          canGoForward: _monthlyOffset > 0,
-                          onBack: () => setState(() => _monthlyOffset += 1),
-                          onForward: _monthlyOffset > 0
-                              ? () => setState(() => _monthlyOffset -= 1)
-                              : null,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _DailyAppointmentsTrendSection(
-                      rows: allAppointments,
-                    ),
-                    const SizedBox(height: 10),
-                    _DailyRevenueTrendSection(
-                      rows: allAppointments,
-                    ),
-                    const SizedBox(height: 10),
-                    if (!_showHeavyCards)
-                      responsiveGrid(
-                        List<Widget>.generate(
-                          10,
-                          (_) => _ReportSkeletonCard(width: tileWidth),
-                          growable: false,
-                        ),
-                      )
-                    else
-                      responsiveGrid(
-                        [
-                          _MonthlyAppointmentsTrendSection(
+                          _ReportMonthNavigator(
+                            label: formatClinicDate(
+                              DateTime(
+                                DateTime.now().year,
+                                DateTime.now().month - _monthlyOffset,
+                                1,
+                              ),
+                              pattern: 'MMM yyyy',
+                            ),
+                            canGoForward: _monthlyOffset > 0,
+                            onBack: () => setState(() => _monthlyOffset += 1),
+                            onForward: _monthlyOffset > 0
+                                ? () => setState(() => _monthlyOffset -= 1)
+                                : null,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _DailyAppointmentsTrendSection(
+                        rows: allAppointments,
+                      ),
+                      const SizedBox(height: 8),
+                      _DailyRevenueTrendSection(
+                        rows: allAppointments,
+                      ),
+                      const SizedBox(height: 8),
+                      if (!_showHeavyCards)
+                        responsiveGrid(
+                          List<Widget>.generate(
+                            10,
+                            (_) => _ReportSkeletonCard(width: tileWidth),
+                            growable: false,
+                          ),
+                        )
+                      else
+                        responsiveGrid(
+                          [
+                            _MonthlyAppointmentsTrendSection(
                               rows: allAppointments,
                               windowOffset: _monthlyOffset,
                             ),
-                          _MonthlyRevenueTrendSection(
+                            _MonthlyRevenueTrendSection(
                               rows: allAppointments,
                               windowOffset: _monthlyOffset,
                             ),
-                          _MonthlyExpensesTrendSection(
+                            _MonthlyExpensesTrendSection(
                               rows: allExpenses,
                               windowOffset: _monthlyOffset,
                             ),
-                          _MonthlyNetRevenueTrendSection(
+                            _MonthlyNetRevenueTrendSection(
                               appointmentsRows: allAppointments,
                               expenseRows: allExpenses,
                               windowOffset: _monthlyOffset,
                             ),
-                          _ReferralSourceDistributionCard(),
-                          _MonthlyTreatmentDistributionCard(
+                            _ReferralSourceDistributionCard(),
+                            _MonthlyTreatmentDistributionCard(
                               rows: allAppointments,
                               monthOffset: _monthlyOffset,
                             ),
-                          _TrafficByTimeCard(rows: allAppointments),
-                          _TrafficByDayCard(rows: allAppointments),
-                          _ReportDoctorAppointmentDoneCard(
+                            _TrafficByTimeCard(rows: allAppointments),
+                            _TrafficByDayCard(rows: allAppointments),
+                            _ReportDoctorAppointmentDoneCard(
                               rows: allAppointments,
                             ),
-                          Column(
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _ReportGenderDistributionCard(rows: allAppointments),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
                                 _NewVsReturningCard(rows: allAppointments),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
                                 _ReportAgeDistributionCard(rows: allAppointments),
                               ],
                             ),
-                          _PaymentModeStatusCard(rows: allAppointments),
-                        ],
-                      ),
-                  ],
+                            _PaymentModeStatusCard(rows: allAppointments),
+                          ],
+                        ),
+                    ],
+                  ),
                 );
               },
             );
@@ -810,7 +823,7 @@ class _ReportDoctorAppointmentDoneCardState
                       .map(
                         (m) => ComboBoxItem<DateTime>(
                           value: m,
-                          child: Text(DateFormat('MMMM yyyy').format(m)),
+                          child: Text(formatClinicDate(m, pattern: 'MMMM yyyy')),
                         ),
                       )
                       .toList(growable: false),
@@ -1222,7 +1235,7 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
       width: 560,
       child: _ReportContainer(
         title: 'Monthly Treatment Distribution',
-        subtitle: DateFormat('MMMM yyyy').format(monthStart),
+        subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
         child: SizedBox(
           height: 250,
           child: distributionRows.isEmpty
@@ -1415,7 +1428,7 @@ class _FilterChips extends StatelessWidget {
                   .map(
                     (m) => ComboBoxItem<DateTime>(
                       value: m,
-                      child: Text(DateFormat('MMMM yyyy').format(m)),
+                      child: Text(formatClinicDate(m, pattern: 'MMMM yyyy')),
                     ),
                   )
                   .toList(growable: false),
@@ -1593,14 +1606,14 @@ class _DailyAppointmentsTrendWindowCard extends StatelessWidget {
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .length
           .toDouble();
-      return (label: DateFormat('dd').format(start), value: count);
+      return (label: formatClinicDate(start, pattern: 'dd'), value: count);
     }).toList(growable: false);
 
     return SizedBox(
       width: 560,
       child: _SimpleBarsCard(
         title: 'Appointment Trend (Daily)',
-        subtitle: DateFormat('MMMM yyyy').format(monthStart),
+        subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
         rows: points,
         barColor: const Color(0xFF2D7BD8),
         trailing: _TrendNavButtons(
@@ -1639,7 +1652,7 @@ class _MonthlyAppointmentsTrendWindowCard extends StatelessWidget {
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .length
           .toDouble();
-      return (label: DateFormat('MMM').format(start), value: count);
+      return (label: formatClinicDate(start, pattern: 'MMM'), value: count);
     }).toList(growable: false);
 
     return SizedBox(
@@ -1647,7 +1660,7 @@ class _MonthlyAppointmentsTrendWindowCard extends StatelessWidget {
       child: _SimpleBarsCard(
         title: 'Appointment Trend (Monthly)',
         subtitle:
-            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
+            '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
         barColor: const Color(0xFF2BA58D),
       ),
@@ -1685,14 +1698,14 @@ class _DailyRevenueTrendWindowCard extends StatelessWidget {
         final value = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
-      return (label: DateFormat('dd').format(start), value: value);
+      return (label: formatClinicDate(start, pattern: 'dd'), value: value);
     }).toList(growable: false);
 
     return SizedBox(
       width: 560,
       child: _SimpleBarsCard(
         title: 'Gross Revenue Trend (Daily)',
-        subtitle: DateFormat('MMMM yyyy').format(monthStart),
+        subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
         rows: points,
         barColor: const Color(0xFF1468CC),
         valueFormatter: formatIndianShortCurrency,
@@ -1732,7 +1745,7 @@ class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
         final value = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
-      return (label: DateFormat('MMM').format(start), value: value);
+      return (label: formatClinicDate(start, pattern: 'MMM'), value: value);
     }).toList(growable: false);
 
     return SizedBox(
@@ -1740,7 +1753,7 @@ class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
       child: _SimpleBarsCard(
         title: 'Gross Revenue Trend (Monthly)',
         subtitle:
-            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
+            '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
         barColor: const Color(0xFF2D7BD8),
         valueFormatter: formatIndianShortCurrency,
@@ -1774,7 +1787,7 @@ class _MonthlyExpensesTrendWindowCard extends StatelessWidget {
       final value = rows
           .where((e) => !e.date.isBefore(start) && e.date.isBefore(end))
           .fold<double>(0, (sum, e) => sum + e.amount);
-      return (label: DateFormat('MMM').format(start), value: value);
+      return (label: formatClinicDate(start, pattern: 'MMM'), value: value);
     }).toList(growable: false);
 
     return SizedBox(
@@ -1782,7 +1795,7 @@ class _MonthlyExpensesTrendWindowCard extends StatelessWidget {
       child: _SimpleBarsCard(
         title: 'Expenses Trend (Monthly)',
         subtitle:
-            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
+            '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
         barColor: const Color(0xFFD6455D),
         valueFormatter: formatIndianShortCurrency,
@@ -1822,7 +1835,7 @@ class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
           .where((e) => !e.date.isBefore(start) && e.date.isBefore(end))
           .fold<double>(0, (sum, e) => sum + e.amount);
       final net = gross - expensesSum;
-      return (label: DateFormat('MMM').format(start), value: net);
+      return (label: formatClinicDate(start, pattern: 'MMM'), value: net);
     }).toList(growable: false);
 
     return SizedBox(
@@ -1830,7 +1843,7 @@ class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
       child: _SimpleBarsCard(
         title: 'Net Revenue Trend (Monthly)',
         subtitle:
-            '${DateFormat('MMM yyyy').format(starts.first)} - ${DateFormat('MMM yyyy').format(starts.last)}',
+            '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
         barColor: const Color(0xFF2BA58D),
         valueFormatter: formatIndianShortCurrency,
@@ -2517,7 +2530,7 @@ class _ReportContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -2539,7 +2552,7 @@ class _ReportContainer extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     color: Color(0xFF183A67),
                     fontWeight: FontWeight.w700,
                   ),
@@ -2549,17 +2562,17 @@ class _ReportContainer extends StatelessWidget {
             ],
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               subtitle!,
               style: const TextStyle(
                 color: Color(0xFF5A7397),
                 fontWeight: FontWeight.w700,
-                fontSize: 12,
+                fontSize: 11,
               ),
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           child,
         ],
       ),

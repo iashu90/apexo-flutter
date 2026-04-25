@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
@@ -28,6 +30,7 @@ class _LoginService extends ObservablePersistingObject {
 
   // PocketBase instance
   PocketBase? pb;
+  final Set<String> _backgroundSecondStageStarted = {};
 
   Doctor? get currentMember {
     return doctors.getByEmail(email);
@@ -167,10 +170,18 @@ class _LoginService extends ObservablePersistingObject {
 
     /// if we reached here it means it was a successful login
 
-    for (var callback in activators.values) {
+    final List<({String key, Future<void> Function() run})>
+        backgroundSecondStages = [];
+    for (var entry in activators.entries) {
       try {
-        final secondStage = await callback();
-        if (online && launch.isDemo == false) await secondStage();
+        final secondStage = await entry.value();
+        if (online && launch.isDemo == false) {
+          if (entry.key == 'settings_global') {
+            await secondStage();
+          } else {
+            backgroundSecondStages.add((key: entry.key, run: secondStage));
+          }
+        }
         notifyAndPersist(); // this would persist the data to the disk so we don't have to login again
       } catch (e, s) {
         logger("Error during running activators: $e", s);
@@ -178,6 +189,35 @@ class _LoginService extends ObservablePersistingObject {
     }
 
     launch.open(true);
+    if (online && launch.isDemo == false && backgroundSecondStages.isNotEmpty) {
+      for (final stage in backgroundSecondStages) {
+        if (_backgroundSecondStageStarted.contains(stage.key)) continue;
+        _backgroundSecondStageStarted.add(stage.key);
+        unawaited(
+          Future<void>.delayed(const Duration(milliseconds: 20), () async {
+            try {
+              await stage.run();
+            } catch (e, s) {
+              logger(
+                'Lazy second-stage setup failed for ${stage.key}: $e',
+                s,
+              );
+            }
+          }),
+        );
+      }
+
+      // Trigger the active screen's sync strategy without blocking login.
+      unawaited(
+        Future<void>.delayed(const Duration(milliseconds: 140), () async {
+          try {
+            routes.currentRoute.onSelect?.call();
+          } catch (e, s) {
+            logger('Lazy route sync trigger failed: $e', s);
+          }
+        }),
+      );
+    }
     return loginCtrl.finishedLoginProcess();
   }
 
