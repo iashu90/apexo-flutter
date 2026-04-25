@@ -58,7 +58,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   DateTime? _customRangeEnd;
   DateTime _topMonthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
-  bool _isTopRangeDialogOpen = false;
+  bool _showTopRangeLoadingOverlay = false;
   Timer? _topRangeLoadingTimer;
 
   static DateTime _dateOnly(DateTime input) =>
@@ -74,58 +74,23 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   @override
   void dispose() {
     _topRangeLoadingTimer?.cancel();
-    if (_isTopRangeDialogOpen) {
-      final navigator = Navigator.of(context, rootNavigator: true);
-      if (navigator.canPop()) {
-        navigator.pop();
-      }
-      _isTopRangeDialogOpen = false;
-    }
     super.dispose();
   }
 
-  void _setTopRangeLoadingDialog(bool show) {
+  void _setTopRangeLoadingOverlay(bool show) {
     if (!mounted) return;
-    if (show) {
-      if (_isTopRangeDialogOpen) return;
-      _isTopRangeDialogOpen = true;
-      unawaited(
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => const ContentDialog(
-            content: SizedBox(
-              width: 220,
-              child: Row(
-                children: [
-                  ProgressRing(),
-                  SizedBox(width: 12),
-                  Text('Loading data...'),
-                ],
-              ),
-            ),
-          ),
-        ).then((_) {
-          _isTopRangeDialogOpen = false;
-        }),
-      );
-      return;
-    }
-
-    if (!_isTopRangeDialogOpen) return;
-    final navigator = Navigator.of(context, rootNavigator: true);
-    if (navigator.canPop()) {
-      navigator.pop();
-    }
-    _isTopRangeDialogOpen = false;
+    if (_showTopRangeLoadingOverlay == show) return;
+    setState(() {
+      _showTopRangeLoadingOverlay = show;
+    });
   }
 
   void _showTopRangeLoading() {
     _topRangeLoadingTimer?.cancel();
-    _setTopRangeLoadingDialog(true);
-    _topRangeLoadingTimer = Timer(const Duration(milliseconds: 720), () {
+    _setTopRangeLoadingOverlay(true);
+    _topRangeLoadingTimer = Timer(const Duration(milliseconds: 820), () {
       if (!mounted) return;
-      _setTopRangeLoadingDialog(false);
+      _setTopRangeLoadingOverlay(false);
     });
   }
 
@@ -218,7 +183,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     if (_customRangeStart == null || _customRangeEnd == null) {
       return 'Set Custom Range';
     }
-    return '${DateFormat('dd MMM').format(_customRangeStart!)} - ${DateFormat('dd MMM').format(_customRangeEnd!)}';
+    return '${formatClinicDate(_customRangeStart!, pattern: 'dd MMM')} - ${formatClinicDate(_customRangeEnd!, pattern: 'dd MMM')}';
   }
 
   void _setTopRange(String range) {
@@ -244,7 +209,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Stack(
+      children: [
+        Container(
         color: AppTheme.light.scaffoldBackgroundColor,
         child: ScaffoldPage.scrollable(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -420,7 +387,53 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
               },
             ),
           ],
-        ));
+        )),
+        if (_showTopRangeLoadingOverlay)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                color: const Color(0x220F1F33),
+                alignment: Alignment.topCenter,
+                padding: const EdgeInsets.only(top: 86),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFD7E3F0)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x180D2F5B),
+                        blurRadius: 10,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: ProgressRing(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Loading data...',
+                        style: TextStyle(
+                          color: Color(0xFF244A77),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -1437,7 +1450,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           final paymentStatus = _paymentStatusForAppointment(appointment);
 
           rows.add([
-            DateFormat('dd/MM/yyyy').format(appointment.date),
+            formatClinicDate(appointment.date, pattern: 'dd/MM/yyyy'),
             doctor.title.trim().isEmpty
                 ? 'Unnamed doctor'
                 : _doctorTitleCase(doctor.title),
@@ -1501,7 +1514,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           final paymentStatus = _paymentStatusForAppointment(appointment);
 
           rows.add([
-            DateFormat('dd/MM/yyyy').format(appointment.date),
+            formatClinicDate(appointment.date, pattern: 'dd/MM/yyyy'),
             doctor.title.trim().isEmpty
                 ? 'Unnamed doctor'
                 : _doctorTitleCase(doctor.title),
@@ -1520,7 +1533,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
 
       await PdfExportUtility.savePdf(
         title: 'Doctor Activity Export',
-        subtitle: DateFormat('dd/MM/yyyy').format(widget.selectedDate),
+        subtitle: formatClinicDate(widget.selectedDate, pattern: 'dd/MM/yyyy'),
         data: rows,
         fileName:
             'doctor_activity_${DateFormat('dd-M-yyyy').format(widget.selectedDate)}.pdf',
@@ -2803,7 +2816,7 @@ class _DoctorAppointmentDoneChartCardState
       ];
       await PdfExportUtility.savePdf(
         title: 'Doctor Appointments Export',
-        subtitle: DateFormat('dd/MM/yyyy').format(DateTime.now()),
+        subtitle: formatClinicDate(DateTime.now(), pattern: 'dd/MM/yyyy'),
         data: rows,
         fileName:
             'doctor_appointments_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
@@ -2980,7 +2993,7 @@ class _DoctorAppointmentDoneChartCardState
                       .map(
                         (m) => ComboBoxItem<DateTime>(
                           value: m,
-                          child: Text(DateFormat('MMMM yyyy').format(m)),
+                          child: Text(formatClinicDate(m, pattern: 'MMMM yyyy')),
                         ),
                       )
                       .toList(growable: false),
@@ -3409,7 +3422,7 @@ class _DoctorDrilldownCard extends StatelessWidget {
               children: [
                 _deltaTile(
                   label:
-                      '${DateFormat('dd MMM').format(currentStart)} - ${DateFormat('dd MMM').format(currentEndExclusive.subtract(const Duration(days: 1)))} appointments',
+                      '${formatClinicDate(currentStart, pattern: 'dd MMM')} - ${formatClinicDate(currentEndExclusive.subtract(const Duration(days: 1)), pattern: 'dd MMM')} appointments',
                   current: currentRows.length,
                   compare: compareRows.length,
                 ),
@@ -3427,7 +3440,7 @@ class _DoctorDrilldownCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Compared against ${DateFormat('dd MMM').format(compareStart)} - ${DateFormat('dd MMM').format(compareEndExclusive.subtract(const Duration(days: 1)))}',
+              'Compared against ${formatClinicDate(compareStart, pattern: 'dd MMM')} - ${formatClinicDate(compareEndExclusive.subtract(const Duration(days: 1)), pattern: 'dd MMM')}',
               style: const TextStyle(
                 color: Color(0xFF6D84A8),
                 fontSize: 12,

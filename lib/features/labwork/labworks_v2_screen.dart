@@ -13,6 +13,7 @@ import 'package:apexo/core/ui/components/top_widget_cards.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:apexo/widget_keys.dart';
@@ -204,7 +205,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
               ? 'Delivered'
               : (item.deliveredToDoctor ? 'Ready' : 'In Lab');
           return [
-            DateFormat('yyyy-MM-dd').format(item.date),
+            formatClinicDate(item.date, pattern: 'yyyy-MM-dd'),
             patient,
             item.lab.trim().isEmpty ? '-' : item.lab.trim(),
             item.typeOfWork.trim().isEmpty ? '-' : item.typeOfWork.trim(),
@@ -249,7 +250,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
               ? 'Delivered'
               : (item.deliveredToDoctor ? 'Ready' : 'In Lab');
           return [
-            DateFormat('yyyy-MM-dd').format(item.date),
+            formatClinicDate(item.date, pattern: 'yyyy-MM-dd'),
             patient,
             item.lab.trim().isEmpty ? '-' : item.lab.trim(),
             item.typeOfWork.trim().isEmpty ? '-' : item.typeOfWork.trim(),
@@ -263,7 +264,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
 
       await PdfExportUtility.savePdf(
         title: 'Labwork Export',
-        subtitle: DateFormat('dd MMM yyyy').format(DateTime.now()),
+        subtitle: formatClinicDate(clinicNow(), pattern: 'dd MMM yyyy'),
         data: pdfRows,
         fileName:
             'labwork_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
@@ -514,7 +515,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
                   border: Border.all(color: const Color(0xFFD2E1F6)),
                 ),
                 child: Text(
-                  '${DateFormat('dd MMM').format(_fromDate ?? _toDate!)} - ${DateFormat('dd MMM').format(_toDate ?? _fromDate!)}',
+                  '${formatClinicDate(_fromDate ?? _toDate!, pattern: 'dd MMM')} - ${formatClinicDate(_toDate ?? _fromDate!, pattern: 'dd MMM')}',
                   style: const TextStyle(
                     color: Color(0xFF2D4A70),
                     fontWeight: FontWeight.w700,
@@ -692,7 +693,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
           ),
           const SizedBox(width: 6),
           Text(
-            DateFormat('MMMM yyyy').format(_monthAnchor),
+            formatClinicDate(_monthAnchor, pattern: 'MMMM yyyy'),
             style: const TextStyle(
               color: Color(0xFF355279),
               fontWeight: FontWeight.w700,
@@ -833,7 +834,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
           ? 'TODAY'
           : d == yesterday
               ? 'YESTERDAY'
-              : DateFormat('MMM yyyy').format(d).toUpperCase();
+              : formatClinicDate(d, pattern: 'MMM yyyy').toUpperCase();
       grouped.putIfAbsent(label, () => []).add(labwork);
     }
 
@@ -867,7 +868,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
       builder: (dialogContext) => ContentDialog(
         title: const Text('Delete Labwork'),
         content: Text(
-          'Delete this labwork from ${DateFormat('dd MMM yyyy').format(item.date)}? This action cannot be undone.',
+          'Delete this labwork from ${formatClinicDate(item.date, pattern: 'dd MMM yyyy')}? This action cannot be undone.',
         ),
         actions: [
           AppButton(
@@ -1176,7 +1177,7 @@ class _LabworkBoardCard extends StatelessWidget {
                 ),
               ),
               Text(
-                DateFormat('dd MMM').format(item.date),
+                formatClinicDate(item.date, pattern: 'dd MMM'),
                 style: const TextStyle(
                   color: Color(0xFF5A7397),
                   fontSize: 11,
@@ -1350,7 +1351,7 @@ class _LabworkRow extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      DateFormat('dd MMM').format(item.date),
+                      formatClinicDate(item.date, pattern: 'dd MMM'),
                       style: const TextStyle(
                         color: Color(0xFF4C5C77),
                         fontWeight: FontWeight.w700,

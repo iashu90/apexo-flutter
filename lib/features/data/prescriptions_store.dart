@@ -8,7 +8,6 @@ import '../network_actions/network_actions_controller.dart';
 import '../../services/launch.dart';
 import 'package:apexo/utils/hash.dart';
 import '../../services/archived.dart';
-import '../../features/login/login_controller.dart';
 
 const _storeName = "prescriptions";
 
@@ -47,15 +46,6 @@ class PrescriptionsStore extends Store<Prescriptions> {
         );
       }
       return () async {
-        loginCtrl.loadingIndicator("Synchronizing prescriptions");
-        print("Before clear: ${docs.length}");
-        await local?.clear();
-        print(
-            "Local prescriptions box keys after clear: ${(await local!.mainHiveBox).keys}");
-        await deleteMemoryAndLoadFromPersistence();
-        print("After clear: ${docs.length}");
-        await synchronize();
-        print("After sync: ${docs.length}");
         networkActions.syncCallbacks[_storeName] = synchronize;
         networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
         network.onOnline[_storeName] = synchronize;

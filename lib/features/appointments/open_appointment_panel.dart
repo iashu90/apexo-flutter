@@ -20,13 +20,13 @@ import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/material.dart' as material;
 
 void openAppointment([Appointment? appointment, int initialTab = 0]) {
@@ -1024,7 +1024,7 @@ class _LastAppointmentCard extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          DateFormat('dd MMM yyyy • h:mm a').format(item.date),
+          formatClinicDateTime(item.date, pattern: 'dd MMM yyyy • h:mm a'),
           style: const TextStyle(
             color: Color(0xFF355279),
             fontWeight: FontWeight.w700,
@@ -1130,7 +1130,10 @@ class _AppointmentTimeline extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          DateFormat('dd MMM yyyy • h:mm a').format(item.date),
+                          formatClinicDateTime(
+                            item.date,
+                            pattern: 'dd MMM yyyy • h:mm a',
+                          ),
                           style: const TextStyle(
                             color: Color(0xFF1F446E),
                             fontSize: 11,

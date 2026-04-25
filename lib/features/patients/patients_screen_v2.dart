@@ -22,6 +22,7 @@ import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:apexo/widget_keys.dart';
@@ -250,7 +251,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
             );
             final lastVisit = visits.isEmpty
                 ? '-'
-                : DateFormat('dd MMM yyyy').format(visits.last.date);
+              : formatClinicDate(visits.last.date, pattern: 'dd MMM yyyy');
             buffer.writeln(
               [
                 _csvCell(patient.id),
@@ -350,7 +351,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
             );
             final lastVisit = visits.isEmpty
                 ? '-'
-                : DateFormat('dd MMM yyyy').format(visits.last.date);
+              : formatClinicDate(visits.last.date, pattern: 'dd MMM yyyy');
             tableRows.add([
               patient.id,
               _patientDisplayName(patient),
@@ -886,7 +887,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
 
     return buckets.entries.map((entry) {
       return (
-        label: DateFormat('MMM').format(entry.key),
+        label: formatClinicDate(entry.key, pattern: 'MMM'),
         count: entry.value.length,
       );
     }).toList(growable: false);
@@ -2221,7 +2222,7 @@ class _TopPatientsCard extends StatelessWidget {
   ) {
     final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
     if (visits.isEmpty) return '-';
-    return DateFormat('dd MMM').format(visits.last.date);
+    return formatClinicDate(visits.last.date, pattern: 'dd MMM');
   }
 
   List<Widget> _treatmentChips(
@@ -2466,7 +2467,7 @@ class _TopOutstandingCard extends StatelessWidget {
   ) {
     final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
     if (visits.isEmpty) return '-';
-    return DateFormat('dd MMM').format(visits.last.date);
+    return formatClinicDate(visits.last.date, pattern: 'dd MMM');
   }
 
   List<Widget> _treatmentChips(
@@ -2750,7 +2751,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
   ) {
     final visits = visitsByPatient[patient.id] ?? const <Appointment>[];
     if (visits.isEmpty) return '-';
-    return DateFormat('dd MMM').format(visits.last.date);
+    return formatClinicDate(visits.last.date, pattern: 'dd MMM');
   }
 
   List<Widget> _uniqueTreatmentChips(
@@ -3211,8 +3212,8 @@ class _AllPatientsListCard extends StatelessWidget {
                               final visits = patientVisits.length;
                               final lastVisit = patientVisits.isEmpty
                                   ? '-'
-                                  : DateFormat('dd MMM yyyy')
-                                      .format(patientVisits.last.date);
+                                  : formatClinicDate(patientVisits.last.date,
+                                    pattern: 'dd MMM yyyy');
                               final paidSoFar = patientVisits.fold<double>(
                                 0,
                                 (sum, visit) =>

@@ -11,6 +11,7 @@ import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:apexo/widget_keys.dart';
@@ -203,7 +204,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ? '-'
               : expense.operators.map((d) => d.title).join(', ');
           return [
-            DateFormat('yyyy-MM-dd').format(expense.date),
+            formatClinicDate(expense.date, pattern: 'yyyy-MM-dd'),
             category,
             expense.amount.toStringAsFixed(0),
             expense.paid ? 'Yes' : 'No',
@@ -236,7 +237,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ? '-'
               : expense.operators.map((d) => d.title).join(', ');
           return [
-            DateFormat('yyyy-MM-dd').format(expense.date),
+            formatClinicDate(expense.date, pattern: 'yyyy-MM-dd'),
             category,
             'Rs ${expense.amount.toStringAsFixed(0)}',
             expense.paid ? 'Yes' : 'No',
@@ -248,7 +249,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
       await PdfExportUtility.savePdf(
         title: 'Expenses Export',
-        subtitle: DateFormat('dd MMM yyyy').format(DateTime.now()),
+        subtitle: formatClinicDate(DateTime.now(), pattern: 'dd MMM yyyy'),
         data: pdfRows,
         fileName:
             'expenses_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
@@ -371,7 +372,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             Padding(
               padding: const EdgeInsets.only(left: 8),
               child: Text(
-                '${DateFormat('dd MMM').format(_fromDate ?? _toDate!)} - ${DateFormat('dd MMM').format(_toDate ?? _fromDate!)}',
+                '${formatClinicDate(_fromDate ?? _toDate!, pattern: 'dd MMM')} - ${formatClinicDate(_toDate ?? _fromDate!, pattern: 'dd MMM')}',
                 style: const TextStyle(
                   color: Color(0xFF2D4A70),
                   fontWeight: FontWeight.w600,
@@ -446,7 +447,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           ),
           const SizedBox(width: 6),
           Text(
-            DateFormat('MMMM yyyy').format(_monthAnchor),
+            formatClinicDate(_monthAnchor, pattern: 'MMMM yyyy'),
             style: const TextStyle(
               color: Color(0xFF355279),
               fontWeight: FontWeight.w700,
@@ -597,7 +598,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             Expanded(
                               flex: 12,
                               child: Text(
-                                DateFormat('dd MMM yyyy').format(e.date),
+                                formatClinicDate(e.date, pattern: 'dd MMM yyyy'),
                                 style:
                                     const TextStyle(color: Color(0xFF36557C)),
                               ),
@@ -974,7 +975,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Future<void> _deleteExpense(Expense expense) async {
     final category = expense.items.isEmpty ? '-' : expense.items.join(', ');
     final note = expense.note.trim().isEmpty ? '-' : expense.note.trim();
-    final date = DateFormat('dd MMM yyyy').format(expense.date);
+    final date = formatClinicDate(expense.date, pattern: 'dd MMM yyyy');
     final confirmed = await showConfirmDeleteDialog(
       context,
       message: 'Delete this expense?',
@@ -1060,7 +1061,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               );
                             });
                           },
-                          label: DateFormat('dd/MM/yyyy').format(selectedDate),
+                          label: formatClinicDate(
+                            selectedDate,
+                            pattern: 'dd/MM/yyyy',
+                          ),
                           leading: const Icon(FluentIcons.calendar, size: 12),
                           expanded: true,
                         ),

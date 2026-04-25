@@ -21,6 +21,7 @@ import 'package:apexo/features/labwork/open_labwork_v2_dialog.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/indian_money.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/common_widgets/report_table_modal_v2.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
@@ -1402,7 +1403,7 @@ class _AppointmentRow extends StatelessWidget {
     final treatment = appointment.selectedTreatments.isEmpty
         ? '-'
         : appointment.selectedTreatments.join(', ');
-    final time = DateFormat('h:mm a').format(appointment.date);
+    final time = formatClinicDateTime(appointment.date, pattern: 'h:mm a');
     final payment = appointment.paid + appointment.prescriptionPaid;
     final isDigital =
         appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
@@ -1411,7 +1412,7 @@ class _AppointmentRow extends StatelessWidget {
     final previousVisit = _previousVisitForPatient(appointment);
     final previousVisitText = previousVisit == null
         ? 'Prev: -'
-        : 'Prev: ${DateFormat('dd MMM yyyy').format(previousVisit)}';
+      : 'Prev: ${formatClinicDate(previousVisit, pattern: 'dd MMM yyyy')}';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -2425,10 +2426,12 @@ class _DailyRevenueChartCard extends StatelessWidget {
       (index) => peak * ((tickCount - 1 - index) / (tickCount - 1)),
       growable: false,
     );
-    final startLabel =
-        rows.isEmpty ? '-' : DateFormat('dd MMM').format(rows.first.day);
-    final endLabel =
-        rows.isEmpty ? '-' : DateFormat('dd MMM').format(rows.last.day);
+    final startLabel = rows.isEmpty
+      ? '-'
+      : formatClinicDate(rows.first.day, pattern: 'dd MMM');
+    final endLabel = rows.isEmpty
+      ? '-'
+      : formatClinicDate(rows.last.day, pattern: 'dd MMM');
 
     return _CardShell(
       child: Column(
@@ -2499,7 +2502,7 @@ class _DailyRevenueChartCard extends StatelessWidget {
                                         horizontal: 1),
                                     child: Tooltip(
                                       message:
-                                          'Revenue\n${DateFormat('dd MMM').format(row.day)}\n₹${row.value.toStringAsFixed(0)}',
+                                          'Revenue\n${formatClinicDate(row.day, pattern: 'dd MMM')}\n₹${row.value.toStringAsFixed(0)}',
                                       child: Container(
                                         height: 140 *
                                             (row.value / peak).clamp(0.0, 1.0),
@@ -2586,10 +2589,12 @@ class _AppointmentTrendChartCard extends StatelessWidget {
       (index) => ((peak * ((tickCount - 1 - index) / (tickCount - 1))).round()),
       growable: false,
     );
-    final startLabel =
-        rows.isEmpty ? '-' : DateFormat('dd MMM').format(rows.first.day);
-    final endLabel =
-        rows.isEmpty ? '-' : DateFormat('dd MMM').format(rows.last.day);
+    final startLabel = rows.isEmpty
+      ? '-'
+      : formatClinicDate(rows.first.day, pattern: 'dd MMM');
+    final endLabel = rows.isEmpty
+      ? '-'
+      : formatClinicDate(rows.last.day, pattern: 'dd MMM');
 
     return _CardShell(
       child: Column(
@@ -2660,7 +2665,7 @@ class _AppointmentTrendChartCard extends StatelessWidget {
                                         horizontal: 1),
                                     child: Tooltip(
                                       message:
-                                          'Appointments\n${DateFormat('dd MMM').format(row.day)}\n${row.count}',
+                                          'Appointments\n${formatClinicDate(row.day, pattern: 'dd MMM')}\n${row.count}',
                                       child: Container(
                                         height: 140 *
                                             (row.count / peak).clamp(0.0, 1.0),

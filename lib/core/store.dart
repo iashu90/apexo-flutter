@@ -30,6 +30,8 @@ class SyncResult {
 /// but adds ability to persist data as well as synchronize it with a remote server
 
 class Store<G extends Model> {
+  static const String _deferredDeletePrefix = "DEL||";
+
   late Future<void> loaded;
   final Function? onSyncStart;
   final Function? onSyncEnd;
@@ -216,9 +218,21 @@ class Store<G extends Model> {
       int remoteVersion = await remote!.getVersion();
 
       Map<String, int> deferred = await local!.getDeferred();
+      final Map<String, int> deferredDeletes = {};
+      final Map<String, int> deferredUpdatesAndFiles = {};
+      for (final entry in deferred.entries) {
+        if (entry.key.startsWith(_deferredDeletePrefix)) {
+          final rowId = entry.key.substring(_deferredDeletePrefix.length);
+          if (rowId.isNotEmpty) {
+            deferredDeletes[rowId] = entry.value;
+          }
+        } else {
+          deferredUpdatesAndFiles[entry.key] = entry.value;
+        }
+      }
       int conflicts = 0;
 
-      if (localVersion == remoteVersion && deferred.isEmpty) {
+      if (localVersion == remoteVersion && deferredUpdatesAndFiles.isEmpty && deferredDeletes.isEmpty) {
         return SyncResult(exception: "nothing to sync");
       }
 
@@ -229,7 +243,7 @@ class Store<G extends Model> {
       List<int> remoteLosersIndices = [];
 
       // check conflicts: last write wins
-      deferred.removeWhere((dfID, deferredTimeStamp) {
+      deferredUpdatesAndFiles.removeWhere((dfID, deferredTimeStamp) {
         int remoteConflictIndex =
             remoteUpdates.rows.indexWhere((r) => r.id == dfID);
         if (remoteConflictIndex == -1) {
@@ -250,6 +264,26 @@ class Store<G extends Model> {
         }
       });
 
+      final removeDeleteIds = <String>{};
+      for (final deleteEntry in deferredDeletes.entries) {
+        final remoteConflictIndex =
+            remoteUpdates.rows.indexWhere((r) => r.id == deleteEntry.key);
+        if (remoteConflictIndex == -1) {
+          continue;
+        }
+        final remoteTimeStamp = remoteUpdates.rows[remoteConflictIndex].ts;
+        if (deleteEntry.value > remoteTimeStamp) {
+          conflicts++;
+          remoteLosersIndices.add(remoteConflictIndex);
+        } else {
+          conflicts++;
+          removeDeleteIds.add(deleteEntry.key);
+        }
+      }
+      for (final id in removeDeleteIds) {
+        deferredDeletes.remove(id);
+      }
+
       // remove losers from remote updates
       // Sort indices in descending order
       remoteLosersIndices.sort((a, b) => b.compareTo(a));
@@ -262,10 +296,11 @@ class Store<G extends Model> {
 
       // those will be built in the for loop below
       Map<String, String> toRemoteWrite = {};
+      final List<String> toRemoteDelete = [];
 
       final List<Future Function()> fileHandling = [];
 
-      for (var entry in deferred.entries) {
+      for (var entry in deferredUpdatesAndFiles.entries) {
         if (entry.key.startsWith("FILE")) {
           List<String> deferredFile = entry.key.split("||");
           final bool upload = entry.value == 1;
@@ -288,6 +323,8 @@ class Store<G extends Model> {
         }
       }
 
+      toRemoteDelete.addAll(deferredDeletes.keys);
+
       if (toLocalWrite.isNotEmpty) {
         await local!.put(toLocalWrite);
       }
@@ -295,6 +332,15 @@ class Store<G extends Model> {
         await remote!.put(toRemoteWrite.entries
             .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
             .toList());
+      }
+      if (toRemoteDelete.isNotEmpty) {
+        for (final id in toRemoteDelete) {
+          try {
+            await remote!.deleteRow(id);
+          } catch (_) {
+            // Deleting a non-existing remote record is already converged.
+          }
+        }
       }
 
       // when all json related updates are done, we can handle files
@@ -321,7 +367,7 @@ class Store<G extends Model> {
       await reload();
       return SyncResult(
           pulled: toLocalWrite.length,
-          pushed: toRemoteWrite.length,
+          pushed: toRemoteWrite.length + toRemoteDelete.length,
           conflicts: conflicts,
           exception: null);
     } catch (e, s) {
@@ -600,9 +646,27 @@ class Store<G extends Model> {
   }
 
   Future<void> hardDeleteRemote(String id) async {
-    if (remote != null) {
-      await remote!
-          .deleteRow(id); // You need to implement deleteRow in SaveRemote
+    if (remote == null || local == null) {
+      return;
     }
+
+    onSyncStart?.call();
+    final Map<String, int> lastDeferred = await local!.getDeferred();
+    if (remote!.isOnline && lastDeferred.isEmpty) {
+      try {
+        await remote!.deleteRow(id);
+        onSyncEnd?.call();
+        unawaited(synchronize());
+        return;
+      } catch (e, s) {
+        logger("Error during remote hard delete (will defer): $e", s);
+      }
+    }
+
+    await local!.putDeferred({}
+      ..addAll(lastDeferred)
+      ..addAll({"$_deferredDeletePrefix$id": DateTime.now().millisecondsSinceEpoch}));
+    deferredPresent = true;
+    onSyncEnd?.call();
   }
 }

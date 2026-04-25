@@ -1,4 +1,3 @@
-import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
@@ -53,15 +52,6 @@ class Labworks extends Store<Labwork> {
       }
 
       return () async {
-        loginCtrl.loadingIndicator("Synchronizing labworks");
-        print("Before clear: ${docs.length}");
-        await local?.clear();
-        print(
-            "Local labworks box keys after clear: ${(await local!.mainHiveBox).keys}");
-        await deleteMemoryAndLoadFromPersistence();
-        print("After clear: ${docs.length}");
-        await synchronize();
-        print("After sync: ${docs.length}");
         networkActions.syncCallbacks[_storeName] = synchronize;
         networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
 

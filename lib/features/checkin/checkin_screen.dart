@@ -36,6 +36,7 @@ import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:apexo/utils/share_actions.dart';
 import 'package:apexo/utils/pdf_export_layout.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/permissions.dart';
 import 'package:file_picker/file_picker.dart';
@@ -177,7 +178,7 @@ Future<void> _showNextAppointmentPromptDialog(
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     AppButton(
-                      label: DateFormat('dd MMM yyyy').format(nextDate),
+                      label: formatClinicDate(nextDate, pattern: 'dd MMM yyyy'),
                       variant: AppButtonVariant.secondary,
                       onPressed: () async {
                         final picked = await material.showDatePicker(
@@ -400,7 +401,7 @@ Future<void> _confirmDeleteScheduledFollowUpAppointment(
     builder: (dialogContext) => ContentDialog(
       title: const Text('Delete Scheduled Appointment'),
       content: Text(
-        'Delete appointment on ${DateFormat('dd MMM yyyy • h:mm a').format(scheduledAppointment.date)}?',
+        'Delete appointment on ${formatClinicDateTime(scheduledAppointment.date, pattern: 'dd MMM yyyy • h:mm a')}?',
       ),
       actions: [
         AppButton(
@@ -744,6 +745,31 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
     );
   }
 
+  Widget _historyCell(
+    String value, {
+    int flex = 1,
+    TextAlign textAlign = TextAlign.left,
+    bool header = false,
+  }) {
+    return Expanded(
+      flex: flex,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: textAlign,
+          style: TextStyle(
+            color: header ? const Color(0xFF4E6789) : const Color(0xFF25466F),
+            fontWeight: header ? FontWeight.w700 : FontWeight.w600,
+            fontSize: header ? 11 : 12,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final rows = widget.allAppointmentsForPatient
@@ -857,70 +883,80 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                     ),
                   )
                 else
-                  Column(
-                    children: visibleRows.map((row) {
-                      final treatmentText = row.selectedTreatments
-                          .where((e) => e.trim().isNotEmpty)
-                          .join(', ')
-                          .trim();
-                      final doctorText = row.operators
-                          .map((d) => d.title.trim())
-                          .where((d) => d.isNotEmpty)
-                          .join(', ')
-                          .trim();
-                      final teethText =
-                          row.selectedTeeth.where((e) => e.trim().isNotEmpty).join(', ').trim();
-                      final diagnosisText =
-                          row.diagnosis.where((e) => e.trim().isNotEmpty).join(', ').trim();
-                      final complaintText = row.chiefComplaints
-                          .where((e) => e.trim().isNotEmpty)
-                          .join(', ')
-                          .trim();
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: 900,
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF5FF),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFD7E5F7)),
+                            ),
+                            child: Row(
+                              children: [
+                                _historyCell('Date', flex: 2, header: true),
+                                _historyCell('Treatment', flex: 3, header: true),
+                                _historyCell('Teeth', flex: 2, header: true),
+                                _historyCell('Diagnosis', flex: 3, header: true),
+                                _historyCell('Chief Complaint', flex: 3, header: true),
+                                _historyCell('Doctor', flex: 2, header: true),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          ...visibleRows.map((row) {
+                            final treatmentText = row.selectedTreatments
+                                .where((e) => e.trim().isNotEmpty)
+                                .join(', ')
+                                .trim();
+                            final doctorText = row.operators
+                                .map((d) => d.title.trim())
+                                .where((d) => d.isNotEmpty)
+                                .join(', ')
+                                .trim();
+                            final teethText = row.selectedTeeth
+                                .where((e) => e.trim().isNotEmpty)
+                                .join(', ')
+                                .trim();
+                            final diagnosisText = row.diagnosis
+                                .where((e) => e.trim().isNotEmpty)
+                                .join(', ')
+                                .trim();
+                            final complaintText = row.chiefComplaints
+                                .where((e) => e.trim().isNotEmpty)
+                                .join(', ')
+                                .trim();
 
-                      return Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFDCE8F8)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              DateFormat('dd MMM yyyy').format(row.date),
-                              style: const TextStyle(
-                                color: Color(0xFF1F446E),
-                                fontWeight: FontWeight.w700,
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFDCE8F8)),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            _checkoutSummaryLine(
-                              'Treatment',
-                              treatmentText.isEmpty ? '-' : treatmentText,
-                            ),
-                            _checkoutSummaryLine(
-                              'Doctor',
-                              doctorText.isEmpty ? 'Unassigned' : doctorText,
-                            ),
-                            _checkoutSummaryLine(
-                              'Teeth',
-                              teethText.isEmpty ? '-' : teethText,
-                            ),
-                            _checkoutSummaryLine(
-                              'Diagnosis',
-                              diagnosisText.isEmpty ? '-' : diagnosisText,
-                            ),
-                            _checkoutSummaryLine(
-                              'Chief Complaint',
-                              complaintText.isEmpty ? '-' : complaintText,
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(growable: false),
+                              child: Row(
+                                children: [
+                                  _historyCell(
+                                    formatClinicDate(row.date, pattern: 'dd MMM yyyy'),
+                                    flex: 2,
+                                  ),
+                                  _historyCell(treatmentText.isEmpty ? '-' : treatmentText, flex: 3),
+                                  _historyCell(teethText.isEmpty ? '-' : teethText, flex: 2),
+                                  _historyCell(diagnosisText.isEmpty ? '-' : diagnosisText, flex: 3),
+                                  _historyCell(complaintText.isEmpty ? '-' : complaintText, flex: 3),
+                                  _historyCell(doctorText.isEmpty ? 'Unassigned' : doctorText, flex: 2),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
                   ),
                 if (rows.length > 5) ...[
                   const SizedBox(height: 8),
@@ -1959,7 +1995,7 @@ class _WorkflowRow extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       AppButton(
-                        label: DateFormat('dd MMM yyyy').format(selectedDate),
+                        label: formatClinicDate(selectedDate, pattern: 'dd MMM yyyy'),
                         variant: AppButtonVariant.secondary,
                         onPressed: () async {
                           final picked = await material.showDatePicker(
@@ -2008,14 +2044,14 @@ class _WorkflowRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Current: ${DateFormat('dd MMM yyyy, h:mm a').format(originalDate)}',
+                    'Current: ${formatClinicDateTime(originalDate, pattern: 'dd MMM yyyy, h:mm a')}',
                     style: const TextStyle(
                       color: Color(0xFF5F789B),
                       fontSize: 16,
                     ),
                   ),
                   Text(
-                    'Updated: ${DateFormat('dd MMM yyyy, h:mm a').format(updatedDateTime)}',
+                    'Updated: ${formatClinicDateTime(updatedDateTime, pattern: 'dd MMM yyyy, h:mm a')}',
                     style: TextStyle(
                       color: hasChanged
                           ? const Color(0xFF1459AD)
@@ -2277,7 +2313,7 @@ class _WorkflowRow extends StatelessWidget {
                         const SizedBox(width: 10),
                         AppBadge(
                           text:
-                              'Scheduled · ${DateFormat('h:mm a').format(appointment.date)}',
+                              'Scheduled · ${formatClinicDateTime(appointment.date, pattern: 'h:mm a')}',
                           type: BadgeType.primary,
                         ),
                       ],
@@ -3119,7 +3155,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            DateFormat('dd MMM yyyy • h:mm a').format(last.date),
+            formatClinicDateTime(last.date, pattern: 'dd MMM yyyy • h:mm a'),
             style: const TextStyle(
               color: Color(0xFF355279),
               fontWeight: FontWeight.w700,
@@ -3193,7 +3229,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            DateFormat('dd MMM yyyy • h:mm a').format(appointment.date),
+            formatClinicDateTime(appointment.date, pattern: 'dd MMM yyyy • h:mm a'),
             style: const TextStyle(
               color: Color(0xFF355279),
               fontWeight: FontWeight.w700,
@@ -3285,7 +3321,7 @@ class _CompactTimelineTable extends StatelessWidget {
                         (row) => material.DataRow(
                           cells: [
                             material.DataCell(
-                              Text(DateFormat('dd MMM yyyy').format(row.date)),
+                              Text(formatClinicDate(row.date, pattern: 'dd MMM yyyy')),
                             ),
                             material.DataCell(
                               Text(
@@ -4380,18 +4416,18 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF3EDFF) : const Color(0xFFF7F9FD),
+          color: selected ? const Color.fromARGB(255, 253, 255, 221) : const Color.fromARGB(255, 254, 255, 243),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color:
-                selected ? const Color(0xFFCDB9FF) : const Color(0xFFE1E8F3),
+                selected ? const Color.fromARGB(255, 239, 241, 140) : const Color.fromARGB(255, 246, 250, 207),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             color:
-                selected ? const Color(0xFF6D28D9) : const Color(0xFF52647B),
+                selected ? const Color.fromARGB(255, 153, 116, 15) : const Color.fromARGB(255, 152, 141, 42),
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
@@ -4848,7 +4884,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             headers: const ['Details', 'Description', 'Cost', 'Amount'],
             data: [
               [
-                DateFormat('dd MMM yyyy').format(_paymentDate),
+                formatClinicDate(_paymentDate, pattern: 'dd MMM yyyy'),
                 treatmentLabel.isEmpty ? '-' : treatmentLabel,
                 'Rs ${a.price.toStringAsFixed(0)}',
                 'Rs ${paid.toStringAsFixed(0)}',
@@ -4968,7 +5004,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     return 'Hello $patientName,\n\n'
         'This is a message from Dr. Nowfar Dental Clinic. We are reaching out to provide a summary of your recent visit.\n\n'
         'Treatment History Summary\n\n'
-        'Last Visit: ${DateFormat('dd MMM yyyy').format(a.date)}\n'
+        'Last Visit: ${formatClinicDate(a.date, pattern: 'dd MMM yyyy')}\n'
         'Treatment Completed: ${treatmentCompleted.isEmpty ? '-' : treatmentCompleted}\n'
         'Treatment Cost: Rs ${treatmentCost.toStringAsFixed(0)}\n'
         'Paid: Rs ${paid.toStringAsFixed(0)}\n'
@@ -5066,7 +5102,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         upcomingAppointments.isEmpty ? null : upcomingAppointments.first;
     final nextScheduledText = nextScheduled == null
         ? null
-        : DateFormat('dd MMM yyyy • h:mm a').format(nextScheduled.date);
+        : formatClinicDateTime(nextScheduled.date, pattern: 'dd MMM yyyy • h:mm a');
 
     return Padding(
       padding: const EdgeInsets.all(4),
@@ -5353,7 +5389,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           const SizedBox(height: 8),
                           AppButton(
                             label:
-                                DateFormat('dd MMM yyyy').format(_paymentDate),
+                                formatClinicDate(_paymentDate, pattern: 'dd MMM yyyy'),
                             variant: AppButtonVariant.secondary,
                             onPressed: () async {
                               final picked = await material.showDatePicker(
@@ -5462,7 +5498,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   doctorNames: doctorNames,
                   scheduledAppointmentText: nextScheduledText,
                   scheduledAppointmentTexts: upcomingAppointments
-                    .map((row) => DateFormat('dd MMM yyyy • h:mm a').format(row.date))
+                    .map((row) => formatClinicDateTime(row.date, pattern: 'dd MMM yyyy • h:mm a'))
                     .toList(growable: false),
                   separateScheduleSection: true,
                   onScheduleAppointment: (a.patientID ?? '').trim().isEmpty
@@ -6196,7 +6232,7 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            DateFormat('dd MMM yyyy • h:mm a').format(row.date),
+                            formatClinicDateTime(row.date, pattern: 'dd MMM yyyy • h:mm a'),
                             style: const TextStyle(
                               color: Color(0xFF184A9C),
                               fontWeight: FontWeight.w700,

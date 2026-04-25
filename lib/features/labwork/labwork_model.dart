@@ -5,7 +5,7 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/services/login.dart';
-import 'package:intl/intl.dart';
+import 'package:apexo/utils/clinic_time.dart';
 
 class Labwork extends Model {
   @override
@@ -53,7 +53,7 @@ class Labwork extends Model {
   @override
   String get title {
     //return DateFormat(localSettings.dateFormat, locale.s.$code).format(date);
-    return DateFormat("yyyy-MM-dd").format(date);
+    return formatClinicDate(date, pattern: "yyyy-MM-dd");
   }
 
   // id: id of the labwork (inherited from Model)
