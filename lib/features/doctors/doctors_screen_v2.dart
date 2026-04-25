@@ -5,7 +5,7 @@ import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
-import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
@@ -55,10 +55,10 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   final bool _compareMode = false;
   DateTime? _customRangeStart;
   DateTime? _customRangeEnd;
-    DateTime _topMonthAnchor =
+  DateTime _topMonthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
-    bool _isTopRangeLoading = false;
-    Timer? _topRangeLoadingTimer;
+  bool _isTopRangeDialogOpen = false;
+  Timer? _topRangeLoadingTimer;
 
   static DateTime _dateOnly(DateTime input) =>
       DateTime(input.year, input.month, input.day);
@@ -73,17 +73,58 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   @override
   void dispose() {
     _topRangeLoadingTimer?.cancel();
+    if (_isTopRangeDialogOpen) {
+      final navigator = Navigator.of(context, rootNavigator: true);
+      if (navigator.canPop()) {
+        navigator.pop();
+      }
+      _isTopRangeDialogOpen = false;
+    }
     super.dispose();
+  }
+
+  void _setTopRangeLoadingDialog(bool show) {
+    if (!mounted) return;
+    if (show) {
+      if (_isTopRangeDialogOpen) return;
+      _isTopRangeDialogOpen = true;
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const ContentDialog(
+            content: SizedBox(
+              width: 220,
+              child: Row(
+                children: [
+                  ProgressRing(),
+                  SizedBox(width: 12),
+                  Text('Loading data...'),
+                ],
+              ),
+            ),
+          ),
+        ).then((_) {
+          _isTopRangeDialogOpen = false;
+        }),
+      );
+      return;
+    }
+
+    if (!_isTopRangeDialogOpen) return;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+    _isTopRangeDialogOpen = false;
   }
 
   void _showTopRangeLoading() {
     _topRangeLoadingTimer?.cancel();
-    if (!_isTopRangeLoading) {
-      setState(() => _isTopRangeLoading = true);
-    }
+    _setTopRangeLoadingDialog(true);
     _topRangeLoadingTimer = Timer(const Duration(milliseconds: 380), () {
       if (!mounted) return;
-      setState(() => _isTopRangeLoading = false);
+      _setTopRangeLoadingDialog(false);
     });
   }
 
@@ -223,19 +264,19 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                 final currentStart =
                     _handledRange == 'custom' && _customRangeStart != null
                         ? _customRangeStart!
-                    : _handledRange == 'month'
-                      ? _topMonthAnchor
-                        : _rangeStart(_selectedDate, _handledRange);
+                        : _handledRange == 'month'
+                            ? _topMonthAnchor
+                            : _rangeStart(_selectedDate, _handledRange);
                 final currentEnd = _handledRange == 'custom' &&
                         _customRangeEnd != null
                     ? _dateOnly(_customRangeEnd!).add(const Duration(days: 1))
-                  : _handledRange == 'month'
-                    ? DateTime(
-                      _topMonthAnchor.year,
-                      _topMonthAnchor.month + 1,
-                      1,
-                      )
-                    : _rangeEndExclusive(_selectedDate);
+                    : _handledRange == 'month'
+                        ? DateTime(
+                            _topMonthAnchor.year,
+                            _topMonthAnchor.month + 1,
+                            1,
+                          )
+                        : _rangeEndExclusive(_selectedDate);
                 final currentSpanDays =
                     math.max(1, currentEnd.difference(currentStart).inDays);
                 final compareEnd = currentStart;
@@ -284,7 +325,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                                     onToday: () {
                                       _showTopRangeLoading();
                                       setState(() {
-                                        _selectedDate = _dateOnly(DateTime.now());
+                                        _selectedDate =
+                                            _dateOnly(DateTime.now());
                                         _topMonthAnchor = DateTime(
                                           _selectedDate.year,
                                           _selectedDate.month,
@@ -300,16 +342,19 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                                         child: ComboBox<DateTime>(
                                           isExpanded: true,
                                           value: _topMonthAnchor,
-                                          items: _topMonthOptions(allAppointments)
-                                              .map(
-                                                (m) => ComboBoxItem<DateTime>(
-                                                  value: m,
-                                                  child: Text(
-                                                    DateFormat('MMMM yyyy').format(m),
-                                                  ),
-                                                ),
-                                              )
-                                              .toList(growable: false),
+                                          items:
+                                              _topMonthOptions(allAppointments)
+                                                  .map(
+                                                    (m) =>
+                                                        ComboBoxItem<DateTime>(
+                                                      value: m,
+                                                      child: Text(
+                                                        DateFormat('MMMM yyyy')
+                                                            .format(m),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(growable: false),
                                           onChanged: (value) {
                                             if (value == null) return;
                                             _showTopRangeLoading();
@@ -335,11 +380,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (_isTopRangeLoading)
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 8),
-                        child: ProgressBar(),
-                      ),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -417,9 +457,8 @@ class _TopScopeChip extends StatelessWidget {
             color: selected ? const Color(0xFF2D7BD8) : Colors.white,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: selected
-                  ? const Color(0xFF2D7BD8)
-                  : const Color(0xFFD7E3F0),
+              color:
+                  selected ? const Color(0xFF2D7BD8) : const Color(0xFFD7E3F0),
             ),
           ),
           child: Text(
@@ -1314,24 +1353,10 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     final patient = appointment.patient;
     if (patient == null) return;
 
-    await showDialog<void>(
+    await showPatientHistoryDialog(
       context: context,
-      builder: (_) => Align(
-        alignment: Alignment.center,
-        child: Container(
-          color: Colors.white,
-          child: PatientDetailsDialog(
-            rows: patient.patientDetails,
-            patient: patient,
-            hiddenColumns: const [
-              'Prescription',
-              'P.Mode',
-              'Doc Paid',
-              'TotalDocPay',
-            ],
-          ),
-        ),
-      ),
+      patient: patient,
+      rows: patient.patientDetails,
     );
   }
 
@@ -1920,6 +1945,18 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                     ),
                                     child: Row(
                                       children: [
+                                        Tooltip(
+                                          message: 'Patient History',
+                                          child: IconButton(
+                                            icon: const Icon(
+                                              FluentIcons.history,
+                                              size: 12,
+                                            ),
+                                            onPressed: () =>
+                                                _openPatientHistory(
+                                                    appointment),
+                                          ),
+                                        ),
                                         SizedBox(
                                           width: patientWidth,
                                           child: Row(
@@ -1927,30 +1964,25 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                               Expanded(
                                                 child: GestureDetector(
                                                   onTap: () =>
-                                                      _openPatientEditor(appointment),
+                                                      _openPatientEditor(
+                                                          appointment),
                                                   child: Text(
-                                                    appointment.title.trim().isEmpty
+                                                    appointment.title
+                                                            .trim()
+                                                            .isEmpty
                                                         ? 'Unnamed patient'
                                                         : _doctorTitleCase(
                                                             appointment.title),
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: const TextStyle(
-                                                      color: AppColors.textActive,
-                                                      fontWeight: FontWeight.w700,
+                                                      color:
+                                                          AppColors.textActive,
+                                                      fontWeight:
+                                                          FontWeight.w700,
                                                       fontSize: 13,
                                                     ),
                                                   ),
-                                                ),
-                                              ),
-                                              Tooltip(
-                                                message: 'Patient History',
-                                                child: IconButton(
-                                                  icon: const Icon(
-                                                    FluentIcons.history,
-                                                    size: 12,
-                                                  ),
-                                                  onPressed: () =>
-                                                      _openPatientHistory(appointment),
                                                 ),
                                               ),
                                             ],
