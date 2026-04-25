@@ -113,6 +113,7 @@ class Appointment extends Model {
   double discount = 0.0;
   String discountType = 'flat'; // or 'percent'
   List<String> diagnosis = [];
+  List<String> chiefComplaints = [];
 
   /* 12 */ List<String> selectedTreatments = [];
   List<String> subTreatments = [];
@@ -182,6 +183,7 @@ class Appointment extends Model {
       checkedInAt = DateTime.fromMillisecondsSinceEpoch(rawCheckedInAt);
     }
     diagnosis = List<String>.from(json['diagnosis'] ?? []);
+    chiefComplaints = List<String>.from(json['chiefComplaints'] ?? []);
   }
 
   @override
@@ -232,6 +234,9 @@ class Appointment extends Model {
       json['checkedInAt'] = checkedInAt!.millisecondsSinceEpoch;
     }
     json['diagnosis'] = diagnosis;
+    if (chiefComplaints.toString() != d.chiefComplaints.toString()) {
+      json['chiefComplaints'] = chiefComplaints;
+    }
     json.remove("title"); // remove since it is a computed value in this case
 
     return json;

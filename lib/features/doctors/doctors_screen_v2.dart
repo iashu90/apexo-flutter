@@ -1,9 +1,13 @@
 // ignore_for_file: unused_element, unused_field, unused_local_variable, unused_import
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/core/theme/app_colors.dart';
+import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/top_widget_cards.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -15,6 +19,7 @@ import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/core/theme/app_text_theme.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
@@ -50,6 +55,10 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   final bool _compareMode = false;
   DateTime? _customRangeStart;
   DateTime? _customRangeEnd;
+    DateTime _topMonthAnchor =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
+    bool _isTopRangeLoading = false;
+    Timer? _topRangeLoadingTimer;
 
   static DateTime _dateOnly(DateTime input) =>
       DateTime(input.year, input.month, input.day);
@@ -58,11 +67,40 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   void initState() {
     super.initState();
     _selectedDate = _dateOnly(doctorPersistedDate);
+    _topMonthAnchor = DateTime(_selectedDate.year, _selectedDate.month, 1);
+  }
+
+  @override
+  void dispose() {
+    _topRangeLoadingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _showTopRangeLoading() {
+    _topRangeLoadingTimer?.cancel();
+    if (!_isTopRangeLoading) {
+      setState(() => _isTopRangeLoading = true);
+    }
+    _topRangeLoadingTimer = Timer(const Duration(milliseconds: 380), () {
+      if (!mounted) return;
+      setState(() => _isTopRangeLoading = false);
+    });
+  }
+
+  List<DateTime> _topMonthOptions(List<Appointment> rows) {
+    final months = <DateTime>{
+      DateTime(DateTime.now().year, DateTime.now().month, 1),
+      ...rows.map((a) => DateTime(a.date.year, a.date.month, 1)),
+    }.toList(growable: false)
+      ..sort((a, b) => b.compareTo(a));
+    return months;
   }
 
   void _changeDate(int days) {
+    _showTopRangeLoading();
     setState(() {
       _selectedDate = _dateOnly(_selectedDate.add(Duration(days: days)));
+      _topMonthAnchor = DateTime(_selectedDate.year, _selectedDate.month, 1);
       doctorPersistedDate = _selectedDate;
     });
   }
@@ -78,8 +116,10 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     );
 
     if (picked == null) return;
+    _showTopRangeLoading();
     setState(() {
       _selectedDate = _dateOnly(picked);
+      _topMonthAnchor = DateTime(_selectedDate.year, _selectedDate.month, 1);
       doctorPersistedDate = _selectedDate;
     });
   }
@@ -98,6 +138,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     );
 
     if (picked == null) return;
+    _showTopRangeLoading();
     setState(() {
       _customRangeStart = _dateOnly(picked.start);
       _customRangeEnd = _dateOnly(picked.end);
@@ -138,120 +179,207 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     return '${DateFormat('dd MMM').format(_customRangeStart!)} - ${DateFormat('dd MMM').format(_customRangeEnd!)}';
   }
 
+  void _setTopRange(String range) {
+    if (range == 'custom') {
+      _pickCustomRange(context);
+      return;
+    }
+    _showTopRangeLoading();
+    setState(() {
+      _handledRange = range;
+      _performanceRange = range;
+      _doneRange = range;
+      _workloadRange = range;
+      if (range == 'month') {
+        _topMonthAnchor = DateTime(_selectedDate.year, _selectedDate.month, 1);
+      }
+    });
+  }
+
   Future<void> _openAddDoctorModal() async {
     await _openDoctorEntryModal(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage.scrollable(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-      children: [
-        MStreamBuilder(
-          streams: [
-            doctors.observableMap.stream,
-            appointments.observableMap.stream,
-          ],
-          builder: (context, _) {
-            final allDoctors = doctors.present.values.toList(growable: false)
-              ..sort((a, b) =>
-                  a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-            final allAppointments =
-                appointments.present.values.toList(growable: false);
-
-            final currentStart =
-                _handledRange == 'custom' && _customRangeStart != null
-                    ? _customRangeStart!
-                    : _rangeStart(_selectedDate, _handledRange);
-            final currentEnd =
-                _handledRange == 'custom' && _customRangeEnd != null
-                    ? _dateOnly(_customRangeEnd!).add(const Duration(days: 1))
-                    : _rangeEndExclusive(_selectedDate);
-            final currentSpanDays =
-                math.max(1, currentEnd.difference(currentStart).inDays);
-            final compareEnd = currentStart;
-            final compareStart =
-                compareEnd.subtract(Duration(days: currentSpanDays));
-
-            final scopedCurrent = allAppointments
-                .where((a) =>
-                    !a.date.isBefore(currentStart) &&
-                    a.date.isBefore(currentEnd))
-                .toList(growable: false);
-
-            final scopedCompare = allAppointments
-                .where((a) =>
-                    !a.date.isBefore(compareStart) &&
-                    a.date.isBefore(compareEnd))
-                .toList(growable: false);
-
-            final startOfDay = _dateOnly(_selectedDate);
-            final endOfDay = startOfDay.add(const Duration(days: 1));
-            final todaysAppointments = allAppointments
-                .where((a) =>
-                    !a.date.isBefore(startOfDay) && a.date.isBefore(endOfDay))
-                .toList(growable: false);
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  height: 56,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Doctors',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF12355F),
-                          ),
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.center,
-                        child: DateNavigatorBar(
-                          selectedDate: _selectedDate,
-                          onPrevious: () => _changeDate(-1),
-                          onNext: () => _changeDate(1),
-                          onPick: () => _pickDate(context),
-                          onToday: () =>
-                              setState(() {
-                                _selectedDate = _dateOnly(DateTime.now());
-                                doctorPersistedDate = _selectedDate;
-                              }),
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: AppButton(
-                          onPressed: _openAddDoctorModal,
-                          label: 'Add Doctor',
-                          leading: const Icon(FluentIcons.add, size: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    return _DoctorTodayDetailCard(
-                      doctors: allDoctors,
-                      todaysAppointments: todaysAppointments,
-                      selectedDate: _selectedDate,
-                    );
-                  },
-                ),
+    return Container(
+        color: AppTheme.light.scaffoldBackgroundColor,
+        child: ScaffoldPage.scrollable(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          children: [
+            MStreamBuilder(
+              streams: [
+                doctors.observableMap.stream,
+                appointments.observableMap.stream,
               ],
-            );
-          },
-        ),
-      ],
-    );
+              builder: (context, _) {
+                final allDoctors = doctors.present.values
+                    .toList(growable: false)
+                  ..sort((a, b) =>
+                      a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+                final allAppointments =
+                    appointments.present.values.toList(growable: false);
+
+                final currentStart =
+                    _handledRange == 'custom' && _customRangeStart != null
+                        ? _customRangeStart!
+                    : _handledRange == 'month'
+                      ? _topMonthAnchor
+                        : _rangeStart(_selectedDate, _handledRange);
+                final currentEnd = _handledRange == 'custom' &&
+                        _customRangeEnd != null
+                    ? _dateOnly(_customRangeEnd!).add(const Duration(days: 1))
+                  : _handledRange == 'month'
+                    ? DateTime(
+                      _topMonthAnchor.year,
+                      _topMonthAnchor.month + 1,
+                      1,
+                      )
+                    : _rangeEndExclusive(_selectedDate);
+                final currentSpanDays =
+                    math.max(1, currentEnd.difference(currentStart).inDays);
+                final compareEnd = currentStart;
+                final compareStart =
+                    compareEnd.subtract(Duration(days: currentSpanDays));
+
+                final scopedCurrent = allAppointments
+                    .where((a) =>
+                        !a.date.isBefore(currentStart) &&
+                        a.date.isBefore(currentEnd))
+                    .toList(growable: false);
+
+                final scopedCompare = allAppointments
+                    .where((a) =>
+                        !a.date.isBefore(compareStart) &&
+                        a.date.isBefore(compareEnd))
+                    .toList(growable: false);
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: 56,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Doctors',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF12355F),
+                              ),
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.center,
+                            child: _handledRange == 'today'
+                                ? DateNavigatorBar(
+                                    selectedDate: _selectedDate,
+                                    onPrevious: () => _changeDate(-1),
+                                    onNext: () => _changeDate(1),
+                                    onPick: () => _pickDate(context),
+                                    onToday: () {
+                                      _showTopRangeLoading();
+                                      setState(() {
+                                        _selectedDate = _dateOnly(DateTime.now());
+                                        _topMonthAnchor = DateTime(
+                                          _selectedDate.year,
+                                          _selectedDate.month,
+                                          1,
+                                        );
+                                        doctorPersistedDate = _selectedDate;
+                                      });
+                                    },
+                                  )
+                                : _handledRange == 'month'
+                                    ? SizedBox(
+                                        width: 220,
+                                        child: ComboBox<DateTime>(
+                                          isExpanded: true,
+                                          value: _topMonthAnchor,
+                                          items: _topMonthOptions(allAppointments)
+                                              .map(
+                                                (m) => ComboBoxItem<DateTime>(
+                                                  value: m,
+                                                  child: Text(
+                                                    DateFormat('MMMM yyyy').format(m),
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(growable: false),
+                                          onChanged: (value) {
+                                            if (value == null) return;
+                                            _showTopRangeLoading();
+                                            setState(() {
+                                              _topMonthAnchor = value;
+                                              _selectedDate = value;
+                                              doctorPersistedDate = value;
+                                            });
+                                          },
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: AppButton(
+                              onPressed: _openAddDoctorModal,
+                              label: 'Add Doctor',
+                              leading: const Icon(FluentIcons.add, size: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (_isTopRangeLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: ProgressBar(),
+                      ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _TopScopeChip(
+                            label: 'Day',
+                            selected: _handledRange == 'today',
+                            onTap: () => _setTopRange('today'),
+                          ),
+                          _TopScopeChip(
+                            label: 'Month',
+                            selected: _handledRange == 'month',
+                            onTap: () => _setTopRange('month'),
+                          ),
+                          _TopScopeChip(
+                            label: _handledRange == 'custom'
+                                ? _customRangeLabel()
+                                : 'Custom',
+                            selected: _handledRange == 'custom',
+                            onTap: () => _setTopRange('custom'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return _DoctorTodayDetailCard(
+                          doctors: allDoctors,
+                          todaysAppointments: scopedCurrent,
+                          selectedDate: _selectedDate,
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ));
   }
 }
 
@@ -264,6 +392,48 @@ String _doctorTitleCase(String input) {
           ? word
           : '${word[0].toUpperCase()}${word.length > 1 ? word.substring(1).toLowerCase() : ''}')
       .join(' ');
+}
+
+class _TopScopeChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TopScopeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF2D7BD8) : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF2D7BD8)
+                  : const Color(0xFFD7E3F0),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF36557C),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 Future<void> _openDoctorEntryModal(
@@ -445,7 +615,7 @@ List<
         }
 
         final earned =
-          doctorRows.fold<double>(0, (s, a) => s + a.doctorPayableAmount);
+            doctorRows.fold<double>(0, (s, a) => s + a.doctorPayableAmount);
 
         return (
           doctor: doctor,
@@ -935,7 +1105,8 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
   String _query = '';
 
   Widget _buildDoctorItem(Doctor doctor) {
-    final displayName = doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title;
+    final displayName =
+        doctor.title.trim().isEmpty ? 'Unnamed doctor' : doctor.title;
     final phone = doctor.phone.trim();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -1039,8 +1210,7 @@ class _DoctorDirectoryCardState extends State<_DoctorDirectoryCard> {
             TextBox(
               controller: _searchController,
               placeholder: 'Search doctor name / phone',
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               prefix: const Padding(
                 padding: EdgeInsets.only(left: 6),
                 child: Icon(
@@ -1123,14 +1293,47 @@ class _DoctorTodayDetailCard extends StatefulWidget {
   });
 
   @override
-  State<_DoctorTodayDetailCard> createState() =>
-      _DoctorTodayDetailCardState();
+  State<_DoctorTodayDetailCard> createState() => _DoctorTodayDetailCardState();
 }
 
 class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   final Set<String> _expandedDoctorIds = {};
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
+
+  Future<void> _openPatientEditor(Appointment appointment) async {
+    final patient = appointment.patient;
+    if (patient == null) return;
+    await openAddPatientPopup(
+      context: context,
+      existingPatient: patient,
+    );
+  }
+
+  Future<void> _openPatientHistory(Appointment appointment) async {
+    final patient = appointment.patient;
+    if (patient == null) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => Align(
+        alignment: Alignment.center,
+        child: Container(
+          color: Colors.white,
+          child: PatientDetailsDialog(
+            rows: patient.patientDetails,
+            patient: patient,
+            hiddenColumns: const [
+              'Prescription',
+              'P.Mode',
+              'Doc Paid',
+              'TotalDocPay',
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   double _appointmentTreatmentTotal(Appointment appointment) {
     final discountedTotal = appointment.discountType == 'percent'
@@ -1167,9 +1370,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
       ..sort((a, b) {
         final byPatients = b.value.length.compareTo(a.value.length);
         if (byPatients != 0) return byPatients;
-        return a.key.title
-            .toLowerCase()
-            .compareTo(b.key.title.toLowerCase());
+        return a.key.title.toLowerCase().compareTo(b.key.title.toLowerCase());
       });
     return doctorEntries;
   }
@@ -1185,7 +1386,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
         [
           'Date',
           'Doctor',
-          'Patient', 
+          'Patient',
           'Treatment',
           'Tooth/Area',
           'Paid',
@@ -1202,8 +1403,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           final treatment = appointment.selectedTreatments
               .where((t) => t.trim().isNotEmpty)
               .join(', ');
-          final tooth =
-              appointment.selectedTeeth.isEmpty ? '-' : appointment.selectedTeeth.first;
+          final tooth = appointment.selectedTeeth.isEmpty
+              ? '-'
+              : appointment.selectedTeeth.first;
           final paid = appointment.paid + appointment.prescriptionPaid;
           final fee = appointment.doctorPayableAmount;
           final net = paid - fee;
@@ -1211,7 +1413,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
 
           rows.add([
             DateFormat('dd/MM/yyyy').format(appointment.date),
-            doctor.title.trim().isEmpty ? 'Unnamed doctor' : _doctorTitleCase(doctor.title),
+            doctor.title.trim().isEmpty
+                ? 'Unnamed doctor'
+                : _doctorTitleCase(doctor.title),
             appointment.title.trim().isEmpty
                 ? 'Unnamed patient'
                 : _doctorTitleCase(appointment.title),
@@ -1246,7 +1450,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
         [
           'Date',
           'Doctor',
-          'Patient',  
+          'Patient',
           'Treatment',
           'Tooth/Area',
           'Paid',
@@ -1263,8 +1467,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           final treatment = appointment.selectedTreatments
               .where((t) => t.trim().isNotEmpty)
               .join(', ');
-          final tooth =
-              appointment.selectedTeeth.isEmpty ? '-' : appointment.selectedTeeth.first;
+          final tooth = appointment.selectedTeeth.isEmpty
+              ? '-'
+              : appointment.selectedTeeth.first;
           final paid = appointment.paid + appointment.prescriptionPaid;
           final fee = appointment.doctorPayableAmount;
           final net = paid - fee;
@@ -1272,7 +1477,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
 
           rows.add([
             DateFormat('dd/MM/yyyy').format(appointment.date),
-            doctor.title.trim().isEmpty ? 'Unnamed doctor' : _doctorTitleCase(doctor.title),
+            doctor.title.trim().isEmpty
+                ? 'Unnamed doctor'
+                : _doctorTitleCase(doctor.title),
             appointment.title.trim().isEmpty
                 ? 'Unnamed patient'
                 : _doctorTitleCase(appointment.title),
@@ -1346,7 +1553,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                       ),
                     ),
                     Text(
-                      DateFormat('EEEE, dd MMMM yyyy').format(widget.selectedDate),
+                      DateFormat('EEEE, dd MMMM yyyy')
+                          .format(widget.selectedDate),
                       style: const TextStyle(
                         color: Color(0xFF6D84A8),
                         fontWeight: FontWeight.w600,
@@ -1429,11 +1637,11 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                 ? const Color(0xFF2BA58D)
                                 : const Color(0xFFD6455D),
                             cardColor: netProfit >= 0
-                              ? const Color(0xFFFAFEFC)
-                              : const Color(0xFFFFFBFC),
+                                ? const Color(0xFFFAFEFC)
+                                : const Color(0xFFFFFBFC),
                             borderColor: netProfit >= 0
-                              ? const Color(0xFFE6F4EE)
-                              : const Color(0xFFF7E8EC),
+                                ? const Color(0xFFE6F4EE)
+                                : const Color(0xFFF7E8EC),
                           ),
                         ),
                       ],
@@ -1479,54 +1687,55 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                 else ...[
                   const SizedBox(height: 10),
                   ...doctorEntries.map((entry) {
-                final doctor = entry.key;
-                final doctorAppts = entry.value;
-                final expanded = _expandedDoctorIds.contains(doctor.id);
-                final earned = doctorAppts.fold<double>(
-                  0,
-                  (sum, a) => sum + a.paid + a.prescriptionPaid,
-                );
-                final doctorFee = doctorAppts.fold<double>(
-                  0,
-                  (sum, a) => sum + a.doctorPayableAmount,
-                );
-                final doctorNet = earned - doctorFee;
-                final doctorNetPct =
-                  earned <= 0 ? 0.0 : (doctorNet / earned) * 100;
-                final screenWidth = MediaQuery.of(context).size.width;
-                final compact = screenWidth < 1440;
-                final basePatientWidth = compact ? 170.0 : 210.0;
-                final baseTimeWidth = compact ? 120.0 : 140.0;
-                final baseTreatmentWidth = compact ? 170.0 : 200.0;
-                final baseToothWidth = compact ? 90.0 : 110.0;
-                final baseStageWidth = compact ? 90.0 : 110.0;
-                final basePaidWidth = compact ? 100.0 : 110.0;
-                final baseFeeWidth = compact ? 100.0 : 120.0;
-                final baseNetWidth = compact ? 100.0 : 120.0;
-                final baseStatusWidth = compact ? 82.0 : 90.0;
-                final baseActionWidth = compact ? 72.0 : 82.0;
-                final baseTableWidth = basePatientWidth +
-                  baseTimeWidth +
-                  baseTreatmentWidth +
-                  baseToothWidth +
-                  baseStageWidth +
-                  basePaidWidth +
-                  baseFeeWidth +
-                  baseNetWidth +
-                  baseStatusWidth +
-                  baseActionWidth;
-                final minTableWidth = math.max(baseTableWidth, screenWidth - 90);
-                final widthScale = minTableWidth / baseTableWidth;
-                final patientWidth = basePatientWidth * widthScale;
-                final timeWidth = baseTimeWidth * widthScale;
-                final treatmentWidth = baseTreatmentWidth * widthScale;
-                final toothWidth = baseToothWidth * widthScale;
-                final stageWidth = baseStageWidth * widthScale;
-                final paidWidth = basePaidWidth * widthScale;
-                final feeWidth = baseFeeWidth * widthScale;
-                final netWidth = baseNetWidth * widthScale;
-                final statusWidth = baseStatusWidth * widthScale;
-                final actionWidth = baseActionWidth * widthScale;
+                    final doctor = entry.key;
+                    final doctorAppts = entry.value;
+                    final expanded = _expandedDoctorIds.contains(doctor.id);
+                    final earned = doctorAppts.fold<double>(
+                      0,
+                      (sum, a) => sum + a.paid + a.prescriptionPaid,
+                    );
+                    final doctorFee = doctorAppts.fold<double>(
+                      0,
+                      (sum, a) => sum + a.doctorPayableAmount,
+                    );
+                    final doctorNet = earned - doctorFee;
+                    final doctorNetPct =
+                        earned <= 0 ? 0.0 : (doctorNet / earned) * 100;
+                    final screenWidth = MediaQuery.of(context).size.width;
+                    final compact = screenWidth < 1440;
+                    final basePatientWidth = compact ? 170.0 : 210.0;
+                    final baseTimeWidth = compact ? 120.0 : 140.0;
+                    final baseTreatmentWidth = compact ? 170.0 : 200.0;
+                    final baseToothWidth = compact ? 90.0 : 110.0;
+                    final baseStageWidth = compact ? 90.0 : 110.0;
+                    final basePaidWidth = compact ? 100.0 : 110.0;
+                    final baseFeeWidth = compact ? 100.0 : 120.0;
+                    final baseNetWidth = compact ? 100.0 : 120.0;
+                    final baseStatusWidth = compact ? 82.0 : 90.0;
+                    final baseActionWidth = compact ? 72.0 : 82.0;
+                    final baseTableWidth = basePatientWidth +
+                        baseTimeWidth +
+                        baseTreatmentWidth +
+                        baseToothWidth +
+                        baseStageWidth +
+                        basePaidWidth +
+                        baseFeeWidth +
+                        baseNetWidth +
+                        baseStatusWidth +
+                        baseActionWidth;
+                    final minTableWidth =
+                        math.max(baseTableWidth, screenWidth - 90);
+                    final widthScale = minTableWidth / baseTableWidth;
+                    final patientWidth = basePatientWidth * widthScale;
+                    final timeWidth = baseTimeWidth * widthScale;
+                    final treatmentWidth = baseTreatmentWidth * widthScale;
+                    final toothWidth = baseToothWidth * widthScale;
+                    final stageWidth = baseStageWidth * widthScale;
+                    final paidWidth = basePaidWidth * widthScale;
+                    final feeWidth = baseFeeWidth * widthScale;
+                    final netWidth = baseNetWidth * widthScale;
+                    final statusWidth = baseStatusWidth * widthScale;
+                    final actionWidth = baseActionWidth * widthScale;
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 6),
@@ -1539,241 +1748,319 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                         ),
                       ),
                       child: Expander(
-                    initiallyExpanded: expanded,
-                    onStateChanged: (isExpanded) {
-                      setState(() {
-                        if (isExpanded) {
-                          _expandedDoctorIds.add(doctor.id);
-                        } else {
-                          _expandedDoctorIds.remove(doctor.id);
-                        }
-                      });
-                    },
-                    header: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              doctor.title.trim().isEmpty
-                                  ? 'Unnamed doctor'
-                                  : _doctorTitleCase(doctor.title),
-                              style: const TextStyle(
-                                color: Color(0xFF143C6B),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          _inlineMetric(
-                            'Patients Seen',
-                            '${doctorAppts.length}',
-                            const Color(0xFF2D7BD8),
-                          ),
-                          const SizedBox(width: 8),
-                          _inlineMetric(
-                            'Revenue',
-                              formatIndianShortCurrency(earned),
-                            const Color(0xFF2BA58D),
-                          ),
-                          const SizedBox(width: 8),
-                          _inlineMetric(
-                            'Doctors Fee',
-                              formatIndianShortCurrency(doctorFee),
-                            const Color(0xFFD6455D),
-                          ),
-                          const SizedBox(width: 8),
-                          _inlineMetric(
-                            'Net Profit',
-                            '${formatIndianShortCurrency(doctorNet)} (${doctorNetPct.toStringAsFixed(1)}%)',
-                            doctorNet >= 0
-                                ? const Color(0xFF2BA58D)
-                                : const Color(0xFFD6455D),
-                            width: 186,
-                          ),
-                        ],
-                      ),
-                    ),
-                        content: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minWidth: minTableWidth),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF5FF),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  SizedBox(width: patientWidth, child: const Text('Patient', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: timeWidth, child: const Text('Time', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: treatmentWidth, child: const Text('Treatment', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: toothWidth, child: const Text('Tooth/Area', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: stageWidth, child: const Text('Stage', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: paidWidth, child: const Text('Paid', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: feeWidth, child: const Text('Fee', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: netWidth, child: const Text('Net', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: statusWidth, child: const Text('Status', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                  SizedBox(width: actionWidth, child: const Text('Edit', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF355279)))),
-                                ],
-                              ),
-                            ),
-                            ...doctorAppts.map((appointment) {
-                              final end = appointment.date.add(const Duration(minutes: 40));
-                              final treatment = appointment.selectedTreatments
-                                  .where((t) => t.trim().isNotEmpty)
-                                  .join(', ');
-                              final tooth = appointment.selectedTeeth.isEmpty
-                                  ? '-'
-                                  : appointment.selectedTeeth.first;
-                              final stage = _stageLabel(appointment);
-                              final stageColor = _stageColor(stage);
-                              final paid = appointment.paid + appointment.prescriptionPaid;
-                              final consultantFee =
-                                  appointment.doctorPayableAmount;
-                                final appointmentNet = paid - consultantFee;
-                                final paymentStatus =
-                                  _paymentStatusForAppointment(appointment);
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 0),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(0),
-                                  border: const Border(
-                                    bottom: BorderSide(
-                                      color: Color(0xFFE2ECF8),
-                                    ),
+                        initiallyExpanded: expanded,
+                        onStateChanged: (isExpanded) {
+                          setState(() {
+                            if (isExpanded) {
+                              _expandedDoctorIds.add(doctor.id);
+                            } else {
+                              _expandedDoctorIds.remove(doctor.id);
+                            }
+                          });
+                        },
+                        header: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  doctor.title.trim().isEmpty
+                                      ? 'Unnamed doctor'
+                                      : _doctorTitleCase(doctor.title),
+                                  style: const TextStyle(
+                                    color: Color(0xFF143C6B),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
                                   ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    SizedBox(
-                                      width: patientWidth,
-                                      child: Text(
-                                        appointment.title.trim().isEmpty
-                                            ? 'Unnamed patient'
-                                          : _doctorTitleCase(appointment.title),
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF1F446E),
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: timeWidth,
-                                      child: Text(
-                                        '${DateFormat('hh:mm a').format(appointment.date)} - ${DateFormat('hh:mm a').format(end)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF4D6488),
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: treatmentWidth,
-                                      child: Text(
-                                        treatment.isEmpty ? '-' : treatment,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF34567D),
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: toothWidth,
-                                      child: Text(
-                                        tooth,
-                                        style: const TextStyle(
-                                          color: Color(0xFF34567D),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: stageWidth,
-                                      child: Text(
-                                        stage,
-                                        style: TextStyle(
-                                          color: stageColor,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: paidWidth,
-                                      child: Text(
-                                        '₹${paid.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF34567D),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: feeWidth,
-                                      child: Text(
-                                        '₹${consultantFee.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFFD6455D),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: netWidth,
-                                      child: Text(
-                                        formatIndianShortCurrency(appointmentNet),
-                                        style: TextStyle(
-                                          color: appointmentNet >= 0
-                                              ? const Color(0xFF2BA58D)
-                                              : const Color(0xFFD6455D),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: statusWidth,
-                                      child: _statusPill(
-                                        paymentStatus,
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: actionWidth,
-                                      child: IconButton(
-                                        icon: const Icon(
-                                          FluentIcons.edit,
-                                          size: 14,
-                                        ),
-                                        onPressed: () {
-                                          openAppointmentJourneyDialog(
-                                            context,
-                                            appointment,
-                                            initialStep: 2,
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ],
+                              ),
+                              _inlineMetric(
+                                'Patients Seen',
+                                '${doctorAppts.length}',
+                                const Color(0xFF2D7BD8),
+                              ),
+                              const SizedBox(width: 8),
+                              _inlineMetric(
+                                'Revenue',
+                                formatIndianShortCurrency(earned),
+                                const Color(0xFF2BA58D),
+                              ),
+                              const SizedBox(width: 8),
+                              _inlineMetric(
+                                'Doctors Fee',
+                                formatIndianShortCurrency(doctorFee),
+                                const Color(0xFFD6455D),
+                              ),
+                              const SizedBox(width: 8),
+                              _inlineMetric(
+                                'Net Profit',
+                                '${formatIndianShortCurrency(doctorNet)} (${doctorNetPct.toStringAsFixed(1)}%)',
+                                doctorNet >= 0
+                                    ? const Color(0xFF2BA58D)
+                                    : const Color(0xFFD6455D),
+                                width: 186,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        content: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: ConstrainedBox(
+                            constraints:
+                                BoxConstraints(minWidth: minTableWidth),
+                            child: Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF5FF),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                          width: patientWidth,
+                                          child: const Text('Patient',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                      SizedBox(
+                                          width: timeWidth,
+                                          child: const Text('Time',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                      SizedBox(
+                                          width: treatmentWidth,
+                                          child: const Text('Treatment',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                      SizedBox(
+                                          width: toothWidth,
+                                          child: const Text('Tooth/Area',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                      SizedBox(
+                                          width: stageWidth,
+                                          child: const Text('Stage',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                      SizedBox(
+                                          width: paidWidth,
+                                          child: const Text('Paid',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                      SizedBox(
+                                          width: feeWidth,
+                                          child: const Text('Fee',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                      SizedBox(
+                                          width: netWidth,
+                                          child: const Text('Net',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                      SizedBox(
+                                          width: statusWidth,
+                                          child: const Text('Status',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                      SizedBox(
+                                          width: actionWidth,
+                                          child: const Text('Edit',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF355279)))),
+                                    ],
+                                  ),
+                                ),
+                                ...doctorAppts.map((appointment) {
+                                  final end = appointment.date
+                                      .add(const Duration(minutes: 40));
+                                  final treatment = appointment
+                                      .selectedTreatments
+                                      .where((t) => t.trim().isNotEmpty)
+                                      .join(', ');
+                                  final tooth =
+                                      appointment.selectedTeeth.isEmpty
+                                          ? '-'
+                                          : appointment.selectedTeeth.first;
+                                  final stage = _stageLabel(appointment);
+                                  final stageColor = _stageColor(stage);
+                                  final paid = appointment.paid +
+                                      appointment.prescriptionPaid;
+                                  final consultantFee =
+                                      appointment.doctorPayableAmount;
+                                  final appointmentNet = paid - consultantFee;
+                                  final paymentStatus =
+                                      _paymentStatusForAppointment(appointment);
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 0),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(0),
+                                      border: const Border(
+                                        bottom: BorderSide(
+                                          color: Color(0xFFE2ECF8),
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        SizedBox(
+                                          width: patientWidth,
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: GestureDetector(
+                                                  onTap: () =>
+                                                      _openPatientEditor(appointment),
+                                                  child: Text(
+                                                    appointment.title.trim().isEmpty
+                                                        ? 'Unnamed patient'
+                                                        : _doctorTitleCase(
+                                                            appointment.title),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      color: AppColors.textActive,
+                                                      fontWeight: FontWeight.w700,
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              Tooltip(
+                                                message: 'Patient History',
+                                                child: IconButton(
+                                                  icon: const Icon(
+                                                    FluentIcons.history,
+                                                    size: 12,
+                                                  ),
+                                                  onPressed: () =>
+                                                      _openPatientHistory(appointment),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: timeWidth,
+                                          child: Text(
+                                            '${DateFormat('hh:mm a').format(appointment.date)} - ${DateFormat('hh:mm a').format(end)}',
+                                            style: const TextStyle(
+                                              color: Color(0xFF4D6488),
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: treatmentWidth,
+                                          child: Text(
+                                            treatment.isEmpty ? '-' : treatment,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: Color(0xFF34567D),
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: toothWidth,
+                                          child: Text(
+                                            tooth,
+                                            style: const TextStyle(
+                                              color: Color(0xFF34567D),
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: stageWidth,
+                                          child: Text(
+                                            stage,
+                                            style: TextStyle(
+                                              color: stageColor,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: paidWidth,
+                                          child: Text(
+                                            '₹${paid.toStringAsFixed(0)}',
+                                            style: const TextStyle(
+                                              color: Color(0xFF34567D),
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: feeWidth,
+                                          child: Text(
+                                            '₹${consultantFee.toStringAsFixed(0)}',
+                                            style: const TextStyle(
+                                              color: Color(0xFFD6455D),
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: netWidth,
+                                          child: Text(
+                                            formatIndianShortCurrency(
+                                                appointmentNet),
+                                            style: TextStyle(
+                                              color: appointmentNet >= 0
+                                                  ? const Color(0xFF2BA58D)
+                                                  : const Color(0xFFD6455D),
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: statusWidth,
+                                          child: _statusPill(
+                                            paymentStatus,
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: actionWidth,
+                                          child: IconButton(
+                                            icon: const Icon(
+                                              FluentIcons.edit,
+                                              size: 14,
+                                            ),
+                                            onPressed: () {
+                                              openAppointmentJourneyDialog(
+                                                context,
+                                                appointment,
+                                                initialStep: 2,
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     );
@@ -1825,32 +2112,32 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     return SizedBox(
       width: width,
       child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: AppTextTheme.textTheme.titleMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: AppTextTheme.textTheme.titleMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            label,
-            style: AppTextTheme.textTheme.bodySmall?.copyWith(
-              color: const Color(0xFF5D789D),
-              fontWeight: FontWeight.w500,
-              fontSize: 11,
+            Text(
+              label,
+              style: AppTextTheme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF5D789D),
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -1968,26 +2255,26 @@ List<Appointment> _scopedForRange({
   final start = range == 'custom' && customRangeStart != null
       ? dateOnly(customRangeStart)
       : rangeStart(selectedDate, range);
-    final endExclusive = range == 'custom' && customRangeEnd != null
+  final endExclusive = range == 'custom' && customRangeEnd != null
       ? dateOnly(customRangeEnd).add(const Duration(days: 1))
       : range == 'month'
-        ? DateTime(start.year, start.month + 1, 1)
-        : dateOnly(selectedDate).add(const Duration(days: 1));
+          ? DateTime(start.year, start.month + 1, 1)
+          : dateOnly(selectedDate).add(const Duration(days: 1));
 
   return allAppointments
       .where((a) => !a.date.isBefore(start) && a.date.isBefore(endExclusive))
       .toList(growable: false);
 }
 
-List<({
-  Doctor doctor,
-  int doneCount,
-  int totalCount,
-  double earned,
-  double consultFee,
-  double revenue,
-})>
-    _doctorDoneMetrics({
+List<
+    ({
+      Doctor doctor,
+      int doneCount,
+      int totalCount,
+      double earned,
+      double consultFee,
+      double revenue,
+    })> _doctorDoneMetrics({
   required List<Doctor> doctorsList,
   required List<Appointment> scoped,
 }) {
@@ -2403,8 +2690,7 @@ class _DoctorAppointmentDoneChartCard extends StatefulWidget {
         double earned,
         double consultFee,
         double revenue,
-      })>
-      rows;
+      })> rows;
   final String selectedRange;
   final DateTime monthAnchor;
   final List<DateTime> monthOptions;
@@ -2567,7 +2853,8 @@ class _DoctorAppointmentDoneChartCardState
           children: [
             Row(
               children: [
-                const Icon(FluentIcons.health, size: 16, color: Color(0xFF2D7BD8)),
+                const Icon(FluentIcons.health,
+                    size: 16, color: Color(0xFF2D7BD8)),
                 const SizedBox(width: 8),
                 const Text(
                   'Appointments Done By Doctor',
@@ -2638,7 +2925,8 @@ class _DoctorAppointmentDoneChartCardState
                 tab('custom', 'Custom'),
               ],
             ),
-            if (widget.selectedRange == 'month' && widget.monthOptions.isNotEmpty) ...[
+            if (widget.selectedRange == 'month' &&
+                widget.monthOptions.isNotEmpty) ...[
               const SizedBox(height: 8),
               SizedBox(
                 width: 200,
@@ -2674,7 +2962,8 @@ class _DoctorAppointmentDoneChartCardState
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
                       decoration: const BoxDecoration(
                         color: Color(0xFFEFF5FF),
                       ),
@@ -2709,7 +2998,8 @@ class _DoctorAppointmentDoneChartCardState
                       ),
                     ),
                     ...sortedRows.take(12).map((row) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 9),
                           decoration: const BoxDecoration(
                             border: Border(
                               top: BorderSide(color: Color(0xFFE2ECF8)),
@@ -2794,9 +3084,7 @@ class _DoctorAppointmentDoneChartCardState
                     : FluentIcons.chevron_down)
                 : FluentIcons.sort,
             size: 10,
-            color: selected
-                ? const Color(0xFF2D7BD8)
-                : const Color(0xFF6D84A8),
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFF6D84A8),
           ),
         ],
       ),
@@ -3021,9 +3309,9 @@ class _DoctorDrilldownCard extends StatelessWidget {
     };
 
     final currentEarnings =
-      currentRows.fold<double>(0, (s, a) => s + a.doctorPayableAmount);
+        currentRows.fold<double>(0, (s, a) => s + a.doctorPayableAmount);
     final compareEarnings =
-      compareRows.fold<double>(0, (s, a) => s + a.doctorPayableAmount);
+        compareRows.fold<double>(0, (s, a) => s + a.doctorPayableAmount);
 
     return DecoratedBox(
       decoration: BoxDecoration(

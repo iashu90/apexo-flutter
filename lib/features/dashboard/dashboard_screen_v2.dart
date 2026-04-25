@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
 import 'package:apexo/core/theme/app_colors.dart';
+import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
@@ -317,7 +318,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: Text(
                                     patientName,
                                     style: const TextStyle(
-                                      color: AppColors.textActive,
+                                      color: AppColors.success,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -330,7 +331,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     Text(
                                       age > 0 ? 'Age: $age' : 'Age: -',
                                       style: const TextStyle(
-                                        color: AppColors.textSecondary,
+                                        color: AppColors.success,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -339,7 +340,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       Text(
                                         phone,
                                         style: const TextStyle(
-                                          color: AppColors.textSecondary,
+                                          color: AppColors.success,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -429,9 +430,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final todaysAppointments = appointments.forDate(selectedDate)
           ..sort((a, b) => a.date.compareTo(b.date));
 
-        final allAppointments = appointments.present.values.toList(growable: false);
+        final allAppointments =
+            appointments.present.values.toList(growable: false);
         final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
-        final tableAppointments = _filteredAndSorted(_treatmentFiltered(doctorScopedAppointments));
+        final tableAppointments =
+            _filteredAndSorted(_treatmentFiltered(doctorScopedAppointments));
         final treatmentStats =
             DashboardTreatmentStats.from(doctorScopedAppointments);
 
@@ -452,36 +455,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .map((entry) => entry.key)
             .toSet();
 
-        final waiting = doctorScopedAppointments
-            .where((appointment) {
-              final stage = normalizeCheckinStage(appointment.checkinStage);
-              return stage == 'waiting';
-            })
-            .length;
-        final scheduled = doctorScopedAppointments
-            .where((appointment) {
-              final stage = normalizeCheckinStage(appointment.checkinStage);
-              return stage == 'scheduled';
-            })
-            .length;
-        final treatment = doctorScopedAppointments
-            .where((appointment) {
-              final stage = normalizeCheckinStage(appointment.checkinStage);
-              return stage == 'with_doctor';
-            })
-            .length;
-        final billing = doctorScopedAppointments
-            .where((appointment) {
-              final stage = normalizeCheckinStage(appointment.checkinStage);
-              return stage == 'checkout';
-            })
-            .length;
-        final completed = doctorScopedAppointments
-            .where((appointment) {
-              final stage = normalizeCheckinStage(appointment.checkinStage);
-              return stage == 'completed';
-            })
-            .length;
+        final waiting = doctorScopedAppointments.where((appointment) {
+          final stage = normalizeCheckinStage(appointment.checkinStage);
+          return stage == 'waiting';
+        }).length;
+        final scheduled = doctorScopedAppointments.where((appointment) {
+          final stage = normalizeCheckinStage(appointment.checkinStage);
+          return stage == 'scheduled';
+        }).length;
+        final treatment = doctorScopedAppointments.where((appointment) {
+          final stage = normalizeCheckinStage(appointment.checkinStage);
+          return stage == 'with_doctor';
+        }).length;
+        final billing = doctorScopedAppointments.where((appointment) {
+          final stage = normalizeCheckinStage(appointment.checkinStage);
+          return stage == 'checkout';
+        }).length;
+        final completed = doctorScopedAppointments.where((appointment) {
+          final stage = normalizeCheckinStage(appointment.checkinStage);
+          return stage == 'completed';
+        }).length;
 
         final newPatients = doctorScopedAppointments
             .where((appointment) => appointment.firstAppointmentForThisPatient)
@@ -516,7 +509,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         for (final appointment in doctorScopedAppointments) {
           final totalPayment = appointment.paid + appointment.prescriptionPaid;
-          final isDigital = appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
+          final isDigital =
+              appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
           final hour = appointment.date.hour;
 
           if (hour < 15) {
@@ -551,7 +545,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _treatmentDistributionRows(todaysAppointments);
 
         return Container(
-          color: material.Theme.of(context).scaffoldBackgroundColor,
+          color: AppTheme.light.scaffoldBackgroundColor,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
             child: Column(
@@ -861,7 +855,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final formatter = NumberFormat('#,##0.##');
     return '₹${formatter.format(value)}';
   }
-
 }
 
 class _PatientGrowthMetricsCard extends StatelessWidget {
@@ -973,93 +966,6 @@ class _RightDashboardColumn extends StatelessWidget {
           onClearFilters: onClearFilters,
         ),
       ],
-    );
-  }
-}
-
-class _AppointmentTimingSummaryCard extends StatelessWidget {
-  final List<Appointment> appointmentsForView;
-
-  const _AppointmentTimingSummaryCard({required this.appointmentsForView});
-
-  @override
-  Widget build(BuildContext context) {
-    final morning = _countRange(appointmentsForView, 6, 11);
-    final afternoon = _countRange(appointmentsForView, 12, 16);
-    final evening = _countRange(appointmentsForView, 17, 21);
-    final other = appointmentsForView.length - morning - afternoon - evening;
-
-    return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Appointment Timing Summary',
-            style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF183A67)),
-          ),
-          const SizedBox(height: 10),
-          _TimingLine(label: 'Morning (6 AM - 11:59 AM)', count: morning),
-          _TimingLine(label: 'Afternoon (12 PM - 4:59 PM)', count: afternoon),
-          _TimingLine(label: 'Evening (5 PM - 9:59 PM)', count: evening),
-          if (other > 0) _TimingLine(label: 'Other Hours', count: other),
-          const SizedBox(height: 8),
-          Text(
-            'Total visible appointments: ${appointmentsForView.length}',
-            style: const TextStyle(
-              color: Color(0xFF2A4A73),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  int _countRange(List<Appointment> list, int startHour, int endHour) {
-    return list
-        .where((a) => a.date.hour >= startHour && a.date.hour <= endHour)
-        .length;
-  }
-}
-
-class _TimingLine extends StatelessWidget {
-  final String label;
-  final int count;
-
-  const _TimingLine({required this.label, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        color: const Color(0xFFF6F9FE),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF27456D),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Text(
-            '$count',
-            style: const TextStyle(
-              color: Color(0xFF1A3D69),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1530,7 +1436,7 @@ class _AppointmentRow extends StatelessWidget {
                   Text(
                     _toTitleCase(appointment.title),
                     style: const TextStyle(
-                      color: Color(0xFF1459AD),
+                      color: AppColors.textActive,
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
@@ -1539,7 +1445,7 @@ class _AppointmentRow extends StatelessWidget {
                   Text(
                     '$patientPhone • ${patientAge}y',
                     style: const TextStyle(
-                      color: Color(0xFF7C93B1),
+                      color: AppColors.textMuted,
                       fontSize: 11,
                     ),
                     maxLines: 1,
@@ -1548,7 +1454,7 @@ class _AppointmentRow extends StatelessWidget {
                   Text(
                     previousVisitText,
                     style: const TextStyle(
-                      color: Color(0xFF7C93B1),
+                      color: AppColors.textMuted,
                       fontSize: 11,
                     ),
                     maxLines: 1,
@@ -1560,14 +1466,14 @@ class _AppointmentRow extends StatelessWidget {
           ),
           Expanded(
             flex: 13,
-            child: Text(doctorName,
-                style: const TextStyle(color: Color(0xFF2D476D))),
+            child: Text(_toTitleCase(doctorName),
+                style: const TextStyle(color: AppColors.textSecondary)),
           ),
           Expanded(
             flex: 14,
             child: Text(
               treatment,
-              style: const TextStyle(color: Color(0xFF2D476D)),
+              style: const TextStyle(color: AppColors.textSecondary),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1604,7 +1510,7 @@ class _AppointmentRow extends StatelessWidget {
                 Text(
                   isDigital ? 'UPI' : 'Cash',
                   style: const TextStyle(
-                    color: Color(0xFF2D476D),
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1616,7 +1522,7 @@ class _AppointmentRow extends StatelessWidget {
             child: Text(
               '₹${payment.toStringAsFixed(0)}',
               style: const TextStyle(
-                color: Color(0xFF2D476D),
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
