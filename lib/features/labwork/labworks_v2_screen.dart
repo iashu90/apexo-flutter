@@ -283,21 +283,21 @@ class _LabworksScreenState extends State<LabworksScreen> {
 
     final cards = [
       (
-        title: 'In Lab',
+        title: 'LAB',
         subtitle: 'cases',
         value: '$inLab',
         color: const Color(0xFFE09C31),
         icon: FluentIcons.test_beaker,
       ),
       (
-        title: 'Ready',
+        title: 'READY',
         subtitle: 'cases',
         value: '$ready',
         color: const Color(0xFF2D7BD8),
         icon: FluentIcons.check_mark,
       ),
       (
-        title: 'Delivered',
+        title: 'DELIVERED',
         subtitle:
             '${filteredDues.length} due${filteredDues.length == 1 ? '' : 's'}',
         value: filteredDueAmount <= 0

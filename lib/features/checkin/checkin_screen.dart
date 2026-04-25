@@ -1070,26 +1070,31 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              AppButton(
-                                label: 'Edit',
-                                compact: true,
-                                variant: AppButtonVariant.secondary,
-                                onPressed: () =>
-                                    _upsertScheduledFollowUpAppointment(
-                                  context,
-                                  appointment,
-                                  existingScheduled: row,
+                              Tooltip(
+                                message: 'Edit scheduled appointment',
+                                child: IconButton(
+                                  icon: const Icon(FluentIcons.edit, size: 14),
+                                  onPressed: () =>
+                                      _upsertScheduledFollowUpAppointment(
+                                    context,
+                                    appointment,
+                                    existingScheduled: row,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              AppButton(
-                                label: 'Delete',
-                                compact: true,
-                                variant: AppButtonVariant.danger,
-                                onPressed: () =>
-                                    _confirmDeleteScheduledFollowUpAppointment(
-                                  context,
-                                  row,
+                              Tooltip(
+                                message: 'Delete scheduled appointment',
+                                child: IconButton(
+                                  icon: const Icon(
+                                    FluentIcons.delete,
+                                    size: 14,
+                                    color: Color(0xFFD6455D),
+                                  ),
+                                  onPressed: () =>
+                                      _confirmDeleteScheduledFollowUpAppointment(
+                                    context,
+                                    row,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1106,14 +1111,8 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
                 totalPaidOverride: appointment.paid,
                 includeTodayInOutstanding: true,
                 showTreatmentAndToothSection: false,
-                separateScheduleSection: true,
-                scheduledAppointmentText: scheduledNext != null
-                    ? DateFormat('dd MMM yyyy • h:mm a')
-                        .format(scheduledNext.date)
-                    : null,
-                scheduledAppointmentTexts: upcomingForPatient
-                    .map((row) => DateFormat('dd MMM yyyy • h:mm a').format(row.date))
-                    .toList(growable: false),
+                separateScheduleSection: false,
+                showScheduleSection: false,
                 onScheduleAppointment: () {
                   _upsertScheduledFollowUpAppointment(
                     context,
@@ -5413,6 +5412,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   onShare: _openShareOptions,
                   doctorNames: doctorNames,
                   scheduledAppointmentText: nextScheduledText,
+                  scheduledAppointmentTexts: upcomingAppointments
+                    .map((row) => DateFormat('dd MMM yyyy • h:mm a').format(row.date))
+                    .toList(growable: false),
+                  separateScheduleSection: true,
                   onScheduleAppointment: (a.patientID ?? '').trim().isEmpty
                       ? null
                       : _scheduleAppointmentFromBilling,
@@ -5498,6 +5501,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
   final bool includeTodayInOutstanding;
   final bool showTreatmentAndToothSection;
   final bool separateScheduleSection;
+  final bool showScheduleSection;
 
   const _CheckoutBillingSummaryPanel({
     required this.appointment,
@@ -5513,6 +5517,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     this.includeTodayInOutstanding = true,
     this.showTreatmentAndToothSection = true,
     this.separateScheduleSection = false,
+    this.showScheduleSection = true,
   });
 
   @override
@@ -5664,7 +5669,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
               'Patient ID: ${a.patientID ?? '-'}',
               style: const TextStyle(color: Color(0xFF5A7397)),
             ),
-            if (!separateScheduleSection) ...[
+            if (showScheduleSection && !separateScheduleSection) ...[
               const SizedBox(height: 10),
               Container(
                 width: double.infinity,
@@ -5752,7 +5757,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
             ],
           ],
         ),
-        if (separateScheduleSection)
+        if (showScheduleSection && separateScheduleSection)
           sectionCard(
             title: 'Scheduled Appointment',
             trailing: (onScheduleAppointment == null &&
@@ -6150,25 +6155,31 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        AppButton(
-                          label: 'Edit',
-                          compact: true,
-                          variant: AppButtonVariant.secondary,
-                          onPressed: () => _upsertScheduledFollowUpAppointment(
-                            context,
-                            appointment,
-                            existingScheduled: row,
+                        Tooltip(
+                          message: 'Edit scheduled appointment',
+                          child: IconButton(
+                            icon: const Icon(FluentIcons.edit, size: 14),
+                            onPressed: () =>
+                                _upsertScheduledFollowUpAppointment(
+                              context,
+                              appointment,
+                              existingScheduled: row,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        AppButton(
-                          label: 'Delete',
-                          compact: true,
-                          variant: AppButtonVariant.danger,
-                          onPressed: () =>
-                              _confirmDeleteScheduledFollowUpAppointment(
-                            context,
-                            row,
+                        Tooltip(
+                          message: 'Delete scheduled appointment',
+                          child: IconButton(
+                            icon: const Icon(
+                              FluentIcons.delete,
+                              size: 14,
+                              color: Color(0xFFD6455D),
+                            ),
+                            onPressed: () =>
+                                _confirmDeleteScheduledFollowUpAppointment(
+                              context,
+                              row,
+                            ),
                           ),
                         ),
                       ],
