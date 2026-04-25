@@ -57,9 +57,26 @@ class _ReportScreenState extends State<ReportScreen> {
             return LayoutBuilder(
               builder: (context, constraints) {
                 final available = constraints.maxWidth;
-                final twoColWidth = available >= 900
-                    ? (available - 10) / 2
-                    : available;
+                const spacing = 10.0;
+                const maxCrossAxisExtent = 620.0;
+                final columnCount = math.max(
+                  1,
+                  ((available + spacing) / (maxCrossAxisExtent + spacing))
+                      .floor(),
+                );
+                final tileWidth =
+                    (available - ((columnCount - 1) * spacing)) / columnCount;
+
+                Widget responsiveGrid(List<Widget> cards) {
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: cards
+                        .map((card) => SizedBox(width: tileWidth, child: card))
+                        .toList(growable: false),
+                  );
+                }
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -115,80 +132,44 @@ class _ReportScreenState extends State<ReportScreen> {
                     ),
                     const SizedBox(height: 10),
                     if (!_showHeavyCards)
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: List<Widget>.generate(
+                      responsiveGrid(
+                        List<Widget>.generate(
                           10,
-                          (_) => SizedBox(
-                            width: twoColWidth,
-                            child: _ReportSkeletonCard(width: twoColWidth),
-                          ),
+                          (_) => _ReportSkeletonCard(width: tileWidth),
                           growable: false,
                         ),
                       )
                     else
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _MonthlyAppointmentsTrendSection(
+                      responsiveGrid(
+                        [
+                          _MonthlyAppointmentsTrendSection(
                               rows: allAppointments,
                               windowOffset: _monthlyOffset,
                             ),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _MonthlyRevenueTrendSection(
+                          _MonthlyRevenueTrendSection(
                               rows: allAppointments,
                               windowOffset: _monthlyOffset,
                             ),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _MonthlyExpensesTrendSection(
+                          _MonthlyExpensesTrendSection(
                               rows: allExpenses,
                               windowOffset: _monthlyOffset,
                             ),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _MonthlyNetRevenueTrendSection(
+                          _MonthlyNetRevenueTrendSection(
                               appointmentsRows: allAppointments,
                               expenseRows: allExpenses,
                               windowOffset: _monthlyOffset,
                             ),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _ReferralSourceDistributionCard(),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _MonthlyTreatmentDistributionCard(
+                          _ReferralSourceDistributionCard(),
+                          _MonthlyTreatmentDistributionCard(
                               rows: allAppointments,
                               monthOffset: _monthlyOffset,
                             ),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _TrafficByTimeCard(rows: allAppointments),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _TrafficByDayCard(rows: allAppointments),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _ReportDoctorAppointmentDoneCard(
+                          _TrafficByTimeCard(rows: allAppointments),
+                          _TrafficByDayCard(rows: allAppointments),
+                          _ReportDoctorAppointmentDoneCard(
                               rows: allAppointments,
                             ),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: Column(
+                          Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _ReportGenderDistributionCard(rows: allAppointments),
@@ -198,11 +179,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                 _ReportAgeDistributionCard(rows: allAppointments),
                               ],
                             ),
-                          ),
-                          SizedBox(
-                            width: twoColWidth,
-                            child: _PaymentModeStatusCard(rows: allAppointments),
-                          ),
+                          _PaymentModeStatusCard(rows: allAppointments),
                         ],
                       ),
                   ],
@@ -1227,7 +1204,7 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month - monthOffset, 1);
     final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
-    final scoped = this.rows
+    final scoped = rows
         .where((a) => !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
         .toList(growable: false);
     final distributionRows = _treatmentDistributionRows(scoped);

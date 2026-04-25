@@ -287,14 +287,12 @@ class _LabworksScreenState extends State<LabworksScreen> {
         subtitle: 'cases',
         value: '$inLab',
         color: const Color(0xFFE09C31),
-        icon: FluentIcons.test_beaker,
       ),
       (
         title: 'READY',
         subtitle: 'cases',
         value: '$ready',
         color: const Color(0xFF2D7BD8),
-        icon: FluentIcons.check_mark,
       ),
       (
         title: 'DELIVERED',
@@ -306,7 +304,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
         color: filteredDues.isEmpty
             ? const Color(0xFF2BA58D)
             : const Color(0xFFD6455D),
-        icon: FluentIcons.checkbox_composite,
       ),
     ];
 
@@ -324,7 +321,6 @@ class _LabworksScreenState extends State<LabworksScreen> {
                 subtitle: cards[i].subtitle,
                 value: cards[i].value,
                 valueColor: cards[i].color,
-                icon: Icon(cards[i].icon, size: 14, color: cards[i].color),
               ),
             );
           }),

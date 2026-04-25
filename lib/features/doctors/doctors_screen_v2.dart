@@ -26,6 +26,7 @@ import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:apexo/utils/appointment_analytics.dart';
 import 'package:apexo/utils/indian_money.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
@@ -122,7 +123,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   void _showTopRangeLoading() {
     _topRangeLoadingTimer?.cancel();
     _setTopRangeLoadingDialog(true);
-    _topRangeLoadingTimer = Timer(const Duration(milliseconds: 380), () {
+    _topRangeLoadingTimer = Timer(const Duration(milliseconds: 720), () {
       if (!mounted) return;
       _setTopRangeLoadingDialog(false);
     });
@@ -1341,11 +1342,10 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   bool _isExportingPdf = false;
 
   Future<void> _openPatientEditor(Appointment appointment) async {
-    final patient = appointment.patient;
-    if (patient == null) return;
-    await openAddPatientPopup(
-      context: context,
-      existingPatient: patient,
+    await openAppointmentJourneyDialog(
+      context,
+      appointment,
+      initialStep: 1,
     );
   }
 
@@ -1737,7 +1737,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                     final baseFeeWidth = compact ? 100.0 : 120.0;
                     final baseNetWidth = compact ? 100.0 : 120.0;
                     final baseStatusWidth = compact ? 82.0 : 90.0;
-                    final baseActionWidth = compact ? 72.0 : 82.0;
+                    final baseActionWidth = compact ? 104.0 : 118.0;
                     final baseTableWidth = basePatientWidth +
                         baseTimeWidth +
                         baseTreatmentWidth +
@@ -1900,7 +1900,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                                   color: Color(0xFF355279)))),
                                       SizedBox(
                                           width: actionWidth,
-                                          child: const Text('Edit',
+                                          child: const Text('Actions',
                                               style: TextStyle(
                                                   fontWeight: FontWeight.w700,
                                                   color: Color(0xFF355279)))),
@@ -1945,18 +1945,6 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                     ),
                                     child: Row(
                                       children: [
-                                        Tooltip(
-                                          message: 'Patient History',
-                                          child: IconButton(
-                                            icon: const Icon(
-                                              FluentIcons.history,
-                                              size: 12,
-                                            ),
-                                            onPressed: () =>
-                                                _openPatientHistory(
-                                                    appointment),
-                                          ),
-                                        ),
                                         SizedBox(
                                           width: patientWidth,
                                           child: Row(
@@ -1991,7 +1979,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                         SizedBox(
                                           width: timeWidth,
                                           child: Text(
-                                            '${DateFormat('hh:mm a').format(appointment.date)} - ${DateFormat('hh:mm a').format(end)}',
+                                            '${formatClinicDateTime(appointment.date, pattern: 'hh:mm a')} - ${formatClinicDateTime(end, pattern: 'hh:mm a')}',
                                             style: const TextStyle(
                                               color: Color(0xFF4D6488),
                                               fontWeight: FontWeight.w600,
@@ -2070,20 +2058,43 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                             paymentStatus,
                                           ),
                                         ),
+                                        const SizedBox(width: 8),
                                         SizedBox(
                                           width: actionWidth,
-                                          child: IconButton(
-                                            icon: const Icon(
-                                              FluentIcons.edit,
-                                              size: 14,
-                                            ),
-                                            onPressed: () {
-                                              openAppointmentJourneyDialog(
-                                                context,
-                                                appointment,
-                                                initialStep: 2,
-                                              );
-                                            },
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.start,
+                                            children: [
+                                              Tooltip(
+                                                message: 'Patient History',
+                                                child: IconButton(
+                                                  icon: const Icon(
+                                                    FluentIcons.history,
+                                                    size: 13,
+                                                  ),
+                                                  onPressed: () =>
+                                                      _openPatientHistory(
+                                                          appointment),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Tooltip(
+                                                message: 'Edit treatment',
+                                                child: IconButton(
+                                                  icon: const Icon(
+                                                    FluentIcons.edit,
+                                                    size: 14,
+                                                  ),
+                                                  onPressed: () {
+                                                    openAppointmentJourneyDialog(
+                                                      context,
+                                                      appointment,
+                                                      initialStep: 1,
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],

@@ -6,7 +6,7 @@ import 'dart:typed_data';
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_search_button.dart';
-import 'package:apexo/common_widgets/patients_report_dialog.dart';
+import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
@@ -507,8 +507,16 @@ Future<void> openAppointmentJourneyDialog(
   Appointment appointment, {
   int? initialStep,
 }) async {
-  final startStep = initialStep?.clamp(0, 3) ??
+  final isDoctorLogin = permissions.currentRole == UserRole.doctor;
+  final rawStartStep = initialStep?.clamp(0, 3) ??
       _stepIndexFromStageValue(appointment.checkinStage);
+  final startStep = isDoctorLogin
+      ? (rawStartStep == 3
+          ? 2
+          : rawStartStep == 2
+              ? 1
+              : rawStartStep)
+      : rawStartStep;
   final patient = appointment.patient;
   final patientContext =
       '${patient?.age ?? 0}y • ${_patientGenderShort(appointment)} • ${(patient?.phone.trim().isEmpty ?? true) ? '-' : patient!.phone.trim()}';
@@ -517,6 +525,39 @@ Future<void> openAppointmentJourneyDialog(
       .toList(growable: false)
     ..sort((a, b) => b.date.compareTo(a.date));
   Widget stageBody(BuildContext context, int currentStep, double panelHeight) {
+    if (isDoctorLogin) {
+      if (currentStep == 0) {
+        return _PatientHistoryStepScreen(
+          appointment: appointment,
+          allAppointmentsForPatient: allAppointmentsForPatient,
+        );
+      }
+
+      if (currentStep == 1) {
+        return _CheckinTreatmentStageScreen(
+          appointment: appointment,
+          allAppointmentsForPatient: allAppointmentsForPatient,
+          forcedStage: 'with_doctor',
+          showInlineBottomActions: false,
+          boxed: true,
+          panelHeight: panelHeight,
+        );
+      }
+
+      final previousVisits = allAppointmentsForPatient
+          .where((row) => row.id != appointment.id)
+          .toList(growable: false)
+        ..sort((a, b) => b.date.compareTo(a.date));
+      final Appointment? lastVisit =
+          previousVisits.isEmpty ? null : previousVisits.first;
+
+      return _CheckinCompletedStageScreen(
+        appointment: appointment,
+        lastVisit: lastVisit,
+        boxed: true,
+      );
+    }
+
     if (currentStep == 0) {
       return _PatientHistoryStepScreen(
         appointment: appointment,
@@ -554,14 +595,26 @@ Future<void> openAppointmentJourneyDialog(
     patientName: _patientDisplayName(appointment),
     patientContext: patientContext,
     initialStep: startStep,
-    stepSubtitles: const [
-      'Checked In',
-      'Patient History',
-      'Treatment',
-      'Billing',
-      'Completed',
-    ],
+    stepSubtitles: isDoctorLogin
+        ? const [
+            'Checked In',
+            'Patient History',
+            'Treatment',
+            'Completed',
+          ]
+        : const [
+            'Checked In',
+            'Patient History',
+            'Treatment',
+            'Billing',
+            'Completed',
+          ],
     primaryActionLabelBuilder: (currentStep) {
+      if (isDoctorLogin) {
+        if (currentStep == 0) return 'Continue to Treatment';
+        if (currentStep == 1) return 'Treatment Complete';
+        return null;
+      }
       if (currentStep == 0) return 'Continue to Treatment';
       if (currentStep == 1) return 'Treatment Complete';
       if (currentStep == 2) return 'Billing Complete';
@@ -569,6 +622,15 @@ Future<void> openAppointmentJourneyDialog(
     },
     stepBuilder: stageBody,
     onBeforeStepAdvance: (dialogContext, currentStep, nextStep) async {
+      if (isDoctorLogin) {
+        if (nextStep == 2) {
+          appointment.checkinStage = 'completed';
+          appointment.isDone = true;
+        }
+        appointments.set(appointment);
+        return;
+      }
+
       if (nextStep == 2) {
         appointment.checkinStage = 'checkout';
         appointment.isDone = false;
@@ -2140,25 +2202,10 @@ class _WorkflowRow extends StatelessWidget {
   void _openPatientHistoryDialog(BuildContext context) {
     final patient = appointment.patient;
     if (patient == null) return;
-
-    showDialog(
+    showPatientHistoryDialog(
       context: context,
-      builder: (_) => Align(
-        alignment: Alignment.center,
-        child: Container(
-          color: Colors.white,
-          child: PatientDetailsDialog(
-            rows: patient.patientDetails,
-            patient: patient,
-            hiddenColumns: const [
-              'Prescription',
-              'P.Mode',
-              'Doc Paid',
-              'TotalDocPay',
-            ],
-          ),
-        ),
-      ),
+      patient: patient,
+      rows: patient.patientDetails,
     );
   }
 
@@ -4333,18 +4380,20 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary50 : AppColors.bgMain,
+          color: selected ? const Color(0xFFF3EDFF) : const Color(0xFFF7F9FD),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? AppColors.primary300 : AppColors.borderSoft,
+            color:
+                selected ? const Color(0xFFCDB9FF) : const Color(0xFFE1E8F3),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? AppColors.primary500 : AppColors.textSecondary,
+            color:
+                selected ? const Color(0xFF6D28D9) : const Color(0xFF52647B),
             fontSize: 12,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w700,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
