@@ -12,7 +12,6 @@ import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/en.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/version.dart';
-import 'package:apexo/theme/apexo_theme.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -120,7 +119,7 @@ class ApexoApp extends StatelessWidget {
             launch.layoutWidth = constraints.maxWidth;
             final hideSidePanel = routes.panels().isEmpty || !launch.open();
             return Container(
-              color: material.Theme.of(context).scaffoldBackgroundColor,
+            color: AppTheme.light.scaffoldBackgroundColor,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -150,7 +149,7 @@ class ApexoApp extends StatelessWidget {
       width: (!hideSidePanel) && constraints.maxWidth >= 710 ? constraints.maxWidth - 355 : constraints.maxWidth,
       child: Container(
         decoration: BoxDecoration(
-          color: material.Theme.of(context).scaffoldBackgroundColor,
+          color: AppTheme.light.scaffoldBackgroundColor,
           boxShadow: kElevationToShadow[4],
         ),
         child: Column(
@@ -162,9 +161,9 @@ class ApexoApp extends StatelessWidget {
                       padding: const EdgeInsets.all(14),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: ApexoThemeColors.surface,
+                          color: AppTheme.light.scaffoldBackgroundColor,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: ApexoThemeColors.divider),
+                          border: Border.all(color: AppTheme.light.dividerColor),
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),

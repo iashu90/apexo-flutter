@@ -18,6 +18,10 @@ typedef AppointmentJourneyBeforeAdvance = Future<void> Function(
   int nextStep,
 );
 
+typedef AppointmentJourneyPrimaryActionLabelBuilder = String? Function(
+  int currentStep,
+);
+
 Future<void> showAppointmentJourneyDialog({
   required BuildContext context,
   required String title,
@@ -27,15 +31,22 @@ Future<void> showAppointmentJourneyDialog({
   required AppointmentJourneyStepBuilder stepBuilder,
   AppointmentJourneyAssignHandler? onAssignFromWaiting,
   AppointmentJourneyBeforeAdvance? onBeforeStepAdvance,
-}) async {
-  var currentStep = initialStep.clamp(0, 2);
-  const labels = ['Step 1', 'Step 2', 'Step 3', 'Step 4'];
-  const subtitles = [
+  List<String> stepSubtitles = const [
     'Checked In',
     'Treatment',
     'Billing',
     'Completed',
-  ];
+  ],
+  AppointmentJourneyPrimaryActionLabelBuilder? primaryActionLabelBuilder,
+}) async {
+  final dynamicMaxStep = (stepSubtitles.length - 2).clamp(0, 8);
+  var currentStep = initialStep.clamp(0, dynamicMaxStep);
+  final labels = List<String>.generate(
+    stepSubtitles.length,
+    (index) => 'Step ${index + 1}',
+    growable: false,
+  );
+  final subtitles = stepSubtitles;
 
   List<Color> headerGradient(int step) {
     switch (step) {
@@ -73,9 +84,17 @@ Future<void> showAppointmentJourneyDialog({
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setStateDialog) {
         final screen = MediaQuery.of(context).size;
-        final dialogWidth = (screen.width - 30).clamp(760.0, 1020.0);
-        final dialogHeight = (screen.height * 0.9).clamp(560.0, screen.height);
-        final panelHeight = (dialogHeight * 0.58).clamp(320.0, 620.0);
+        final maxDialogWidth = (screen.width - 20).clamp(360.0, 1020.0);
+        final minDialogWidth = maxDialogWidth < 760.0 ? maxDialogWidth : 760.0;
+        final dialogWidth = (screen.width - 30).clamp(minDialogWidth, maxDialogWidth);
+
+        final maxDialogHeight = (screen.height - 20).clamp(360.0, 980.0);
+        final minDialogHeight = maxDialogHeight < 560.0 ? maxDialogHeight : 560.0;
+        final dialogHeight = (screen.height * 0.9).clamp(minDialogHeight, maxDialogHeight);
+
+        final maxPanelHeight = (dialogHeight - 220).clamp(220.0, 620.0);
+        final minPanelHeight = maxPanelHeight < 320.0 ? maxPanelHeight : 320.0;
+        final panelHeight = (dialogHeight * 0.58).clamp(minPanelHeight, maxPanelHeight);
 
         Widget stepNode(int index) {
           final isCheckinStep = index == 0;
@@ -88,7 +107,7 @@ Future<void> showAppointmentJourneyDialog({
           return GestureDetector(
             onTap: () {
               setStateDialog(() {
-                currentStep = targetStep.clamp(0, 2);
+                currentStep = targetStep.clamp(0, dynamicMaxStep);
               });
             },
             child: Column(
@@ -152,7 +171,7 @@ Future<void> showAppointmentJourneyDialog({
         }
 
         Future<void> handleContinue() async {
-          if (currentStep < 2) {
+          if (currentStep < dynamicMaxStep) {
             final beforeAdvance = onBeforeStepAdvance;
             if (beforeAdvance != null) {
               await beforeAdvance(context, currentStep, currentStep + 1);
@@ -167,6 +186,10 @@ Future<void> showAppointmentJourneyDialog({
         }
 
         String? currentPrimaryLabel() {
+          final builder = primaryActionLabelBuilder;
+          if (builder != null) {
+            return builder(currentStep);
+          }
           if (currentStep == 0) return 'Treatment Complete';
           if (currentStep == 1) return 'Billing Complete';
           return null;

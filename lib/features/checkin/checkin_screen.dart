@@ -12,9 +12,11 @@ import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/common_widgets/patient_timeline_card.dart';
+import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_badge.dart';
 import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
+import 'package:apexo/core/ui/components/app_table.dart';
 import 'package:apexo/core/ui/components/status_pill.dart';
 import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -27,6 +29,7 @@ import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
+import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
@@ -107,12 +110,15 @@ Future<void> _openPatientTimelineExperimentModal(
   await showDialog<void>(
     context: context,
     builder: (dialogContext) => ContentDialog(
-      title: const Text('Patient Timeline (Experimental)'),
+      title: const Text('Patient Timeline'),
       content: SizedBox(
-        width: 760,
-        child: PatientTimelineCard(
-          items: CheckinTimelineMapper.fromAppointments(timelineRows),
-          collapsedVisibleCount: 6,
+        width: 920,
+        height: 500,
+        child: SingleChildScrollView(
+          child: _CompactTimelineTable(
+            rows: timelineRows,
+            maxRows: 20,
+          ),
         ),
       ),
       actions: [
@@ -488,10 +494,10 @@ int _stepIndexFromStageValue(String stage) {
     return 0;
   }
   if (normalized == 'checkout' || normalized == 'billing') {
-    return 1;
+    return 2;
   }
   if (normalized == 'completed') {
-    return 2;
+    return 3;
   }
   return 0;
 }
@@ -501,7 +507,7 @@ Future<void> openAppointmentJourneyDialog(
   Appointment appointment, {
   int? initialStep,
 }) async {
-  final startStep = initialStep?.clamp(0, 2) ??
+  final startStep = initialStep?.clamp(0, 3) ??
       _stepIndexFromStageValue(appointment.checkinStage);
   final patient = appointment.patient;
   final patientContext =
@@ -511,11 +517,18 @@ Future<void> openAppointmentJourneyDialog(
       .toList(growable: false)
     ..sort((a, b) => b.date.compareTo(a.date));
   Widget stageBody(BuildContext context, int currentStep, double panelHeight) {
-    if (currentStep == 0 || currentStep == 1) {
+    if (currentStep == 0) {
+      return _PatientHistoryStepScreen(
+        appointment: appointment,
+        allAppointmentsForPatient: allAppointmentsForPatient,
+      );
+    }
+
+    if (currentStep == 1 || currentStep == 2) {
       return _CheckinTreatmentStageScreen(
         appointment: appointment,
         allAppointmentsForPatient: allAppointmentsForPatient,
-        forcedStage: currentStep == 1 ? 'checkout' : 'with_doctor',
+        forcedStage: currentStep == 2 ? 'checkout' : 'with_doctor',
         showInlineBottomActions: false,
         boxed: true,
         panelHeight: panelHeight,
@@ -541,18 +554,331 @@ Future<void> openAppointmentJourneyDialog(
     patientName: _patientDisplayName(appointment),
     patientContext: patientContext,
     initialStep: startStep,
+    stepSubtitles: const [
+      'Checked In',
+      'Patient History',
+      'Treatment',
+      'Billing',
+      'Completed',
+    ],
+    primaryActionLabelBuilder: (currentStep) {
+      if (currentStep == 0) return 'Continue to Treatment';
+      if (currentStep == 1) return 'Treatment Complete';
+      if (currentStep == 2) return 'Billing Complete';
+      return null;
+    },
     stepBuilder: stageBody,
     onBeforeStepAdvance: (dialogContext, currentStep, nextStep) async {
-      if (nextStep == 1) {
+      if (nextStep == 2) {
         appointment.checkinStage = 'checkout';
         appointment.isDone = false;
-      } else if (nextStep == 2) {
+      } else if (nextStep == 3) {
         appointment.checkinStage = 'completed';
         appointment.isDone = true;
       }
       appointments.set(appointment);
     },
   );
+}
+
+class _PatientHistoryStepScreen extends StatefulWidget {
+  final Appointment appointment;
+  final List<Appointment> allAppointmentsForPatient;
+
+  const _PatientHistoryStepScreen({
+    required this.appointment,
+    required this.allAppointmentsForPatient,
+  });
+
+  @override
+  State<_PatientHistoryStepScreen> createState() =>
+      _PatientHistoryStepScreenState();
+}
+
+class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
+  late Set<String> _selectedMedicalHistory;
+  late Set<String> _selectedDrugHistory;
+  late Set<String> _selectedMaternalHistory;
+  late Set<String> _selectedHabits;
+  bool _showMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final patient = widget.appointment.patient;
+    _selectedMedicalHistory = {...?patient?.tags};
+    _selectedDrugHistory = {...?patient?.drugHistorySuggestions};
+    _selectedMaternalHistory = {...?patient?.maternalHistorySuggestions};
+    _selectedHabits = {...?patient?.habitsSuggestions};
+  }
+
+  void _updatePatient(void Function(Patient patient) updater) {
+    final patient = widget.appointment.patient;
+    if (patient == null) return;
+    updater(patient);
+    patients.set(patient);
+  }
+
+  void _toggleItem(Set<String> selected, String value, void Function() onSave) {
+    setState(() {
+      if (selected.contains(value)) {
+        selected.remove(value);
+      } else {
+        selected.add(value);
+      }
+    });
+    onSave();
+  }
+
+  Widget _popupFieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1F446E),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectableHistoryChips({
+    required List<String> options,
+    required Set<String> selected,
+    required void Function(String value) onToggle,
+  }) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: options.map((item) {
+        final isSelected = selected.contains(item);
+        return GestureDetector(
+          onTap: () => onToggle(item),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color:
+                  isSelected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFF2D7BD8)
+                    : const Color(0xFFD4E2F3),
+              ),
+            ),
+            child: Text(
+              item,
+              style: TextStyle(
+                color: isSelected ? Colors.white : const Color(0xFF345982),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      }).toList(growable: false),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = widget.allAppointmentsForPatient
+        .where((row) => row.id != widget.appointment.id)
+        .toList(growable: false)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    final visibleCount = _showMore ? rows.length : rows.length.clamp(0, 5);
+    final visibleRows = rows.take(visibleCount).toList(growable: false);
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FBFF),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFDCE8F8)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _popupFieldLabel('Medical History:'),
+                _buildSelectableHistoryChips(
+                  options: patientMedicalHistorySuggestions,
+                  selected: _selectedMedicalHistory,
+                  onToggle: (value) => _toggleItem(
+                    _selectedMedicalHistory,
+                    value,
+                    () => _updatePatient(
+                      (patient) =>
+                          patient.tags = _selectedMedicalHistory.toList(growable: false),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _popupFieldLabel('Drug History:'),
+                _buildSelectableHistoryChips(
+                  options: patientDrugHistorySuggestions,
+                  selected: _selectedDrugHistory,
+                  onToggle: (value) => _toggleItem(
+                    _selectedDrugHistory,
+                    value,
+                    () => _updatePatient(
+                      (patient) => patient.drugHistorySuggestions =
+                          _selectedDrugHistory.toList(growable: false),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _popupFieldLabel('Maternal History:'),
+                _buildSelectableHistoryChips(
+                  options: patientMaternalHistorySuggestions,
+                  selected: _selectedMaternalHistory,
+                  onToggle: (value) => _toggleItem(
+                    _selectedMaternalHistory,
+                    value,
+                    () => _updatePatient(
+                      (patient) => patient.maternalHistorySuggestions =
+                          _selectedMaternalHistory.toList(growable: false),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _popupFieldLabel('Habits:'),
+                _buildSelectableHistoryChips(
+                  options: patientHabitsSuggestions,
+                  selected: _selectedHabits,
+                  onToggle: (value) => _toggleItem(
+                    _selectedHabits,
+                    value,
+                    () => _updatePatient(
+                      (patient) => patient.habitsSuggestions =
+                          _selectedHabits.toList(growable: false),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FBFF),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFDCE8F8)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Last Treatments',
+                  style: TextStyle(
+                    color: Color(0xFF2D476D),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (visibleRows.isEmpty)
+                  const Text(
+                    'No previous treatments found.',
+                    style: TextStyle(
+                      color: Color(0xFF5A7397),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                else
+                  Column(
+                    children: visibleRows.map((row) {
+                      final treatmentText = row.selectedTreatments
+                          .where((e) => e.trim().isNotEmpty)
+                          .join(', ')
+                          .trim();
+                      final doctorText = row.operators
+                          .map((d) => d.title.trim())
+                          .where((d) => d.isNotEmpty)
+                          .join(', ')
+                          .trim();
+                      final teethText =
+                          row.selectedTeeth.where((e) => e.trim().isNotEmpty).join(', ').trim();
+                      final diagnosisText =
+                          row.diagnosis.where((e) => e.trim().isNotEmpty).join(', ').trim();
+                      final complaintText = row.chiefComplaints
+                          .where((e) => e.trim().isNotEmpty)
+                          .join(', ')
+                          .trim();
+
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFDCE8F8)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateFormat('dd MMM yyyy').format(row.date),
+                              style: const TextStyle(
+                                color: Color(0xFF1F446E),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            _checkoutSummaryLine(
+                              'Treatment',
+                              treatmentText.isEmpty ? '-' : treatmentText,
+                            ),
+                            _checkoutSummaryLine(
+                              'Doctor',
+                              doctorText.isEmpty ? 'Unassigned' : doctorText,
+                            ),
+                            _checkoutSummaryLine(
+                              'Teeth',
+                              teethText.isEmpty ? '-' : teethText,
+                            ),
+                            _checkoutSummaryLine(
+                              'Diagnosis',
+                              diagnosisText.isEmpty ? '-' : diagnosisText,
+                            ),
+                            _checkoutSummaryLine(
+                              'Chief Complaint',
+                              complaintText.isEmpty ? '-' : complaintText,
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(growable: false),
+                  ),
+                if (rows.length > 5) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: AppButton(
+                      label: _showMore ? 'Show Less' : 'Show More',
+                      variant: AppButtonVariant.secondary,
+                      compact: true,
+                      onPressed: () => setState(() => _showMore = !_showMore),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CheckinTreatmentStageScreen extends StatelessWidget {
@@ -785,6 +1111,9 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
                     ? DateFormat('dd MMM yyyy • h:mm a')
                         .format(scheduledNext.date)
                     : null,
+                scheduledAppointmentTexts: upcomingForPatient
+                    .map((row) => DateFormat('dd MMM yyyy • h:mm a').format(row.date))
+                    .toList(growable: false),
                 onScheduleAppointment: () {
                   _upsertScheduledFollowUpAppointment(
                     context,
@@ -1022,7 +1351,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
             final isMobile = screenWidth < 760;
 
             return Container(
-              color: material.Theme.of(context).scaffoldBackgroundColor,
+              color: AppTheme.light.scaffoldBackgroundColor,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
                 child: Column(
@@ -2350,23 +2679,30 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                 ),
                 const Divider(size: 1),
                 const SizedBox(height: 10),
-                Text(
-                  isCheckout
-                      ? 'Today\'s Appointment Details'
-                      : 'Current Appointment Details',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF183A67),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                AppButton(
-                  label: 'Open Timeline (Experimental)',
-                  variant: AppButtonVariant.secondary,
-                  compact: true,
-                  onPressed: () =>
-                      _openPatientTimelineExperimentModal(context, appointment),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isCheckout
+                            ? 'Today\'s Appointment Details'
+                            : 'Current Appointment Details',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF183A67),
+                        ),
+                      ),
+                    ),
+                    AppButton(
+                      label: 'Timeline',
+                      variant: AppButtonVariant.secondary,
+                      compact: true,
+                      onPressed: () => _openPatientTimelineExperimentModal(
+                        context,
+                        appointment,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 if (!isCheckout)
@@ -2418,11 +2754,8 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: PatientTimelineCard(
-                          items: CheckinTimelineMapper.fromAppointments(
-                            timelineRows,
-                          ),
-                          collapsedVisibleCount: 3,
+                        child: _CompactTimelineTable(
+                          rows: timelineRows,
                         ),
                       ),
                     ],
@@ -2850,6 +3183,113 @@ class TodayAppointmentInsightCard extends StatelessWidget {
   }
 }
 
+class _CompactTimelineTable extends StatelessWidget {
+  final List<Appointment> rows;
+  final int maxRows;
+
+  const _CompactTimelineTable({
+    required this.rows,
+    this.maxRows = 5,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleRows = rows.take(maxRows).toList(growable: false);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FBFF),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Patient Timeline',
+            style: TextStyle(
+              color: Color(0xFF223B5E),
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (visibleRows.isEmpty)
+            const Text(
+              'No timeline entries available.',
+              style: TextStyle(
+                color: Color(0xFF5B7394),
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: 720,
+                child: AppTable(
+                  columns: const [
+                    material.DataColumn(label: Text('Date')),
+                    material.DataColumn(label: Text('Treatment')),
+                    material.DataColumn(label: Text('Doctor')),
+                    material.DataColumn(label: Text('Teeth')),
+                  ],
+                  rows: visibleRows
+                      .map(
+                        (row) => material.DataRow(
+                          cells: [
+                            material.DataCell(
+                              Text(DateFormat('dd MMM yyyy').format(row.date)),
+                            ),
+                            material.DataCell(
+                              Text(
+                                row.selectedTreatments
+                                        .where((e) => e.trim().isNotEmpty)
+                                        .join(', ')
+                                        .trim()
+                                        .isEmpty
+                                    ? '-'
+                                    : row.selectedTreatments
+                                        .where((e) => e.trim().isNotEmpty)
+                                        .join(', '),
+                              ),
+                            ),
+                            material.DataCell(
+                              Text(
+                                row.operators.isEmpty
+                                    ? 'Unassigned'
+                                    : row.operators
+                                        .map((doctor) => doctor.title.trim())
+                                        .where((name) => name.isNotEmpty)
+                                        .join(', '),
+                              ),
+                            ),
+                            material.DataCell(
+                              Text(
+                                row.selectedTeeth
+                                        .where((e) => e.trim().isNotEmpty)
+                                        .join(', ')
+                                        .trim()
+                                        .isEmpty
+                                    ? '-'
+                                    : row.selectedTeeth
+                                        .where((e) => e.trim().isNotEmpty)
+                                        .join(', '),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CheckinOperativeForm extends StatefulWidget {
   final Appointment appointment;
   final List<Appointment> allAppointmentsForPatient;
@@ -2877,6 +3317,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   bool _discountEnabled = false;
   Set<String> _selectedTreatments = {};
   Set<String> _selectedConsultationTypes = {};
+  Set<String> _selectedChiefComplaints = {};
   String _visitType = 'Consultation Only';
   String? _selectedPostOpParent;
   Set<String> _selectedTeeth = {};
@@ -2909,6 +3350,29 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     'Consultation Only',
     'New Problem / New Treatment',
     'Follow-up Visit',
+  ];
+
+  static const List<String> _chiefComplaintSuggestions = [
+    'Toothache',
+    'Sensitivity',
+    'Swelling',
+    'Bleeding',
+    'Cavity',
+    'Abscess',
+    'Gingivitis',
+    'Halitosis',
+    'Malocclusion',
+    'Impacted',
+    'Discoloration',
+    'Xerostomia',
+    'Bruxism',
+    'Orthodontics',
+    'Prophylaxis',
+    'Extraction',
+    'Restoration',
+    'Trauma',
+    'Periodontitis',
+    'Pulpitis',
   ];
 
   static const Map<String, List<String>> _postOpSuggestions = {
@@ -3029,6 +3493,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         text: a.discount == 0 ? '' : a.discount.toStringAsFixed(0));
     _discountEnabled = a.discount > 0;
     _selectedTreatments = a.selectedTreatments.toSet();
+    _selectedChiefComplaints = a.chiefComplaints.toSet();
     _selectedConsultationTypes =
         a.subTreatments.where((e) => e.trim().isNotEmpty).toSet();
     if (_selectedConsultationTypes.contains('Access opening') ||
@@ -3371,6 +3836,49 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           ),
                         );
                       }).toList(growable: false),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Chief Complaint', style: sectionTitleStyle),
+                    const SizedBox(height: 6),
+                    _CheckinSearchableTagInput(
+                      initialValues:
+                          _selectedChiefComplaints.toList(growable: false),
+                      suggestions: _chiefComplaintSuggestions,
+                      placeholder: 'Add chief complaint...',
+                      onChanged: (values) {
+                        setState(() {
+                          _selectedChiefComplaints = values.toSet();
+                          a.chiefComplaints = values;
+                          _scheduleAutosave();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _chiefComplaintSuggestions
+                          .map(
+                            (complaint) => _quickChip(
+                              label: complaint,
+                              selected:
+                                  _selectedChiefComplaints.contains(complaint),
+                              onTap: () {
+                                setState(() {
+                                  if (_selectedChiefComplaints
+                                      .contains(complaint)) {
+                                    _selectedChiefComplaints.remove(complaint);
+                                  } else {
+                                    _selectedChiefComplaints.add(complaint);
+                                  }
+                                  a.chiefComplaints = _selectedChiefComplaints
+                                      .toList(growable: false);
+                                  _scheduleAutosave();
+                                });
+                              },
+                            ),
+                          )
+                          .toList(growable: false),
                     ),
                     const SizedBox(height: 12),
                     InfoLabel(
@@ -3851,6 +4359,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ').trim().isEmpty
             ? '-'
             : a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ');
+    final chiefComplaintLabel = a.chiefComplaints
+        .where((d) => d.trim().isNotEmpty)
+        .join(', ')
+        .trim()
+        .isEmpty
+      ? '-'
+      : a.chiefComplaints.where((d) => d.trim().isNotEmpty).join(', ');
     final selectedTreatments =
         a.selectedTreatments.where((t) => t.trim().isNotEmpty).toList();
     final selectedSubTreatments =
@@ -3883,6 +4398,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
           _summaryLine('Teeth treated',
               treatedTeeth.isEmpty ? '-' : treatedTeeth.join(', ')),
           _summaryLine('Diagnosis', diagnosisLabel),
+            _summaryLine('Chief complaint', chiefComplaintLabel),
           _summaryLine('Treatment', treatmentLabel),
           _summaryLine('Cost', '₹${a.price.toStringAsFixed(0)}',
               valueColor: const Color(0xFF203A61)),
@@ -4976,6 +5492,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
   final VoidCallback? onShare;
   final List<String>? doctorNames;
   final String? scheduledAppointmentText;
+  final List<String>? scheduledAppointmentTexts;
   final VoidCallback? onScheduleAppointment;
   final VoidCallback? onDeleteScheduledAppointment;
   final bool includeTodayInOutstanding;
@@ -4990,6 +5507,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     this.onShare,
     this.doctorNames,
     this.scheduledAppointmentText,
+    this.scheduledAppointmentTexts,
     this.onScheduleAppointment,
     this.onDeleteScheduledAppointment,
     this.includeTodayInOutstanding = true,
@@ -5025,15 +5543,19 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
             return rowDate != appointmentDate;
           }).toList(growable: false);
 
+    final existingOutstandingRows = allPatientRows.where((row) {
+      final rowDate = DateTime(row.date.year, row.date.month, row.date.day);
+      return rowDate != appointmentDate;
+    }).toList(growable: false);
+
     final aggregatedOutstanding = outstandingRows.fold<double>(
       0,
       (sum, row) => sum + outstandingForAppointment(row),
     );
-    final overallOutstanding = allPatientRows.fold<double>(
+    final existingOutstanding = existingOutstandingRows.fold<double>(
       0,
       (sum, row) => sum + outstandingForAppointment(row),
     );
-
     final discountedTotal = a.discountType == 'percent'
         ? (a.price - (a.price * a.discount / 100)).clamp(0, double.infinity)
         : (a.price - a.discount).clamp(0, double.infinity);
@@ -5042,6 +5564,9 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
         allPatientRows.isEmpty ? outstanding : aggregatedOutstanding;
     final totalAfter =
         (totalPaidOverride ?? a.paid).clamp(0, double.infinity).toDouble();
+    final todayBalance =
+      (discountedTotal - totalAfter).clamp(0, double.infinity).toDouble();
+    final effectiveExisting = allPatientRows.isEmpty ? 0.0 : existingOutstanding;
     final status = outstanding <= 0 ? 'PAID' : 'DUE';
     final resolvedDoctorNames = doctorNames ??
         a.operators
@@ -5054,6 +5579,9 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
         .trim();
     final toothSummary =
         a.selectedTeeth.where((t) => t.trim().isNotEmpty).join(', ').trim();
+    final resolvedScheduledAppointments = (scheduledAppointmentTexts ?? const <String>[])
+      .where((entry) => entry.trim().isNotEmpty)
+      .toList(growable: false);
 
     Widget sectionCard({
       required String title,
@@ -5150,18 +5678,37 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        scheduledAppointmentText == null
-                            ? 'No scheduled appointment'
-                            : 'Next: $scheduledAppointmentText',
-                        style: TextStyle(
-                          color: scheduledAppointmentText == null
-                              ? const Color(0xFF5A7397)
-                              : const Color(0xFF184A9C),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
+                      child: resolvedScheduledAppointments.isEmpty
+                          ? Text(
+                              scheduledAppointmentText == null
+                                  ? 'No scheduled appointment'
+                                  : 'Next: $scheduledAppointmentText',
+                              style: TextStyle(
+                                color: scheduledAppointmentText == null
+                                    ? const Color(0xFF5A7397)
+                                    : const Color(0xFF184A9C),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: resolvedScheduledAppointments
+                                  .map(
+                                    (entry) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 2),
+                                      child: Text(
+                                        entry,
+                                        style: const TextStyle(
+                                          color: Color(0xFF184A9C),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(growable: false),
+                            ),
                     ),
                     if (onScheduleAppointment != null ||
                         (onDeleteScheduledAppointment != null &&
@@ -5246,17 +5793,36 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                     ],
                   ),
             children: [
-              Text(
-                scheduledAppointmentText == null
-                    ? 'No scheduled appointment'
-                    : 'Next: $scheduledAppointmentText',
-                style: TextStyle(
-                  color: scheduledAppointmentText == null
-                      ? const Color(0xFF5A7397)
-                      : const Color(0xFF184A9C),
-                  fontWeight: FontWeight.w700,
+              if (resolvedScheduledAppointments.isEmpty)
+                Text(
+                  scheduledAppointmentText == null
+                      ? 'No scheduled appointment'
+                      : 'Next: $scheduledAppointmentText',
+                  style: TextStyle(
+                    color: scheduledAppointmentText == null
+                        ? const Color(0xFF5A7397)
+                        : const Color(0xFF184A9C),
+                    fontWeight: FontWeight.w700,
+                  ),
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: resolvedScheduledAppointments
+                      .map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            entry,
+                            style: const TextStyle(
+                              color: Color(0xFF184A9C),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
                 ),
-              ),
             ],
           ),
         if (showTreatmentAndToothSection)
@@ -5347,8 +5913,13 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
             ],
             _checkoutSummaryLine('Paid Today', '₹${a.paid.toStringAsFixed(0)}'),
             _checkoutSummaryLine(
-              'Balance',
-              '₹${(discountedTotal - totalAfter).clamp(0, double.infinity).toStringAsFixed(0)}',
+              'Today Balance',
+              '₹${todayBalance.toStringAsFixed(0)}',
+              valueColor: const Color(0xFFD6455D),
+            ),
+            _checkoutSummaryLine(
+              'Existing Balance',
+              '₹${effectiveExisting.toStringAsFixed(0)}',
               valueColor: const Color(0xFFD6455D),
             ),
             const SizedBox(height: 8),
@@ -5356,7 +5927,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
             const SizedBox(height: 8),
             _checkoutSummaryLine(
               'Total Balance',
-              '₹${(allPatientRows.isEmpty ? outstanding : overallOutstanding).toStringAsFixed(0)}',
+              '₹${(effectiveExisting + todayBalance).toStringAsFixed(0)}',
             ),
             const SizedBox(height: 8),
             Container(

@@ -5,6 +5,7 @@ import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/lab_bulk_update_dialog.dart';
 import 'package:apexo/common_widgets/month_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
+import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
 import 'package:apexo/core/ui/components/app_search_field.dart';
@@ -70,70 +71,72 @@ class _LabworksScreenState extends State<LabworksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage.scrollable(
-      key: WK.labworksScreenV2,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      children: [
-        StreamBuilder(
-          stream: labworks.observableMap.stream,
-          builder: (context, _) {
-              final all = labworks.present.values.toList(growable: false)
-                ..sort((a, b) => b.date.compareTo(a.date));
+    return Container(
+        color: AppTheme.light.scaffoldBackgroundColor,
+        child: ScaffoldPage.scrollable(
+          key: WK.labworksScreenV2,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          children: [
+            StreamBuilder(
+              stream: labworks.observableMap.stream,
+              builder: (context, _) {
+                final all = labworks.present.values.toList(growable: false)
+                  ..sort((a, b) => b.date.compareTo(a.date));
 
-              final filtered = _applyFilters(all);
-              final inLab = filtered
-                  .where((l) => !l.deliveredToDoctor)
-                  .toList(growable: false);
-              final ready = filtered
-                  .where((l) => l.deliveredToDoctor && !l.deliveredToPatient)
-                  .toList(growable: false);
-              final delivered = filtered
-                  .where((l) => l.deliveredToPatient)
-                  .toList(growable: false);
+                final filtered = _applyFilters(all);
+                final inLab = filtered
+                    .where((l) => !l.deliveredToDoctor)
+                    .toList(growable: false);
+                final ready = filtered
+                    .where((l) => l.deliveredToDoctor && !l.deliveredToPatient)
+                    .toList(growable: false);
+                final delivered = filtered
+                    .where((l) => l.deliveredToPatient)
+                    .toList(growable: false);
 
-            return Column(
-              children: [
-                _buildHeader(filtered),
-                const SizedBox(height: 10),
-                _buildStatStrip(all, filtered),
-                const SizedBox(height: 10),
-                _buildSearchAndDateFilters(filtered),
-                const SizedBox(height: 10),
-                filtered.isEmpty
-                    ? _EmptyState(onClear: _clearFilters)
-                    : _LabworkBoard(
-                        inLab: inLab,
-                        ready: ready,
-                        delivered: delivered,
-                        inLabCollapsed: _inLabCollapsed,
-                        readyCollapsed: _readyCollapsed,
-                        deliveredCollapsed: _deliveredCollapsed,
-                        onToggleInLab: () =>
-                            setState(() => _inLabCollapsed = !_inLabCollapsed),
-                        onToggleReady: () =>
-                            setState(() => _readyCollapsed = !_readyCollapsed),
-                        onToggleDelivered: () => setState(
-                          () => _deliveredCollapsed = !_deliveredCollapsed,
-                        ),
-                        onOpen: (item) => openLabworkDialog(context, item),
-                        onHistory: (item) {
-                          final patient = item.patient;
-                          if (patient == null) return;
-                          showPatientHistoryDialog(
-                            context: context,
-                            patient: patient,
-                            rows: patient.patientDetails,
-                            labsOnly: true,
-                          );
-                        },
-                        onDelete: (item) => _confirmDeleteLabwork(item),
-                      ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
+                return Column(
+                  children: [
+                    _buildHeader(filtered),
+                    const SizedBox(height: 10),
+                    _buildStatStrip(all, filtered),
+                    const SizedBox(height: 10),
+                    _buildSearchAndDateFilters(filtered),
+                    const SizedBox(height: 10),
+                    filtered.isEmpty
+                        ? _EmptyState(onClear: _clearFilters)
+                        : _LabworkBoard(
+                            inLab: inLab,
+                            ready: ready,
+                            delivered: delivered,
+                            inLabCollapsed: _inLabCollapsed,
+                            readyCollapsed: _readyCollapsed,
+                            deliveredCollapsed: _deliveredCollapsed,
+                            onToggleInLab: () => setState(
+                                () => _inLabCollapsed = !_inLabCollapsed),
+                            onToggleReady: () => setState(
+                                () => _readyCollapsed = !_readyCollapsed),
+                            onToggleDelivered: () => setState(
+                              () => _deliveredCollapsed = !_deliveredCollapsed,
+                            ),
+                            onOpen: (item) => openLabworkDialog(context, item),
+                            onHistory: (item) {
+                              final patient = item.patient;
+                              if (patient == null) return;
+                              showPatientHistoryDialog(
+                                context: context,
+                                patient: patient,
+                                rows: patient.patientDetails,
+                                labsOnly: true,
+                              );
+                            },
+                            onDelete: (item) => _confirmDeleteLabwork(item),
+                          ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ));
   }
 
   Widget _buildHeader(List<Labwork> rows) {

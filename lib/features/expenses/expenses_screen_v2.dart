@@ -1,8 +1,10 @@
 import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
+import 'package:apexo/core/ui/components/app_pagination.dart';
 import 'package:apexo/core/ui/components/app_search_field.dart';
 import 'package:apexo/core/ui/components/top_widget_cards.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
@@ -30,7 +32,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _categoryFilter = 'all';
   String _paymentFilter = 'all';
   String _rangeFilter = 'month';
-  DateTime _monthAnchor = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _monthAnchor =
+      DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _fromDate;
   DateTime? _toDate;
   int _page = 1;
@@ -96,53 +99,60 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage(
-      key: WK.expensesScreen,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      content: StreamBuilder(
-        stream: expenses.observableMap.stream,
-        builder: (context, _) {
-          final rows = expenses.present.values.toList(growable: false)
-            ..sort((a, b) => b.date.compareTo(a.date));
+    return Container(
+        color: AppTheme.light.primaryColor,
+        child: ScaffoldPage(
+          key: WK.expensesScreen,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          content: StreamBuilder(
+            stream: expenses.observableMap.stream,
+            builder: (context, _) {
+              final rows = expenses.present.values.toList(growable: false)
+                ..sort((a, b) => b.date.compareTo(a.date));
 
-          final filtered = _applyFilters(rows);
-          final sorted = _sortRows(filtered);
-          final cards = _summaryCards(sorted);
+              final filtered = _applyFilters(rows);
+              final sorted = _sortRows(filtered);
+              final cards = _summaryCards(sorted);
 
-          final totalPages = sorted.isEmpty
-              ? 1
-              : ((sorted.length + _pageSize - 1) / _pageSize).ceil();
-          if (_page > totalPages) {
-            _page = totalPages;
-          }
-          final start = (sorted.isEmpty ? 0 : (_page - 1) * _pageSize)
-              .clamp(0, sorted.length);
-          final end = (start + _pageSize).clamp(0, sorted.length);
-          final paged = sorted.sublist(start, end);
+              final totalPages = sorted.isEmpty
+                  ? 1
+                  : ((sorted.length + _pageSize - 1) / _pageSize).ceil();
+              if (_page > totalPages) {
+                _page = totalPages;
+              }
+              var start = (sorted.isEmpty ? 0 : (_page - 1) * _pageSize)
+                  .clamp(0, sorted.length);
+              var end = (start + _pageSize).clamp(0, sorted.length);
+              if (sorted.isNotEmpty && start >= end) {
+                _page = 1;
+                start = 0;
+                end = _pageSize.clamp(0, sorted.length);
+              }
+              final paged = sorted.sublist(start, end);
 
-          return Column(
-            children: [
-              _buildHeader(filtered),
-              const SizedBox(height: 10),
-              _buildSummaryStrip(cards),
-              const SizedBox(height: 10),
-              _buildFilters(rows),
-              const SizedBox(height: 10),
-              Expanded(
-                child: _buildTableCard(
-                  rows: paged,
-                  total: sorted.length,
-                  start: sorted.isEmpty ? 0 : start + 1,
-                  end: end,
-                  page: _page,
-                  totalPages: totalPages,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+              return Column(
+                children: [
+                  _buildHeader(filtered),
+                  const SizedBox(height: 10),
+                  _buildSummaryStrip(cards),
+                  const SizedBox(height: 10),
+                  _buildFilters(rows),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: _buildTableCard(
+                      rows: paged,
+                      total: sorted.length,
+                      start: sorted.isEmpty ? 0 : start + 1,
+                      end: end,
+                      page: _page,
+                      totalPages: totalPages,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ));
   }
 
   Widget _buildHeader(List<Expense> rows) {
@@ -160,17 +170,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         ExportFileActionButton(
           type: ExportFileType.csv,
           busy: _isExportingCsv,
-          onPressed: (_isExportingCsv || rows.isEmpty)
-              ? null
-              : () => _exportCsv(rows),
+          onPressed:
+              (_isExportingCsv || rows.isEmpty) ? null : () => _exportCsv(rows),
         ),
         const SizedBox(width: 8),
         ExportFileActionButton(
           type: ExportFileType.pdf,
           busy: _isExportingPdf,
-          onPressed: (_isExportingPdf || rows.isEmpty)
-              ? null
-              : () => _exportPdf(rows),
+          onPressed:
+              (_isExportingPdf || rows.isEmpty) ? null : () => _exportPdf(rows),
         ),
         const SizedBox(width: 8),
         AppButton(
@@ -189,7 +197,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final csvRows = <List<String>>[
         ['Date', 'Category', 'Amount', 'Paid', 'Doctor', 'Note'],
         ...rows.map((expense) {
-          final category = expense.items.isEmpty ? '-' : expense.items.join(', ');
+          final category =
+              expense.items.isEmpty ? '-' : expense.items.join(', ');
           final doctor = expense.operators.isEmpty
               ? '-'
               : expense.operators.map((d) => d.title).join(', ');
@@ -206,7 +215,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
       await CsvExportUtility.saveCsv(
         rows: csvRows,
-        fileName: 'expenses_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv',
+        fileName:
+            'expenses_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv',
       );
     } finally {
       if (mounted) setState(() => _isExportingCsv = false);
@@ -220,7 +230,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       final pdfRows = <List<String>>[
         ['Date', 'Category', 'Amount', 'Paid', 'Doctor', 'Note'],
         ...rows.map((expense) {
-          final category = expense.items.isEmpty ? '-' : expense.items.join(', ');
+          final category =
+              expense.items.isEmpty ? '-' : expense.items.join(', ');
           final doctor = expense.operators.isEmpty
               ? '-'
               : expense.operators.map((d) => d.title).join(', ');
@@ -239,7 +250,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         title: 'Expenses Export',
         subtitle: DateFormat('dd MMM yyyy').format(DateTime.now()),
         data: pdfRows,
-        fileName: 'expenses_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+        fileName:
+            'expenses_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
       );
     } finally {
       if (mounted) setState(() => _isExportingPdf = false);
@@ -247,7 +259,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildSummaryStrip(List<_ExpenseSummaryCardData> cards) {
-        return Align(
+    return Align(
       alignment: Alignment.centerLeft,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -382,7 +394,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 _paymentFilter = 'all';
                 _rangeFilter = 'month';
                 _monthAnchor =
-                  DateTime(DateTime.now().year, DateTime.now().month, 1);
+                    DateTime(DateTime.now().year, DateTime.now().month, 1);
                 _fromDate = null;
                 _toDate = null;
                 _sortBy = 'date';
@@ -731,32 +743,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   style: const TextStyle(color: Color(0xFF5A7397)),
                 ),
                 const Spacer(),
-                IconButton(
-                  icon: const Icon(FluentIcons.chevron_left_small),
-                  onPressed:
-                      page <= 1 ? null : () => setState(() => _page = page - 1),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF2FF),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFD2E1F6)),
+                SizedBox(
+                  width: 340,
+                  child: AppPagination(
+                    currentPage: page,
+                    totalPages: totalPages,
+                    onPageChanged: (newPage) => setState(() {
+                      final safePage = newPage.clamp(1, totalPages);
+                      final hasRows = ((safePage - 1) * _pageSize) < total;
+                      _page = hasRows ? safePage : 1;
+                    }),
                   ),
-                  child: Text(
-                    '$page / $totalPages',
-                    style: const TextStyle(
-                      color: Color(0xFF1459AD),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(FluentIcons.chevron_right_small),
-                  onPressed: page >= totalPages
-                      ? null
-                      : () => setState(() => _page = page + 1),
                 ),
               ],
             ),
@@ -1288,8 +1285,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ],
           );
         },
-    ),
-  );
+      ),
+    );
   }
 }
 
