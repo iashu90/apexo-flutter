@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
@@ -9,6 +10,7 @@ import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/utils/pdf_export_layout.dart';
 import 'package:apexo/utils/share_actions.dart';
+import 'package:apexo/utils/clinic_time.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -772,6 +774,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
             ? screen.width * 0.95
             : 1360.0;
     final modalHeight = screen.height * 0.92;
+    final tableMinWidth = math.max(1120.0, modalWidth - 40);
 
     final summaryRows = _allRows
         .where((row) => !row.treatment.toLowerCase().startsWith('labwork:'))
@@ -1081,208 +1084,233 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                   ),
                 ],
               ),
-              child: Column(
-                children: [
-                  Container(
-                    color: hasActiveFilters
-                        ? const Color(0xFFEAF2FF)
-                        : Colors.transparent,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                              flex: 12, child: _sortableHead('Date', 'date')),
-                          Expanded(
-                              flex: 10, child: _sortableHead('Tooth', 'tooth')),
-                          Expanded(
-                              flex: 16,
-                              child: _sortableHead('Treatment', 'treatment')),
-                          Expanded(
-                              flex: 12,
-                              child: _sortableHead('Doctor', 'doctor')),
-                          Expanded(
-                              flex: 8, child: _sortableHead('Cost', 'cost')),
-                          Expanded(
-                              flex: 8, child: _sortableHead('Paid', 'paid')),
-                          Expanded(
-                              flex: 9,
-                              child: _sortableHead('Balance', 'balance')),
-                          Expanded(
-                              flex: 9,
-                              child: _sortableHead('Status', 'status')),
-                          Expanded(
-                              flex: 8, child: _sortableHead('Mode', 'mode')),
-                          const Expanded(
-                              flex: 14,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: tableMinWidth,
+                  child: Column(
+                    children: [
+                      Container(
+                        color: hasActiveFilters
+                            ? const Color(0xFFEAF2FF)
+                            : Colors.transparent,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                                width: 130,
+                                child: _sortableHead('Date', 'date')),
+                            SizedBox(
+                                width: 95,
+                                child: _sortableHead('Tooth', 'tooth')),
+                            SizedBox(
+                                width: 190,
+                                child: _sortableHead('Treatment', 'treatment')),
+                            SizedBox(
+                                width: 140,
+                                child: _sortableHead('Doctor', 'doctor')),
+                            SizedBox(
+                                width: 90,
+                                child: _sortableHead('Cost', 'cost')),
+                            SizedBox(
+                                width: 90,
+                                child: _sortableHead('Paid', 'paid')),
+                            SizedBox(
+                                width: 95,
+                                child: _sortableHead('Balance', 'balance')),
+                            SizedBox(
+                                width: 85,
+                                child: _sortableHead('Status', 'status')),
+                            SizedBox(
+                                width: 80,
+                                child: _sortableHead('Mode', 'mode')),
+                            const SizedBox(
+                              width: 120,
                               child: Text('Actions',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600))),
-                        ],
+                                  style: TextStyle(fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  const Divider(size: 1),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _visibleRows.length,
-                      itemBuilder: (context, index) {
-                        final row = _visibleRows[index];
-                        final expanded = _expandedRowId == row.id;
-                        final statusColor = _statusColor(row.status);
+                      const Divider(size: 1),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _visibleRows.length,
+                          itemBuilder: (context, index) {
+                            final row = _visibleRows[index];
+                            final expanded = _expandedRowId == row.id;
+                            final statusColor = _statusColor(row.status);
 
-                        return MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _expandedRowId = expanded ? null : row.id;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 10),
-                                  color: index.isEven
-                                      ? const Color(0xFFF9FBFF)
-                                      : Colors.white,
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 12,
-                                        child: Text(
-                                            '📅 ${DateFormat('dd MMM yyyy').format(row.date)}'),
-                                      ),
-                                      Expanded(
-                                          flex: 10,
-                                          child: Text('🦷 ${row.tooth}')),
-                                      Expanded(
-                                          flex: 16, child: Text(row.treatment)),
-                                      Expanded(
-                                          flex: 12, child: Text(row.doctor)),
-                                      Expanded(
-                                        flex: 8,
-                                        child: Text(
-                                            '₹${row.cost.toStringAsFixed(0)}'),
-                                      ),
-                                      Expanded(
-                                        flex: 8,
-                                        child: Text(
-                                          '₹${row.paid.toStringAsFixed(0)}',
-                                          style: TextStyle(
-                                            color: row.paid < row.cost
-                                                ? const Color(0xFFD97706)
-                                                : const Color(0xFF16A34A),
-                                            fontWeight: FontWeight.w700,
+                            return MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: Column(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _expandedRowId =
+                                            expanded ? null : row.id;
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 10),
+                                      color: index.isEven
+                                          ? const Color(0xFFF9FBFF)
+                                          : Colors.white,
+                                      child: Row(
+                                        children: [
+                                          SizedBox(
+                                            width: 130,
+                                            child: Text(formatClinicDate(
+                                                row.date,
+                                                pattern: 'dd MMM yyyy')),
                                           ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 9,
-                                        child: Text(
-                                          '₹${row.balance.toStringAsFixed(0)}',
-                                          style: const TextStyle(
-                                            color: Color(0xFFDC2626),
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 9,
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: statusColor.withValues(
-                                                  alpha: 0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                              border: Border.all(
-                                                  color: statusColor),
-                                            ),
+                                          SizedBox(
+                                              width: 95,
+                                              child: Text(row.tooth)),
+                                          SizedBox(
+                                            width: 190,
                                             child: Text(
-                                              row.status,
+                                              row.treatment,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          SizedBox(
+                                              width: 140,
+                                              child: Text(
+                                                row.doctor,
+                                                overflow: TextOverflow.ellipsis,
+                                              )),
+                                          SizedBox(
+                                            width: 90,
+                                            child: Text(
+                                                '₹${row.cost.toStringAsFixed(0)}'),
+                                          ),
+                                          SizedBox(
+                                            width: 90,
+                                            child: Text(
+                                              '₹${row.paid.toStringAsFixed(0)}',
                                               style: TextStyle(
-                                                color: statusColor,
+                                                color: row.paid < row.cost
+                                                    ? const Color(0xFFD97706)
+                                                    : const Color(0xFF16A34A),
                                                 fontWeight: FontWeight.w700,
-                                                fontSize: 11,
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                      Expanded(flex: 8, child: Text(row.mode)),
-                                      Expanded(
-                                        flex: 14,
-                                        child: Wrap(
-                                          spacing: 6,
-                                          runSpacing: 6,
-                                          children: [
-                                            _actionIcon(
-                                              icon: FluentIcons.view,
-                                              tooltip: 'View',
-                                              onTap: () {},
+                                          SizedBox(
+                                            width: 95,
+                                            child: Text(
+                                              '₹${row.balance.toStringAsFixed(0)}',
+                                              style: const TextStyle(
+                                                color: Color(0xFFDC2626),
+                                                fontWeight: FontWeight.w700,
+                                              ),
                                             ),
-                                            _actionIcon(
-                                              icon: FluentIcons.share,
-                                              tooltip: 'Share Invoice',
-                                              onTap: () =>
-                                                  _openShareOptions(row),
+                                          ),
+                                          SizedBox(
+                                            width: 85,
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: statusColor.withValues(
+                                                      alpha: 0.12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          999),
+                                                  border: Border.all(
+                                                      color: statusColor),
+                                                ),
+                                                child: Text(
+                                                  row.status,
+                                                  style: TextStyle(
+                                                    color: statusColor,
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                              ),
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                          SizedBox(
+                                              width: 80,
+                                              child: Text(row.mode)),
+                                          SizedBox(
+                                            width: 120,
+                                            child: Wrap(
+                                              spacing: 6,
+                                              runSpacing: 6,
+                                              children: [
+                                                _actionIcon(
+                                                  icon: FluentIcons.view,
+                                                  tooltip: 'View',
+                                                  onTap: () {},
+                                                ),
+                                                _actionIcon(
+                                                  icon: FluentIcons.share,
+                                                  tooltip: 'Share Invoice',
+                                                  onTap: () =>
+                                                      _openShareOptions(row),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ),
+                                  if (expanded)
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(12),
+                                      color: const Color(0xFFF3F7FC),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Treatment Details',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w700),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text('Notes by doctor: ${row.notes}'),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                              'Medicines prescribed: ${row.prescription}'),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                              'Attachments: No files attached'),
+                                          const SizedBox(height: 10),
+                                          const Text(
+                                            'Payment Breakdown',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w700),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            '₹${row.paid.toStringAsFixed(0)} — ${row.mode} — ${formatClinicDate(row.date, pattern: 'dd MMM yyyy')}',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  const Divider(size: 1),
+                                ],
                               ),
-                              if (expanded)
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  color: const Color(0xFFF3F7FC),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Treatment Details',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w700),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text('Notes by doctor: ${row.notes}'),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                          'Medicines prescribed: ${row.prescription}'),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                          'Attachments: No files attached'),
-                                      const SizedBox(height: 10),
-                                      const Text(
-                                        'Payment Breakdown',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w700),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        '₹${row.paid.toStringAsFixed(0)} — ${row.mode} — ${DateFormat('dd MMM yyyy').format(row.date)}',
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              const Divider(size: 1),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

@@ -5,6 +5,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/utils/clinic_time.dart';
 
 class Appointment extends Model {
   @override
@@ -123,6 +124,7 @@ class Appointment extends Model {
   bool isCheckedIn = false;
   String checkinStage = 'pending';
   String visitType = 'Follow-up Visit';
+  String sourceTimeZone = clinicTimeZoneId;
   DateTime? checkedInAt;
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
@@ -178,6 +180,7 @@ class Appointment extends Model {
     if (checkinStage.isEmpty) {
       checkinStage = isDone ? 'completed' : 'pending';
     }
+    sourceTimeZone = (json['sourceTimeZone'] ?? sourceTimeZone).toString();
     final rawCheckedInAt = json['checkedInAt'];
     if (rawCheckedInAt is int) {
       checkedInAt = DateTime.fromMillisecondsSinceEpoch(rawCheckedInAt);
@@ -230,6 +233,9 @@ class Appointment extends Model {
     if (isCheckedIn != d.isCheckedIn) json['isCheckedIn'] = isCheckedIn;
     if (checkinStage != d.checkinStage) json['checkinStage'] = checkinStage;
     if (visitType != d.visitType) json['visitType'] = visitType;
+    if (sourceTimeZone != d.sourceTimeZone) {
+      json['sourceTimeZone'] = sourceTimeZone;
+    }
     if (checkedInAt != null) {
       json['checkedInAt'] = checkedInAt!.millisecondsSinceEpoch;
     }

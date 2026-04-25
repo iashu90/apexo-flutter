@@ -22,7 +22,6 @@ import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/services/users.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../services/localization/locale.dart';
-import 'package:apexo/features/appointments/calendar_screen.dart';
 import 'package:apexo/features/settings/settings_screen.dart';
 import 'package:apexo/features/settings/access_control_screen.dart';
 import '../core/observable.dart';
@@ -187,7 +186,7 @@ class _Routes {
           identifier: "calendar",
           navbarTitle: txt("calendar"),
           icon: FluentIcons.calendar,
-          screen: CalendarScreen.new,
+          screen: CheckinScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('calendar'),
           onSelect: () async {
             await doctors.synchronize();

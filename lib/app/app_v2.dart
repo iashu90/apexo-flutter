@@ -119,7 +119,7 @@ class ApexoApp extends StatelessWidget {
             launch.layoutWidth = constraints.maxWidth;
             final hideSidePanel = routes.panels().isEmpty || !launch.open();
             return Container(
-            color: AppTheme.light.scaffoldBackgroundColor,
+            color: material.Theme.of(context).scaffoldBackgroundColor,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -140,6 +140,7 @@ class ApexoApp extends StatelessWidget {
   }
 
   AnimatedPositioned _buildPositionedMainScreen(BuildContext context, BoxConstraints constraints, bool hideSidePanel) {
+    final materialTheme = material.Theme.of(context);
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       top: 0,
@@ -149,7 +150,7 @@ class ApexoApp extends StatelessWidget {
       width: (!hideSidePanel) && constraints.maxWidth >= 710 ? constraints.maxWidth - 355 : constraints.maxWidth,
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.light.scaffoldBackgroundColor,
+          color: materialTheme.scaffoldBackgroundColor,
           boxShadow: kElevationToShadow[4],
         ),
         child: Column(
@@ -161,9 +162,9 @@ class ApexoApp extends StatelessWidget {
                       padding: const EdgeInsets.all(14),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: AppTheme.light.scaffoldBackgroundColor,
+                          color: materialTheme.scaffoldBackgroundColor,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.light.dividerColor),
+                          border: Border.all(color: materialTheme.dividerColor),
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
