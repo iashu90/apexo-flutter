@@ -21,6 +21,7 @@ Future<void> showPatientHistoryDialog({
   required Patient patient,
   required List<ReportDetailRow> rows,
   bool labsOnly = false,
+  Future<void> Function(String appointmentId)? onEditTreatment,
 }) {
   return showDialog<void>(
     context: context,
@@ -30,6 +31,7 @@ Future<void> showPatientHistoryDialog({
         patient: patient,
         rows: rows,
         labsOnly: labsOnly,
+        onEditTreatment: onEditTreatment,
       ),
     ),
   );
@@ -37,6 +39,7 @@ Future<void> showPatientHistoryDialog({
 
 class _LedgerRowData {
   final String id;
+  final String? appointmentId;
   final DateTime date;
   final String tooth;
   final String treatment;
@@ -49,6 +52,7 @@ class _LedgerRowData {
 
   const _LedgerRowData({
     required this.id,
+    this.appointmentId,
     required this.date,
     required this.tooth,
     required this.treatment,
@@ -73,12 +77,14 @@ class PatientHistoryDialog extends StatefulWidget {
   final Patient patient;
   final List<ReportDetailRow> rows;
   final bool labsOnly;
+  final Future<void> Function(String appointmentId)? onEditTreatment;
 
   const PatientHistoryDialog({
     super.key,
     required this.patient,
     required this.rows,
     this.labsOnly = false,
+    this.onEditTreatment,
   });
 
   @override
@@ -418,6 +424,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
       final mode = _normalizeMode(modeRaw);
       return _LedgerRowData(
         id: '${row.date.millisecondsSinceEpoch}_${entry.key}',
+        appointmentId: row.appointmentId,
         date: row.date,
         tooth: row.teeth.trim().isEmpty ? '-' : row.teeth,
         treatment: row.treatment.trim().isEmpty ? '-' : row.treatment,
@@ -1327,6 +1334,23 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                                               spacing: 6,
                                               runSpacing: 6,
                                               children: [
+                                                if (widget.onEditTreatment != null &&
+                                                    row.appointmentId != null &&
+                                                    row.appointmentId!.trim().isNotEmpty)
+                                                  _actionIcon(
+                                                    icon: FluentIcons.edit,
+                                                    tooltip: 'Edit treatment',
+                                                    onTap: () {
+                                                      final callback = widget.onEditTreatment;
+                                                      final appointmentId = row.appointmentId;
+                                                      if (callback == null ||
+                                                          appointmentId == null ||
+                                                          appointmentId.trim().isEmpty) {
+                                                        return;
+                                                      }
+                                                      unawaited(callback(appointmentId));
+                                                    },
+                                                  ),
                                                 _actionIcon(
                                                   icon: FluentIcons.pdf,
                                                   tooltip: 'Download Treatment PDF',

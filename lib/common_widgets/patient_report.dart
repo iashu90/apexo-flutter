@@ -593,6 +593,7 @@ class _PatientDetailsTableState extends State<PatientDetailsTable> {
 }
 
 class ReportDetailRow {
+  final String? appointmentId;
   final DateTime date;
   final Patient? patient;
   final String cost;
@@ -607,6 +608,7 @@ class ReportDetailRow {
   final String doctorTotalPay;
 
   ReportDetailRow({
+    this.appointmentId,
     required this.date,
     this.patient,
     required this.cost,

@@ -4620,25 +4620,28 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     setState(() {});
   }
 
-  Future<void> _scheduleAppointmentFromBilling() async {
+  Future<void> _scheduleAppointmentFromBilling({
+    Appointment? existingScheduled,
+  }) async {
     final a = widget.appointment;
     if ((a.patientID ?? '').trim().isEmpty) {
       return;
     }
 
-    final upcomingAppointments = appointments.present.values.where((row) {
-      if (row.id == a.id) return false;
-      if (row.patientID != a.patientID) return false;
-      final stage = row.checkinStage.trim().toLowerCase();
-      if (stage != 'scheduled' && stage != 'pending') return false;
-      return row.date.isAfter(DateTime.now());
-    }).toList(growable: false)
-      ..sort((x, y) => x.date.compareTo(y.date));
-    final existingScheduled =
-        upcomingAppointments.isEmpty ? null : upcomingAppointments.first;
+    final resolvedExisting = existingScheduled ?? (() {
+      final upcomingAppointments = appointments.present.values.where((row) {
+        if (row.id == a.id) return false;
+        if (row.patientID != a.patientID) return false;
+        final stage = row.checkinStage.trim().toLowerCase();
+        if (stage != 'scheduled' && stage != 'pending') return false;
+        return row.date.isAfter(DateTime.now());
+      }).toList(growable: false)
+        ..sort((x, y) => x.date.compareTo(y.date));
+      return upcomingAppointments.isEmpty ? null : upcomingAppointments.first;
+    })();
 
     final initialDate =
-        existingScheduled?.date ?? DateTime.now().add(const Duration(days: 7));
+      resolvedExisting?.date ?? DateTime.now().add(const Duration(days: 7));
     final pickedDate = await material.showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -4652,8 +4655,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final pickedTime = await material.showTimePicker(
       context: context,
       initialTime: material.TimeOfDay(
-        hour: existingScheduled?.date.hour ?? 10,
-        minute: existingScheduled?.date.minute ?? 0,
+        hour: resolvedExisting?.date.hour ?? 10,
+        minute: resolvedExisting?.date.minute ?? 0,
       ),
       builder: apexoDatePickerBuilder(context),
     );
@@ -4684,7 +4687,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     }
 
     final targetAppointment =
-        existingScheduled ?? Appointment.fromJson({'id': uuid()});
+      resolvedExisting ?? Appointment.fromJson({'id': uuid()});
     targetAppointment.patientID = a.patientID;
     targetAppointment.date = scheduledAt;
     targetAppointment.checkinStage = 'scheduled';
@@ -5501,6 +5504,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   onDownloadPdf: _downloadReceiptPdf,
                   onShare: _openShareOptions,
                   doctorNames: doctorNames,
+                  scheduledAppointments: upcomingAppointments,
                   scheduledAppointmentText: nextScheduledText,
                   scheduledAppointmentTexts: upcomingAppointments
                     .map((row) => formatClinicDateTime(row.date, pattern: 'dd MMM yyyy • h:mm a'))
@@ -5509,6 +5513,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   onScheduleAppointment: (a.patientID ?? '').trim().isEmpty
                       ? null
                       : _scheduleAppointmentFromBilling,
+                  onEditScheduledAppointment: (row) =>
+                      _scheduleAppointmentFromBilling(existingScheduled: row),
+                  onDeleteScheduledAppointmentForRow: (row) =>
+                      _confirmDeleteScheduledFollowUpAppointment(
+                        context,
+                        row,
+                      ),
                   onDeleteScheduledAppointment: nextScheduled == null
                       ? null
                       : () => _confirmDeleteScheduledFollowUpAppointment(
@@ -5584,10 +5595,13 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
   final VoidCallback? onDownloadPdf;
   final VoidCallback? onShare;
   final List<String>? doctorNames;
+  final List<Appointment>? scheduledAppointments;
   final String? scheduledAppointmentText;
   final List<String>? scheduledAppointmentTexts;
   final VoidCallback? onScheduleAppointment;
   final VoidCallback? onDeleteScheduledAppointment;
+  final ValueChanged<Appointment>? onEditScheduledAppointment;
+  final ValueChanged<Appointment>? onDeleteScheduledAppointmentForRow;
   final bool includeTodayInOutstanding;
   final bool showTreatmentAndToothSection;
   final bool separateScheduleSection;
@@ -5600,10 +5614,13 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     this.onDownloadPdf,
     this.onShare,
     this.doctorNames,
+    this.scheduledAppointments,
     this.scheduledAppointmentText,
     this.scheduledAppointmentTexts,
     this.onScheduleAppointment,
     this.onDeleteScheduledAppointment,
+    this.onEditScheduledAppointment,
+    this.onDeleteScheduledAppointmentForRow,
     this.includeTodayInOutstanding = true,
     this.showTreatmentAndToothSection = true,
     this.separateScheduleSection = false,
@@ -5659,10 +5676,15 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
         allPatientRows.isEmpty ? outstanding : aggregatedOutstanding;
     final totalAfter =
         (totalPaidOverride ?? a.paid).clamp(0, double.infinity).toDouble();
+    final treatmentCostForTotal = a.price.clamp(0, double.infinity).toDouble();
     final todayBalance =
-      (discountedTotal - totalAfter).clamp(0, double.infinity).toDouble();
+      (treatmentCostForTotal - totalAfter).clamp(0, double.infinity).toDouble();
     final effectiveExisting = allPatientRows.isEmpty ? 0.0 : existingOutstanding;
-    final status = outstanding <= 0 ? 'PAID' : 'DUE';
+    final computedTotalBalance =
+        (effectiveExisting + treatmentCostForTotal - totalAfter)
+            .clamp(0, double.infinity)
+            .toDouble();
+    final status = computedTotalBalance <= 0 ? 'PAID' : 'DUE';
     final resolvedDoctorNames = doctorNames ??
         a.operators
             .map((doctor) => doctor.title.trim())
@@ -5677,6 +5699,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     final resolvedScheduledAppointments = (scheduledAppointmentTexts ?? const <String>[])
       .where((entry) => entry.trim().isNotEmpty)
       .toList(growable: false);
+    final resolvedScheduledRows = scheduledAppointments ?? const <Appointment>[];
 
     Widget sectionCard({
       required String title,
@@ -5773,7 +5796,68 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: resolvedScheduledAppointments.isEmpty
+                      child: resolvedScheduledRows.isNotEmpty
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: resolvedScheduledRows
+                                  .map(
+                                    (row) => Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 2),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              formatClinicDateTime(
+                                                row.date,
+                                                pattern:
+                                                    'dd MMM yyyy • h:mm a',
+                                              ),
+                                              style: const TextStyle(
+                                                color: Color(0xFF184A9C),
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                          if (onEditScheduledAppointment !=
+                                              null)
+                                            Tooltip(
+                                              message:
+                                                  'Edit Scheduled Appointment',
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  FluentIcons.edit,
+                                                  size: 14,
+                                                ),
+                                                onPressed: () =>
+                                                    onEditScheduledAppointment!(
+                                                        row),
+                                              ),
+                                            ),
+                                          if (onDeleteScheduledAppointmentForRow !=
+                                              null)
+                                            Tooltip(
+                                              message:
+                                                  'Delete Scheduled Appointment',
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  FluentIcons.delete,
+                                                  size: 14,
+                                                  color: Color(0xFFD6455D),
+                                                ),
+                                                onPressed: () =>
+                                                    onDeleteScheduledAppointmentForRow!(
+                                                        row),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                  .toList(growable: false),
+                            )
+                          : resolvedScheduledAppointments.isEmpty
                           ? Text(
                               scheduledAppointmentText == null
                                   ? 'No scheduled appointment'
@@ -5805,40 +5889,20 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                                   .toList(growable: false),
                             ),
                     ),
-                    if (onScheduleAppointment != null ||
-                        (onDeleteScheduledAppointment != null &&
-                            scheduledAppointmentText != null))
+                    if (onScheduleAppointment != null)
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (onScheduleAppointment != null)
-                            Tooltip(
-                              message: scheduledAppointmentText == null
-                                  ? 'Add Scheduled Appointment'
-                                  : 'Edit Scheduled Appointment',
-                              child: IconButton(
-                                icon: Icon(
-                                  scheduledAppointmentText == null
-                                      ? FluentIcons.add
-                                      : FluentIcons.edit,
-                                  size: 14,
-                                ),
-                                onPressed: onScheduleAppointment,
+                          Tooltip(
+                            message: 'Add Scheduled Appointment',
+                            child: IconButton(
+                              icon: const Icon(
+                                FluentIcons.add,
+                                size: 14,
                               ),
+                              onPressed: onScheduleAppointment,
                             ),
-                          if (onDeleteScheduledAppointment != null &&
-                              scheduledAppointmentText != null)
-                            Tooltip(
-                              message: 'Delete Scheduled Appointment',
-                              child: IconButton(
-                                icon: const Icon(
-                                  FluentIcons.delete,
-                                  size: 14,
-                                  color: Color(0xFFD6455D),
-                                ),
-                                onPressed: onDeleteScheduledAppointment,
-                              ),
-                            ),
+                          ),
                         ],
                       ),
                   ],
@@ -5859,14 +5923,10 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                     children: [
                       if (onScheduleAppointment != null)
                         Tooltip(
-                          message: scheduledAppointmentText == null
-                              ? 'Add Scheduled Appointment'
-                              : 'Edit Scheduled Appointment',
+                          message: 'Add Scheduled Appointment',
                           child: IconButton(
-                            icon: Icon(
-                              scheduledAppointmentText == null
-                                  ? FluentIcons.add
-                                  : FluentIcons.edit,
+                            icon: const Icon(
+                              FluentIcons.add,
                               size: 14,
                             ),
                             onPressed: onScheduleAppointment,
@@ -5888,7 +5948,59 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                     ],
                   ),
             children: [
-              if (resolvedScheduledAppointments.isEmpty)
+              if (resolvedScheduledRows.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: resolvedScheduledRows
+                      .map(
+                        (row) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  formatClinicDateTime(
+                                    row.date,
+                                    pattern: 'dd MMM yyyy • h:mm a',
+                                  ),
+                                  style: const TextStyle(
+                                    color: Color(0xFF184A9C),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              if (onEditScheduledAppointment != null)
+                                Tooltip(
+                                  message: 'Edit Scheduled Appointment',
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      FluentIcons.edit,
+                                      size: 14,
+                                    ),
+                                    onPressed: () =>
+                                        onEditScheduledAppointment!(row),
+                                  ),
+                                ),
+                              if (onDeleteScheduledAppointmentForRow != null)
+                                Tooltip(
+                                  message: 'Delete Scheduled Appointment',
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      FluentIcons.delete,
+                                      size: 14,
+                                      color: Color(0xFFD6455D),
+                                    ),
+                                    onPressed: () =>
+                                        onDeleteScheduledAppointmentForRow!(row),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                )
+              else if (resolvedScheduledAppointments.isEmpty)
                 Text(
                   scheduledAppointmentText == null
                       ? 'No scheduled appointment'
@@ -6006,7 +6118,10 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                 valueColor: const Color(0xFF1459AD),
               ),
             ],
-            _checkoutSummaryLine('Paid Today', '₹${a.paid.toStringAsFixed(0)}'),
+            _checkoutSummaryLine(
+              'Paid Today',
+              '₹${totalAfter.toStringAsFixed(0)}',
+            ),
             _checkoutSummaryLine(
               'Today Balance',
               '₹${todayBalance.toStringAsFixed(0)}',
@@ -6022,7 +6137,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
             const SizedBox(height: 8),
             _checkoutSummaryLine(
               'Total Balance',
-              '₹${(effectiveExisting + todayBalance).toStringAsFixed(0)}',
+              '₹${computedTotalBalance.toStringAsFixed(0)}',
             ),
             const SizedBox(height: 8),
             Container(
