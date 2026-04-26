@@ -304,21 +304,21 @@ class _LoginState extends State<Login> {
                           child: Icon(FluentIcons.lock,
                               size: 14, color: Color(0xFF7A8AA7)),
                         ),
-                        suffix: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: IconButton(
-                            icon: Icon(
-                              loginCtrl.obscureText()
-                                  ? FluentIcons.red_eye
-                                  : FluentIcons.hide,
-                              size: 14,
-                            ),
-                            onPressed: isLoading
-                                ? null
-                                : () => loginCtrl
-                                    .obscureText(!loginCtrl.obscureText()),
-                          ),
-                        ),
+                        // suffix: Padding(
+                        //   padding: const EdgeInsets.symmetric(horizontal: 6),
+                        //   child: IconButton(
+                        //     icon: Icon(
+                        //       loginCtrl.obscureText()
+                        //           ? FluentIcons.red_eye
+                        //           : FluentIcons.hide,
+                        //       size: 14,
+                        //     ),
+                        //     onPressed: isLoading
+                        //         ? null
+                        //         : () => loginCtrl
+                        //             .obscureText(!loginCtrl.obscureText()),
+                        //   ),
+                        // ),
                         decoration: null,
                         style: AppTextTheme.textTheme.bodyMedium,
                         onSubmitted: (_) => _fieldSubmit(),

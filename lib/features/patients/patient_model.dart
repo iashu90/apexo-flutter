@@ -44,6 +44,7 @@ class Patient extends Model {
               appointment.prescriptionGpayPaid == true ? 'GPay' : 'Cash';
 
           return ReportDetailRow(
+            appointmentId: appointment.id,
             date: dateStr,
             cost: costStr,
             paid: paidStr,

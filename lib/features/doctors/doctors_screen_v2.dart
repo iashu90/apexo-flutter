@@ -1358,9 +1358,20 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   bool _isExportingPdf = false;
 
   Future<void> _openPatientEditor(Appointment appointment) async {
+    final patient = appointment.patient;
+    if (patient == null) return;
+    await openAddPatientPopup(
+      context: context,
+      existingPatient: patient,
+    );
+  }
+
+  Future<void> _openTreatmentEditorById(String appointmentId) async {
+    final target = appointments.present[appointmentId];
+    if (target == null) return;
     await openAppointmentJourneyDialog(
       context,
-      appointment,
+      target,
       initialStep: 1,
     );
   }
@@ -1373,7 +1384,45 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
       context: context,
       patient: patient,
       rows: patient.patientDetails,
+      onEditTreatment: _openTreatmentEditorById,
     );
+  }
+
+  String _groupedDateLabel(List<Appointment> groupedAppointments) {
+    if (groupedAppointments.isEmpty) {
+      return formatClinicDate(widget.selectedDate, pattern: 'dd MMM yyyy');
+    }
+
+    final uniqueDates = groupedAppointments
+        .map((appointment) => DateTime(
+              appointment.date.year,
+              appointment.date.month,
+              appointment.date.day,
+            ))
+        .toSet()
+        .toList(growable: false)
+      ..sort((a, b) => a.compareTo(b));
+
+    if (uniqueDates.length == 1) {
+      return formatClinicDate(uniqueDates.first, pattern: 'dd MMM yyyy');
+    }
+
+    final sameMonthYear = uniqueDates.every(
+      (date) =>
+          date.month == uniqueDates.first.month &&
+          date.year == uniqueDates.first.year,
+    );
+
+    if (sameMonthYear) {
+      final dayCsv = uniqueDates
+          .map((date) => DateFormat('dd').format(date))
+          .join(', ');
+      return '$dayCsv ${DateFormat('MMM yyyy').format(uniqueDates.first)}';
+    }
+
+    return uniqueDates
+        .map((date) => formatClinicDate(date, pattern: 'dd MMM yyyy'))
+        .join(', ');
   }
 
   double _appointmentTreatmentTotal(Appointment appointment) {
@@ -1992,9 +2041,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                     .toList(growable: false);
                                   final tooth = toothSet.isEmpty
                                     ? '-'
-                                    : toothSet.length == 1
-                                      ? toothSet.first
-                                      : 'Multiple';
+                                    : toothSet.join(', ');
                                   final stageSet = groupedAppointments
                                     .map((a) => _stageLabel(a))
                                     .toSet();
@@ -2016,16 +2063,6 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       groupedAppointments,
                                     )
                                     : _paymentStatusForAppointment(appointment);
-                                  final earliestDate = groupedAppointments
-                                    .map((a) => a.date)
-                                    .reduce(
-                                    (a, b) => a.isBefore(b) ? a : b,
-                                    );
-                                  final latestDate = groupedAppointments
-                                    .map((a) => a.date)
-                                    .reduce(
-                                    (a, b) => a.isAfter(b) ? a : b,
-                                    );
                                   final patientLabel = groupedCount > 1
                                     ? '${appointment.title.trim().isEmpty ? 'Unnamed patient' : _doctorTitleCase(appointment.title)} ($groupedCount records)'
                                     : (appointment.title.trim().isEmpty
@@ -2081,7 +2118,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                             _showTimeOnly
                                                 ? '${formatClinicDateTime(appointment.date, pattern: 'hh:mm a')} - ${formatClinicDateTime(end, pattern: 'hh:mm a')}'
                                                 : groupedCount > 1
-                                                    ? '${formatClinicDate(earliestDate, pattern: 'dd MMM')} - ${formatClinicDate(latestDate, pattern: 'dd MMM yyyy')}'
+                                                ? _groupedDateLabel(groupedAppointments)
                                                     : formatClinicDate(appointment.date, pattern: 'dd MMM yyyy'),
                                             style: const TextStyle(
                                               color: Color(0xFF4D6488),
