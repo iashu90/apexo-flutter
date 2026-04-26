@@ -928,7 +928,7 @@ class _ReportDoctorAppointmentDoneCardState
                               ),
                             ),
                             SizedBox(
-                              width: 120,
+                              width: 110,
                               child: Text(
                                 'Revenue',
                                 style: TextStyle(
@@ -939,7 +939,7 @@ class _ReportDoctorAppointmentDoneCardState
                               ),
                             ),
                             SizedBox(
-                              width: 120,
+                              width: 110,
                               child: Text(
                                 'Doctor Fee',
                                 style: TextStyle(
@@ -950,7 +950,7 @@ class _ReportDoctorAppointmentDoneCardState
                               ),
                             ),
                             SizedBox(
-                              width: 160,
+                              width: 150,
                               child: Text(
                                 'Net Profit',
                                 style: TextStyle(
@@ -1011,7 +1011,7 @@ class _ReportDoctorAppointmentDoneCardState
                                 ),
                               ),
                               SizedBox(
-                                width: 120,
+                                width: 110,
                                 child: Text(
                                   formatIndianShortCurrency(row.revenue),
                                   style: const TextStyle(
@@ -1022,7 +1022,7 @@ class _ReportDoctorAppointmentDoneCardState
                                 ),
                               ),
                               SizedBox(
-                                width: 120,
+                                width: 110,
                                 child: Text(
                                   formatIndianShortCurrency(row.fee),
                                   style: const TextStyle(
@@ -1033,7 +1033,7 @@ class _ReportDoctorAppointmentDoneCardState
                                 ),
                               ),
                               SizedBox(
-                                width: 160,
+                                width: 150,
                                 child: Text(
                                   formatIndianShortCurrency(row.hospitalGained),
                                   style: TextStyle(
@@ -2140,8 +2140,7 @@ class _PaymentModeStatusCard extends StatelessWidget {
     }
 
     return _ReportContainer(
-      title: 'Total Payment Status',
-      subtitle: 'UPI vs Cash distribution by paid appointments',
+      title: 'Total Payment Status ($total)',
       child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2159,14 +2158,6 @@ class _PaymentModeStatusCard extends StatelessWidget {
               pct: cashPct,
               fg: const Color(0xFF8A5A00),
               bg: const Color(0xFFFFF4D9),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Total counted: $total',
-              style: const TextStyle(
-                color: Color(0xFF4B6488),
-                fontWeight: FontWeight.w700,
-              ),
             ),
           ],
         ),
