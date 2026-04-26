@@ -131,6 +131,15 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
     return '${safeName}_${age}_$date';
   }
 
+  String _sanitizeFilePart(String value, {String fallback = 'item'}) {
+    final sanitized = value
+        .trim()
+        .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+    return sanitized.isEmpty ? fallback : sanitized;
+  }
+
   String _nextExportTag(String prefix) {
     _exportLogSequence += 1;
     return '$prefix-${DateTime.now().millisecondsSinceEpoch}-$_exportLogSequence';
@@ -653,6 +662,76 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
       _showExportError('PDF export failed', '$error');
       _logExport(
           'pdf-ui', 'PDF export surfaced error to user', error, stackTrace);
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingPdf = false);
+      }
+    }
+  }
+
+  Future<void> _exportRowPdf(_LedgerRowData row) async {
+    if (_isExportingCsv || _isExportingPdf) return;
+
+    setState(() => _isExportingPdf = true);
+    try {
+      await runWithExportProgressDialog<void>(
+        context: context,
+        title: 'Exporting Treatment PDF',
+        task: (progress) async {
+          final logTag = _nextExportTag('pdf-row');
+          _logExport(logTag, 'Single-row PDF export started for ${row.id}');
+          await ensureExportPdfAssetsLoaded();
+          progress.setProgress(0.2);
+
+          List<int> bytes;
+          try {
+            bytes = await _buildPdfDocument([row]).save().timeout(_pdfBuildTimeout);
+          } on TimeoutException {
+            throw StateError(
+              'PDF generation timed out. Please try again.',
+            );
+          }
+
+          if (progress.isCancelled) return;
+          progress.setProgress(0.65);
+
+          final dateTag = DateFormat('yyyyMMdd').format(row.date);
+          final treatmentTag = _sanitizeFilePart(row.treatment, fallback: 'treatment');
+          final defaultName = '${_fileStem()}_${dateTag}_$treatmentTag.pdf';
+
+          final savePath = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save Treatment PDF',
+            fileName: defaultName,
+          );
+
+          if (savePath == null ||
+              savePath.trim().isEmpty ||
+              progress.isCancelled) {
+            _logExport(logTag, 'Single-row PDF export cancelled before write');
+            return;
+          }
+
+          final target = savePath.toLowerCase().endsWith('.pdf')
+              ? savePath
+              : '$savePath.pdf';
+          await _writePdfWithRetry(
+            target: target,
+            bytes: bytes,
+            progress: progress,
+            logTag: logTag,
+          );
+          progress.setProgress(1.0);
+          _logExport(logTag, 'Single-row PDF export completed');
+        },
+      );
+    } catch (error, stackTrace) {
+      _showExportError('Treatment PDF export failed', '$error');
+      _logExport(
+        'pdf-row-ui',
+        'Single-row PDF export surfaced error to user',
+        error,
+        stackTrace,
+      );
     } finally {
       if (mounted) {
         setState(() => _isExportingPdf = false);
@@ -1249,9 +1328,9 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                                               runSpacing: 6,
                                               children: [
                                                 _actionIcon(
-                                                  icon: FluentIcons.view,
-                                                  tooltip: 'View',
-                                                  onTap: () {},
+                                                  icon: FluentIcons.pdf,
+                                                  tooltip: 'Download Treatment PDF',
+                                                  onTap: () => _exportRowPdf(row),
                                                 ),
                                                 _actionIcon(
                                                   icon: FluentIcons.share,

@@ -1,8 +1,8 @@
-import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/theme/app_text_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/login/login_controller.dart';
+import 'package:apexo/services/login.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -25,8 +25,15 @@ class _LoginState extends State<Login> {
   @override
   void initState() {
     super.initState();
-    loginCtrl.emailField.clear();
-    loginCtrl.passwordField.clear();
+    if (loginCtrl.urlField.text.trim().isEmpty) {
+      login.applyServerMode(login.serverMode);
+    }
+    if (!login.hasValidRememberedCredentials) {
+      loginCtrl.emailField.clear();
+      loginCtrl.passwordField.clear();
+      loginCtrl.rememberMeForDay(false);
+    }
+    rememberMe = loginCtrl.rememberMeForDay();
     loginCtrl.selectedTab(0);
   }
 
@@ -236,7 +243,6 @@ class _LoginState extends State<Login> {
                 loginCtrl.loadingIndicator.stream,
               ],
               builder: (context, _) {
-                final isLoginTab = loginCtrl.selectedTab() == 0;
                 final isLoading = loginCtrl.loadingIndicator().isNotEmpty;
                 return Column(
                   mainAxisSize: MainAxisSize.min,
@@ -248,17 +254,10 @@ class _LoginState extends State<Login> {
                           child: Row(
                             children: [
                               _tabPill(
-                                active: isLoginTab,
+                                active: true,
                                 icon: FluentIcons.lock,
                                 text: 'Login',
                                 onTap: () => loginCtrl.selectedTab(0),
-                              ),
-                              const SizedBox(width: 14),
-                              _tabPill(
-                                active: !isLoginTab,
-                                icon: FluentIcons.password_field,
-                                text: 'Reset password',
-                                onTap: () => loginCtrl.selectedTab(1),
                               ),
                             ],
                           ),
@@ -270,192 +269,122 @@ class _LoginState extends State<Login> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    if (isLoginTab) ...[
-                      _fieldLabel('Username / Email'),
-                      const SizedBox(height: 8),
-                      _styledInput(
-                        child: CupertinoTextField(
-                          key: WK.emailField,
-                          controller: loginCtrl.emailField,
-                          placeholder: 'Enter your email or username',
-                          textDirection: TextDirection.ltr,
-                          enabled: !isLoading,
-                          prefix: const Padding(
-                            padding: EdgeInsets.only(left: 12),
-                            child: Icon(FluentIcons.contact,
-                                size: 14, color: Color(0xFF7A8AA7)),
-                          ),
-                          decoration: null,
-                          style: AppTextTheme.textTheme.bodyMedium,
-                          onSubmitted: (_) => _fieldSubmit(),
+                    _fieldLabel('Username / Email'),
+                    const SizedBox(height: 8),
+                    _styledInput(
+                      child: CupertinoTextField(
+                        key: WK.emailField,
+                        controller: loginCtrl.emailField,
+                        placeholder: 'Enter your email or username',
+                        textDirection: TextDirection.ltr,
+                        enabled: !isLoading,
+                        prefix: const Padding(
+                          padding: EdgeInsets.only(left: 12),
+                          child: Icon(FluentIcons.contact,
+                              size: 14, color: Color(0xFF7A8AA7)),
                         ),
+                        decoration: null,
+                        style: AppTextTheme.textTheme.bodyMedium,
+                        onSubmitted: (_) => _fieldSubmit(),
                       ),
-                      const SizedBox(height: 18),
-                      _fieldLabel('Password'),
-                      const SizedBox(height: 8),
-                      _styledInput(
-                        child: CupertinoTextField(
-                          key: WK.passwordField,
-                          controller: loginCtrl.passwordField,
-                          placeholder: 'Enter your password',
-                          obscureText: loginCtrl.obscureText(),
-                          textDirection: TextDirection.ltr,
-                          enabled: !isLoading,
-                          prefix: const Padding(
-                            padding: EdgeInsets.only(left: 12),
-                            child: Icon(FluentIcons.lock,
-                                size: 14, color: Color(0xFF7A8AA7)),
-                          ),
-                          suffix: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            child: IconButton(
-                              icon: Icon(
-                                loginCtrl.obscureText()
-                                    ? FluentIcons.red_eye
-                                    : FluentIcons.hide,
-                                size: 14,
-                              ),
-                              onPressed: isLoading
-                                  ? null
-                                  : () => loginCtrl
-                                      .obscureText(!loginCtrl.obscureText()),
+                    ),
+                    const SizedBox(height: 18),
+                    _fieldLabel('Password'),
+                    const SizedBox(height: 8),
+                    _styledInput(
+                      child: CupertinoTextField(
+                        key: WK.passwordField,
+                        controller: loginCtrl.passwordField,
+                        placeholder: 'Enter your password',
+                        obscureText: loginCtrl.obscureText(),
+                        textDirection: TextDirection.ltr,
+                        enabled: !isLoading,
+                        prefix: const Padding(
+                          padding: EdgeInsets.only(left: 12),
+                          child: Icon(FluentIcons.lock,
+                              size: 14, color: Color(0xFF7A8AA7)),
+                        ),
+                        suffix: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: IconButton(
+                            icon: Icon(
+                              loginCtrl.obscureText()
+                                  ? FluentIcons.red_eye
+                                  : FluentIcons.hide,
+                              size: 14,
                             ),
-                          ),
-                          decoration: null,
-                          style: AppTextTheme.textTheme.bodyMedium,
-                          onSubmitted: (_) => _fieldSubmit(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Checkbox(
-                            checked: rememberMe,
-                            onChanged: (v) =>
-                                setState(() => rememberMe = v ?? false),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Remember me',
-                            style: AppTextTheme.textTheme.labelLarge
-                                ?.copyWith(color: const Color(0xFF5D6F94)),
-                          ),
-                          const Spacer(),
-                          Button(
                             onPressed: isLoading
                                 ? null
-                                : () => loginCtrl.selectedTab(1),
-                            child: Text(
-                              'Forgot password?',
-                              style: AppTextTheme.textTheme.labelLarge
-                                  ?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF2B75EB)),
-                            ),
+                                : () => loginCtrl
+                                    .obscureText(!loginCtrl.obscureText()),
                           ),
-                        ],
+                        ),
+                        decoration: null,
+                        style: AppTextTheme.textTheme.bodyMedium,
+                        onSubmitted: (_) => _fieldSubmit(),
                       ),
-                      const SizedBox(height: 14),
-                      SizedBox(
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Checkbox(
+                          checked: rememberMe,
+                          onChanged: (v) {
+                            final next = v ?? false;
+                            setState(() => rememberMe = next);
+                            loginCtrl.rememberMeForDay(next);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Remember me (today only)',
+                          style: AppTextTheme.textTheme.labelLarge
+                              ?.copyWith(color: const Color(0xFF5D6F94)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: AppButton(
+                        key: WK.btnLogin,
+                        label: isLoading ? 'Please wait...' : 'Login',
+                        onPressed: isLoading ? null : loginCtrl.loginButton,
+                        expanded: true,
+                        leading: const Icon(FluentIcons.forward, size: 14),
+                      ),
+                    ),
+                    if (isLoading) ...[
+                      const SizedBox(height: 10),
+                      Container(
                         width: double.infinity,
-                        child: AppButton(
-                          key: WK.btnLogin,
-                          label: isLoading ? 'Please wait...' : 'Login',
-                          onPressed: isLoading ? null : loginCtrl.loginButton,
-                          expanded: true,
-                          leading: const Icon(FluentIcons.forward, size: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF2FF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFD3E2FF)),
                         ),
-                      ),
-                      if (isLoading) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEAF2FF),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFD3E2FF)),
-                          ),
-                          child: Row(
-                            children: [
-                              const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: ProgressRing(strokeWidth: 2),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  loginCtrl.loadingIndicator(),
-                                  style: AppTextTheme.textTheme.bodySmall
-                                      ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF35507F)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      if (loginCtrl.loginError().isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        FilledButton(
-                          key: WK.btnProceedOffline,
-                          onPressed: () => loginCtrl.loginButton(false),
-                          style: greyButtonStyle,
-                          child: const SizedBox(
-                            width: double.infinity,
-                            child: Text(
-                              'Proceed Offline',
-                              textAlign: TextAlign.center,
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: ProgressRing(strokeWidth: 2),
                             ),
-                          ),
-                        ),
-                      ],
-                    ] else ...[
-                      _fieldLabel('Username / Email'),
-                      const SizedBox(height: 8),
-                      _styledInput(
-                        child: CupertinoTextField(
-                          key: WK.emailField,
-                          controller: loginCtrl.emailField,
-                          placeholder: 'Enter your email',
-                          textDirection: TextDirection.ltr,
-                          enabled: !isLoading,
-                          prefix: const Padding(
-                            padding: EdgeInsets.only(left: 12),
-                            child: Icon(FluentIcons.contact,
-                                size: 14, color: Color(0xFF7A8AA7)),
-                          ),
-                          decoration: null,
-                          style: AppTextTheme.textTheme.bodyMedium,
-                          onSubmitted: (_) => _fieldSubmit(),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                loginCtrl.loadingIndicator(),
+                                style: AppTextTheme.textTheme.bodySmall
+                                    ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF35507F)),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      InfoBar(
-                        title: loginCtrl.resetInstructionsSent()
-                            ? Txt(key: WK.msgSentReset, txt('beenSent'))
-                            : Txt(key: WK.msgWillSendReset, txt('youLLGet')),
-                        severity: loginCtrl.resetInstructionsSent()
-                            ? InfoBarSeverity.success
-                            : InfoBarSeverity.info,
-                      ),
-                      const SizedBox(height: 14),
-                      if (!loginCtrl.resetInstructionsSent())
-                        SizedBox(
-                          width: double.infinity,
-                          child: AppButton(
-                            key: WK.btnResetPassword,
-                            label:
-                                isLoading ? 'Please wait...' : 'Reset password',
-                            onPressed: isLoading ? null : loginCtrl.resetButton,
-                            expanded: true,
-                            leading: const Icon(FluentIcons.password_field,
-                                size: 14),
-                          ),
-                        ),
                     ],
                     const SizedBox(height: 16),
                     Container(
@@ -551,43 +480,71 @@ class _LoginState extends State<Login> {
   }
 
   Future<void> _openServerDialog(BuildContext context) async {
-    final serverController =
-        TextEditingController(text: loginCtrl.urlField.text);
-    bool obscureUrl = true;
+    String selectedMode = login.serverMode;
+    final customController = TextEditingController(text: login.customServerUrl);
+
+    String maskUrl(String url) {
+      final normalized = url.trim();
+      final uri = Uri.tryParse(normalized);
+      if (uri == null || uri.host.isEmpty) return normalized;
+      final parts = uri.host.split('.');
+      if (parts.length == 4) {
+        final last = parts.last;
+        final port = uri.hasPort ? ':${uri.port}' : '';
+        return '${uri.scheme}://***.***.***.$last$port';
+      }
+      return normalized;
+    }
+
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (_, setLocalState) {
+            final selectedUrl = selectedMode == 'local'
+                ? loginLocalServerUrl
+                : selectedMode == 'custom'
+                    ? customController.text.trim()
+                    : loginRemoteServerUrl;
             return ContentDialog(
               title: const Text('Server URL'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CupertinoTextField(
+                  RadioButton(
+                    checked: selectedMode == 'server',
+                    onChanged: (_) =>
+                        setLocalState(() => selectedMode = 'server'),
+                    content: Text('Server (${maskUrl(loginRemoteServerUrl)})'),
+                  ),
+                  RadioButton(
+                    checked: selectedMode == 'local',
+                    onChanged: (_) =>
+                        setLocalState(() => selectedMode = 'local'),
+                    content: Text('Local (${maskUrl(loginLocalServerUrl)})'),
+                  ),
+                  RadioButton(
+                    checked: selectedMode == 'custom',
+                    onChanged: (_) =>
+                        setLocalState(() => selectedMode = 'custom'),
+                    content: const Text('Custom'),
+                  ),
+                  const SizedBox(height: 6),
+                  TextBox(
                     key: WK.serverField,
-                    controller: serverController,
-                    textDirection: TextDirection.ltr,
-                    obscureText: obscureUrl,
-                    obscuringCharacter: '*',
-                    placeholder: 'https://[pocketbase server]',
-                    suffix: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: IconButton(
-                        icon: Icon(
-                            obscureUrl ? FluentIcons.red_eye : FluentIcons.hide,
-                            size: 16),
-                        onPressed: () =>
-                            setLocalState(() => obscureUrl = !obscureUrl),
-                      ),
-                    ),
+                    controller: customController,
+                    enabled: selectedMode == 'custom',
+                    placeholder: 'https://your-server:8090',
+                    onChanged: (_) => setLocalState(() {}),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'URL is masked by default to prevent shoulder-surfing.',
-                    style: TextStyle(fontSize: 12),
-                  ),
+                  // Text(
+                  //   selectedUrl.isEmpty
+                  //       ? 'Default is Server. Selection is saved for future sessions.'
+                  //       : 'Current URL: $selectedUrl',
+                  //   style: const TextStyle(fontSize: 12),
+                  // ),
                 ],
               ),
               actions: [
@@ -607,17 +564,16 @@ class _LoginState extends State<Login> {
     );
 
     if (saved == true) {
-      loginCtrl.urlField.text = serverController.text.trim();
+      login.applyServerMode(
+        selectedMode,
+        customUrl: customController.text.trim(),
+      );
     }
   }
 
   void _fieldSubmit() {
     if (loginCtrl.loadingIndicator().isNotEmpty) return;
-    if (loginCtrl.selectedTab() == 0) {
-      loginCtrl.loginButton();
-    } else if (loginCtrl.selectedTab() == 1) {
-      loginCtrl.resetButton();
-    }
+    loginCtrl.loginButton();
   }
 }
 

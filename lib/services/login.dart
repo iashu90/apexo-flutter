@@ -12,6 +12,9 @@ import 'package:apexo/features/doctors/doctors_store.dart';
 import '../core/observable.dart';
 import 'package:pocketbase/pocketbase.dart';
 
+const String loginLocalServerUrl = 'http://127.0.0.1:8090';
+const String loginRemoteServerUrl = 'http://34.105.117.49:8090';
+
 class _LoginService extends ObservablePersistingObject {
   _LoginService(super.identifier);
 
@@ -20,6 +23,11 @@ class _LoginService extends ObservablePersistingObject {
   String password = "F";
   String token = "";
   String adminCollectionId = "__UNDEFINED__";
+  String serverMode = 'server';
+  String customServerUrl = '';
+  String rememberedEmail = '';
+  String rememberedPassword = '';
+  int rememberUntilEpochMs = 0;
 
   String get currentUserID {
     if (token.isEmpty) return "";
@@ -49,6 +57,57 @@ class _LoginService extends ObservablePersistingObject {
     return pb!.authStore.record!.collectionName == "_superusers";
   }
 
+  String _urlForMode(String mode) {
+    if (mode == 'local') return loginLocalServerUrl;
+    if (mode == 'custom') {
+      final custom = customServerUrl.trim();
+      return custom.isEmpty ? loginRemoteServerUrl : custom;
+    }
+    return loginRemoteServerUrl;
+  }
+
+  bool get hasValidRememberedCredentials {
+    if (rememberedEmail.trim().isEmpty || rememberedPassword.isEmpty) {
+      return false;
+    }
+    return DateTime.now().millisecondsSinceEpoch <= rememberUntilEpochMs;
+  }
+
+  void applyServerMode(String mode, {String? customUrl}) {
+    if (customUrl != null) {
+      customServerUrl = customUrl.trim();
+    }
+    if (mode == 'local') {
+      serverMode = 'local';
+    } else if (mode == 'custom') {
+      serverMode = 'custom';
+    } else {
+      serverMode = 'server';
+    }
+    url = _urlForMode(serverMode);
+    loginCtrl.urlField.text = url;
+    notifyAndPersist();
+  }
+
+  void setRememberedCredentials({
+    required bool enable,
+    required String email,
+    required String password,
+  }) {
+    if (enable) {
+      rememberedEmail = email;
+      rememberedPassword = password;
+      rememberUntilEpochMs = DateTime.now()
+          .add(const Duration(days: 1))
+          .millisecondsSinceEpoch;
+    } else {
+      rememberedEmail = '';
+      rememberedPassword = '';
+      rememberUntilEpochMs = 0;
+    }
+    notifyAndPersist();
+  }
+
   void logout() {
     launch.open(false);
     url = "";
@@ -56,8 +115,15 @@ class _LoginService extends ObservablePersistingObject {
     password = "";
     token = "";
     pb!.authStore.clear();
-    loginCtrl.emailField.clear();
-    loginCtrl.passwordField.clear();
+    if (hasValidRememberedCredentials) {
+      loginCtrl.emailField.text = rememberedEmail;
+      loginCtrl.passwordField.text = rememberedPassword;
+      loginCtrl.rememberMeForDay(true);
+    } else {
+      loginCtrl.emailField.clear();
+      loginCtrl.passwordField.clear();
+      loginCtrl.rememberMeForDay(false);
+    }
     notifyAndPersist();
     routes.panels([]);
     return loginCtrl.finishedLoginProcess();
@@ -107,7 +173,13 @@ class _LoginService extends ObservablePersistingObject {
           token =
               await authenticateWithPassword(credentials[0], credentials[1]);
           email = credentials[0];
+          password = credentials[1];
           url = inputURL;
+          setRememberedCredentials(
+            enable: loginCtrl.rememberMeForDay(),
+            email: credentials[0],
+            password: credentials[1],
+          );
         }
         // token authentication
         if (credentials.length == 1) {
@@ -229,13 +301,30 @@ class _LoginService extends ObservablePersistingObject {
 
   @override
   fromJson(Map<String, dynamic> json) async {
-    url = json["url"] ?? url;
+    final savedMode = (json['serverMode'] as String?)?.trim() ?? 'server';
+    serverMode = (savedMode == 'local' || savedMode == 'custom')
+        ? savedMode
+        : 'server';
+    customServerUrl = (json['customServerUrl'] as String?)?.trim() ?? '';
+    url = (json["url"] as String?)?.trim() ?? '';
+    if (url.isEmpty) {
+      url = _urlForMode(serverMode);
+    }
     email = "";
     token = json["token"] ?? token;
     adminCollectionId = json["adminCollectionId"] ?? adminCollectionId;
+    rememberedEmail = json['rememberedEmail'] ?? '';
+    rememberedPassword = json['rememberedPassword'] ?? '';
+    rememberUntilEpochMs = json['rememberUntilEpochMs'] ?? 0;
+    if (!hasValidRememberedCredentials) {
+      rememberedEmail = '';
+      rememberedPassword = '';
+      rememberUntilEpochMs = 0;
+    }
     loginCtrl.urlField.text = url;
-    loginCtrl.emailField.clear();
-    loginCtrl.passwordField.clear();
+    loginCtrl.emailField.text = rememberedEmail;
+    loginCtrl.passwordField.text = rememberedPassword;
+    loginCtrl.rememberMeForDay(hasValidRememberedCredentials);
     launch.open(false);
   }
 
@@ -246,6 +335,11 @@ class _LoginService extends ObservablePersistingObject {
     json['email'] = email;
     json["token"] = token;
     json["adminCollectionId"] = adminCollectionId;
+    json['serverMode'] = serverMode;
+    json['customServerUrl'] = customServerUrl;
+    json['rememberedEmail'] = rememberedEmail;
+    json['rememberedPassword'] = rememberedPassword;
+    json['rememberUntilEpochMs'] = rememberUntilEpochMs;
     return json;
   }
 }

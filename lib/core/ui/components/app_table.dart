@@ -18,7 +18,7 @@ class AppTable extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: AppRadius.card,
+        // borderRadius: AppRadius.card,
         border: Border.all(color: AppColors.borderSoft),
       ),
       child: DataTable(
