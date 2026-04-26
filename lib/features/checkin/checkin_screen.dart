@@ -893,7 +893,6 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEFF5FF),
-                              borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: const Color(0xFFD7E5F7)),
                             ),
                             child: Row(
@@ -936,7 +935,6 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: const Color(0xFFDCE8F8)),
                               ),
                               child: Row(
@@ -4241,10 +4239,13 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       runSpacing: 6,
                       children: _postOpSuggestions.keys
                           .map(
-                            (parent) => _hierarchyChip(
+                            (parent) => AppButton(
                               label: parent,
-                              selected: _selectedPostOpParent == parent,
-                              onTap: () {
+                              compact: false,
+                              variant: _selectedPostOpParent == parent
+                                  ? AppButtonVariant.primary
+                                  : AppButtonVariant.secondary,
+                              onPressed: () {
                                 setState(() => _selectedPostOpParent = parent);
                               },
                             ),
@@ -4416,18 +4417,22 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? const Color.fromARGB(255, 253, 255, 221) : const Color.fromARGB(255, 254, 255, 243),
+          color: selected
+              ? const Color(0xFFE6F7EC)
+              : const Color(0xFFF4FBF6),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color:
-                selected ? const Color.fromARGB(255, 239, 241, 140) : const Color.fromARGB(255, 246, 250, 207),
+            color: selected
+                ? const Color(0xFF9FD9B1)
+                : const Color(0xFFCDEBD7),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color:
-                selected ? const Color.fromARGB(255, 153, 116, 15) : const Color.fromARGB(255, 152, 141, 42),
+            color: selected
+                ? const Color(0xFF1E8B66)
+                : const Color(0xFF2F7A57),
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),

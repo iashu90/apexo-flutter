@@ -76,10 +76,20 @@ class _ReportScreenState extends State<ReportScreen> {
                     children: [
                       for (int i = 0; i < cards.length; i++)
                         SizedBox(
-                          width: allowWideTiles && (i % 7 == 0 || i % 11 == 0)
-                              ? (tileWidth * 2) + spacing
-                              : tileWidth,
-                          child: cards[i],
+                          width: cards[i] is _WideReportTile
+                              ? (columnCount >= 2
+                                  ? (tileWidth * 2) + spacing
+                                  : tileWidth)
+                              : cards[i] is _CompactReportTile
+                                  ? tileWidth
+                              : allowWideTiles && (i % 7 == 0 || i % 11 == 0)
+                                  ? (tileWidth * 2) + spacing
+                                  : tileWidth,
+                          child: cards[i] is _WideReportTile
+                              ? (cards[i] as _WideReportTile).child
+                              : cards[i] is _CompactReportTile
+                                  ? (cards[i] as _CompactReportTile).child
+                              : cards[i],
                         ),
                     ],
                   );
@@ -135,14 +145,6 @@ class _ReportScreenState extends State<ReportScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      _DailyAppointmentsTrendSection(
-                        rows: allAppointments,
-                      ),
-                      const SizedBox(height: 8),
-                      _DailyRevenueTrendSection(
-                        rows: allAppointments,
-                      ),
-                      const SizedBox(height: 8),
                       if (!_showHeavyCards)
                         responsiveGrid(
                           List<Widget>.generate(
@@ -154,6 +156,9 @@ class _ReportScreenState extends State<ReportScreen> {
                       else
                         responsiveGrid(
                           [
+                            _DailyAppointmentsGrossTrendCard(
+                              rows: allAppointments,
+                            ),
                             _MonthlyAppointmentsTrendSection(
                               rows: allAppointments,
                               windowOffset: _monthlyOffset,
@@ -176,10 +181,16 @@ class _ReportScreenState extends State<ReportScreen> {
                               rows: allAppointments,
                               monthOffset: _monthlyOffset,
                             ),
-                            _TrafficByTimeCard(rows: allAppointments),
-                            _TrafficByDayCard(rows: allAppointments),
-                            _ReportDoctorAppointmentDoneCard(
-                              rows: allAppointments,
+                            _CompactReportTile(
+                              child: _TrafficByTimeCard(rows: allAppointments),
+                            ),
+                            _CompactReportTile(
+                              child: _TrafficByDayCard(rows: allAppointments),
+                            ),
+                            _WideReportTile(
+                              child: _ReportDoctorAppointmentDoneCard(
+                                rows: allAppointments,
+                              ),
                             ),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -191,7 +202,9 @@ class _ReportScreenState extends State<ReportScreen> {
                                 _ReportAgeDistributionCard(rows: allAppointments),
                               ],
                             ),
-                            _PaymentModeStatusCard(rows: allAppointments),
+                            _CompactReportTile(
+                              child: _PaymentModeStatusCard(rows: allAppointments),
+                            ),
                           ],
                         ),
                     ],
@@ -266,6 +279,24 @@ class _ReportSkeletonCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _WideReportTile extends StatelessWidget {
+  final Widget child;
+
+  const _WideReportTile({required this.child});
+
+  @override
+  Widget build(BuildContext context) => child;
+}
+
+class _CompactReportTile extends StatelessWidget {
+  final Widget child;
+
+  const _CompactReportTile({required this.child});
+
+  @override
+  Widget build(BuildContext context) => child;
 }
 
 enum _RangeFilter { today, week,lastMonth, month, sixMonths, ytd, year, all }
@@ -568,6 +599,7 @@ class _ReportDoctorAppointmentDoneCardState
   _RangeFilter _range = _RangeFilter.month;
   DateTime _monthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
+  bool _showAllRows = false;
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
 
@@ -836,17 +868,12 @@ class _ReportDoctorAppointmentDoneCardState
                   },
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               AppButton(
-                label: _range == _RangeFilter.month
-                    ? 'Collapse'
-                    : 'Expand',
+                label: _showAllRows ? 'Collapse' : 'Expand',
                 variant: AppButtonVariant.secondary,
-                onPressed: () => setState(() {
-                  _range = _range == _RangeFilter.month
-                      ? _RangeFilter.today
-                      : _RangeFilter.month;
-                }),
+                compact: false,
+                onPressed: () => setState(() => _showAllRows = !_showAllRows),
               ),
             ],
           ),
@@ -862,152 +889,180 @@ class _ReportDoctorAppointmentDoneCardState
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFFDCE8F6)),
               ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEFF5FF),
-                    ),
-                    child: const Row(
-                      children: [
-                        Expanded(
-                          flex: 4,
-                          child: Text(
-                            'Doctor',
-                            style: TextStyle(
-                              color: Color(0xFF355279),
-                              fontWeight: FontWeight.w700,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: 760,
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEFF5FF),
+                        ),
+                        child: const Row(
+                          children: [
+                            SizedBox(
+                              width: 190,
+                              child: Text(
+                                'Doctor',
+                                style: TextStyle(
+                                  color: Color(0xFF355279),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 95,
+                              child: Text(
+                                'Appointments',
+                                style: TextStyle(
+                                  color: Color(0xFF355279),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 120,
+                              child: Text(
+                                'Revenue',
+                                style: TextStyle(
+                                  color: Color(0xFF355279),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 120,
+                              child: Text(
+                                'Doctor Fee',
+                                style: TextStyle(
+                                  color: Color(0xFF355279),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 160,
+                              child: Text(
+                                'Net Profit',
+                                style: TextStyle(
+                                  color: Color(0xFF355279),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 75,
+                              child: Text(
+                                '%',
+                                style: TextStyle(
+                                  color: Color(0xFF355279),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ...rows.take(_showAllRows ? rows.length : 5).map((row) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 9,
+                          ),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: Color(0xFFE2ECF8)),
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            'Appointments',
-                            style: TextStyle(
-                              color: Color(0xFF355279),
-                              fontWeight: FontWeight.w700,
-                            ),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 190,
+                                child: Text(
+                                  row.doctor.title,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF1F446E),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 95,
+                                child: Text(
+                                  '${row.done}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1F2B40),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 120,
+                                child: Text(
+                                  formatIndianShortCurrency(row.revenue),
+                                  style: const TextStyle(
+                                    color: Color(0xFF2D7BD8),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 120,
+                                child: Text(
+                                  formatIndianShortCurrency(row.fee),
+                                  style: const TextStyle(
+                                    color: Color(0xFFD6455D),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 160,
+                                child: Text(
+                                  formatIndianShortCurrency(row.hospitalGained),
+                                  style: TextStyle(
+                                    color: row.hospitalGained < 0
+                                        ? const Color(0xFFD6455D)
+                                        : const Color(0xFF2BA58D),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 75,
+                                child: Text(
+                                  '${row.profitPct.toStringAsFixed(1)}%',
+                                  style: const TextStyle(
+                                    color: Color(0xFF355279),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            'Revenue',
-                            style: TextStyle(
-                              color: Color(0xFF355279),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            'Doctor Fee',
-                            style: TextStyle(
-                              color: Color(0xFF355279),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            'Net Profit',
-                            style: TextStyle(
-                              color: Color(0xFF355279),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            '%',
-                            style: TextStyle(
-                              color: Color(0xFF355279),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                        );
+                      }),
+                    ],
                   ),
-                  ...rows.take(12).map((row) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 9,
-                      ),
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: Color(0xFFE2ECF8)),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 4,
-                            child: Text(
-                              row.doctor.title,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF1F446E),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              '${row.done}',
-                              style: const TextStyle(
-                                color: Color(0xFF1F2B40),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              formatIndianShortCurrency(row.revenue),
-                              style: const TextStyle(
-                                color: Color(0xFF2D7BD8),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              formatIndianShortCurrency(row.fee),
-                              style: const TextStyle(
-                                color: Color(0xFFD6455D),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              formatIndianShortCurrency(row.hospitalGained),
-                              style: TextStyle(
-                                color: row.hospitalGained < 0
-                                    ? const Color(0xFFD6455D)
-                                    : const Color(0xFF2BA58D),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              '${row.profitPct.toStringAsFixed(1)}%',
-                              style: const TextStyle(
-                                color: Color(0xFF355279),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
+                ),
               ),
             ),
         ],
@@ -1446,6 +1501,174 @@ class _FilterChips extends StatelessWidget {
 List<DateTime> _monthOptions(List<Appointment> rows) =>
     monthOptionsFromAppointments(rows);
 
+class _DailyAppointmentsGrossTrendCard extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _DailyAppointmentsGrossTrendCard({required this.rows});
+
+  @override
+  State<_DailyAppointmentsGrossTrendCard> createState() =>
+      _DailyAppointmentsGrossTrendCardState();
+}
+
+class _DailyAppointmentsGrossTrendCardState
+    extends State<_DailyAppointmentsGrossTrendCard> {
+  int _monthOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    final monthStart =
+        DateTime(currentMonth.year, currentMonth.month - _monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final dayCount = monthEnd.difference(monthStart).inDays;
+
+    final starts = List<DateTime>.generate(
+      dayCount,
+      (i) => monthStart.add(Duration(days: i)),
+      growable: false,
+    );
+
+    final points = starts.map((start) {
+      final end = start.add(const Duration(days: 1));
+      final dayRows = widget.rows
+          .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
+          .toList(growable: false);
+      final count = dayRows.length.toDouble();
+      final gross = dayRows.fold<double>(
+        0,
+        (sum, a) => sum + a.paid + a.prescriptionPaid,
+      );
+      return (
+        label: formatClinicDate(start, pattern: 'dd'),
+        count: count,
+        gross: gross,
+      );
+    }).toList(growable: false);
+
+    final maxCount = points.fold<double>(1, (m, p) => p.count > m ? p.count : m);
+    final maxGross = points.fold<double>(1, (m, p) => p.gross > m ? p.gross : m);
+
+    return _ReportContainer(
+      title: 'Appointment + Gross Trend (Daily)',
+      subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
+      trailing: _TrendNavButtons(
+        canGoForward: _monthOffset > 0,
+        onBack: () => setState(() => _monthOffset += 1),
+        onForward:
+            _monthOffset > 0 ? () => setState(() => _monthOffset -= 1) : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              _LegendDot(color: Color(0xFF2D7BD8), label: 'Appointments'),
+              SizedBox(width: 10),
+              _LegendDot(color: Color(0xFF2BA58D), label: 'Gross Revenue'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 190,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: points
+                  .map(
+                    (point) => Expanded(
+                      child: Tooltip(
+                        message:
+                            '${point.label}: ${point.count.toStringAsFixed(0)} appts, ${formatIndianShortCurrency(point.gross)} gross',
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      height: (100 * (point.count / maxCount))
+                                          .clamp(3, 100)
+                                          .toDouble(),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF2D7BD8),
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Expanded(
+                                    child: Container(
+                                      height: (100 * (point.gross / maxGross))
+                                          .clamp(3, 100)
+                                          .toDouble(),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF2BA58D),
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                point.label,
+                                style: const TextStyle(
+                                  color: Color(0xFF5A7397),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _LegendDot({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF36557C),
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _DailyAppointmentsTrendSection extends StatefulWidget {
   final List<Appointment> rows;
 
@@ -1757,6 +1980,7 @@ class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
         rows: points,
         barColor: const Color(0xFF2D7BD8),
         valueFormatter: formatIndianShortCurrency,
+        showValueLabels: false,
       ),
     );
   }
@@ -1799,6 +2023,7 @@ class _MonthlyExpensesTrendWindowCard extends StatelessWidget {
         rows: points,
         barColor: const Color(0xFFD6455D),
         valueFormatter: formatIndianShortCurrency,
+        showValueLabels: false,
       ),
     );
   }
@@ -1847,6 +2072,7 @@ class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
         rows: points,
         barColor: const Color(0xFF2BA58D),
         valueFormatter: formatIndianShortCurrency,
+        showValueLabels: false,
       ),
     );
   }
@@ -1913,12 +2139,10 @@ class _PaymentModeStatusCard extends StatelessWidget {
       );
     }
 
-    return SizedBox(
-      width: 560,
-      child: _ReportContainer(
-        title: 'Total Payment Status',
-        subtitle: 'UPI vs Cash distribution by paid appointments',
-        child: Column(
+    return _ReportContainer(
+      title: 'Total Payment Status',
+      subtitle: 'UPI vs Cash distribution by paid appointments',
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             modeRow(
@@ -1946,7 +2170,6 @@ class _PaymentModeStatusCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -2160,6 +2383,7 @@ class _SimpleBarsCard extends StatelessWidget {
   final Widget? trailing;
   final String Function(double value)? valueFormatter;
   final bool verticalValueLabels;
+  final bool showValueLabels;
 
   const _SimpleBarsCard({
     required this.title,
@@ -2169,6 +2393,7 @@ class _SimpleBarsCard extends StatelessWidget {
     this.trailing,
     this.valueFormatter,
     this.verticalValueLabels = false,
+    this.showValueLabels = true,
   });
 
   @override
@@ -2196,7 +2421,9 @@ class _SimpleBarsCard extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          if (!verticalValueLabels && entry.value.value > 0)
+                          if (showValueLabels &&
+                              !verticalValueLabels &&
+                              entry.value.value > 0)
                             Text(
                               valueFormatter == null
                                   ? entry.value.value.toStringAsFixed(0)
@@ -2210,7 +2437,9 @@ class _SimpleBarsCard extends StatelessWidget {
                               ),
                               textAlign: TextAlign.center,
                             ),
-                          if (verticalValueLabels && entry.value.value > 0)
+                          if (showValueLabels &&
+                              verticalValueLabels &&
+                              entry.value.value > 0)
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
@@ -2311,11 +2540,9 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
         .map((e) => (label: e.key, value: e.value))
         .toList(growable: false);
 
-    return SizedBox(
-      width: 560,
-      child: _ReportContainer(
-        title: 'Traffic by Time',
-        child: Column(
+    return _ReportContainer(
+      title: 'Traffic by Time',
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _FilterChips(
@@ -2388,7 +2615,6 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -2438,11 +2664,9 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
         .toList(growable: false);
     final max = points.fold<double>(1, (m, e) => e.value > m ? e.value : m);
 
-    return SizedBox(
-      width: 560,
-      child: _ReportContainer(
-        title: 'Traffic by Day',
-        child: Column(
+    return _ReportContainer(
+      title: 'Traffic by Day',
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _FilterChips(
@@ -2509,7 +2733,6 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
             ),
           ],
         ),
-      ),
     );
   }
 }

@@ -379,6 +379,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                           doctors: allDoctors,
                           todaysAppointments: scopedCurrent,
                           selectedDate: _selectedDate,
+                          selectedRange: _handledRange,
                         );
                       },
                     ),
@@ -1338,11 +1339,13 @@ class _DoctorTodayDetailCard extends StatefulWidget {
   final List<Doctor> doctors;
   final List<Appointment> todaysAppointments;
   final DateTime selectedDate;
+  final String selectedRange;
 
   const _DoctorTodayDetailCard({
     required this.doctors,
     required this.todaysAppointments,
     required this.selectedDate,
+    required this.selectedRange,
   });
 
   @override
@@ -1389,6 +1392,52 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     if (treatmentTotal > 0 && paid <= 0) return 'Nil';
     if (paid < treatmentTotal) return 'Partial';
     return 'Paid';
+  }
+
+  String _paymentStatusForGroupedAppointments(List<Appointment> appointments) {
+    final treatmentTotal = appointments.fold<double>(
+      0,
+      (sum, appointment) => sum + _appointmentTreatmentTotal(appointment),
+    );
+    final paid = appointments.fold<double>(
+      0,
+      (sum, appointment) => sum + appointment.paid + appointment.prescriptionPaid,
+    );
+
+    if (treatmentTotal <= 0 && paid <= 0) return 'Free';
+    if (treatmentTotal > 0 && paid <= 0) return 'Nil';
+    if (paid < treatmentTotal) return 'Partial';
+    return 'Paid';
+  }
+
+  bool get _showTimeOnly => widget.selectedRange == 'today';
+  bool get _groupRowsByPatient =>
+      widget.selectedRange == 'month' || widget.selectedRange == 'custom';
+
+  List<({Appointment primary, List<Appointment> rows})> _patientGroupedRows(
+    List<Appointment> doctorAppts,
+  ) {
+    if (!_groupRowsByPatient) {
+      return doctorAppts
+          .map((row) => (primary: row, rows: <Appointment>[row]))
+          .toList(growable: false);
+    }
+
+    final grouped = <String, List<Appointment>>{};
+    for (final row in doctorAppts) {
+      final patientId = row.patientID?.trim() ?? '';
+      final key = patientId.isNotEmpty
+          ? 'id:$patientId'
+          : 'name:${row.title.trim().toLowerCase()}';
+      grouped.putIfAbsent(key, () => <Appointment>[]).add(row);
+    }
+
+    final result = grouped.values.map((rows) {
+      rows.sort((a, b) => b.date.compareTo(a.date));
+      return (primary: rows.first, rows: rows);
+    }).toList(growable: false)
+      ..sort((a, b) => b.primary.date.compareTo(a.primary.date));
+    return result;
   }
 
   List<MapEntry<Doctor, List<Appointment>>> _doctorEntries() {
@@ -1774,6 +1823,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                     final netWidth = baseNetWidth * widthScale;
                     final statusWidth = baseStatusWidth * widthScale;
                     final actionWidth = baseActionWidth * widthScale;
+                    final groupedRows = _patientGroupedRows(doctorAppts);
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 6),
@@ -1865,7 +1915,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                                   color: Color(0xFF355279)))),
                                       SizedBox(
                                           width: timeWidth,
-                                          child: const Text('Time',
+                                          child: Text(
+                                            _showTimeOnly ? 'Time' : 'Date',
                                               style: TextStyle(
                                                   fontWeight: FontWeight.w700,
                                                   color: Color(0xFF355279)))),
@@ -1920,26 +1971,66 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                     ],
                                   ),
                                 ),
-                                ...doctorAppts.map((appointment) {
+                                ...groupedRows.map((groupedRow) {
+                                  final appointment = groupedRow.primary;
+                                  final groupedAppointments = groupedRow.rows;
                                   final end = appointment.date
                                       .add(const Duration(minutes: 40));
-                                  final treatment = appointment
-                                      .selectedTreatments
-                                      .where((t) => t.trim().isNotEmpty)
-                                      .join(', ');
-                                  final tooth =
-                                      appointment.selectedTeeth.isEmpty
-                                          ? '-'
-                                          : appointment.selectedTeeth.first;
-                                  final stage = _stageLabel(appointment);
+                                  final groupedCount = groupedAppointments.length;
+                                  final treatmentSet = groupedAppointments
+                                    .expand((a) => a.selectedTreatments)
+                                    .map((t) => t.trim())
+                                    .where((t) => t.isNotEmpty)
+                                    .toSet()
+                                    .toList(growable: false);
+                                  final treatment = treatmentSet.join(', ');
+                                  final toothSet = groupedAppointments
+                                    .expand((a) => a.selectedTeeth)
+                                    .map((t) => t.trim())
+                                    .where((t) => t.isNotEmpty)
+                                    .toSet()
+                                    .toList(growable: false);
+                                  final tooth = toothSet.isEmpty
+                                    ? '-'
+                                    : toothSet.length == 1
+                                      ? toothSet.first
+                                      : 'Multiple';
+                                  final stageSet = groupedAppointments
+                                    .map((a) => _stageLabel(a))
+                                    .toSet();
+                                  final stage = stageSet.length > 1
+                                    ? 'Mixed'
+                                    : _stageLabel(appointment);
                                   final stageColor = _stageColor(stage);
-                                  final paid = appointment.paid +
-                                      appointment.prescriptionPaid;
-                                  final consultantFee =
-                                      appointment.doctorPayableAmount;
+                                  final paid = groupedAppointments.fold<double>(
+                                  0,
+                                  (sum, a) => sum + a.paid + a.prescriptionPaid,
+                                  );
+                                  final consultantFee = groupedAppointments.fold<double>(
+                                  0,
+                                  (sum, a) => sum + a.doctorPayableAmount,
+                                  );
                                   final appointmentNet = paid - consultantFee;
-                                  final paymentStatus =
-                                      _paymentStatusForAppointment(appointment);
+                                  final paymentStatus = groupedCount > 1
+                                    ? _paymentStatusForGroupedAppointments(
+                                      groupedAppointments,
+                                    )
+                                    : _paymentStatusForAppointment(appointment);
+                                  final earliestDate = groupedAppointments
+                                    .map((a) => a.date)
+                                    .reduce(
+                                    (a, b) => a.isBefore(b) ? a : b,
+                                    );
+                                  final latestDate = groupedAppointments
+                                    .map((a) => a.date)
+                                    .reduce(
+                                    (a, b) => a.isAfter(b) ? a : b,
+                                    );
+                                  final patientLabel = groupedCount > 1
+                                    ? '${appointment.title.trim().isEmpty ? 'Unnamed patient' : _doctorTitleCase(appointment.title)} ($groupedCount records)'
+                                    : (appointment.title.trim().isEmpty
+                                      ? 'Unnamed patient'
+                                      : _doctorTitleCase(appointment.title));
 
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 0),
@@ -1968,12 +2059,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                                       _openPatientEditor(
                                                           appointment),
                                                   child: Text(
-                                                    appointment.title
-                                                            .trim()
-                                                            .isEmpty
-                                                        ? 'Unnamed patient'
-                                                        : _doctorTitleCase(
-                                                            appointment.title),
+                                                    patientLabel,
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     style: const TextStyle(
@@ -1992,7 +2078,11 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                         SizedBox(
                                           width: timeWidth,
                                           child: Text(
-                                            '${formatClinicDateTime(appointment.date, pattern: 'hh:mm a')} - ${formatClinicDateTime(end, pattern: 'hh:mm a')}',
+                                            _showTimeOnly
+                                                ? '${formatClinicDateTime(appointment.date, pattern: 'hh:mm a')} - ${formatClinicDateTime(end, pattern: 'hh:mm a')}'
+                                                : groupedCount > 1
+                                                    ? '${formatClinicDate(earliestDate, pattern: 'dd MMM')} - ${formatClinicDate(latestDate, pattern: 'dd MMM yyyy')}'
+                                                    : formatClinicDate(appointment.date, pattern: 'dd MMM yyyy'),
                                             style: const TextStyle(
                                               color: Color(0xFF4D6488),
                                               fontWeight: FontWeight.w600,
