@@ -961,16 +961,6 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                   alignment: WrapAlignment.end,
                   children: [
                     AppButton(
-                      label: _historyTab == 'labs'
-                          ? '+ Add Lab Record'
-                          : '+ Add Treatment',
-                      onPressed: () {},
-                    ),
-                    AppButton(
-                      label: 'Collect Payment',
-                      onPressed: () {},
-                    ),
-                    AppButton(
                       label: 'Share',
                       variant: AppButtonVariant.secondary,
                       onPressed: _openShareOptions,

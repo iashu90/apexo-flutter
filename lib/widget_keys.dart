@@ -8,10 +8,8 @@ class WK {
   static const dashboardScreen = Key("dashboardScreen");
   static const doctorsScreen = Key("doctorsScreen");
   static const patientsScreen = Key("patientsScreen");
-  static const patientsScreenV2 = Key("patientsScreenV2");
   static const calendarScreen = Key("calendarScreen");
   static const labworksScreen = Key("labworksScreen");
-  static const labworksScreenV2 = Key("labworksScreenV2");
   static const settingsScreen = Key("settingsScreen");
   static const expensesScreen = Key("expensesScreen");
   static const serverField = Key("serverField");

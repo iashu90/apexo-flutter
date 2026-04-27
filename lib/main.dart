@@ -1,4 +1,4 @@
-import 'package:apexo/app/app_v2.dart';
+import 'package:apexo/app/app.dart';
 import 'package:apexo/sentry_dsn.dart';
 import 'package:apexo/utils/init_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -52,3 +52,4 @@ void main() async {
     }
   }
 }
+

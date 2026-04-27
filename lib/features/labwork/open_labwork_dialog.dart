@@ -15,20 +15,20 @@ Future<void> openLabworkDialog(BuildContext context, [Labwork? labwork]) {
   final editingCopy = Labwork.fromJson(labwork?.toJson() ?? {});
   return showDialog<void>(
     context: context,
-    builder: (_) => _LabworkV2Dialog(item: editingCopy),
+    builder: (_) => _LabworkDialog(item: editingCopy),
   );
 }
 
-class _LabworkV2Dialog extends StatefulWidget {
+class _LabworkDialog extends StatefulWidget {
   final Labwork item;
 
-  const _LabworkV2Dialog({required this.item});
+  const _LabworkDialog({required this.item});
 
   @override
-  State<_LabworkV2Dialog> createState() => _LabworkV2DialogState();
+  State<_LabworkDialog> createState() => _LabworkDialogState();
 }
 
-class _LabworkV2DialogState extends State<_LabworkV2Dialog> {
+class _LabworkDialogState extends State<_LabworkDialog> {
   late final TextEditingController _notesCtrl;
   Set<String> _selectedTeeth = {};
   double _pricePerUnit = 0;

@@ -5,7 +5,7 @@ import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
-import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
+import 'package:apexo/common_widgets/patient_history_modal.dart';
 import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
@@ -3847,3 +3847,4 @@ class _SlotPressureHeatmapCard extends StatelessWidget {
     );
   }
 }
+

@@ -1,0 +1,807 @@
+part of 'checkin_screen.dart';
+
+class _DoctorFilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DoctorFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppButton(
+      label: label,
+      onPressed: onTap,
+      variant: selected ? AppButtonVariant.primary : AppButtonVariant.secondary,
+    );
+  }
+}
+
+class _WorkflowColumn extends StatelessWidget {
+  final String title;
+  final String stage;
+  final Color color;
+  final List<Appointment> rows;
+  final Set<String> duplicatePatientIds;
+  final String Function(Appointment)? rowStageBuilder;
+  final bool showHistoryAction;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+  final ValueChanged<Appointment>? onSelect;
+  final String? selectedAppointmentId;
+  final bool interactionsEnabled;
+
+  const _WorkflowColumn({
+    required this.title,
+    required this.stage,
+    required this.color,
+    required this.rows,
+    required this.duplicatePatientIds,
+    this.rowStageBuilder,
+    required this.expanded,
+    required this.onToggleExpanded,
+    this.showHistoryAction = false,
+    this.onSelect,
+    this.selectedAppointmentId,
+    this.interactionsEnabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+        duration: const Duration(milliseconds: 120),
+        opacity: interactionsEnabled ? 1 : 0.62,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFD6E2F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(11)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(
+                        expanded
+                            ? FluentIcons.chevron_down
+                            : FluentIcons.chevron_right,
+                        size: 11,
+                      ),
+                      onPressed: interactionsEnabled ? onToggleExpanded : null,
+                    ),
+                  ],
+                ),
+              ),
+              if (!expanded)
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'Collapsed',
+                    style: TextStyle(color: Color(0xFF6D84A8)),
+                  ),
+                )
+              else if (rows.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'No appointments in this state.',
+                    style: TextStyle(color: Color(0xFF6D84A8)),
+                  ),
+                )
+              else
+                ...rows.map(
+                  (a) => _WorkflowRow(
+                    appointment: a,
+                    stage: rowStageBuilder?.call(a) ?? stage,
+                    duplicateRecord: a.patientID != null &&
+                        duplicatePatientIds.contains(a.patientID),
+                    showHistoryAction: showHistoryAction,
+                    selected: selectedAppointmentId == a.id,
+                    interactionsEnabled: interactionsEnabled,
+                    onSelect: onSelect,
+                  ),
+                ),
+            ],
+          ),
+        ));
+  }
+}
+
+class _WorkflowRow extends StatelessWidget {
+  final Appointment appointment;
+  final String stage;
+  final bool duplicateRecord;
+  final bool showHistoryAction;
+  final bool selected;
+  final bool interactionsEnabled;
+  final ValueChanged<Appointment>? onSelect;
+
+  const _WorkflowRow({
+    required this.appointment,
+    required this.stage,
+    this.duplicateRecord = false,
+    this.showHistoryAction = false,
+    this.selected = false,
+    this.interactionsEnabled = true,
+    this.onSelect,
+  });
+
+  Future<void> _openNextAppointmentPrompt(
+    BuildContext context,
+    Appointment appointment,
+  ) async {
+    await _showNextAppointmentPromptDialog(context, appointment);
+  }
+
+  Future<void> _deleteScheduledAppointment(
+    BuildContext context,
+    Appointment appointment,
+  ) async {
+    await appointments.hardDelete(appointment.id);
+  }
+
+  Future<void> _openScheduleActions(
+    BuildContext context,
+    Appointment appointment,
+  ) async {
+    final originalDate = appointment.date;
+    DateTime selectedDate = DateTime(
+      originalDate.year,
+      originalDate.month,
+      originalDate.day,
+    );
+    material.TimeOfDay selectedTime = material.TimeOfDay(
+      hour: originalDate.hour,
+      minute: originalDate.minute,
+    );
+    bool confirmDelete = false;
+    bool confirmCancel = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          final updatedDateTime = DateTime(
+            selectedDate.year,
+            selectedDate.month,
+            selectedDate.day,
+            selectedTime.hour,
+            selectedTime.minute,
+          );
+          final hasChanged = updatedDateTime != originalDate;
+
+          return ContentDialog(
+            title: Row(
+              children: [
+                const Expanded(child: Text('Edit Appointment')),
+                IconButton(
+                  icon: const Icon(FluentIcons.chrome_close, size: 11),
+                  onPressed: () => Navigator.pop(dialogContext),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 650,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 430),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appointment.title.trim().isEmpty
+                            ? 'Unnamed patient'
+                            : _toTitleCase(appointment.title),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF183A67),
+                          fontSize: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Text(
+                            'Date:',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(width: 8),
+                          AppButton(
+                            label: formatClinicDate(selectedDate,
+                                pattern: 'dd MMM yyyy'),
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () async {
+                              final picked = await material.showDatePicker(
+                                context: context,
+                                initialDate: selectedDate,
+                                firstDate: DateTime(2000, 1, 1),
+                                lastDate: DateTime(2100, 12, 31),
+                                builder: apexoDatePickerBuilder(context),
+                              );
+                              if (picked == null) return;
+                              setStateDialog(() {
+                                selectedDate = DateTime(
+                                  picked.year,
+                                  picked.month,
+                                  picked.day,
+                                );
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Text(
+                            'Time:',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(width: 8),
+                          AppButton(
+                            label: selectedTime.format(context),
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () async {
+                              final picked = await material.showTimePicker(
+                                context: context,
+                                initialTime: selectedTime,
+                                builder: apexoDatePickerBuilder(context),
+                              );
+                              if (picked == null) return;
+                              setStateDialog(() {
+                                selectedTime = picked;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Current: ${formatClinicDateTime(originalDate, pattern: 'dd MMM yyyy, h:mm a')}',
+                        style: const TextStyle(
+                          color: Color(0xFF5F789B),
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        'Updated: ${formatClinicDateTime(updatedDateTime, pattern: 'dd MMM yyyy, h:mm a')}',
+                        style: TextStyle(
+                          color: hasChanged
+                              ? const Color(0xFF1459AD)
+                              : const Color(0xFF5F789B),
+                          fontSize: 16,
+                          fontWeight:
+                              hasChanged ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                      if (confirmDelete) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF4F4),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFF3C3C8)),
+                          ),
+                          child: const Text(
+                            'Delete confirmation: this action is permanent and cannot be undone.',
+                            style: TextStyle(
+                              color: Color(0xFFA11E34),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (confirmCancel) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF4F4),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFF3C3C8)),
+                          ),
+                          child: const Text(
+                            'Cancel confirmation: this appointment will be moved to Cancelled.',
+                            style: TextStyle(
+                              color: Color(0xFFA11E34),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            actions: [
+              AppButton(
+                label: 'Update',
+                onPressed: hasChanged
+                    ? () {
+                        appointment.date = updatedDateTime;
+                        appointments.set(appointment);
+                        onSelect?.call(appointment);
+                        Navigator.of(dialogContext, rootNavigator: true).pop();
+                      }
+                    : null,
+              ),
+              AppButton(
+                label: confirmCancel ? 'Confirm Cancel' : 'Cancel Appointment',
+                variant: AppButtonVariant.warning,
+                onPressed: () async {
+                  if (!confirmCancel) {
+                    setStateDialog(() {
+                      confirmCancel = true;
+                      confirmDelete = false;
+                    });
+                    return;
+                  }
+                  appointment.checkinStage = 'cancelled';
+                  appointment.isCheckedIn = false;
+                  appointments.set(appointment);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                },
+              ),
+              AppButton(
+                label: confirmDelete ? 'Confirm Delete' : 'Delete',
+                variant: AppButtonVariant.danger,
+                onPressed: () async {
+                  if (!confirmDelete) {
+                    setStateDialog(() {
+                      confirmDelete = true;
+                      confirmCancel = false;
+                    });
+                    return;
+                  }
+                  await _deleteScheduledAppointment(context, appointment);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _moveStage(BuildContext context) async {
+    await CheckinStageModalRouter.openForStage(
+      context: context,
+      appointment: appointment,
+      openTreatmentModal: openAppointmentJourneyDialog,
+      openBillingModal: openAppointmentJourneyDialog,
+      openCompleteModal: openAppointmentJourneyDialog,
+      onUpdated: () => onSelect?.call(appointment),
+    );
+  }
+
+  Future<void> _undoStage(BuildContext context) async {
+    final patientName = _patientDisplayName(appointment);
+
+    if (stage == 'with_doctor') {
+      final shouldMove = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: Text('Move "$patientName" back to Waiting?'),
+          content: Text(
+            'Doctor assignment will be removed for $patientName.',
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.pop(dialogContext, false),
+            ),
+            AppButton(
+              label: 'Move to Waiting',
+              variant: AppButtonVariant.danger,
+              onPressed: () => Navigator.pop(dialogContext, true),
+            ),
+          ],
+        ),
+      );
+      if (shouldMove != true) return;
+      appointment.operatorsIDs = [];
+      appointment.checkinStage = 'waiting';
+      appointment.isDone = false;
+      appointments.set(appointment);
+      return;
+    }
+
+    if (stage == 'checkout') {
+      final shouldMove = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: Text('Move "$patientName" back to Treatment?'),
+          content: Text(
+            'This appointment will be moved back to Treatment for $patientName.',
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.pop(dialogContext, false),
+            ),
+            AppButton(
+              label: 'Move to Treatment',
+              variant: AppButtonVariant.danger,
+              onPressed: () => Navigator.pop(dialogContext, true),
+            ),
+          ],
+        ),
+      );
+      if (shouldMove != true) return;
+      appointment.checkinStage = 'with_doctor';
+      appointment.isDone = false;
+      appointments.set(appointment);
+      return;
+    }
+
+    if (stage == 'completed') {
+      final shouldMove = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: Text('Move "$patientName" back to Billing?'),
+          content: Text(
+            'This appointment will be moved back to Billing for $patientName.',
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.pop(dialogContext, false),
+            ),
+            AppButton(
+              label: 'Move to Billing',
+              variant: AppButtonVariant.danger,
+              onPressed: () => Navigator.pop(dialogContext, true),
+            ),
+          ],
+        ),
+      );
+      if (shouldMove != true) return;
+      appointment.checkinStage = 'checkout';
+      appointment.isDone = false;
+      appointments.set(appointment);
+      return;
+    }
+
+    if (stage == 'cancelled') {
+      final shouldRestore = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: Text('Restore "$patientName" to Scheduled?'),
+          content: const Text(
+            'This cancelled appointment will be moved back to Scheduled.',
+          ),
+          actions: [
+            AppButton(
+              label: 'Keep Cancelled',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.pop(dialogContext, false),
+            ),
+            AppButton(
+              label: 'Restore',
+              onPressed: () => Navigator.pop(dialogContext, true),
+            ),
+          ],
+        ),
+      );
+      if (shouldRestore != true) return;
+      appointment.checkinStage = 'scheduled';
+      appointment.isDone = false;
+      appointments.set(appointment);
+    }
+  }
+
+  String _waitingLabel() {
+    final started = appointment.checkedInAt;
+    if (started == null) return 'Waiting';
+    final elapsed = DateTime.now().difference(started);
+    if (elapsed.inMinutes < 1) return 'Waiting 0m';
+    if (elapsed.inHours < 1) return 'Waiting ${elapsed.inMinutes}m';
+    final hours = elapsed.inHours;
+    final mins = elapsed.inMinutes.remainder(60);
+    return 'Waiting ${hours}h ${mins}m';
+  }
+
+  void _openPatientHistoryDialog(BuildContext context) {
+    final patient = appointment.patient;
+    if (patient == null) return;
+    showPatientHistoryDialog(
+      context: context,
+      patient: patient,
+      rows: patient.patientDetails,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final patientName = appointment.title.trim().isEmpty
+        ? 'Unnamed patient'
+        : _toTitleCase(appointment.title);
+    final doctorsList = appointment.operators.isEmpty
+        ? const <String>['Unassigned']
+        : appointment.operators.map((d) => d.title).toList(growable: false);
+
+    final phone = appointment.patient?.phone ?? '-';
+    final age = appointment.patient?.age ?? 0;
+    final rawGender = appointment.patient?.gender;
+    final genderLabel = rawGender == 1 ? 'M' : 'F';
+    final doctorLabel = doctorsList.join(', ');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: stage == 'completed'
+            ? const Color.fromARGB(255, 235, 250, 230)
+            : Colors.transparent,
+        border: const Border(
+          top: BorderSide(color: Color(0xFFE2ECF8)),
+        ),
+      ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: !interactionsEnabled
+            ? null
+            : (stage == 'waiting' || stage == 'scheduled')
+                ? () => _moveStage(context)
+                : (onSelect == null ? null : () => onSelect!(appointment)),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    patientName,
+                    style: const TextStyle(
+                      color: Color(0xFF000000),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        '$age$genderLabel · $phone',
+                        style: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      if (stage == 'waiting') ...[
+                        const SizedBox(width: 10),
+                        AppBadge(
+                          text: _waitingLabel(),
+                          color: AppColors.warning,
+                        ),
+                      ],
+                      if (stage == 'scheduled') ...[
+                        const SizedBox(width: 10),
+                        AppBadge(
+                          text:
+                              'Scheduled · ${formatClinicDateTime(appointment.date, pattern: 'h:mm a')}',
+                          type: BadgeType.primary,
+                        ),
+                      ],
+                      if (duplicateRecord) ...[
+                        const SizedBox(width: 10),
+                        const AppBadge(
+                          text: 'Duplicate',
+                          type: BadgeType.error,
+                        ),
+                      ],
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.deferToChild,
+                      onTap: ((stage == 'with_doctor' ||
+                                  stage == 'checkout' ||
+                                  stage == 'completed') &&
+                              selected)
+                          ? () async {
+                              final pickedDoctorIds = await pickDoctorDialog(
+                                context,
+                                initialSelected: appointment.operatorsIDs,
+                                subtitle: _patientFocusSummary(appointment),
+                              );
+                              if (pickedDoctorIds == null ||
+                                  pickedDoctorIds.isEmpty) {
+                                return;
+                              }
+                              appointment.operatorsIDs = pickedDoctorIds;
+                              appointments.set(appointment);
+                            }
+                          : null,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            FluentIcons.contact,
+                            size: 12,
+                            color: Color(0xFF3B82F6),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            doctorLabel,
+                            style: TextStyle(
+                              color: const Color(0xFF3B82F6),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              decoration: ((stage == 'with_doctor' ||
+                                          stage == 'checkout' ||
+                                          stage == 'completed') &&
+                                      selected)
+                                  ? TextDecoration.underline
+                                  : TextDecoration.none,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (stage != 'waiting' && stage != 'scheduled')
+                  Tooltip(
+                    message: 'Undo',
+                    child: IconButton(
+                      icon: const Icon(material.Icons.undo_rounded, size: 18),
+                      style: ButtonStyle(
+                        padding: WidgetStateProperty.all(
+                          const EdgeInsets.all(8),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        backgroundColor:
+                            WidgetStateProperty.all(const Color(0xFFFFF4E8)),
+                        foregroundColor:
+                            WidgetStateProperty.all(const Color(0xFFC97A11)),
+                      ),
+                      onPressed: interactionsEnabled
+                          ? () => _undoStage(context)
+                          : null,
+                    ),
+                  ),
+                if (stage != 'waiting' && stage != 'scheduled')
+                  const SizedBox(width: 8),
+                if (stage == 'scheduled' || stage == 'waiting')
+                  Tooltip(
+                    message: 'Edit or Delete Appointment',
+                    child: IconButton(
+                      icon: const Icon(material.Icons.edit, size: 18),
+                      style: ButtonStyle(
+                        padding: WidgetStateProperty.all(
+                          const EdgeInsets.all(8),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        foregroundColor:
+                            WidgetStateProperty.all(const Color(0xFF6B7280)),
+                      ),
+                      onPressed: interactionsEnabled
+                          ? () => _openScheduleActions(context, appointment)
+                          : null,
+                    ),
+                  ),
+                if (stage == 'scheduled' || stage == 'waiting')
+                  const SizedBox(width: 8),
+                if (stage == 'checkout')
+                  Tooltip(
+                    message: 'Complete',
+                    child: IconButton(
+                      icon: const Icon(
+                        material.Icons.task_alt_rounded,
+                        size: 18,
+                      ),
+                      style: ButtonStyle(
+                        padding: WidgetStateProperty.all(
+                          const EdgeInsets.all(8),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        backgroundColor: WidgetStateProperty.all(
+                          const Color(0xFFE8F8ED),
+                        ),
+                        foregroundColor: WidgetStateProperty.all(
+                          const Color(0xFF2A8D3F),
+                        ),
+                      ),
+                      onPressed: interactionsEnabled
+                          ? () => _moveStage(context)
+                          : null,
+                    ),
+                  ),
+                if (stage == 'completed')
+                  Tooltip(
+                    message: 'Schedule Appointment',
+                    child: IconButton(
+                      icon: const Icon(material.Icons.calendar_month, size: 18),
+                      style: ButtonStyle(
+                        padding: WidgetStateProperty.all(
+                          const EdgeInsets.all(8),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        backgroundColor:
+                            WidgetStateProperty.all(const Color(0xFFEAF2FF)),
+                        foregroundColor:
+                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                      ),
+                      onPressed: interactionsEnabled
+                          ? () =>
+                              _openNextAppointmentPrompt(context, appointment)
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+            if (showHistoryAction) ...[
+              const SizedBox(width: 8),
+              AppButton(
+                label: 'History',
+                variant: AppButtonVariant.secondary,
+                onPressed: () => _openPatientHistoryDialog(context),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -6,7 +6,7 @@ import 'dart:typed_data';
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_search_button.dart';
-import 'package:apexo/common_widgets/patient_history_modal_v2.dart';
+import 'package:apexo/common_widgets/patient_history_modal.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/export_file_action_button.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
@@ -48,6 +48,11 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:apexo/common_widgets/pick_doctor_dialog.dart';
+
+part 'checkin_stage_panels.dart';
+part 'checkin_workflow_widgets.dart';
+part 'checkin_schedule_widgets.dart';
+part 'checkin_checkout_summary.dart';
 
 DateTime checkinPersistedDate = DateTime.now();
 
@@ -997,185 +1002,6 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
   }
 }
 
-class _CheckinTreatmentStageScreen extends StatelessWidget {
-  final Appointment appointment;
-  final List<Appointment> allAppointmentsForPatient;
-  final String forcedStage;
-  final bool showInlineBottomActions;
-  final bool boxed;
-  final double? panelHeight;
-
-  const _CheckinTreatmentStageScreen({
-    required this.appointment,
-    required this.allAppointmentsForPatient,
-    required this.forcedStage,
-    this.showInlineBottomActions = false,
-    this.boxed = false,
-    this.panelHeight,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final content = SingleChildScrollView(
-      child: _CheckinOperativeForm(
-        appointment: appointment,
-        allAppointmentsForPatient: allAppointmentsForPatient,
-        showInlineBottomActions: showInlineBottomActions,
-        forcedStage: forcedStage,
-      ),
-    );
-
-    if (!boxed) {
-      return content;
-    }
-
-    return Container(
-      width: double.infinity,
-      height: panelHeight,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E5F6)),
-      ),
-      padding: const EdgeInsets.all(10),
-      child: content,
-    );
-  }
-}
-
-class _CheckinCompletedStageScreen extends StatelessWidget {
-  final Appointment appointment;
-  final Appointment? lastVisit;
-  final bool boxed;
-
-  const _CheckinCompletedStageScreen({
-    required this.appointment,
-    required this.lastVisit,
-    this.boxed = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: appointments.observableMap.stream,
-      builder: (context, _) {
-        final upcomingForPatient = appointments.present.values
-            .where(
-              (candidate) =>
-                  (candidate.patientID ?? '').trim() ==
-                      (appointment.patientID ?? '').trim() &&
-                  candidate.id != appointment.id &&
-                  !candidate.isCheckedIn &&
-                  candidate.checkinStage == 'scheduled' &&
-                  candidate.date.isAfter(DateTime.now().subtract(
-                    const Duration(minutes: 1),
-                  )),
-            )
-            .toList(growable: true)
-          ..sort((a, b) => a.date.compareTo(b.date));
-        final scheduledNext =
-            upcomingForPatient.isNotEmpty ? upcomingForPatient.first : null;
-
-        final content = SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _patientDisplayName(appointment),
-                style: const TextStyle(
-                  color: Color(0xFF163F70),
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _patientFocusSummary(appointment),
-                style: const TextStyle(
-                  color: Color(0xFF4F6C90),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final stacked = constraints.maxWidth < 860;
-                  if (stacked) {
-                    return Column(
-                      children: [
-                        TodayAppointmentInsightCard(appointment: appointment),
-                        const SizedBox(height: 8),
-                        _LastAppointmentInsightCard(lastAppointment: lastVisit),
-                      ],
-                    );
-                  }
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: TodayAppointmentInsightCard(
-                            appointment: appointment),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _LastAppointmentInsightCard(
-                            lastAppointment: lastVisit),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _InlineNextAppointmentCard(
-                appointment: appointment,
-                includeCancelledSection: true,
-              ),
-              const SizedBox(height: 12),
-              _CheckoutBillingSummaryPanel(
-                appointment: appointment,
-                discountEnabled: appointment.discount > 0,
-                totalPaidOverride: appointment.paid,
-                includeTodayInOutstanding: true,
-                showTreatmentAndToothSection: false,
-                separateScheduleSection: false,
-                showScheduleSection: false,
-                onScheduleAppointment: () {
-                  _upsertScheduledFollowUpAppointment(
-                    context,
-                    appointment,
-                    existingScheduled: scheduledNext,
-                  );
-                },
-                onDeleteScheduledAppointment: scheduledNext == null
-                    ? null
-                    : () => _confirmDeleteScheduledFollowUpAppointment(
-                          context,
-                          scheduledNext,
-                        ),
-              ),
-            ],
-          ),
-        );
-
-        if (!boxed) {
-          return content;
-        }
-
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD7E5F6)),
-          ),
-          child: content,
-        );
-      },
-    );
-  }
-}
-
 class CheckinScreen extends StatefulWidget {
   const CheckinScreen({super.key});
 
@@ -1728,804 +1554,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
           },
         );
       },
-    );
-  }
-}
-
-class _DoctorFilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _DoctorFilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AppButton(
-      label: label,
-      onPressed: onTap,
-      variant: selected ? AppButtonVariant.primary : AppButtonVariant.secondary,
-    );
-  }
-}
-
-class _WorkflowColumn extends StatelessWidget {
-  final String title;
-  final String stage;
-  final Color color;
-  final List<Appointment> rows;
-  final Set<String> duplicatePatientIds;
-  final String Function(Appointment)? rowStageBuilder;
-  final bool showHistoryAction;
-  final bool expanded;
-  final VoidCallback onToggleExpanded;
-  final ValueChanged<Appointment>? onSelect;
-  final String? selectedAppointmentId;
-  final bool interactionsEnabled;
-
-  const _WorkflowColumn({
-    required this.title,
-    required this.stage,
-    required this.color,
-    required this.rows,
-    required this.duplicatePatientIds,
-    this.rowStageBuilder,
-    required this.expanded,
-    required this.onToggleExpanded,
-    this.showHistoryAction = false,
-    this.onSelect,
-    this.selectedAppointmentId,
-    this.interactionsEnabled = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedOpacity(
-        duration: const Duration(milliseconds: 120),
-        opacity: interactionsEnabled ? 1 : 0.62,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFD6E2F0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(11)),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: Icon(
-                        expanded
-                            ? FluentIcons.chevron_down
-                            : FluentIcons.chevron_right,
-                        size: 11,
-                      ),
-                      onPressed: interactionsEnabled ? onToggleExpanded : null,
-                    ),
-                  ],
-                ),
-              ),
-              if (!expanded)
-                const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    'Collapsed',
-                    style: TextStyle(color: Color(0xFF6D84A8)),
-                  ),
-                )
-              else if (rows.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    'No appointments in this state.',
-                    style: TextStyle(color: Color(0xFF6D84A8)),
-                  ),
-                )
-              else
-                ...rows.map(
-                  (a) => _WorkflowRow(
-                    appointment: a,
-                    stage: rowStageBuilder?.call(a) ?? stage,
-                    duplicateRecord: a.patientID != null &&
-                        duplicatePatientIds.contains(a.patientID),
-                    showHistoryAction: showHistoryAction,
-                    selected: selectedAppointmentId == a.id,
-                    interactionsEnabled: interactionsEnabled,
-                    onSelect: onSelect,
-                  ),
-                ),
-            ],
-          ),
-        ));
-  }
-}
-
-class _WorkflowRow extends StatelessWidget {
-  final Appointment appointment;
-  final String stage;
-  final bool duplicateRecord;
-  final bool showHistoryAction;
-  final bool selected;
-  final bool interactionsEnabled;
-  final ValueChanged<Appointment>? onSelect;
-
-  const _WorkflowRow({
-    required this.appointment,
-    required this.stage,
-    this.duplicateRecord = false,
-    this.showHistoryAction = false,
-    this.selected = false,
-    this.interactionsEnabled = true,
-    this.onSelect,
-  });
-
-  Future<void> _openNextAppointmentPrompt(
-    BuildContext context,
-    Appointment appointment,
-  ) async {
-    await _showNextAppointmentPromptDialog(context, appointment);
-  }
-
-  Future<void> _deleteScheduledAppointment(
-    BuildContext context,
-    Appointment appointment,
-  ) async {
-    await appointments.hardDelete(appointment.id);
-  }
-
-  Future<void> _openScheduleActions(
-    BuildContext context,
-    Appointment appointment,
-  ) async {
-    final originalDate = appointment.date;
-    DateTime selectedDate = DateTime(
-      originalDate.year,
-      originalDate.month,
-      originalDate.day,
-    );
-    material.TimeOfDay selectedTime = material.TimeOfDay(
-      hour: originalDate.hour,
-      minute: originalDate.minute,
-    );
-    bool confirmDelete = false;
-    bool confirmCancel = false;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setStateDialog) {
-          final updatedDateTime = DateTime(
-            selectedDate.year,
-            selectedDate.month,
-            selectedDate.day,
-            selectedTime.hour,
-            selectedTime.minute,
-          );
-          final hasChanged = updatedDateTime != originalDate;
-
-          return ContentDialog(
-            title: const Text('Edit Appointment'),
-            content: SizedBox(
-              width: 520,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    appointment.title.trim().isEmpty
-                        ? 'Unnamed patient'
-                        : _toTitleCase(appointment.title),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF183A67),
-                      fontSize: 20,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Text(
-                        'Date:',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(width: 8),
-                      AppButton(
-                        label: formatClinicDate(selectedDate,
-                            pattern: 'dd MMM yyyy'),
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () async {
-                          final picked = await material.showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(2000, 1, 1),
-                            lastDate: DateTime(2100, 12, 31),
-                            builder: apexoDatePickerBuilder(context),
-                          );
-                          if (picked == null) return;
-                          setStateDialog(() {
-                            selectedDate = DateTime(
-                              picked.year,
-                              picked.month,
-                              picked.day,
-                            );
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Text(
-                        'Time:',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(width: 8),
-                      AppButton(
-                        label: selectedTime.format(context),
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () async {
-                          final picked = await material.showTimePicker(
-                            context: context,
-                            initialTime: selectedTime,
-                            builder: apexoDatePickerBuilder(context),
-                          );
-                          if (picked == null) return;
-                          setStateDialog(() {
-                            selectedTime = picked;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Current: ${formatClinicDateTime(originalDate, pattern: 'dd MMM yyyy, h:mm a')}',
-                    style: const TextStyle(
-                      color: Color(0xFF5F789B),
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    'Updated: ${formatClinicDateTime(updatedDateTime, pattern: 'dd MMM yyyy, h:mm a')}',
-                    style: TextStyle(
-                      color: hasChanged
-                          ? const Color(0xFF1459AD)
-                          : const Color(0xFF5F789B),
-                      fontSize: 16,
-                      fontWeight:
-                          hasChanged ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                  ),
-                  if (confirmDelete) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF4F4),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFF3C3C8)),
-                      ),
-                      child: const Text(
-                        'Delete confirmation: this action is permanent and cannot be undone.',
-                        style: TextStyle(
-                          color: Color(0xFFA11E34),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (confirmCancel) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF4F4),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFF3C3C8)),
-                      ),
-                      child: const Text(
-                        'Cancel confirmation: this appointment will be moved to Cancelled.',
-                        style: TextStyle(
-                          color: Color(0xFFA11E34),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              AppButton(
-                label: 'Close',
-                variant: AppButtonVariant.secondary,
-                onPressed: () => Navigator.pop(dialogContext),
-              ),
-              AppButton(
-                label: 'Update',
-                onPressed: hasChanged
-                    ? () {
-                        appointment.date = updatedDateTime;
-                        appointments.set(appointment);
-                        onSelect?.call(appointment);
-                        Navigator.of(dialogContext, rootNavigator: true).pop();
-                      }
-                    : null,
-              ),
-              AppButton(
-                label: confirmCancel ? 'Confirm Cancel' : 'Cancel Appointment',
-                variant: AppButtonVariant.secondary,
-                onPressed: () async {
-                  if (!confirmCancel) {
-                    setStateDialog(() {
-                      confirmCancel = true;
-                      confirmDelete = false;
-                    });
-                    return;
-                  }
-                  appointment.checkinStage = 'cancelled';
-                  appointment.isCheckedIn = false;
-                  appointments.set(appointment);
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                  }
-                },
-              ),
-              AppButton(
-                label: confirmDelete ? 'Confirm Delete' : 'Delete',
-                variant: AppButtonVariant.danger,
-                onPressed: () async {
-                  if (!confirmDelete) {
-                    setStateDialog(() {
-                      confirmDelete = true;
-                      confirmCancel = false;
-                    });
-                    return;
-                  }
-                  await _deleteScheduledAppointment(context, appointment);
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                  }
-                },
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Future<void> _moveStage(BuildContext context) async {
-    await CheckinStageModalRouter.openForStage(
-      context: context,
-      appointment: appointment,
-      openTreatmentModal: openAppointmentJourneyDialog,
-      openBillingModal: openAppointmentJourneyDialog,
-      openCompleteModal: openAppointmentJourneyDialog,
-      onUpdated: () => onSelect?.call(appointment),
-    );
-  }
-
-  Future<void> _undoStage(BuildContext context) async {
-    final patientName = _patientDisplayName(appointment);
-
-    if (stage == 'with_doctor') {
-      final shouldMove = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => ContentDialog(
-          title: Text('Move "$patientName" back to Waiting?'),
-          content: Text(
-            'Doctor assignment will be removed for $patientName.',
-          ),
-          actions: [
-            AppButton(
-              label: 'Cancel',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => Navigator.pop(dialogContext, false),
-            ),
-            AppButton(
-              label: 'Move to Waiting',
-              variant: AppButtonVariant.danger,
-              onPressed: () => Navigator.pop(dialogContext, true),
-            ),
-          ],
-        ),
-      );
-      if (shouldMove != true) return;
-      appointment.operatorsIDs = [];
-      appointment.checkinStage = 'waiting';
-      appointment.isDone = false;
-      appointments.set(appointment);
-      return;
-    }
-
-    if (stage == 'checkout') {
-      final shouldMove = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => ContentDialog(
-          title: Text('Move "$patientName" back to Treatment?'),
-          content: Text(
-            'This appointment will be moved back to Treatment for $patientName.',
-          ),
-          actions: [
-            AppButton(
-              label: 'Cancel',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => Navigator.pop(dialogContext, false),
-            ),
-            AppButton(
-              label: 'Move to Treatment',
-              variant: AppButtonVariant.danger,
-              onPressed: () => Navigator.pop(dialogContext, true),
-            ),
-          ],
-        ),
-      );
-      if (shouldMove != true) return;
-      appointment.checkinStage = 'with_doctor';
-      appointment.isDone = false;
-      appointments.set(appointment);
-      return;
-    }
-
-    if (stage == 'completed') {
-      final shouldMove = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => ContentDialog(
-          title: Text('Move "$patientName" back to Billing?'),
-          content: Text(
-            'This appointment will be moved back to Billing for $patientName.',
-          ),
-          actions: [
-            AppButton(
-              label: 'Cancel',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => Navigator.pop(dialogContext, false),
-            ),
-            AppButton(
-              label: 'Move to Billing',
-              variant: AppButtonVariant.danger,
-              onPressed: () => Navigator.pop(dialogContext, true),
-            ),
-          ],
-        ),
-      );
-      if (shouldMove != true) return;
-      appointment.checkinStage = 'checkout';
-      appointment.isDone = false;
-      appointments.set(appointment);
-      return;
-    }
-
-    if (stage == 'cancelled') {
-      final shouldRestore = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => ContentDialog(
-          title: Text('Restore "$patientName" to Scheduled?'),
-          content: const Text(
-            'This cancelled appointment will be moved back to Scheduled.',
-          ),
-          actions: [
-            AppButton(
-              label: 'Keep Cancelled',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => Navigator.pop(dialogContext, false),
-            ),
-            AppButton(
-              label: 'Restore',
-              onPressed: () => Navigator.pop(dialogContext, true),
-            ),
-          ],
-        ),
-      );
-      if (shouldRestore != true) return;
-      appointment.checkinStage = 'scheduled';
-      appointment.isDone = false;
-      appointments.set(appointment);
-    }
-  }
-
-  String _waitingLabel() {
-    final started = appointment.checkedInAt;
-    if (started == null) return 'Waiting';
-    final elapsed = DateTime.now().difference(started);
-    if (elapsed.inMinutes < 1) return 'Waiting 0m';
-    if (elapsed.inHours < 1) return 'Waiting ${elapsed.inMinutes}m';
-    final hours = elapsed.inHours;
-    final mins = elapsed.inMinutes.remainder(60);
-    return 'Waiting ${hours}h ${mins}m';
-  }
-
-  void _openPatientHistoryDialog(BuildContext context) {
-    final patient = appointment.patient;
-    if (patient == null) return;
-    showPatientHistoryDialog(
-      context: context,
-      patient: patient,
-      rows: patient.patientDetails,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final patientName = appointment.title.trim().isEmpty
-        ? 'Unnamed patient'
-        : _toTitleCase(appointment.title);
-    final doctorsList = appointment.operators.isEmpty
-        ? const <String>['Unassigned']
-        : appointment.operators.map((d) => d.title).toList(growable: false);
-
-    final phone = appointment.patient?.phone ?? '-';
-    final age = appointment.patient?.age ?? 0;
-    final rawGender = appointment.patient?.gender;
-    final genderLabel = rawGender == 1 ? 'M' : 'F';
-    final doctorLabel = doctorsList.join(', ');
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: stage == 'completed'
-            ? const Color.fromARGB(255, 235, 250, 230) // Mild Green (Green 50)
-            : Colors.transparent,
-        border: const Border(
-          top: BorderSide(color: Color(0xFFE2ECF8)),
-        ),
-      ),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: !interactionsEnabled
-            ? null
-            : (stage == 'waiting' || stage == 'scheduled')
-                ? () => _moveStage(context)
-                : (onSelect == null ? null : () => onSelect!(appointment)),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    patientName,
-                    style: const TextStyle(
-                      color: Color(0xFF000000),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Text(
-                        '$age$genderLabel · $phone',
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      if (stage == 'waiting') ...[
-                        const SizedBox(width: 10),
-                        AppBadge(
-                          text: _waitingLabel(),
-                          color: AppColors.warning,
-                        ),
-                      ],
-                      if (stage == 'scheduled') ...[
-                        const SizedBox(width: 10),
-                        AppBadge(
-                          text:
-                              'Scheduled · ${formatClinicDateTime(appointment.date, pattern: 'h:mm a')}',
-                          type: BadgeType.primary,
-                        ),
-                      ],
-                      if (duplicateRecord) ...[
-                        const SizedBox(width: 10),
-                        const AppBadge(
-                          text: 'Duplicate',
-                          type: BadgeType.error,
-                        ),
-                      ],
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.deferToChild,
-                      onTap: ((stage == 'with_doctor' ||
-                                  stage == 'checkout' ||
-                                  stage == 'completed') &&
-                              selected)
-                          ? () async {
-                              final pickedDoctorIds = await pickDoctorDialog(
-                                context,
-                                initialSelected: appointment.operatorsIDs,
-                                subtitle: _patientFocusSummary(appointment),
-                              );
-                              if (pickedDoctorIds == null ||
-                                  pickedDoctorIds.isEmpty) {
-                                return;
-                              }
-                              appointment.operatorsIDs = pickedDoctorIds;
-                              appointments.set(appointment);
-                            }
-                          : null,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            FluentIcons.contact,
-                            size: 12,
-                            color: Color(0xFF3B82F6),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            doctorLabel,
-                            style: TextStyle(
-                              color: const Color(0xFF3B82F6),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              decoration: ((stage == 'with_doctor' ||
-                                          stage == 'checkout' ||
-                                          stage == 'completed') &&
-                                      selected)
-                                  ? TextDecoration.underline
-                                  : TextDecoration.none,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (stage != 'waiting' && stage != 'scheduled')
-                  Tooltip(
-                    message: 'Undo',
-                    child: IconButton(
-                      icon: const Icon(material.Icons.undo_rounded, size: 18),
-                      style: ButtonStyle(
-                        padding: WidgetStateProperty.all(
-                          const EdgeInsets.all(8),
-                        ),
-                        shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFFFFF4E8)),
-                        foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFFC97A11)),
-                      ),
-                      onPressed: interactionsEnabled
-                          ? () => _undoStage(context)
-                          : null,
-                    ),
-                  ),
-                if (stage != 'waiting' && stage != 'scheduled')
-                  const SizedBox(width: 8),
-                if (stage == 'scheduled' || stage == 'waiting')
-                  Tooltip(
-                    message: 'Edit or Delete Appointment',
-                    child: IconButton(
-                      icon: const Icon(material.Icons.edit, size: 18),
-                      style: ButtonStyle(
-                        padding: WidgetStateProperty.all(
-                          const EdgeInsets.all(8),
-                        ),
-                        shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFF6B7280)),
-                      ),
-                      onPressed: interactionsEnabled
-                          ? () => _openScheduleActions(context, appointment)
-                          : null,
-                    ),
-                  ),
-                if (stage == 'scheduled' || stage == 'waiting')
-                  const SizedBox(width: 8),
-                if (stage == 'checkout')
-                  Tooltip(
-                    message: 'Complete',
-                    child: IconButton(
-                      icon: const Icon(
-                        material.Icons.task_alt_rounded,
-                        size: 18,
-                      ),
-                      style: ButtonStyle(
-                        padding: WidgetStateProperty.all(
-                          const EdgeInsets.all(8),
-                        ),
-                        shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        backgroundColor: WidgetStateProperty.all(
-                          const Color(0xFFE8F8ED),
-                        ),
-                        foregroundColor: WidgetStateProperty.all(
-                          const Color(0xFF2A8D3F),
-                        ),
-                      ),
-                      onPressed: interactionsEnabled
-                          ? () => _moveStage(context)
-                          : null,
-                    ),
-                  ),
-                if (stage == 'completed')
-                  Tooltip(
-                    message: 'Schedule Appointment',
-                    child: IconButton(
-                      icon: const Icon(material.Icons.calendar_month, size: 18),
-                      style: ButtonStyle(
-                        padding: WidgetStateProperty.all(
-                          const EdgeInsets.all(8),
-                        ),
-                        shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFFEAF2FF)),
-                        foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
-                      ),
-                      onPressed: interactionsEnabled
-                          ? () =>
-                              _openNextAppointmentPrompt(context, appointment)
-                          : null,
-                    ),
-                  ),
-              ],
-            ),
-            if (showHistoryAction) ...[
-              const SizedBox(width: 8),
-              AppButton(
-                label: 'History',
-                variant: AppButtonVariant.secondary,
-                onPressed: () => _openPatientHistoryDialog(context),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }
@@ -3154,6 +2182,10 @@ class _LastAppointmentInsightCard extends StatelessWidget {
     final treatmentSummary = last.selectedTreatments
         .where((row) => row.trim().isNotEmpty)
         .join(', ');
+    final diagnosis =
+        last.diagnosis.where((row) => row.trim().isNotEmpty).join(', ');
+    final chiefComplaints =
+        last.chiefComplaints.where((row) => row.trim().isNotEmpty).join(', ');
     final doctorSummary = last.operators.isEmpty
         ? 'Unassigned'
         : last.operators
@@ -3186,6 +2218,22 @@ class _LastAppointmentInsightCard extends StatelessWidget {
             style: const TextStyle(
               color: Color(0xFF355279),
               fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Diagnosis: ${diagnosis.isEmpty ? '-' : diagnosis}',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Chief Complaints: ${chiefComplaints.isEmpty ? '-' : chiefComplaints}',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 4),
@@ -3230,11 +2278,19 @@ class TodayAppointmentInsightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final diagnosis =
         appointment.diagnosis.where((row) => row.trim().isNotEmpty).join(', ');
+    final chiefComplaints = appointment.chiefComplaints
+        .where((row) => row.trim().isNotEmpty)
+        .join(', ');
     final treatments = appointment.selectedTreatments
         .where((row) => row.trim().isNotEmpty)
         .join(', ');
     final teethSummary =
         appointment.selectedTeeth.map((id) => id.toString()).join(', ');
+    final doctorSummary = appointment.operators.isEmpty
+        ? 'Unassigned'
+        : appointment.operators
+            .map((d) => d.title.trim().isEmpty ? 'Unnamed doctor' : d.title)
+            .join(', ');
 
     return Container(
       width: double.infinity,
@@ -3273,7 +2329,23 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
+            'Chief Complaints: ${chiefComplaints.isEmpty ? '-' : chiefComplaints}',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
             'Treatment: ${treatments.isEmpty ? '-' : treatments}',
+            style: const TextStyle(
+              color: Color(0xFF5B7394),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Doctor: $doctorSummary',
             style: const TextStyle(
               color: Color(0xFF5B7394),
               fontWeight: FontWeight.w600,
@@ -3295,16 +2367,14 @@ class TodayAppointmentInsightCard extends StatelessWidget {
 
 class _CompactTimelineTable extends StatelessWidget {
   final List<Appointment> rows;
-  final int maxRows;
 
   const _CompactTimelineTable({
     required this.rows,
-    this.maxRows = 5,
   });
 
   @override
   Widget build(BuildContext context) {
-    final visibleRows = rows.take(maxRows).toList(growable: false);
+    final visibleRows = rows.take(5).toList(growable: false);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
@@ -4379,6 +3449,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
 
                 final scheduler = _InlineNextAppointmentCard(
                   appointment: a,
+                  includeCancelledSection: true,
                 );
                 final todaySummary = _buildTodaySummaryCard(a);
 
@@ -5528,6 +4599,28 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ExportFileActionButton(
+                          type: ExportFileType.pdf,
+                          onPressed: _downloadReceiptPdf,
+                        ),
+                        Tooltip(
+                          message: 'Share',
+                          child: IconButton(
+                            icon: const Icon(
+                              FluentIcons.share,
+                              size: 18,
+                              color: Color(0xFF7C3AED),
+                            ),
+                            onPressed: _openShareOptions,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     _InlineNextAppointmentCard(
                       appointment: a,
                       includeCancelledSection: true,
@@ -5538,8 +4631,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       discountEnabled: widget.discountEnabled,
                       totalPaidOverride: totalAfter,
                       includeTodayInOutstanding: false,
-                      onDownloadPdf: _downloadReceiptPdf,
-                      onShare: _openShareOptions,
                       doctorNames: doctorNames,
                       scheduledAppointments: upcomingAppointments,
                       scheduledAppointmentText: nextScheduledText,
@@ -5547,13 +4638,12 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           .map((row) => formatClinicDateTime(row.date,
                               pattern: 'dd MMM yyyy • h:mm a'))
                           .toList(growable: false),
-                      separateScheduleSection: false,
-                      showScheduleSection: false,
                       onScheduleAppointment: (a.patientID ?? '').trim().isEmpty
                           ? null
                           : _scheduleAppointmentFromBilling,
                       onEditScheduledAppointment: (row) =>
-                          _scheduleAppointmentFromBilling(existingScheduled: row),
+                          _scheduleAppointmentFromBilling(
+                              existingScheduled: row),
                       onDeleteScheduledAppointmentForRow: (row) =>
                           _confirmDeleteScheduledFollowUpAppointment(
                         context,
@@ -5627,467 +4717,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       ),
     );
   }
-}
-
-class _CheckoutBillingSummaryPanel extends StatelessWidget {
-  final Appointment appointment;
-  final bool discountEnabled;
-  final double? totalPaidOverride;
-  final VoidCallback? onDownloadPdf;
-  final VoidCallback? onShare;
-  final List<String>? doctorNames;
-  final List<Appointment>? scheduledAppointments;
-  final String? scheduledAppointmentText;
-  final List<String>? scheduledAppointmentTexts;
-  final VoidCallback? onScheduleAppointment;
-  final VoidCallback? onDeleteScheduledAppointment;
-  final ValueChanged<Appointment>? onEditScheduledAppointment;
-  final ValueChanged<Appointment>? onDeleteScheduledAppointmentForRow;
-  final bool includeTodayInOutstanding;
-  final bool showTreatmentAndToothSection;
-  final bool separateScheduleSection;
-  final bool showScheduleSection;
-
-  const _CheckoutBillingSummaryPanel({
-    required this.appointment,
-    required this.discountEnabled,
-    this.totalPaidOverride,
-    this.onDownloadPdf,
-    this.onShare,
-    this.doctorNames,
-    this.scheduledAppointments,
-    this.scheduledAppointmentText,
-    this.scheduledAppointmentTexts,
-    this.onScheduleAppointment,
-    this.onDeleteScheduledAppointment,
-    this.onEditScheduledAppointment,
-    this.onDeleteScheduledAppointmentForRow,
-    this.includeTodayInOutstanding = true,
-    this.showTreatmentAndToothSection = true,
-    this.separateScheduleSection = false,
-    this.showScheduleSection = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final a = appointment;
-    final appointmentDate = DateTime(a.date.year, a.date.month, a.date.day);
-    final patientId = (a.patientID ?? '').trim();
-
-    double outstandingForAppointment(Appointment row) {
-      final discounted = row.discountType == 'percent'
-          ? (row.price - (row.price * row.discount / 100))
-              .clamp(0, double.infinity)
-          : (row.price - row.discount).clamp(0, double.infinity);
-      return (discounted - row.paid).clamp(0, double.infinity).toDouble();
-    }
-
-    final allPatientRows = patientId.isEmpty
-        ? <Appointment>[]
-        : appointments.present.values
-            .where((row) => row.patientID == patientId)
-            .toList(growable: false);
-
-    final outstandingRows = includeTodayInOutstanding
-        ? allPatientRows
-        : allPatientRows.where((row) {
-            final rowDate =
-                DateTime(row.date.year, row.date.month, row.date.day);
-            return rowDate != appointmentDate;
-          }).toList(growable: false);
-
-    final existingOutstandingRows = allPatientRows.where((row) {
-      final rowDate = DateTime(row.date.year, row.date.month, row.date.day);
-      return rowDate != appointmentDate;
-    }).toList(growable: false);
-
-    final aggregatedOutstanding = outstandingRows.fold<double>(
-      0,
-      (sum, row) => sum + outstandingForAppointment(row),
-    );
-    final existingOutstanding = existingOutstandingRows.fold<double>(
-      0,
-      (sum, row) => sum + outstandingForAppointment(row),
-    );
-    final discountedTotal = a.discountType == 'percent'
-        ? (a.price - (a.price * a.discount / 100)).clamp(0, double.infinity)
-        : (a.price - a.discount).clamp(0, double.infinity);
-    final outstanding = (discountedTotal - a.paid).clamp(0, double.infinity);
-    final displayedOutstanding =
-        allPatientRows.isEmpty ? outstanding : aggregatedOutstanding;
-    final totalAfter =
-        (totalPaidOverride ?? a.paid).clamp(0, double.infinity).toDouble();
-    final treatmentCostForTotal = a.price.clamp(0, double.infinity).toDouble();
-    final todayBalance = (treatmentCostForTotal - totalAfter)
-        .clamp(0, double.infinity)
-        .toDouble();
-    final effectiveExisting =
-        allPatientRows.isEmpty ? 0.0 : existingOutstanding;
-    final computedTotalBalance =
-        (effectiveExisting + treatmentCostForTotal - totalAfter)
-            .clamp(0, double.infinity)
-            .toDouble();
-    final status = computedTotalBalance <= 0 ? 'PAID' : 'DUE';
-    final resolvedDoctorNames = doctorNames ??
-        a.operators
-            .map((doctor) => doctor.title.trim())
-            .where((name) => name.isNotEmpty)
-            .toList(growable: false);
-    final treatmentSummary = a.selectedTreatments
-        .where((t) => t.trim().isNotEmpty)
-        .join(', ')
-        .trim();
-    final toothSummary =
-        a.selectedTeeth.where((t) => t.trim().isNotEmpty).join(', ').trim();
-    final resolvedScheduledAppointments =
-        (scheduledAppointmentTexts ?? const <String>[])
-            .where((entry) => entry.trim().isNotEmpty)
-            .toList(growable: false);
-    final resolvedScheduledRows =
-        scheduledAppointments ?? const <Appointment>[];
-
-    Widget sectionCard({
-      required String title,
-      required List<Widget> children,
-      Widget? trailing,
-    }) {
-      return Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FBFF),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFDCE8F8)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Color(0xFF2D476D),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                if (trailing != null) trailing,
-              ],
-            ),
-            const SizedBox(height: 8),
-            ...children,
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (onDownloadPdf != null)
-              ExportFileActionButton(
-                type: ExportFileType.pdf,
-                onPressed: onDownloadPdf,
-              ),
-            if (onShare != null)
-              Tooltip(
-                message: 'Share',
-                child: IconButton(
-                  icon: const Icon(
-                    FluentIcons.share,
-                    size: 18,
-                    color: Color(0xFF7C3AED),
-                  ),
-                  onPressed: onShare,
-                ),
-              ),
-          ],
-        ),
-        sectionCard(
-          title:
-              toTitleCase(a.title.trim().isEmpty ? 'Unnamed patient' : a.title),
-          children: [
-            Text(
-              'Age: ${a.patient?.age ?? 0}${(a.patient?.gender == 1 ? 'M' : a.patient?.gender == 0 ? 'F' : '')}  • ${a.patient?.phone ?? ''}',
-              style: const TextStyle(
-                color: Color(0xFF6D84A8),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Patient ID: ${a.patientID ?? '-'}',
-              style: const TextStyle(color: Color(0xFF5A7397)),
-            ),
-          ],
-        ),
-        if (showScheduleSection && separateScheduleSection)
-          sectionCard(
-            title: 'Scheduled Appointment',
-            trailing: (onScheduleAppointment == null &&
-                    (onDeleteScheduledAppointment == null ||
-                        scheduledAppointmentText == null))
-                ? null
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (onScheduleAppointment != null)
-                        Tooltip(
-                          message: 'Add Scheduled Appointment',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.add,
-                              size: 14,
-                            ),
-                            onPressed: onScheduleAppointment,
-                          ),
-                        ),
-                    ],
-                  ),
-            children: [
-              if (resolvedScheduledRows.isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: resolvedScheduledRows
-                      .map(
-                        (row) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  formatClinicDateTime(
-                                    row.date,
-                                    pattern: 'dd MMM yyyy • h:mm a',
-                                  ),
-                                  style: const TextStyle(
-                                    color: Color(0xFF184A9C),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              if (onEditScheduledAppointment != null)
-                                Tooltip(
-                                  message: 'Edit Scheduled Appointment',
-                                  child: IconButton(
-                                    icon: const Icon(
-                                      FluentIcons.edit,
-                                      size: 14,
-                                    ),
-                                    onPressed: () =>
-                                        onEditScheduledAppointment!(row),
-                                  ),
-                                ),
-                              if (onDeleteScheduledAppointmentForRow != null)
-                                Tooltip(
-                                  message: 'Delete Scheduled Appointment',
-                                  child: IconButton(
-                                    icon: const Icon(
-                                      FluentIcons.delete,
-                                      size: 14,
-                                      color: Color(0xFFD6455D),
-                                    ),
-                                    onPressed: () =>
-                                        onDeleteScheduledAppointmentForRow!(
-                                            row),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(growable: false),
-                )
-              else if (resolvedScheduledAppointments.isEmpty)
-                Text(
-                  scheduledAppointmentText == null
-                      ? 'No scheduled appointment'
-                      : 'Next: $scheduledAppointmentText',
-                  style: TextStyle(
-                    color: scheduledAppointmentText == null
-                        ? const Color(0xFF5A7397)
-                        : const Color(0xFF184A9C),
-                    fontWeight: FontWeight.w700,
-                  ),
-                )
-              else
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: resolvedScheduledAppointments
-                      .map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Text(
-                            entry,
-                            style: const TextStyle(
-                              color: Color(0xFF184A9C),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
-            ],
-          ),
-        if (showTreatmentAndToothSection)
-          sectionCard(
-            title: 'Treatment & Tooth Info',
-            children: [
-              _checkoutSummaryLine(
-                'Doctor',
-                resolvedDoctorNames.isEmpty
-                    ? '-'
-                    : resolvedDoctorNames.join(', '),
-              ),
-              _checkoutSummaryLine(
-                'Treatment',
-                treatmentSummary.isEmpty ? '-' : treatmentSummary,
-              ),
-              _checkoutSummaryLine(
-                'Tooth/Area',
-                toothSummary.isEmpty ? '-' : toothSummary,
-              ),
-            ],
-          ),
-        sectionCard(
-          title: 'Billing Summary',
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFF4C4CB)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    FluentIcons.warning,
-                    size: 14,
-                    color: Color(0xFFD6455D),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Previous Balance',
-                          style: TextStyle(
-                            color: Color(0xFFD6455D),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '₹${displayedOutstanding.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            color: Color(0xFFB42336),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            _checkoutSummaryLine(
-                'Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
-            if (discountEnabled) ...[
-              _checkoutSummaryLine(
-                'Discount Applied',
-                a.discount <= 0
-                    ? '-'
-                    : a.discountType == 'percent'
-                        ? '-${a.discount.toStringAsFixed(0)}%'
-                        : '-₹${a.discount.toStringAsFixed(0)}',
-                valueColor: const Color(0xFFD6455D),
-              ),
-              _checkoutSummaryLine(
-                'Discounted Total',
-                '₹${discountedTotal.toStringAsFixed(0)}',
-                valueColor: const Color(0xFF1459AD),
-              ),
-            ],
-            _checkoutSummaryLine(
-              'Paid Today',
-              '₹${totalAfter.toStringAsFixed(0)}',
-            ),
-            _checkoutSummaryLine(
-              'Today Balance',
-              '₹${todayBalance.toStringAsFixed(0)}',
-              valueColor: const Color(0xFFD6455D),
-            ),
-            const Divider(direction: Axis.horizontal),
-            const SizedBox(height: 8),
-            _checkoutSummaryLine(
-              'Total Balance',
-              '₹${computedTotalBalance.toStringAsFixed(0)}',
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: status == 'PAID'
-                    ? const Color(0xFFDCFCE7)
-                    : const Color(0xFFFFF1F2),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                status,
-                style: TextStyle(
-                  color: status == 'PAID'
-                      ? const Color(0xFF16A34A)
-                      : const Color(0xFFD6455D),
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-Widget _checkoutSummaryLine(String label, String value, {Color? valueColor}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF5A7397),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: valueColor ?? const Color(0xFF2D476D),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 class EnhancedTeethPickerCard extends StatelessWidget {
@@ -6182,214 +4811,6 @@ class _CheckinSearchableTagInput extends StatelessWidget {
               .map((item) => item.value!.trim())
               .toSet()
               .toList(growable: false),
-        );
-      },
-    );
-  }
-}
-
-class _InlineNextAppointmentCard extends StatelessWidget {
-  final Appointment appointment;
-  final bool includeCancelledSection;
-
-  const _InlineNextAppointmentCard({
-    required this.appointment,
-    this.includeCancelledSection = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: appointments.observableMap.stream,
-      builder: (context, _) {
-        final upcomingRows = appointments.present.values
-            .where(
-              (row) =>
-                  row.patientID == appointment.patientID &&
-                  row.id != appointment.id &&
-                  (row.checkinStage == 'scheduled' ||
-                      row.checkinStage == 'pending') &&
-                  !row.isCheckedIn &&
-                  row.date.isAfter(DateTime.now()),
-            )
-            .toList(growable: true)
-          ..sort((a, b) => a.date.compareTo(b.date));
-        final cancelledRows = appointments.present.values
-            .where(
-              (row) =>
-                  includeCancelledSection &&
-                  row.patientID == appointment.patientID &&
-                  row.id != appointment.id &&
-                  row.checkinStage == 'cancelled',
-            )
-            .toList(growable: true)
-          ..sort((a, b) => b.date.compareTo(a.date));
-
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD7E0EB)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Next Appointment',
-                style: TextStyle(
-                  color: Color(0xFF223B5E),
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                upcomingRows.isEmpty
-                    ? 'Not scheduled'
-                    : '${upcomingRows.length} future appointment(s)',
-                style: TextStyle(
-                  color: upcomingRows.isEmpty
-                      ? const Color(0xFF5A6B7F)
-                      : const Color(0xFF1459AD),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-              if (upcomingRows.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                ...upcomingRows.map(
-                  (row) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            formatClinicDateTime(row.date,
-                                pattern: 'dd MMM yyyy • h:mm a'),
-                            style: const TextStyle(
-                              color: Color(0xFF184A9C),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Edit scheduled appointment',
-                          child: IconButton(
-                            icon: const Icon(FluentIcons.edit, size: 14),
-                            onPressed: () =>
-                                _upsertScheduledFollowUpAppointment(
-                              context,
-                              appointment,
-                              existingScheduled: row,
-                            ),
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Cancel appointment',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.blocked2,
-                              size: 14,
-                              color: Color(0xFFC2415B),
-                            ),
-                            onPressed: () =>
-                                _confirmCancelScheduledFollowUpAppointment(
-                              context,
-                              row,
-                            ),
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Delete scheduled appointment',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.delete,
-                              size: 14,
-                              color: Color(0xFFD6455D),
-                            ),
-                            onPressed: () =>
-                                _confirmDeleteScheduledFollowUpAppointment(
-                              context,
-                              row,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              if (includeCancelledSection && cancelledRows.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                const Divider(direction: Axis.horizontal),
-                const SizedBox(height: 8),
-                Text(
-                  'Cancelled (${cancelledRows.length})',
-                  style: const TextStyle(
-                    color: Color(0xFFC2415B),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                ...cancelledRows.map(
-                  (row) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            formatClinicDateTime(row.date,
-                                pattern: 'dd MMM yyyy • h:mm a'),
-                            style: const TextStyle(
-                              color: Color(0xFF8A5066),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Restore to scheduled',
-                          child: IconButton(
-                            icon: const Icon(
-                              material.Icons.undo_rounded,
-                              size: 14,
-                              color: Color(0xFF7A5AF8),
-                            ),
-                            onPressed: () {
-                              row.checkinStage = 'scheduled';
-                              row.isDone = false;
-                              appointments.set(row);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      label: '+ Add',
-                      variant: AppButtonVariant.secondary,
-                      expanded: true,
-                      onPressed: () => _upsertScheduledFollowUpAppointment(
-                        context,
-                        appointment,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-              ),
-            ],
-          ),
         );
       },
     );

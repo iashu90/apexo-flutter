@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
-import '../../theme/app_radius.dart';
 
 class AppTable extends StatelessWidget {
   final List<DataColumn> columns;

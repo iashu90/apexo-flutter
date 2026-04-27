@@ -3,14 +3,14 @@ import 'dart:convert';
 import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
-import 'package:apexo/features/dashboard/dashboard_screen_v2.dart';
+import 'package:apexo/features/dashboard/dashboard_screen.dart';
 import 'package:apexo/features/data/prescriptions_store.dart';
-import 'package:apexo/features/expenses/expenses_screen_v2.dart';
-import 'package:apexo/features/labwork/labworks_v2_screen.dart';
+import 'package:apexo/features/expenses/expenses_screen.dart';
+import 'package:apexo/features/labwork/labworks_screen.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
-import 'package:apexo/features/doctors/doctors_screen_v2.dart';
-import 'package:apexo/features/patients/patients_screen_v2.dart';
-import 'package:apexo/features/stats/report_v2_screen.dart';
+import 'package:apexo/features/doctors/doctors_screen.dart';
+import 'package:apexo/features/patients/patients_screen.dart';
+import 'package:apexo/features/stats/report_screen.dart';
 import 'package:apexo/services/admins.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/features/stats/charts_controller.dart';
@@ -324,3 +324,4 @@ class _Routes {
 }
 
 final routes = _Routes();
+
