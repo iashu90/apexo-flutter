@@ -108,6 +108,20 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
 
+  String? _bestEditableAppointmentId([_LedgerRowData? preferred]) {
+    if (preferred?.appointmentId != null &&
+        preferred!.appointmentId!.trim().isNotEmpty) {
+      return preferred.appointmentId;
+    }
+    for (final row in _visibleRows) {
+      final id = row.appointmentId;
+      if (id != null && id.trim().isNotEmpty) {
+        return id;
+      }
+    }
+    return null;
+  }
+
   double _toAmount(String source) {
     return double.tryParse(source.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
   }
@@ -768,15 +782,19 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => ContentDialog(
-        title: const Text('Share Invoice'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 360,
-              child: Wrap(
+      builder: (dialogContext) {
+        final width = MediaQuery.of(dialogContext).size.width;
+        return ContentDialog(
+          constraints: BoxConstraints(
+            maxWidth: math.min(720, width * 0.92),
+            maxHeight: 520,
+          ),
+          title: const Text('Share Invoice'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
@@ -837,17 +855,17 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                   ),
                 ],
               ),
+            ],
+          ),
+          actions: [
+            AppButton(
+              label: 'Close',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.pop(dialogContext),
             ),
           ],
-        ),
-        actions: [
-          AppButton(
-            label: 'Close',
-            variant: AppButtonVariant.secondary,
-            onPressed: () => Navigator.pop(dialogContext),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -860,7 +878,6 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
             ? screen.width * 0.95
             : 1360.0;
     final modalHeight = screen.height * 0.92;
-    final tableMinWidth = math.max(1120.0, modalWidth - 40);
 
     final summaryRows = _allRows
         .where((row) => !row.treatment.toLowerCase().startsWith('labwork:'))
@@ -960,6 +977,21 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                   runSpacing: 8,
                   alignment: WrapAlignment.end,
                   children: [
+                    if (widget.onEditTreatment != null)
+                      AppButton(
+                        label: 'Edit Treatment',
+                        variant: AppButtonVariant.secondary,
+                        onPressed: () {
+                          final callback = widget.onEditTreatment;
+                          final appointmentId = _bestEditableAppointmentId();
+                          if (callback == null ||
+                              appointmentId == null ||
+                              appointmentId.trim().isEmpty) {
+                            return;
+                          }
+                          unawaited(callback(appointmentId));
+                        },
+                      ),
                     AppButton(
                       label: 'Share',
                       variant: AppButtonVariant.secondary,
@@ -1160,11 +1192,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                   ),
                 ],
               ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: tableMinWidth,
-                  child: Column(
+              child: Column(
                     children: [
                       Container(
                         color: hasActiveFilters
@@ -1174,35 +1202,35 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                             horizontal: 10, vertical: 8),
                         child: Row(
                           children: [
-                            SizedBox(
-                                width: 130,
+                            Expanded(
+                                flex: 13,
                                 child: _sortableHead('Date', 'date')),
-                            SizedBox(
-                                width: 95,
+                            Expanded(
+                                flex: 9,
                                 child: _sortableHead('Tooth', 'tooth')),
-                            SizedBox(
-                                width: 190,
+                            Expanded(
+                                flex: 19,
                                 child: _sortableHead('Treatment', 'treatment')),
-                            SizedBox(
-                                width: 140,
+                            Expanded(
+                                flex: 14,
                                 child: _sortableHead('Doctor', 'doctor')),
-                            SizedBox(
-                                width: 90,
+                            Expanded(
+                                flex: 9,
                                 child: _sortableHead('Cost', 'cost')),
-                            SizedBox(
-                                width: 90,
+                            Expanded(
+                                flex: 9,
                                 child: _sortableHead('Paid', 'paid')),
-                            SizedBox(
-                                width: 95,
+                            Expanded(
+                                flex: 9,
                                 child: _sortableHead('Balance', 'balance')),
-                            SizedBox(
-                                width: 85,
+                            Expanded(
+                                flex: 8,
                                 child: _sortableHead('Status', 'status')),
-                            SizedBox(
-                                width: 80,
+                            Expanded(
+                                flex: 8,
                                 child: _sortableHead('Mode', 'mode')),
-                            const SizedBox(
-                              width: 120,
+                            const Expanded(
+                              flex: 12,
                               child: Text('Actions',
                                   style: TextStyle(fontWeight: FontWeight.w600)),
                             ),
@@ -1237,35 +1265,35 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                                           : Colors.white,
                                       child: Row(
                                         children: [
-                                          SizedBox(
-                                            width: 130,
+                                          Expanded(
+                                            flex: 13,
                                             child: Text(formatClinicDate(
                                                 row.date,
                                                 pattern: 'dd MMM yyyy')),
                                           ),
-                                          SizedBox(
-                                              width: 95,
+                                          Expanded(
+                                              flex: 9,
                                               child: Text(row.tooth)),
-                                          SizedBox(
-                                            width: 190,
+                                          Expanded(
+                                            flex: 19,
                                             child: Text(
                                               row.treatment,
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                          SizedBox(
-                                              width: 140,
+                                          Expanded(
+                                              flex: 14,
                                               child: Text(
                                                 row.doctor,
                                                 overflow: TextOverflow.ellipsis,
                                               )),
-                                          SizedBox(
-                                            width: 90,
+                                          Expanded(
+                                            flex: 9,
                                             child: Text(
                                                 '₹${row.cost.toStringAsFixed(0)}'),
                                           ),
-                                          SizedBox(
-                                            width: 90,
+                                          Expanded(
+                                            flex: 9,
                                             child: Text(
                                               '₹${row.paid.toStringAsFixed(0)}',
                                               style: TextStyle(
@@ -1276,8 +1304,8 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                                               ),
                                             ),
                                           ),
-                                          SizedBox(
-                                            width: 95,
+                                          Expanded(
+                                            flex: 9,
                                             child: Text(
                                               '₹${row.balance.toStringAsFixed(0)}',
                                               style: const TextStyle(
@@ -1286,8 +1314,8 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                                               ),
                                             ),
                                           ),
-                                          SizedBox(
-                                            width: 85,
+                                          Expanded(
+                                            flex: 8,
                                             child: Align(
                                               alignment: Alignment.centerLeft,
                                               child: Container(
@@ -1315,11 +1343,11 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                                               ),
                                             ),
                                           ),
-                                          SizedBox(
-                                              width: 80,
+                                          Expanded(
+                                              flex: 8,
                                               child: Text(row.mode)),
-                                          SizedBox(
-                                            width: 120,
+                                          Expanded(
+                                            flex: 12,
                                             child: Wrap(
                                               spacing: 6,
                                               runSpacing: 6,
@@ -1403,8 +1431,6 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                       ),
                     ],
                   ),
-                ),
-              ),
             ),
           ),
         ],

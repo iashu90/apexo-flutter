@@ -8,6 +8,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
   final List<Appointment>? scheduledAppointments;
   final String? scheduledAppointmentText;
   final List<String>? scheduledAppointmentTexts;
+  final VoidCallback? onDoctorEdit;
   final VoidCallback? onScheduleAppointment;
   final VoidCallback? onDeleteScheduledAppointment;
   final ValueChanged<Appointment>? onEditScheduledAppointment;
@@ -20,6 +21,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     required this.discountEnabled,
     this.totalPaidOverride,
     this.doctorNames,
+    this.onDoctorEdit,
     this.scheduledAppointments,
     this.scheduledAppointmentText,
     this.scheduledAppointmentTexts,
@@ -149,12 +151,37 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
           sectionCard(
             title: 'Treatment & Tooth Info',
             children: [
-              _checkoutSummaryLine(
-                'Doctor',
-                resolvedDoctorNames.isEmpty
-                    ? '-'
-                    : resolvedDoctorNames.join(', '),
-              ),
+              if (onDoctorEdit != null)
+                GestureDetector(
+                  onTap: onDoctorEdit,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F7FF),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFBDD4F2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('Doctor: ', style: TextStyle(color: Color(0xFF4B6488), fontWeight: FontWeight.w700, fontSize: 13)),
+                        Expanded(
+                          child: Text(
+                            resolvedDoctorNames.isEmpty ? '-' : resolvedDoctorNames.join(', '),
+                            style: const TextStyle(color: Color(0xFF1F3C5E), fontWeight: FontWeight.w700, fontSize: 13),
+                          ),
+                        ),
+                        const Icon(FluentIcons.edit, size: 12, color: Color(0xFF5A7FAD)),
+                        const SizedBox(width: 4),
+                        const Text('Change', style: TextStyle(color: Color(0xFF2D7BD8), fontWeight: FontWeight.w600, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                _checkoutSummaryLine(
+                  'Doctor',
+                  resolvedDoctorNames.isEmpty ? '-' : resolvedDoctorNames.join(', '),
+                ),
               _checkoutSummaryLine(
                 'Treatment',
                 treatmentSummary.isEmpty ? '-' : treatmentSummary,
