@@ -31,6 +31,7 @@ class SyncResult {
 
 class Store<G extends Model> {
   static const String _deferredDeletePrefix = "DEL||";
+  static final Set<Store<dynamic>> _instances = <Store<dynamic>>{};
 
   late Future<void> loaded;
   final Function? onSyncStart;
@@ -59,8 +60,20 @@ class Store<G extends Model> {
     this.onSyncEnd,
     this.manualSyncOnly,
   }) : observableMap = ObservableDict() {
+    _instances.add(this);
     // loading from local
     loaded = deleteMemoryAndLoadFromPersistence();
+  }
+
+  static void clearAllInMemory() {
+    for (final store in _instances) {
+      store.changes.clear();
+      store.deferredPresent = false;
+      store.observableMap.silently(() {
+        store.observableMap.clear();
+      });
+      store.notify();
+    }
   }
 
   @mustCallSuper
