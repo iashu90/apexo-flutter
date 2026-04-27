@@ -501,11 +501,6 @@ class _LoginState extends State<Login> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (_, setLocalState) {
-            final selectedUrl = selectedMode == 'local'
-                ? loginLocalServerUrl
-                : selectedMode == 'custom'
-                    ? customController.text.trim()
-                    : loginRemoteServerUrl;
             return ContentDialog(
               title: const Text('Server URL'),
               content: Column(

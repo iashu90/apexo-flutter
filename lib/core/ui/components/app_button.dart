@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_radius.dart';
 
-enum AppButtonVariant { primary, secondary, ghost, danger }
+enum AppButtonVariant { primary, secondary, warning, ghost, danger }
 
 class AppButton extends StatelessWidget {
   final String label;
@@ -77,6 +77,22 @@ class AppButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             elevation: 0,
             backgroundColor: AppColors.primary500,
+            foregroundColor: Colors.white,
+            minimumSize: Size(0, minHeight),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
+            shape: const RoundedRectangleBorder(borderRadius: AppRadius.button),
+          ),
+          child: child,
+        );
+      case AppButtonVariant.warning:
+        return ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            backgroundColor: AppColors.warning,
             foregroundColor: Colors.white,
             minimumSize: Size(0, minHeight),
             padding: EdgeInsets.symmetric(

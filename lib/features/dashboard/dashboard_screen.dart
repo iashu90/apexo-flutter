@@ -4,7 +4,6 @@ import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
-import 'package:apexo/common_widgets/patient_history_modal.dart';
 import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
@@ -18,11 +17,13 @@ import 'package:apexo/features/dashboard/dashboard_insight_cards.dart';
 import 'package:apexo/features/dashboard/overall_due_helper.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
+import 'package:apexo/features/labwork/open_labwork_dialog.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/utils/clinic_time.dart';
-
+import 'package:apexo/common_widgets/patient_history_modal.dart';
+import 'package:apexo/common_widgets/report_table_modal.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
@@ -1372,6 +1373,7 @@ class _AppointmentRow extends StatelessWidget {
           : appointment.selectedTreatments.first,
       'selectedTeeth': appointment.selectedTeeth,
     });
+    openLabworkDialog(context, draft);
   }
 
   Future<void> _openEditTreatmentModal(BuildContext context) async {
@@ -3249,3 +3251,4 @@ class _FinanceCard extends StatelessWidget {
     );
   }
 }
+
