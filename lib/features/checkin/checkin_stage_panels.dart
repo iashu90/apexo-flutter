@@ -140,6 +140,16 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
                 totalPaidOverride: appointment.paid,
                 includeTodayInOutstanding: true,
                 showTreatmentAndToothSection: false,
+                onDoctorEdit: () async {
+                  final picked = await pickDoctorDialog(
+                    context,
+                    initialSelected: appointment.operatorsIDs,
+                    title: 'Assign Doctor(s)',
+                  );
+                  if (picked == null || !context.mounted) return;
+                  appointment.operatorsIDs = picked;
+                  appointments.set(appointment);
+                },
                 onScheduleAppointment: () {
                   _upsertScheduledFollowUpAppointment(
                     context,

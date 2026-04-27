@@ -14,6 +14,7 @@ import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
 import 'package:apexo/widget_keys.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
@@ -31,6 +32,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _query = '';
   String _categoryFilter = 'all';
   String _paymentFilter = 'all';
+  String _statusFilter = 'all';
   String _rangeFilter = 'month';
   DateTime _monthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
@@ -41,7 +43,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   bool _sortAscending = false;
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
-  String? _selectedExpenseId;
+  bool _recurringOnly = false;
+  OverlayEntry? _expenseDetailsOverlay;
 
   static const int _pageSize = 10;
   static const List<String> _defaultExpenseCategories = [
@@ -94,8 +97,62 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   @override
   void dispose() {
+    _hideExpenseOverlay();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  bool _isRecurringExpense(Expense expense) {
+    return expense.tags.any((tag) => tag.toLowerCase().startsWith('recurring:'));
+  }
+
+  void _hideExpenseOverlay() {
+    _expenseDetailsOverlay?.remove();
+    _expenseDetailsOverlay = null;
+  }
+
+  void _showExpenseOverlay(Expense expense) {
+    _hideExpenseOverlay();
+    final overlay = Overlay.of(context, rootOverlay: true);
+
+    _expenseDetailsOverlay = OverlayEntry(
+      builder: (overlayContext) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _hideExpenseOverlay,
+              child: Container(color: const Color(0x66000000)),
+            ),
+          ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520, maxHeight: 620),
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFDCE6F2)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x22000F2A),
+                      blurRadius: 24,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: _buildDetailsPane(
+                  expense,
+                  onClose: _hideExpenseOverlay,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_expenseDetailsOverlay!);
   }
 
   @override
@@ -115,13 +172,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               final sorted = _sortRows(filtered);
               final cards = _summaryCards(sorted);
 
-              if (sorted.isEmpty) {
-                _selectedExpenseId = null;
-              } else if (_selectedExpenseId == null ||
-                  !sorted.any((e) => e.id == _selectedExpenseId)) {
-                _selectedExpenseId = sorted.first.id;
-              }
-
               final totalPages = sorted.isEmpty
                   ? 1
                   : ((sorted.length + _pageSize - 1) / _pageSize).ceil();
@@ -138,68 +188,24 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               }
               final paged = sorted.sublist(start, end);
 
-              Expense? selected;
-              for (final expense in sorted) {
-                if (expense.id == _selectedExpenseId) {
-                  selected = expense;
-                  break;
-                }
-              }
-
               return Column(
                 children: [
                   _buildHeader(filtered),
                   const SizedBox(height: 12),
                   _buildSummaryStrip(cards),
                   const SizedBox(height: 12),
+                  _buildExpenseOverviewCard(sorted),
+                  const SizedBox(height: 12),
                   _buildFilters(rows),
                   const SizedBox(height: 12),
                   Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final stacked = constraints.maxWidth < 1180;
-                        if (stacked) {
-                          return ListView(
-                            children: [
-                              SizedBox(
-                                height: 560,
-                                child: _buildTableCard(
-                                  rows: paged,
-                                  total: sorted.length,
-                                  start: sorted.isEmpty ? 0 : start + 1,
-                                  end: end,
-                                  page: _page,
-                                  totalPages: totalPages,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              _buildDetailsPane(selected),
-                            ],
-                          );
-                        }
-
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              flex: 64,
-                              child: _buildTableCard(
-                                rows: paged,
-                                total: sorted.length,
-                                start: sorted.isEmpty ? 0 : start + 1,
-                                end: end,
-                                page: _page,
-                                totalPages: totalPages,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            SizedBox(
-                              width: 330,
-                              child: _buildDetailsPane(selected),
-                            ),
-                          ],
-                        );
-                      },
+                    child: _buildTableCard(
+                      rows: paged,
+                      total: sorted.length,
+                      start: sorted.isEmpty ? 0 : start + 1,
+                      end: end,
+                      page: _page,
+                      totalPages: totalPages,
                     ),
                   ),
                 ],
@@ -228,7 +234,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Expense Control Room',
+                  'Expenses',
                   style: TextStyle(
                     color: Color(0xFF1F3554),
                     fontSize: 26,
@@ -237,7 +243,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Track spending patterns, review payments, and act fast.',
+                  'Track and manage your clinic expenses',
                   style: TextStyle(
                     color: Color(0xFF4D678D),
                     fontWeight: FontWeight.w600,
@@ -258,6 +264,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             busy: _isExportingPdf,
             onPressed:
                 (_isExportingPdf || rows.isEmpty) ? null : () => _exportPdf(rows),
+          ),
+          const SizedBox(width: 8),
+          AppButton(
+            onPressed: _openRecurringExpenseDialog,
+            label: 'Recurring Expenses',
+            variant: AppButtonVariant.secondary,
+            leading: const Icon(FluentIcons.repeat_all, size: 13),
           ),
           const SizedBox(width: 8),
           AppButton(
@@ -336,6 +349,157 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     } finally {
       if (mounted) setState(() => _isExportingPdf = false);
     }
+  }
+
+  Widget _buildExpenseOverviewCard(List<Expense> rows) {
+    final total = rows.fold<double>(0, (sum, e) => sum + e.amount);
+    final byCategory = <String, double>{};
+    for (final expense in rows) {
+      final key = expense.items.isEmpty ? 'Others' : expense.items.first;
+      byCategory[key] = (byCategory[key] ?? 0) + expense.amount;
+    }
+    final sorted = byCategory.entries.toList(growable: true)
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    const pieColors = [
+      Color(0xFF2D7BD8),
+      Color(0xFFD6455D),
+      Color(0xFFCE7A1A),
+      Color(0xFF377D4C),
+      Color(0xFF7B4FA8),
+      Color(0xFF1B9988),
+      Color(0xFFB55E11),
+    ];
+
+    // Group smaller items into "Others"
+    final List<MapEntry<String, double>> display = [];
+    double othersTotal = 0.0;
+    for (var i = 0; i < sorted.length; i++) {
+      if (i < 4) {
+        display.add(sorted[i]);
+      } else {
+        othersTotal += sorted[i].value;
+      }
+    }
+    if (othersTotal > 0) {
+      display.add(MapEntry('Others', othersTotal));
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDCE6F2)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0F0D2E59), blurRadius: 10, offset: Offset(0, 3)),
+        ],
+      ),
+      child: total <= 0
+          ? const Row(
+              children: [
+                Icon(FluentIcons.pie_single, size: 16, color: Color(0xFF2D6EC2)),
+                SizedBox(width: 8),
+                Text(
+                  'Expense Overview',
+                  style: TextStyle(color: Color(0xFF214162), fontWeight: FontWeight.w800),
+                ),
+                SizedBox(width: 12),
+                Text('No records', style: TextStyle(color: Color(0xFF7A8FAF), fontWeight: FontWeight.w600)),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Left: legend
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(FluentIcons.pie_single, size: 16, color: Color(0xFF2D6EC2)),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Expense Overview',
+                            style: TextStyle(color: Color(0xFF214162), fontWeight: FontWeight.w800, fontSize: 14),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Total ₹${NumberFormat('#,##0').format(total)}',
+                            style: const TextStyle(color: Color(0xFF5A7397), fontWeight: FontWeight.w700, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      ...display.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final item = entry.value;
+                        final pct = total > 0 ? (item.value / total * 100) : 0.0;
+                        final color = pieColors[idx % pieColors.length];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item.key,
+                                  style: const TextStyle(color: Color(0xFF243F60), fontWeight: FontWeight.w600, fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                '${pct.toStringAsFixed(0)}%',
+                                style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Right: pie chart
+                SizedBox(
+                  width: 130,
+                  height: 130,
+                  child: PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 36,
+                      sections: display.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final item = entry.value;
+                        final pct = total > 0 ? (item.value / total * 100) : 0.0;
+                        final color = pieColors[idx % pieColors.length];
+                        return PieChartSectionData(
+                          value: item.value,
+                          color: color,
+                          title: '${pct.toStringAsFixed(0)}%',
+                          radius: 40,
+                          titleStyle: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                          showTitle: pct >= 8,
+                        );
+                      }).toList(growable: false),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
   }
 
   Widget _buildSummaryStrip(List<_ExpenseSummaryCardData> cards) {
@@ -508,6 +672,52 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 },
               ),
               AppDropdownMenu<String>(
+                width: 150,
+                value: _statusFilter,
+                items: const [
+                  AppDropdownItem<String>(value: 'all', label: 'All Status'),
+                  AppDropdownItem<String>(value: 'paid', label: 'Paid'),
+                  AppDropdownItem<String>(value: 'pending', label: 'Pending'),
+                  AppDropdownItem<String>(value: 'high', label: 'High Value'),
+                ],
+                onChanged: (v) {
+                  setState(() {
+                    _statusFilter = v;
+                    _page = 1;
+                  });
+                },
+              ),
+              GestureDetector(
+                onTap: () => setState(() {
+                  _recurringOnly = !_recurringOnly;
+                  _page = 1;
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _recurringOnly
+                        ? const Color(0xFF2D7BD8)
+                        : const Color(0xFFEFF4FB),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _recurringOnly
+                          ? const Color(0xFF2D7BD8)
+                          : const Color(0xFFD6E2F0),
+                    ),
+                  ),
+                  child: Text(
+                    'Recurring',
+                    style: TextStyle(
+                      color: _recurringOnly ? Colors.white : const Color(0xFF355279),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+              AppDropdownMenu<String>(
                 width: 160,
                 value: _rangeFilter,
                 items: const [
@@ -545,6 +755,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     _searchCtrl.text = '';
                     _categoryFilter = 'all';
                     _paymentFilter = 'all';
+                    _statusFilter = 'all';
+                    _recurringOnly = false;
                     _rangeFilter = 'month';
                     _monthAnchor =
                         DateTime(DateTime.now().year, DateTime.now().month, 1);
@@ -837,22 +1049,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ),
             ...dayRows.map((e) {
               final category = e.items.isEmpty ? '-' : e.items.first;
-              final selected = _selectedExpenseId == e.id;
               final paymentMode = _paymentMode(e);
 
               return GestureDetector(
-                onTap: () => setState(() => _selectedExpenseId = e.id),
+                onTap: () => _showExpenseOverlay(e),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 120),
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: selected ? const Color(0xFFEFF6FF) : Colors.white,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: selected
-                          ? const Color(0xFF7FAFE8)
-                          : const Color(0xFFE5EEF9),
+                      color: const Color(0xFFE5EEF9),
                     ),
                   ),
                   child: Row(
@@ -937,7 +1146,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         icon: FluentIcons.edit,
                         color: const Color(0xFF8267D6),
                         hoverColor: const Color(0xFFF1EDFB),
-                        onTap: () => _openExpenseModal(e),
+                        onTap: () => _showExpenseOverlay(e),
                       ),
                       const SizedBox(width: 8),
                       _ExpenseActionIconButton(
@@ -957,7 +1166,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildDetailsPane(Expense? selected) {
+  Widget _buildDetailsPane(Expense? selected, {VoidCallback? onClose}) {
     final category = selected == null || selected.items.isEmpty
         ? '-'
         : selected.items.first;
@@ -992,6 +1201,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                if (onClose != null)
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.chrome_close, size: 10),
+                      onPressed: onClose,
+                    ),
+                  ),
                 const SizedBox(height: 10),
                 _DetailRow(label: 'Date', value: formatClinicDate(selected.date, pattern: 'dd MMM yyyy')),
                 _DetailRow(label: 'Category', value: category),
@@ -1050,14 +1267,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       child: AppButton(
                         label: 'Edit',
                         variant: AppButtonVariant.secondary,
-                        onPressed: () => _openExpenseModal(selected),
+                        onPressed: () async {
+                          onClose?.call();
+                          await _openExpenseModal(selected);
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: AppButton(
                         label: 'Delete',
-                        onPressed: () => _deleteExpense(selected),
+                        onPressed: () async {
+                          onClose?.call();
+                          await _deleteExpense(selected);
+                        },
                       ),
                     ),
                   ],
@@ -1178,6 +1401,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       if (_paymentFilter == 'upi' && mode != 'UPI') return false;
       if (_paymentFilter == 'cash' && mode != 'Cash') return false;
 
+      if (_statusFilter == 'paid' && !e.paid) return false;
+      if (_statusFilter == 'pending' && e.paid) return false;
+      if (_statusFilter == 'high' && e.amount < 10000) return false;
+
+      if (_recurringOnly && !_isRecurringExpense(e)) return false;
+
       if (from != null || to != null) {
         final d = DateTime(e.date.year, e.date.month, e.date.day);
         if (from != null && d.isBefore(from)) return false;
@@ -1197,44 +1426,51 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final monthEnd = DateTime(today.year, today.month + 1, 0);
 
     double todaySpent = 0;
-    double totalSpent = 0;
-    double weeklySpent = 0;
+    double pendingSpent = 0;
     double monthlySpent = 0;
 
     for (final e in rows) {
       final dateOnly = DateTime(e.date.year, e.date.month, e.date.day);
-      totalSpent += e.amount;
+      if (!e.paid) {
+        pendingSpent += e.amount;
+      }
       if (dateOnly == today) {
         todaySpent += e.amount;
-      }
-      if (!dateOnly.isBefore(weekStart) && !dateOnly.isAfter(weekEnd)) {
-        weeklySpent += e.amount;
       }
       if (!dateOnly.isBefore(monthStart) && !dateOnly.isAfter(monthEnd)) {
         monthlySpent += e.amount;
       }
     }
 
+    final weekDays = weekEnd.difference(weekStart).inDays + 1;
+    final avgDaily = weekDays <= 0 ? 0.0 : rows
+            .where((e) {
+              final d = DateTime(e.date.year, e.date.month, e.date.day);
+              return !d.isBefore(weekStart) && !d.isAfter(weekEnd);
+            })
+            .fold<double>(0, (sum, e) => sum + e.amount) /
+        weekDays;
+
     return [
       _ExpenseSummaryCardData(
-        title: 'TODAY',
+        title: 'Today Spent',
         value: todaySpent,
         valueColor: const Color(0xFF2D476D),
       ),
       _ExpenseSummaryCardData(
-        title: 'TOTAL SPENT',
-        value: totalSpent,
-        valueColor: const Color(0xFFD6455D),
-      ),
-      _ExpenseSummaryCardData(
-        title: 'WEEKLY SPENT',
-        value: weeklySpent,
-        valueColor: const Color(0xFFD6455D),
-      ),
-      _ExpenseSummaryCardData(
-        title: 'MONTHLY SPENT',
+        title: 'This Month',
         value: monthlySpent,
         valueColor: const Color(0xFFD6455D),
+      ),
+      _ExpenseSummaryCardData(
+        title: 'Pending Payments',
+        value: pendingSpent,
+        valueColor: const Color(0xFFCE7A1A),
+      ),
+      _ExpenseSummaryCardData(
+        title: 'Avg Daily Spend',
+        value: avgDaily,
+        valueColor: const Color(0xFF377D4C),
       ),
     ];
   }
@@ -1295,6 +1531,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     DateTime selectedDate = draft.date;
     String selectedCategory = draft.items.isEmpty ? '' : draft.items.first;
     String selectedMode = _paymentMode(draft) == 'UPI' ? 'upi' : 'cash';
+    bool isRecurring = _isRecurringExpense(draft);
     double amount = draft.amount;
     final noteController = TextEditingController(text: draft.note);
     final customCategoryController = TextEditingController();
@@ -1441,6 +1678,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 10),
+                      ToggleSwitch(
+                        checked: isRecurring,
+                        content: const Text('Recurring monthly expense'),
+                        onChanged: (value) {
+                          setStateDialog(() {
+                            isRecurring = value;
+                          });
+                        },
+                      ),
                       if (categoryError != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
@@ -1580,10 +1827,59 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
                   final tags = draft.tags.where((t) {
                     final lower = t.toLowerCase();
-                    return lower != 'upi' && lower != 'cash';
+                    return lower != 'upi' &&
+                        lower != 'cash' &&
+                        !lower.startsWith('recurring:');
                   }).toList(growable: true);
                   tags.add(selectedMode == 'upi' ? 'UPI' : 'Cash');
+                  if (isRecurring) {
+                    tags.add('recurring:monthly');
+                  }
                   draft.tags = tags;
+
+                  // Auto-upsert monthly doctor fee per doctor
+                  if (normalizedCategory.toLowerCase() == 'consultant' &&
+                      selectedDoctors.isNotEmpty) {
+                    for (final doctorId in selectedDoctors) {
+                      // Find existing Consultant expense for same doctor + same month
+                      final existing = expenses.present.values.where((e) {
+                        if (e.id == draft.id) return false;
+                        if (e.items.isEmpty || e.items.first.toLowerCase() != 'consultant') return false;
+                        if (!e.operatorsIDs.contains(doctorId)) return false;
+                        return e.date.year == selectedDate.year && e.date.month == selectedDate.month;
+                      });
+                      if (existing.isNotEmpty) {
+                        final toUpdate = existing.first;
+                        toUpdate.amount = amount;
+                        expenses.set(toUpdate);
+                        continue;
+                      }
+                      // No existing record - will create new via draft below (only for first doctor)
+                    }
+                    // If multiple doctors, create separate records for each
+                    if (selectedDoctors.length > 1) {
+                      for (final doctorId in selectedDoctors) {
+                        final existing = expenses.present.values.where((e) {
+                          if (e.id == draft.id) return false;
+                          if (e.items.isEmpty || e.items.first.toLowerCase() != 'consultant') return false;
+                          if (!e.operatorsIDs.contains(doctorId)) return false;
+                          return e.date.year == selectedDate.year && e.date.month == selectedDate.month;
+                        });
+                        if (existing.isEmpty) {
+                          final perDoctor = Expense.fromJson({});
+                          perDoctor.date = selectedDate;
+                          perDoctor.amount = amount;
+                          perDoctor.note = noteController.text.trim();
+                          perDoctor.items = [normalizedCategory];
+                          perDoctor.operatorsIDs = [doctorId];
+                          perDoctor.tags = tags;
+                          expenses.set(perDoctor);
+                        }
+                      }
+                      Navigator.pop(dialogContext);
+                      return;
+                    }
+                  }
 
                   expenses.set(draft);
                   Navigator.pop(dialogContext);
@@ -1592,6 +1888,75 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _openRecurringExpenseDialog() async {
+    final recurringRows = expenses.present.values
+        .where(_isRecurringExpense)
+        .toList(growable: false)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => ContentDialog(
+        title: const Text('Recurring Expenses'),
+        content: SizedBox(
+          width: 680,
+          child: recurringRows.isEmpty
+              ? const Text(
+                  'No recurring expenses yet. Mark an expense as recurring in the expense form.',
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: recurringRows.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 6),
+                  itemBuilder: (_, i) {
+                    final row = recurringRows[i];
+                    final category = row.items.isEmpty ? '-' : row.items.first;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF4F8FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFD8E5F8)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '$category • ₹${NumberFormat('#,##0').format(row.amount)} • ${_paymentMode(row)}',
+                              style: const TextStyle(
+                                color: Color(0xFF2B4A6E),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          AppButton(
+                            label: 'Edit',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () async {
+                              Navigator.pop(dialogContext);
+                              await _openExpenseModal(row);
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          AppButton(
+            label: 'Close',
+            variant: AppButtonVariant.secondary,
+            onPressed: () => Navigator.pop(dialogContext),
+          ),
+        ],
       ),
     );
   }

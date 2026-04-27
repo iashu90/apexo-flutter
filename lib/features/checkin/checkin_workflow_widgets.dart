@@ -348,7 +348,9 @@ class _WorkflowRow extends StatelessWidget {
                 label: 'Update',
                 onPressed: hasChanged
                     ? () {
+                        final originalCheckedInAt = appointment.checkedInAt;
                         appointment.date = updatedDateTime;
+                        appointment.checkedInAt = originalCheckedInAt;
                         appointments.set(appointment);
                         onSelect?.call(appointment);
                         Navigator.of(dialogContext, rootNavigator: true).pop();

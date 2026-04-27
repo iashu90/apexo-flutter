@@ -56,6 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _sortBy = 'time';
   bool _sortAscending = true;
   String _searchQuery = '';
+  String _appointmentStatusFilter = 'all';
   String _selectedDoctorFilter = dashboardDoctorFilterAll;
   String _selectedTreatmentFilter = dashboardTreatmentFilterAll;
   bool _showAllTreatmentStats = false;
@@ -185,6 +186,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return filtered.reversed.toList();
     }
     return filtered;
+  }
+
+  List<Appointment> _statusFilteredAppointments(List<Appointment> source) {
+    if (_appointmentStatusFilter == 'all') return source;
+    return source.where((appointment) {
+      final stage = normalizeCheckinStage(appointment.checkinStage);
+      if (_appointmentStatusFilter == 'cancelled') {
+        return stage == 'cancelled';
+      }
+      if (_appointmentStatusFilter == 'billing') {
+        return stage == 'billing';
+      }
+      if (_appointmentStatusFilter == 'treatment') {
+        return stage == 'treatment';
+      }
+      if (_appointmentStatusFilter == 'others') {
+        return stage != 'billing' &&
+            stage != 'cancelled' &&
+            stage != 'treatment';
+      }
+      return true;
+    }).toList(growable: false);
   }
 
   String _paymentMode(Appointment a) {
@@ -434,8 +457,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final allAppointments =
             appointments.present.values.toList(growable: false);
         final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
-        final tableAppointments =
-            _filteredAndSorted(_treatmentFiltered(doctorScopedAppointments));
+        final doctorAndTreatmentFiltered =
+            _treatmentFiltered(doctorScopedAppointments);
+        final tableAppointments = _filteredAndSorted(
+          _statusFilteredAppointments(doctorAndTreatmentFiltered),
+        );
         final treatmentStats =
             DashboardTreatmentStats.from(doctorScopedAppointments);
 
@@ -762,7 +788,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _selectedDoctorFilter = dashboardDoctorFilterAll;
                               _selectedTreatmentFilter =
                                   dashboardTreatmentFilterAll;
+                              _appointmentStatusFilter = 'all';
                             }),
+                            selectedStatusFilter: _appointmentStatusFilter,
+                            onStatusFilterChanged: (value) =>
+                                setState(() => _appointmentStatusFilter = value),
                           ),
                         ],
                       );
@@ -837,7 +867,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               _selectedDoctorFilter = dashboardDoctorFilterAll;
                               _selectedTreatmentFilter =
                                   dashboardTreatmentFilterAll;
+                              _appointmentStatusFilter = 'all';
                             }),
+                            selectedStatusFilter: _appointmentStatusFilter,
+                            onStatusFilterChanged: (value) =>
+                                setState(() => _appointmentStatusFilter = value),
                           ),
                         ),
                       ],
@@ -920,6 +954,8 @@ class _RightDashboardColumn extends StatelessWidget {
   final VoidCallback onClearDoctorFilter;
   final VoidCallback onClearTreatmentFilter;
   final VoidCallback onClearFilters;
+  final String selectedStatusFilter;
+  final ValueChanged<String> onStatusFilterChanged;
 
   const _RightDashboardColumn({
     required this.tableAppointments,
@@ -940,6 +976,8 @@ class _RightDashboardColumn extends StatelessWidget {
     required this.onClearDoctorFilter,
     required this.onClearTreatmentFilter,
     required this.onClearFilters,
+    required this.selectedStatusFilter,
+    required this.onStatusFilterChanged,
   });
 
   @override
@@ -965,6 +1003,8 @@ class _RightDashboardColumn extends StatelessWidget {
           onClearDoctorFilter: onClearDoctorFilter,
           onClearTreatmentFilter: onClearTreatmentFilter,
           onClearFilters: onClearFilters,
+          selectedStatusFilter: selectedStatusFilter,
+          onStatusFilterChanged: onStatusFilterChanged,
         ),
       ],
     );
@@ -990,6 +1030,8 @@ class _AppointmentsTableCard extends StatelessWidget {
   final VoidCallback onClearDoctorFilter;
   final VoidCallback onClearTreatmentFilter;
   final VoidCallback onClearFilters;
+  final String selectedStatusFilter;
+  final ValueChanged<String> onStatusFilterChanged;
 
   const _AppointmentsTableCard({
     required this.tableAppointments,
@@ -1010,6 +1052,8 @@ class _AppointmentsTableCard extends StatelessWidget {
     required this.onClearDoctorFilter,
     required this.onClearTreatmentFilter,
     required this.onClearFilters,
+    required this.selectedStatusFilter,
+    required this.onStatusFilterChanged,
   });
 
   @override
@@ -1129,6 +1173,43 @@ class _AppointmentsTableCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _CompactStatusFilterChip(
+                label: 'All',
+                value: 'all',
+                selectedValue: selectedStatusFilter,
+                onChanged: onStatusFilterChanged,
+              ),
+              _CompactStatusFilterChip(
+                label: 'Billing',
+                value: 'billing',
+                selectedValue: selectedStatusFilter,
+                onChanged: onStatusFilterChanged,
+              ),
+              _CompactStatusFilterChip(
+                label: 'Cancelled',
+                value: 'cancelled',
+                selectedValue: selectedStatusFilter,
+                onChanged: onStatusFilterChanged,
+              ),
+              _CompactStatusFilterChip(
+                label: 'Treatment',
+                value: 'treatment',
+                selectedValue: selectedStatusFilter,
+                onChanged: onStatusFilterChanged,
+              ),
+              _CompactStatusFilterChip(
+                label: 'Others',
+                value: 'others',
+                selectedValue: selectedStatusFilter,
+                onChanged: onStatusFilterChanged,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(
               border: Border.all(color: const Color(0xFFD6E2F0)),
@@ -1164,6 +1245,47 @@ class _AppointmentsTableCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CompactStatusFilterChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final String selectedValue;
+  final ValueChanged<String> onChanged;
+
+  const _CompactStatusFilterChip({
+    required this.label,
+    required this.value,
+    required this.selectedValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = value == selectedValue;
+    return GestureDetector(
+      onTap: () => onChanged(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFF1F6FD),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD2E2F6),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : const Color(0xFF375A84),
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+          ),
+        ),
       ),
     );
   }
@@ -1331,6 +1453,11 @@ class _AppointmentRow extends StatelessWidget {
       context: context,
       patient: patient,
       rows: patient.patientDetails,
+      onEditTreatment: (appointmentId) async {
+        final appt = appointments.present[appointmentId];
+        if (appt == null || !context.mounted) return;
+        await openAppointmentJourneyDialog(context, appt);
+      },
     );
   }
 
@@ -1668,6 +1795,10 @@ class _StatusBadge extends StatelessWidget {
         label = 'Treatment';
         fg = const Color(0xFF1E40AF);
         bg = const Color(0xFFEAF0FF);
+      } else if (normalized == 'cancelled') {
+        label = 'Cancelled';
+        fg = const Color(0xFFDC2626);
+        bg = const Color(0xFFFFF1F2);
       } else {
         label = 'Waiting';
         fg = const Color(0xFF8A5A00);

@@ -21,6 +21,7 @@ import 'package:apexo/features/labwork/open_labwork_dialog.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
@@ -140,6 +141,11 @@ class _PatientsScreenState extends State<PatientsScreen> {
       context: context,
       patient: patient,
       rows: patient.patientDetails,
+      onEditTreatment: (appointmentId) async {
+        final appointment = appointments.present[appointmentId];
+        if (appointment == null || !context.mounted) return;
+        await openAppointmentJourneyDialog(context, appointment);
+      },
     );
   }
 
@@ -786,6 +792,8 @@ class _PatientsScreenState extends State<PatientsScreen> {
                             title: 'Total Patients (Unique IDs)',
                             value: '$uniquePatientCount',
                             valueColor: const Color(0xFF1D3E67),
+                            maleCount: genderBuckets['Male'] ?? 0,
+                            femaleCount: genderBuckets['Female'] ?? 0,
                           ),
                         ),
                         SizedBox(
@@ -1259,11 +1267,15 @@ class _MetricCard extends StatelessWidget {
   final String title;
   final String value;
   final Color valueColor;
+  final int? maleCount;
+  final int? femaleCount;
 
   const _MetricCard({
     required this.title,
     required this.value,
     required this.valueColor,
+    this.maleCount,
+    this.femaleCount,
   });
 
   @override
@@ -1292,6 +1304,47 @@ class _MetricCard extends StatelessWidget {
                 color: valueColor,
               ),
             ),
+            if (maleCount != null && femaleCount != null) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F3FF),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Male: $maleCount',
+                      style: const TextStyle(
+                        color: Color(0xFF2365B7),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFEDF2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Female: $femaleCount',
+                      style: const TextStyle(
+                        color: Color(0xFFC84578),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
