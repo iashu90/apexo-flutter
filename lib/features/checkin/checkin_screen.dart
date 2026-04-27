@@ -96,43 +96,6 @@ String _medicalHistorySummaryText(Patient? patient) {
       : 'Medical History: ${medicalHistoryEntries.join(', ')}';
 }
 
-Future<void> _openPatientTimelineExperimentModal(
-  BuildContext context,
-  Appointment appointment,
-) async {
-  final patientId = (appointment.patientID ?? '').trim();
-  if (patientId.isEmpty) return;
-
-  final timelineRows = appointments.present.values
-      .where((row) => row.patientID == patientId && row.id != appointment.id)
-      .toList(growable: false)
-    ..sort((a, b) => b.date.compareTo(a.date));
-
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) => ContentDialog(
-      title: const Text('Patient Timeline'),
-      content: SizedBox(
-        width: 920,
-        height: 500,
-        child: SingleChildScrollView(
-          child: _CompactTimelineTable(
-            rows: timelineRows,
-            maxRows: 20,
-          ),
-        ),
-      ),
-      actions: [
-        AppButton(
-          label: 'Close',
-          variant: AppButtonVariant.secondary,
-          onPressed: () => Navigator.pop(dialogContext),
-        ),
-      ],
-    ),
-  );
-}
-
 Future<void> _showNextAppointmentPromptDialog(
   BuildContext context,
   Appointment appointment,
@@ -420,6 +383,38 @@ Future<void> _confirmDeleteScheduledFollowUpAppointment(
 
   if (shouldDelete != true) return;
   await appointments.hardDelete(scheduledAppointment.id);
+}
+
+Future<void> _confirmCancelScheduledFollowUpAppointment(
+  BuildContext context,
+  Appointment scheduledAppointment,
+) async {
+  final shouldCancel = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => ContentDialog(
+      title: const Text('Cancel Scheduled Appointment'),
+      content: Text(
+        'Mark appointment on ${formatClinicDateTime(scheduledAppointment.date, pattern: 'dd MMM yyyy • h:mm a')} as cancelled?',
+      ),
+      actions: [
+        AppButton(
+          label: 'Keep Appointment',
+          variant: AppButtonVariant.secondary,
+          onPressed: () => Navigator.pop(dialogContext, false),
+        ),
+        AppButton(
+          label: 'Cancel Appointment',
+          variant: AppButtonVariant.danger,
+          onPressed: () => Navigator.pop(dialogContext, true),
+        ),
+      ],
+    ),
+  );
+
+  if (shouldCancel != true) return;
+  scheduledAppointment.checkinStage = 'cancelled';
+  scheduledAppointment.isCheckedIn = false;
+  appointments.set(scheduledAppointment);
 }
 
 List<Widget> _buildBillingSummaryLines(
@@ -722,8 +717,9 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color:
-                  isSelected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+              color: isSelected
+                  ? const Color(0xFF2D7BD8)
+                  : const Color(0xFFEFF4FB),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: isSelected
@@ -803,8 +799,8 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                     _selectedMedicalHistory,
                     value,
                     () => _updatePatient(
-                      (patient) =>
-                          patient.tags = _selectedMedicalHistory.toList(growable: false),
+                      (patient) => patient.tags =
+                          _selectedMedicalHistory.toList(growable: false),
                     ),
                   ),
                 ),
@@ -893,15 +889,19 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEFF5FF),
-                              border: Border.all(color: const Color(0xFFD7E5F7)),
+                              border:
+                                  Border.all(color: const Color(0xFFD7E5F7)),
                             ),
                             child: Row(
                               children: [
                                 _historyCell('Date', flex: 2, header: true),
-                                _historyCell('Treatment', flex: 3, header: true),
+                                _historyCell('Treatment',
+                                    flex: 3, header: true),
                                 _historyCell('Teeth', flex: 2, header: true),
-                                _historyCell('Diagnosis', flex: 3, header: true),
-                                _historyCell('Chief Complaint', flex: 3, header: true),
+                                _historyCell('Diagnosis',
+                                    flex: 3, header: true),
+                                _historyCell('Chief Complaint',
+                                    flex: 3, header: true),
                                 _historyCell('Doctor', flex: 2, header: true),
                               ],
                             ),
@@ -935,19 +935,39 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                border: Border.all(color: const Color(0xFFDCE8F8)),
+                                border:
+                                    Border.all(color: const Color(0xFFDCE8F8)),
                               ),
                               child: Row(
                                 children: [
                                   _historyCell(
-                                    formatClinicDate(row.date, pattern: 'dd MMM yyyy'),
+                                    formatClinicDate(row.date,
+                                        pattern: 'dd MMM yyyy'),
                                     flex: 2,
                                   ),
-                                  _historyCell(treatmentText.isEmpty ? '-' : treatmentText, flex: 3),
-                                  _historyCell(teethText.isEmpty ? '-' : teethText, flex: 2),
-                                  _historyCell(diagnosisText.isEmpty ? '-' : diagnosisText, flex: 3),
-                                  _historyCell(complaintText.isEmpty ? '-' : complaintText, flex: 3),
-                                  _historyCell(doctorText.isEmpty ? 'Unassigned' : doctorText, flex: 2),
+                                  _historyCell(
+                                      treatmentText.isEmpty
+                                          ? '-'
+                                          : treatmentText,
+                                      flex: 3),
+                                  _historyCell(
+                                      teethText.isEmpty ? '-' : teethText,
+                                      flex: 2),
+                                  _historyCell(
+                                      diagnosisText.isEmpty
+                                          ? '-'
+                                          : diagnosisText,
+                                      flex: 3),
+                                  _historyCell(
+                                      complaintText.isEmpty
+                                          ? '-'
+                                          : complaintText,
+                                      flex: 3),
+                                  _historyCell(
+                                      doctorText.isEmpty
+                                          ? 'Unassigned'
+                                          : doctorText,
+                                      flex: 2),
                                 ],
                               ),
                             );
@@ -1106,99 +1126,9 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FBFF),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFDCE8F8)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Next Appointments',
-                            style: TextStyle(
-                              color: Color(0xFF2D476D),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        AppButton(
-                          label: '+ Add',
-                          compact: true,
-                          variant: AppButtonVariant.secondary,
-                          onPressed: () => _upsertScheduledFollowUpAppointment(
-                            context,
-                            appointment,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (upcomingForPatient.isEmpty)
-                      const Text(
-                        'No scheduled appointments',
-                        style: TextStyle(
-                          color: Color(0xFF5A7397),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )
-                    else
-                      ...upcomingForPatient.map(
-                        (row) => Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  DateFormat('dd MMM yyyy • h:mm a')
-                                      .format(row.date),
-                                  style: const TextStyle(
-                                    color: Color(0xFF184A9C),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              Tooltip(
-                                message: 'Edit scheduled appointment',
-                                child: IconButton(
-                                  icon: const Icon(FluentIcons.edit, size: 14),
-                                  onPressed: () =>
-                                      _upsertScheduledFollowUpAppointment(
-                                    context,
-                                    appointment,
-                                    existingScheduled: row,
-                                  ),
-                                ),
-                              ),
-                              Tooltip(
-                                message: 'Delete scheduled appointment',
-                                child: IconButton(
-                                  icon: const Icon(
-                                    FluentIcons.delete,
-                                    size: 14,
-                                    color: Color(0xFFD6455D),
-                                  ),
-                                  onPressed: () =>
-                                      _confirmDeleteScheduledFollowUpAppointment(
-                                    context,
-                                    row,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+              _InlineNextAppointmentCard(
+                appointment: appointment,
+                includeCancelledSection: true,
               ),
               const SizedBox(height: 12),
               _CheckoutBillingSummaryPanel(
@@ -1414,6 +1344,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     a.checkinStage == 'scheduled')
                 .toList(growable: true)
               ..sort((a, b) => a.date.compareTo(b.date));
+            final cancelled = filtered
+                .where((a) => a.checkinStage == 'cancelled')
+                .toList(growable: true)
+              ..sort((a, b) => b.date.compareTo(a.date));
             final withDoctor = filtered
                 .where((a) =>
                     a.checkinStage == 'with_doctor' ||
@@ -1690,6 +1624,22 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           }),
                         );
 
+                        final cancelledColumn = _WorkflowColumn(
+                          title: 'Cancelled (${cancelled.length})',
+                          stage: 'cancelled',
+                          color: const Color(0xFFC2415B),
+                          rows: cancelled,
+                          duplicatePatientIds: duplicatePatientIds,
+                          showHistoryAction: false,
+                          onSelect: _selectAndOpenAppointment,
+                          selectedAppointmentId: _selectedAppointment?.id,
+                          expanded: _expandedStages['cancelled'] ?? true,
+                          onToggleExpanded: () => setState(() {
+                            _expandedStages['cancelled'] =
+                                !(_expandedStages['cancelled'] ?? true);
+                          }),
+                        );
+
                         final withDoctorColumn = _WorkflowColumn(
                           title: 'Treatment (${withDoctor.length})',
                           stage: 'with_doctor',
@@ -1732,6 +1682,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               if (!isDoctorLogin) ...[
                                 const SizedBox(height: 10),
                                 scheduledColumn,
+                                if (cancelled.isNotEmpty) ...[
+                                  const SizedBox(height: 10),
+                                  cancelledColumn,
+                                ],
                               ],
                               const SizedBox(height: 10),
                               withDoctorColumn,
@@ -1751,6 +1705,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                   if (!isDoctorLogin) ...[
                                     const SizedBox(height: 10),
                                     scheduledColumn,
+                                    if (cancelled.isNotEmpty) ...[
+                                      const SizedBox(height: 10),
+                                      cancelledColumn,
+                                    ],
                                   ],
                                 ],
                               ),
@@ -1952,6 +1910,7 @@ class _WorkflowRow extends StatelessWidget {
       minute: originalDate.minute,
     );
     bool confirmDelete = false;
+    bool confirmCancel = false;
 
     await showDialog<void>(
       context: context,
@@ -1993,7 +1952,8 @@ class _WorkflowRow extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       AppButton(
-                        label: formatClinicDate(selectedDate, pattern: 'dd MMM yyyy'),
+                        label: formatClinicDate(selectedDate,
+                            pattern: 'dd MMM yyyy'),
                         variant: AppButtonVariant.secondary,
                         onPressed: () async {
                           final picked = await material.showDatePicker(
@@ -2079,6 +2039,26 @@ class _WorkflowRow extends StatelessWidget {
                       ),
                     ),
                   ],
+                  if (confirmCancel) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF4F4),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFF3C3C8)),
+                      ),
+                      child: const Text(
+                        'Cancel confirmation: this appointment will be moved to Cancelled.',
+                        style: TextStyle(
+                          color: Color(0xFFA11E34),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -2100,11 +2080,33 @@ class _WorkflowRow extends StatelessWidget {
                     : null,
               ),
               AppButton(
+                label: confirmCancel ? 'Confirm Cancel' : 'Cancel Appointment',
+                variant: AppButtonVariant.secondary,
+                onPressed: () async {
+                  if (!confirmCancel) {
+                    setStateDialog(() {
+                      confirmCancel = true;
+                      confirmDelete = false;
+                    });
+                    return;
+                  }
+                  appointment.checkinStage = 'cancelled';
+                  appointment.isCheckedIn = false;
+                  appointments.set(appointment);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                },
+              ),
+              AppButton(
                 label: confirmDelete ? 'Confirm Delete' : 'Delete',
                 variant: AppButtonVariant.danger,
                 onPressed: () async {
                   if (!confirmDelete) {
-                    setStateDialog(() => confirmDelete = true);
+                    setStateDialog(() {
+                      confirmDelete = true;
+                      confirmCancel = false;
+                    });
                     return;
                   }
                   await _deleteScheduledAppointment(context, appointment);
@@ -2219,6 +2221,34 @@ class _WorkflowRow extends StatelessWidget {
       appointment.checkinStage = 'checkout';
       appointment.isDone = false;
       appointments.set(appointment);
+      return;
+    }
+
+    if (stage == 'cancelled') {
+      final shouldRestore = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentDialog(
+          title: Text('Restore "$patientName" to Scheduled?'),
+          content: const Text(
+            'This cancelled appointment will be moved back to Scheduled.',
+          ),
+          actions: [
+            AppButton(
+              label: 'Keep Cancelled',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.pop(dialogContext, false),
+            ),
+            AppButton(
+              label: 'Restore',
+              onPressed: () => Navigator.pop(dialogContext, true),
+            ),
+          ],
+        ),
+      );
+      if (shouldRestore != true) return;
+      appointment.checkinStage = 'scheduled';
+      appointment.isDone = false;
+      appointments.set(appointment);
     }
   }
 
@@ -2328,7 +2358,10 @@ class _WorkflowRow extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: GestureDetector(
                       behavior: HitTestBehavior.deferToChild,
-                      onTap: (stage == 'with_doctor' && selected)
+                      onTap: ((stage == 'with_doctor' ||
+                                  stage == 'checkout' ||
+                                  stage == 'completed') &&
+                              selected)
                           ? () async {
                               final pickedDoctorIds = await pickDoctorDialog(
                                 context,
@@ -2354,11 +2387,16 @@ class _WorkflowRow extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             doctorLabel,
-                            style: const TextStyle(
-                              color: Color(0xFF3B82F6),
+                            style: TextStyle(
+                              color: const Color(0xFF3B82F6),
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
+                              decoration: ((stage == 'with_doctor' ||
+                                          stage == 'checkout' ||
+                                          stage == 'completed') &&
+                                      selected)
+                                  ? TextDecoration.underline
+                                  : TextDecoration.none,
                             ),
                           ),
                         ],
@@ -2771,15 +2809,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF183A67),
                         ),
-                      ),
-                    ),
-                    AppButton(
-                      label: 'Timeline',
-                      variant: AppButtonVariant.secondary,
-                      compact: true,
-                      onPressed: () => _openPatientTimelineExperimentModal(
-                        context,
-                        appointment,
                       ),
                     ),
                   ],
@@ -3227,7 +3256,8 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            formatClinicDateTime(appointment.date, pattern: 'dd MMM yyyy • h:mm a'),
+            formatClinicDateTime(appointment.date,
+                pattern: 'dd MMM yyyy • h:mm a'),
             style: const TextStyle(
               color: Color(0xFF355279),
               fontWeight: FontWeight.w700,
@@ -3319,7 +3349,8 @@ class _CompactTimelineTable extends StatelessWidget {
                         (row) => material.DataRow(
                           cells: [
                             material.DataCell(
-                              Text(formatClinicDate(row.date, pattern: 'dd MMM yyyy')),
+                              Text(formatClinicDate(row.date,
+                                  pattern: 'dd MMM yyyy')),
                             ),
                             material.DataCell(
                               Text(
@@ -4417,22 +4448,16 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFFE6F7EC)
-              : const Color(0xFFF4FBF6),
+          color: selected ? const Color(0xFFE6F7EC) : const Color(0xFFF4FBF6),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected
-                ? const Color(0xFF9FD9B1)
-                : const Color(0xFFCDEBD7),
+            color: selected ? const Color(0xFF9FD9B1) : const Color(0xFFCDEBD7),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected
-                ? const Color(0xFF1E8B66)
-                : const Color(0xFF2F7A57),
+            color: selected ? const Color(0xFF1E8B66) : const Color(0xFF2F7A57),
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
@@ -4449,12 +4474,12 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
             ? '-'
             : a.diagnosis.where((d) => d.trim().isNotEmpty).join(', ');
     final chiefComplaintLabel = a.chiefComplaints
-        .where((d) => d.trim().isNotEmpty)
-        .join(', ')
-        .trim()
-        .isEmpty
-      ? '-'
-      : a.chiefComplaints.where((d) => d.trim().isNotEmpty).join(', ');
+            .where((d) => d.trim().isNotEmpty)
+            .join(', ')
+            .trim()
+            .isEmpty
+        ? '-'
+        : a.chiefComplaints.where((d) => d.trim().isNotEmpty).join(', ');
     final selectedTreatments =
         a.selectedTreatments.where((t) => t.trim().isNotEmpty).toList();
     final selectedSubTreatments =
@@ -4487,7 +4512,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
           _summaryLine('Teeth treated',
               treatedTeeth.isEmpty ? '-' : treatedTeeth.join(', ')),
           _summaryLine('Diagnosis', diagnosisLabel),
-            _summaryLine('Chief complaint', chiefComplaintLabel),
+          _summaryLine('Chief complaint', chiefComplaintLabel),
           _summaryLine('Treatment', treatmentLabel),
           _summaryLine('Cost', '₹${a.price.toStringAsFixed(0)}',
               valueColor: const Color(0xFF203A61)),
@@ -4628,20 +4653,23 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       return;
     }
 
-    final resolvedExisting = existingScheduled ?? (() {
-      final upcomingAppointments = appointments.present.values.where((row) {
-        if (row.id == a.id) return false;
-        if (row.patientID != a.patientID) return false;
-        final stage = row.checkinStage.trim().toLowerCase();
-        if (stage != 'scheduled' && stage != 'pending') return false;
-        return row.date.isAfter(DateTime.now());
-      }).toList(growable: false)
-        ..sort((x, y) => x.date.compareTo(y.date));
-      return upcomingAppointments.isEmpty ? null : upcomingAppointments.first;
-    })();
+    final resolvedExisting = existingScheduled ??
+        (() {
+          final upcomingAppointments = appointments.present.values.where((row) {
+            if (row.id == a.id) return false;
+            if (row.patientID != a.patientID) return false;
+            final stage = row.checkinStage.trim().toLowerCase();
+            if (stage != 'scheduled' && stage != 'pending') return false;
+            return row.date.isAfter(DateTime.now());
+          }).toList(growable: false)
+            ..sort((x, y) => x.date.compareTo(y.date));
+          return upcomingAppointments.isEmpty
+              ? null
+              : upcomingAppointments.first;
+        })();
 
     final initialDate =
-      resolvedExisting?.date ?? DateTime.now().add(const Duration(days: 7));
+        resolvedExisting?.date ?? DateTime.now().add(const Duration(days: 7));
     final pickedDate = await material.showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -4687,7 +4715,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     }
 
     final targetAppointment =
-      resolvedExisting ?? Appointment.fromJson({'id': uuid()});
+        resolvedExisting ?? Appointment.fromJson({'id': uuid()});
     targetAppointment.patientID = a.patientID;
     targetAppointment.date = scheduledAt;
     targetAppointment.checkinStage = 'scheduled';
@@ -5110,7 +5138,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         upcomingAppointments.isEmpty ? null : upcomingAppointments.first;
     final nextScheduledText = nextScheduled == null
         ? null
-        : formatClinicDateTime(nextScheduled.date, pattern: 'dd MMM yyyy • h:mm a');
+        : formatClinicDateTime(nextScheduled.date,
+            pattern: 'dd MMM yyyy • h:mm a');
 
     return Padding(
       padding: const EdgeInsets.all(4),
@@ -5396,8 +5425,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           ),
                           const SizedBox(height: 8),
                           AppButton(
-                            label:
-                                formatClinicDate(_paymentDate, pattern: 'dd MMM yyyy'),
+                            label: formatClinicDate(_paymentDate,
+                                pattern: 'dd MMM yyyy'),
                             variant: AppButtonVariant.secondary,
                             onPressed: () async {
                               final picked = await material.showDatePicker(
@@ -5496,36 +5525,48 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
 
               final right = Padding(
                 padding: const EdgeInsets.all(4),
-                child: _CheckoutBillingSummaryPanel(
-                  appointment: a,
-                  discountEnabled: widget.discountEnabled,
-                  totalPaidOverride: totalAfter,
-                  includeTodayInOutstanding: false,
-                  onDownloadPdf: _downloadReceiptPdf,
-                  onShare: _openShareOptions,
-                  doctorNames: doctorNames,
-                  scheduledAppointments: upcomingAppointments,
-                  scheduledAppointmentText: nextScheduledText,
-                  scheduledAppointmentTexts: upcomingAppointments
-                    .map((row) => formatClinicDateTime(row.date, pattern: 'dd MMM yyyy • h:mm a'))
-                    .toList(growable: false),
-                  separateScheduleSection: true,
-                  onScheduleAppointment: (a.patientID ?? '').trim().isEmpty
-                      ? null
-                      : _scheduleAppointmentFromBilling,
-                  onEditScheduledAppointment: (row) =>
-                      _scheduleAppointmentFromBilling(existingScheduled: row),
-                  onDeleteScheduledAppointmentForRow: (row) =>
-                      _confirmDeleteScheduledFollowUpAppointment(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _InlineNextAppointmentCard(
+                      appointment: a,
+                      includeCancelledSection: true,
+                    ),
+                    const SizedBox(height: 10),
+                    _CheckoutBillingSummaryPanel(
+                      appointment: a,
+                      discountEnabled: widget.discountEnabled,
+                      totalPaidOverride: totalAfter,
+                      includeTodayInOutstanding: false,
+                      onDownloadPdf: _downloadReceiptPdf,
+                      onShare: _openShareOptions,
+                      doctorNames: doctorNames,
+                      scheduledAppointments: upcomingAppointments,
+                      scheduledAppointmentText: nextScheduledText,
+                      scheduledAppointmentTexts: upcomingAppointments
+                          .map((row) => formatClinicDateTime(row.date,
+                              pattern: 'dd MMM yyyy • h:mm a'))
+                          .toList(growable: false),
+                      separateScheduleSection: false,
+                      showScheduleSection: false,
+                      onScheduleAppointment: (a.patientID ?? '').trim().isEmpty
+                          ? null
+                          : _scheduleAppointmentFromBilling,
+                      onEditScheduledAppointment: (row) =>
+                          _scheduleAppointmentFromBilling(existingScheduled: row),
+                      onDeleteScheduledAppointmentForRow: (row) =>
+                          _confirmDeleteScheduledFollowUpAppointment(
                         context,
                         row,
                       ),
-                  onDeleteScheduledAppointment: nextScheduled == null
-                      ? null
-                      : () => _confirmDeleteScheduledFollowUpAppointment(
-                            context,
-                            nextScheduled,
-                          ),
+                      onDeleteScheduledAppointment: nextScheduled == null
+                          ? null
+                          : () => _confirmDeleteScheduledFollowUpAppointment(
+                                context,
+                                nextScheduled,
+                              ),
+                    ),
+                  ],
                 ),
               );
 
@@ -5677,9 +5718,11 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     final totalAfter =
         (totalPaidOverride ?? a.paid).clamp(0, double.infinity).toDouble();
     final treatmentCostForTotal = a.price.clamp(0, double.infinity).toDouble();
-    final todayBalance =
-      (treatmentCostForTotal - totalAfter).clamp(0, double.infinity).toDouble();
-    final effectiveExisting = allPatientRows.isEmpty ? 0.0 : existingOutstanding;
+    final todayBalance = (treatmentCostForTotal - totalAfter)
+        .clamp(0, double.infinity)
+        .toDouble();
+    final effectiveExisting =
+        allPatientRows.isEmpty ? 0.0 : existingOutstanding;
     final computedTotalBalance =
         (effectiveExisting + treatmentCostForTotal - totalAfter)
             .clamp(0, double.infinity)
@@ -5696,10 +5739,12 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
         .trim();
     final toothSummary =
         a.selectedTeeth.where((t) => t.trim().isNotEmpty).join(', ').trim();
-    final resolvedScheduledAppointments = (scheduledAppointmentTexts ?? const <String>[])
-      .where((entry) => entry.trim().isNotEmpty)
-      .toList(growable: false);
-    final resolvedScheduledRows = scheduledAppointments ?? const <Appointment>[];
+    final resolvedScheduledAppointments =
+        (scheduledAppointmentTexts ?? const <String>[])
+            .where((entry) => entry.trim().isNotEmpty)
+            .toList(growable: false);
+    final resolvedScheduledRows =
+        scheduledAppointments ?? const <Appointment>[];
 
     Widget sectionCard({
       required String title,
@@ -5743,31 +5788,31 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onDownloadPdf != null)
+              ExportFileActionButton(
+                type: ExportFileType.pdf,
+                onPressed: onDownloadPdf,
+              ),
+            if (onShare != null)
+              Tooltip(
+                message: 'Share',
+                child: IconButton(
+                  icon: const Icon(
+                    FluentIcons.share,
+                    size: 18,
+                    color: Color(0xFF7C3AED),
+                  ),
+                  onPressed: onShare,
+                ),
+              ),
+          ],
+        ),
         sectionCard(
           title:
               toTitleCase(a.title.trim().isEmpty ? 'Unnamed patient' : a.title),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (onDownloadPdf != null)
-                ExportFileActionButton(
-                  type: ExportFileType.pdf,
-                  onPressed: onDownloadPdf,
-                ),
-              if (onShare != null)
-                Tooltip(
-                  message: 'Share',
-                  child: IconButton(
-                    icon: const Icon(
-                      FluentIcons.share,
-                      size: 18,
-                      color: Color(0xFF7C3AED),
-                    ),
-                    onPressed: onShare,
-                  ),
-                ),
-            ],
-          ),
           children: [
             Text(
               'Age: ${a.patient?.age ?? 0}${(a.patient?.gender == 1 ? 'M' : a.patient?.gender == 0 ? 'F' : '')}  • ${a.patient?.phone ?? ''}',
@@ -5782,133 +5827,6 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
               'Patient ID: ${a.patientID ?? '-'}',
               style: const TextStyle(color: Color(0xFF5A7397)),
             ),
-            if (showScheduleSection && !separateScheduleSection) ...[
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFDCE8F8)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: resolvedScheduledRows.isNotEmpty
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: resolvedScheduledRows
-                                  .map(
-                                    (row) => Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 2),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              formatClinicDateTime(
-                                                row.date,
-                                                pattern:
-                                                    'dd MMM yyyy • h:mm a',
-                                              ),
-                                              style: const TextStyle(
-                                                color: Color(0xFF184A9C),
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                          if (onEditScheduledAppointment !=
-                                              null)
-                                            Tooltip(
-                                              message:
-                                                  'Edit Scheduled Appointment',
-                                              child: IconButton(
-                                                icon: const Icon(
-                                                  FluentIcons.edit,
-                                                  size: 14,
-                                                ),
-                                                onPressed: () =>
-                                                    onEditScheduledAppointment!(
-                                                        row),
-                                              ),
-                                            ),
-                                          if (onDeleteScheduledAppointmentForRow !=
-                                              null)
-                                            Tooltip(
-                                              message:
-                                                  'Delete Scheduled Appointment',
-                                              child: IconButton(
-                                                icon: const Icon(
-                                                  FluentIcons.delete,
-                                                  size: 14,
-                                                  color: Color(0xFFD6455D),
-                                                ),
-                                                onPressed: () =>
-                                                    onDeleteScheduledAppointmentForRow!(
-                                                        row),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  )
-                                  .toList(growable: false),
-                            )
-                          : resolvedScheduledAppointments.isEmpty
-                          ? Text(
-                              scheduledAppointmentText == null
-                                  ? 'No scheduled appointment'
-                                  : 'Next: $scheduledAppointmentText',
-                              style: TextStyle(
-                                color: scheduledAppointmentText == null
-                                    ? const Color(0xFF5A7397)
-                                    : const Color(0xFF184A9C),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: resolvedScheduledAppointments
-                                  .map(
-                                    (entry) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 2),
-                                      child: Text(
-                                        entry,
-                                        style: const TextStyle(
-                                          color: Color(0xFF184A9C),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(growable: false),
-                            ),
-                    ),
-                    if (onScheduleAppointment != null)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Tooltip(
-                            message: 'Add Scheduled Appointment',
-                            child: IconButton(
-                              icon: const Icon(
-                                FluentIcons.add,
-                                size: 14,
-                              ),
-                              onPressed: onScheduleAppointment,
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
         if (showScheduleSection && separateScheduleSection)
@@ -5930,19 +5848,6 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                               size: 14,
                             ),
                             onPressed: onScheduleAppointment,
-                          ),
-                        ),
-                      if (onDeleteScheduledAppointment != null &&
-                          scheduledAppointmentText != null)
-                        Tooltip(
-                          message: 'Delete Scheduled Appointment',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.delete,
-                              size: 14,
-                              color: Color(0xFFD6455D),
-                            ),
-                            onPressed: onDeleteScheduledAppointment,
                           ),
                         ),
                     ],
@@ -5991,7 +5896,8 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                                       color: Color(0xFFD6455D),
                                     ),
                                     onPressed: () =>
-                                        onDeleteScheduledAppointmentForRow!(row),
+                                        onDeleteScheduledAppointmentForRow!(
+                                            row),
                                   ),
                                 ),
                             ],
@@ -6127,12 +6033,6 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
               '₹${todayBalance.toStringAsFixed(0)}',
               valueColor: const Color(0xFFD6455D),
             ),
-            _checkoutSummaryLine(
-              'Existing Balance',
-              '₹${effectiveExisting.toStringAsFixed(0)}',
-              valueColor: const Color(0xFFD6455D),
-            ),
-            const SizedBox(height: 8),
             const Divider(direction: Axis.horizontal),
             const SizedBox(height: 8),
             _checkoutSummaryLine(
@@ -6290,8 +6190,12 @@ class _CheckinSearchableTagInput extends StatelessWidget {
 
 class _InlineNextAppointmentCard extends StatelessWidget {
   final Appointment appointment;
+  final bool includeCancelledSection;
 
-  const _InlineNextAppointmentCard({required this.appointment});
+  const _InlineNextAppointmentCard({
+    required this.appointment,
+    this.includeCancelledSection = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -6310,6 +6214,16 @@ class _InlineNextAppointmentCard extends StatelessWidget {
             )
             .toList(growable: true)
           ..sort((a, b) => a.date.compareTo(b.date));
+        final cancelledRows = appointments.present.values
+            .where(
+              (row) =>
+                  includeCancelledSection &&
+                  row.patientID == appointment.patientID &&
+                  row.id != appointment.id &&
+                  row.checkinStage == 'cancelled',
+            )
+            .toList(growable: true)
+          ..sort((a, b) => b.date.compareTo(a.date));
 
         return Container(
           width: double.infinity,
@@ -6352,7 +6266,8 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            formatClinicDateTime(row.date, pattern: 'dd MMM yyyy • h:mm a'),
+                            formatClinicDateTime(row.date,
+                                pattern: 'dd MMM yyyy • h:mm a'),
                             style: const TextStyle(
                               color: Color(0xFF184A9C),
                               fontWeight: FontWeight.w700,
@@ -6369,6 +6284,21 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                               context,
                               appointment,
                               existingScheduled: row,
+                            ),
+                          ),
+                        ),
+                        Tooltip(
+                          message: 'Cancel appointment',
+                          child: IconButton(
+                            icon: const Icon(
+                              FluentIcons.blocked2,
+                              size: 14,
+                              color: Color(0xFFC2415B),
+                            ),
+                            onPressed: () =>
+                                _confirmCancelScheduledFollowUpAppointment(
+                              context,
+                              row,
                             ),
                           ),
                         ),
@@ -6392,6 +6322,55 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                   ),
                 ),
               ],
+              if (includeCancelledSection && cancelledRows.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                const Divider(direction: Axis.horizontal),
+                const SizedBox(height: 8),
+                Text(
+                  'Cancelled (${cancelledRows.length})',
+                  style: const TextStyle(
+                    color: Color(0xFFC2415B),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ...cancelledRows.map(
+                  (row) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            formatClinicDateTime(row.date,
+                                pattern: 'dd MMM yyyy • h:mm a'),
+                            style: const TextStyle(
+                              color: Color(0xFF8A5066),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Tooltip(
+                          message: 'Restore to scheduled',
+                          child: IconButton(
+                            icon: const Icon(
+                              material.Icons.undo_rounded,
+                              size: 14,
+                              color: Color(0xFF7A5AF8),
+                            ),
+                            onPressed: () {
+                              row.checkinStage = 'scheduled';
+                              row.isDone = false;
+                              appointments.set(row);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -6407,17 +6386,6 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: AppButton(
-                      label: 'Timeline',
-                      variant: AppButtonVariant.secondary,
-                      expanded: true,
-                      onPressed: () => _openPatientTimelineExperimentModal(
-                        context,
-                        appointment,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ],

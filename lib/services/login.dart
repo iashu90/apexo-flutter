@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/core/save_local.dart';
+import 'package:apexo/core/store.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/utils/constants.dart';
@@ -109,12 +111,16 @@ class _LoginService extends ObservablePersistingObject {
   }
 
   void logout() {
+    Store.clearAllInMemory();
+    final clearTasks = List<ClearingFunction>.from(removeAllLocalData);
+    unawaited(Future.wait(clearTasks.map((task) => task())));
+
     launch.open(false);
     url = "";
     email = "";
     password = "";
     token = "";
-    pb!.authStore.clear();
+    pb?.authStore.clear();
     if (hasValidRememberedCredentials) {
       loginCtrl.emailField.text = rememberedEmail;
       loginCtrl.passwordField.text = rememberedPassword;
