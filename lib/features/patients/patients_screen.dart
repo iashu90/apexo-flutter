@@ -179,7 +179,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
           title: Text('$title (${rows.length})'),
           content: Text(
             'No additional $metricLabel rows to show.',
-            style: const TextStyle(color: Color(0xFF5B789F)),
+            style: const TextStyle(color: AppColors.textBlueMuted),
           ),
           actions: [
             AppButton(
@@ -1116,7 +1116,7 @@ class _TreatmentJourneyTimelineCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
               child: Container(
                 height: 8,
-                color: const Color(0xFFEAF2FC),
+                color: AppColors.violet1005,
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: FractionallySizedBox(
@@ -1158,7 +1158,7 @@ class _TreatmentJourneyTimelineCard extends StatelessWidget {
                   child: const Icon(
                     FluentIcons.info,
                     size: 11,
-                    color: Color(0xFF2D7BD8),
+                    color: AppColors.brandBlue,
                   ),
                 ),
                 onPressed: () => showDialog(
@@ -1193,9 +1193,9 @@ class _TreatmentJourneyTimelineCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              bar('New', metrics.newlyAdded, const Color(0xFF2D7BD8)),
+              bar('New', metrics.newlyAdded, AppColors.brandBlue),
               const SizedBox(width: 6),
-              bar('Active', metrics.active, const Color(0xFF2BA58D)),
+              bar('Active', metrics.active, AppColors.successTeal),
             ],
           ),
           const SizedBox(height: 6),
@@ -1390,7 +1390,7 @@ class _PatientGrowthMonthlyCardState extends State<_PatientGrowthMonthlyCard> {
     final hasGrowth = widget.rows.length >= 2 &&
         widget.rows.last.count >= widget.rows[widget.rows.length - 2].count;
     final trendColor =
-        hasGrowth ? const Color(0xFF2BA58D) : const Color(0xFFD6455D);
+        hasGrowth ? AppColors.successTeal : AppColors.dangerRose;
     final canGoBack = safeWindowStart > 0;
     final canGoForward = safeWindowEnd < widget.rows.length;
 
@@ -1458,7 +1458,7 @@ class _PatientGrowthMonthlyCardState extends State<_PatientGrowthMonthlyCard> {
                         Container(
                           height: 64 * ratio.clamp(0.0, 1.0),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2D7BD8),
+                            color: AppColors.brandBlue,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -1466,7 +1466,7 @@ class _PatientGrowthMonthlyCardState extends State<_PatientGrowthMonthlyCard> {
                         Text(
                           row.label,
                           style: const TextStyle(
-                            color: Color(0xFF5B789F),
+                            color: AppColors.textBlueMuted,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1503,7 +1503,7 @@ class _MiniNavArrow extends StatelessWidget {
         width: 16,
         height: 16,
         decoration: BoxDecoration(
-          color: enabled ? const Color(0xFFEAF2FC) : const Color(0xFFF4F8FD),
+          color: enabled ? AppColors.violet1005 : const Color(0xFFF4F8FD),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: enabled ? const Color(0xFFBED4F1) : const Color(0xFFE2ECF8),
@@ -1512,7 +1512,7 @@ class _MiniNavArrow extends StatelessWidget {
         child: Icon(
           icon,
           size: 9,
-          color: enabled ? const Color(0xFF2D7BD8) : const Color(0xFF9FB4CF),
+          color: enabled ? AppColors.brandBlue : const Color(0xFF9FB4CF),
         ),
       ),
     );
@@ -1727,7 +1727,7 @@ class _CompactAgeDistributionCardState
               Text(
                 'Total: $totalPatients',
                 style: const TextStyle(
-                  color: Color(0xFF5A7397),
+                  color: AppColors.textBlueMuted,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1737,7 +1737,7 @@ class _CompactAgeDistributionCardState
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2D7BD8),
+                  color: AppColors.brandBlue,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1755,7 +1755,7 @@ class _CompactAgeDistributionCardState
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2BA58D),
+                  color: AppColors.successTeal,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1809,7 +1809,7 @@ class _CompactAgeDistributionCardState
                                       children: [
                                         Container(
                                           height: 8,
-                                          color: const Color(0xFFEAF2FC),
+                                          color: AppColors.violet1005,
                                         ),
                                         Row(
                                           children: [
@@ -1817,13 +1817,13 @@ class _CompactAgeDistributionCardState
                                               Container(
                                                 height: 8,
                                                 width: maleWidth,
-                                                color: const Color(0xFF2D7BD8),
+                                                color: AppColors.brandBlue,
                                               ),
                                             if (femaleWidth > 0)
                                               Container(
                                                 height: 8,
                                                 width: femaleWidth,
-                                                color: const Color(0xFF2BA58D),
+                                                color: AppColors.successTeal,
                                               ),
                                           ],
                                         ),
@@ -1843,7 +1843,7 @@ class _CompactAgeDistributionCardState
                                     width: 6,
                                     height: 6,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF2D7BD8),
+                                      color: AppColors.brandBlue,
                                       borderRadius: BorderRadius.circular(999),
                                     ),
                                   ),
@@ -1861,7 +1861,7 @@ class _CompactAgeDistributionCardState
                                     width: 6,
                                     height: 6,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF2BA58D),
+                                      color: AppColors.successTeal,
                                       borderRadius: BorderRadius.circular(999),
                                     ),
                                   ),
@@ -1878,7 +1878,7 @@ class _CompactAgeDistributionCardState
                                   Text(
                                     'T:${row.male + row.female}',
                                     style: const TextStyle(
-                                      color: Color(0xFF5A7397),
+                                      color: AppColors.textBlueMuted,
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -1918,15 +1918,15 @@ class _GenderDistributionCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
+              color: AppColors.blue7502,
             ),
           ),
           const SizedBox(height: 10),
           ...buckets.entries.map((entry) {
             final ratio = maxValue == 0 ? 0.0 : (entry.value / maxValue);
             final barColor = entry.key == 'Male'
-                ? const Color(0xFF2D7BD8)
-                : const Color(0xFF2BA58D);
+                ? AppColors.brandBlue
+                : AppColors.successTeal;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
@@ -2006,14 +2006,14 @@ class _PaymentModeDistributionCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
+              color: AppColors.blue7502,
             ),
           ),
           const SizedBox(height: 10),
           ...buckets.entries.map((entry) {
             final ratio = maxValue == 0 ? 0.0 : (entry.value / maxValue);
             final barColor = entry.key == 'UPI'
-                ? const Color(0xFF2D7BD8)
+                ? AppColors.brandBlue
                 : const Color(0xFF7D8FA7);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -2115,7 +2115,7 @@ class _TopPatientsCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF183A67),
+                      color: AppColors.blue7502,
                     ),
                   ),
                 ),
@@ -2125,7 +2125,7 @@ class _TopPatientsCard extends StatelessWidget {
                     icon: const Icon(
                       FluentIcons.forward,
                       size: 14,
-                      color: Color(0xFF2D7BD8),
+                      color: AppColors.brandBlue,
                     ),
                   ),
               ],
@@ -2147,11 +2147,11 @@ class _TopPatientsCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             border: Border.all(
                               color: selectedRange == range
-                                  ? const Color(0xFF2D7BD8)
+                                  ? AppColors.brandBlue
                                   : const Color(0xFFD4E2F3),
                             ),
                             color: selectedRange == range
-                                ? const Color(0xFF2D7BD8)
+                                ? AppColors.brandBlue
                                 : const Color(0xFFEFF4FB),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -2305,7 +2305,7 @@ class _TopPatientsCard extends StatelessWidget {
           (row) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFFEAF2FC),
+              color: AppColors.violet1005,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: const Color(0xFFD5E5F7)),
             ),
@@ -2362,7 +2362,7 @@ class _TopOutstandingCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF183A67),
+                      color: AppColors.blue7502,
                     ),
                   ),
                 ),
@@ -2372,7 +2372,7 @@ class _TopOutstandingCard extends StatelessWidget {
                     icon: const Icon(
                       FluentIcons.forward,
                       size: 14,
-                      color: Color(0xFF2D7BD8),
+                      color: AppColors.brandBlue,
                     ),
                   ),
               ],
@@ -2394,11 +2394,11 @@ class _TopOutstandingCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             border: Border.all(
                               color: selectedRange == range
-                                  ? const Color(0xFF2D7BD8)
+                                  ? AppColors.brandBlue
                                   : const Color(0xFFD4E2F3),
                             ),
                             color: selectedRange == range
-                                ? const Color(0xFF2D7BD8)
+                                ? AppColors.brandBlue
                                 : const Color(0xFFEFF4FB),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -2484,7 +2484,7 @@ class _TopOutstandingCard extends StatelessWidget {
                                       Text(
                                         '₹${entry.value.value.toStringAsFixed(0)}',
                                         style: const TextStyle(
-                                          color: Color(0xFFD6455D),
+                                          color: AppColors.dangerRose,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -2550,7 +2550,7 @@ class _TopOutstandingCard extends StatelessWidget {
           (row) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFFEAF2FC),
+              color: AppColors.violet1005,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: const Color(0xFFD5E5F7)),
             ),
@@ -2606,9 +2606,9 @@ class _TopProcedurePatientsCard extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border.all(
               color:
-                  selected ? const Color(0xFF2D7BD8) : const Color(0xFFD4E2F3),
+                  selected ? AppColors.brandBlue : const Color(0xFFD4E2F3),
             ),
-            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+            color: selected ? AppColors.brandBlue : const Color(0xFFEFF4FB),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
@@ -2637,7 +2637,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF183A67),
+                      color: AppColors.blue7502,
                     ),
                   ),
                 ),
@@ -2647,7 +2647,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                     icon: const Icon(
                       FluentIcons.forward,
                       size: 14,
-                      color: Color(0xFF2BA58D),
+                      color: AppColors.successTeal,
                     ),
                   ),
               ],
@@ -2677,11 +2677,11 @@ class _TopProcedurePatientsCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             border: Border.all(
                               color: selectedRange == range
-                                  ? const Color(0xFF2D7BD8)
+                                  ? AppColors.brandBlue
                                   : const Color(0xFFD4E2F3),
                             ),
                             color: selectedRange == range
-                                ? const Color(0xFF2D7BD8)
+                                ? AppColors.brandBlue
                                 : const Color(0xFFEFF4FB),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -2841,7 +2841,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
           (t) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFFEAF2FC),
+              color: AppColors.violet1005,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: const Color(0xFFD5E5F7)),
             ),
@@ -2862,7 +2862,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: const Color(0xFFEAF2FC),
+            color: AppColors.violet1005,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: const Color(0xFFD5E5F7)),
           ),
@@ -3402,7 +3402,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                               icon: FluentIcons.test_beaker,
                                               label: 'Lab',
                                               iconColor:
-                                                  const Color(0xFF2BA58D),
+                                                  AppColors.successTeal,
                                               hoverColor:
                                                   const Color(0xFFEAF8F1),
                                               hoverBorderColor:
@@ -3414,7 +3414,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                               icon: FluentIcons.delete,
                                               label: 'Delete',
                                               iconColor:
-                                                  const Color(0xFFD6455D),
+                                                  AppColors.dangerRose,
                                               hoverColor:
                                                   const Color(0xFFFCEDEF),
                                               hoverBorderColor:
@@ -3443,7 +3443,7 @@ class _AllPatientsListCard extends StatelessWidget {
               Text(
                 'Showing ${patientsList.length} of $totalItems patients',
                 style: const TextStyle(
-                  color: Color(0xFF5B789F),
+                  color: AppColors.textBlueMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -3504,7 +3504,7 @@ class _HoverActionItemState extends State<_HoverActionItem> {
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color:
-                  _hovered ? widget.hoverBorderColor : const Color(0xFFD6E2F0),
+                  _hovered ? widget.hoverBorderColor : AppColors.violet1506,
             ),
           ),
           child: Row(
@@ -3640,7 +3640,7 @@ class _SortableHead extends StatelessWidget {
                       : FluentIcons.chevron_down)
                   : FluentIcons.switch_user,
               size: 10,
-              color: onDark ? Colors.white : const Color(0xFF6D84A8),
+              color: onDark ? Colors.white : AppColors.blue5004,
             ),
           ],
         ),

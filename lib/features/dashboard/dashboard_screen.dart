@@ -273,7 +273,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'New Patients Today',
           style: TextStyle(
             fontWeight: FontWeight.w700,
-            color: Color(0xFF183A67),
+            color: AppColors.blue7502,
           ),
         ),
         content: SizedBox(
@@ -675,7 +675,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             title: 'Outstanding Balance',
                             value: _money(outstandingBalance),
                             icon: FluentIcons.status_error_full,
-                            iconColor: const Color(0xFFD6455D),
+                            iconColor: AppColors.dangerRose,
                             iconBackground: const Color(0xFFF8D5DB),
                             valueColor: const Color(0xFF213B5F),
                             onTap: _openOutstandingDialog,
@@ -713,7 +713,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             title: 'Outstanding Balance',
                             value: _money(outstandingBalance),
                             icon: FluentIcons.status_error_full,
-                            iconColor: const Color(0xFFD6455D),
+                            iconColor: AppColors.dangerRose,
                             iconBackground: const Color(0xFFF8D5DB),
                             valueColor: const Color(0xFF213B5F),
                             onTap: _openOutstandingDialog,
@@ -916,7 +916,7 @@ class _PatientGrowthMetricsCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
+              color: AppColors.blue7502,
             ),
           ),
           const SizedBox(height: 10),
@@ -1080,7 +1080,7 @@ class _AppointmentsTableCard extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF183A67)),
+                          color: AppColors.blue7502),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -1112,7 +1112,7 @@ class _AppointmentsTableCard extends StatelessWidget {
                             '${rows.length} results',
                             style: const TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF5A7397),
+                              color: AppColors.textBlueMuted,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -1121,7 +1121,7 @@ class _AppointmentsTableCard extends StatelessWidget {
                             child: const Text(
                               'Clear all',
                               style: TextStyle(
-                                color: Color(0xFF2D7BD8),
+                                color: AppColors.brandBlue,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12,
                               ),
@@ -1212,7 +1212,7 @@ class _AppointmentsTableCard extends StatelessWidget {
           const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFD6E2F0)),
+              border: Border.all(color: AppColors.violet1506),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Column(
@@ -1272,10 +1272,10 @@ class _CompactStatusFilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFF1F6FD),
+          color: selected ? AppColors.brandBlue : const Color(0xFFF1F6FD),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD2E2F6),
+            color: selected ? AppColors.brandBlue : const Color(0xFFD2E2F6),
           ),
         ),
         child: Text(
@@ -1429,7 +1429,7 @@ class _SortableHeader extends StatelessWidget {
                     : FluentIcons.chevron_down)
                 : FluentIcons.switch_user,
             size: 10,
-            color: onDark ? Colors.white : const Color(0xFF6D84A8),
+            color: onDark ? Colors.white : AppColors.blue5004,
           ),
         ],
       ),
@@ -1626,7 +1626,7 @@ class _AppointmentRow extends StatelessWidget {
                         errorBuilder: (_, __, ___) => const Icon(
                           FluentIcons.receipt_processing,
                           size: 14,
-                          color: Color(0xFF2D7BD8),
+                          color: AppColors.brandBlue,
                         ),
                       )
                     : const Icon(
@@ -1670,7 +1670,7 @@ class _AppointmentRow extends StatelessWidget {
                 _ActionIconButton(
                   tooltip: 'History',
                   icon: FluentIcons.history,
-                  color: const Color(0xFF2D7BD8),
+                  color: AppColors.brandBlue,
                   hoverColor: const Color(0xFFE7F1FF),
                   onTap: () => _openPatientHistoryDialog(context),
                 ),
@@ -1678,7 +1678,7 @@ class _AppointmentRow extends StatelessWidget {
                 _ActionIconButton(
                   tooltip: 'Add Labwork',
                   icon: FluentIcons.test_beaker,
-                  color: const Color(0xFF2BA58D),
+                  color: AppColors.successTeal,
                   hoverColor: const Color(0xFFEAF8F1),
                   onTap: () => _openLabworkForPatient(context),
                 ),
@@ -1686,7 +1686,7 @@ class _AppointmentRow extends StatelessWidget {
                 _ActionIconButton(
                   tooltip: 'Delete',
                   icon: FluentIcons.delete,
-                  color: const Color(0xFFD6455D),
+                  color: AppColors.dangerRose,
                   hoverColor: const Color(0xFFFFECEF),
                   onTap: () => _deleteAppointment(context),
                 ),
@@ -2112,11 +2112,11 @@ class _TopDailyTreatmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = [
-      const Color(0xFF2D7BD8),
-      const Color(0xFF2BA58D),
+      AppColors.brandBlue,
+      AppColors.successTeal,
       const Color(0xFFE09C31),
       const Color(0xFF7D8FA7),
-      const Color(0xFFD6455D),
+      AppColors.dangerRose,
       const Color(0xFF8D5CF6),
     ];
     final topRows = rows.take(10).toList(growable: false);
@@ -2159,7 +2159,7 @@ class _TopDailyTreatmentCard extends StatelessWidget {
               if (topRows.isEmpty)
                 const Text(
                   'No treatments today',
-                  style: TextStyle(color: Color(0xFF6D84A8), fontSize: 12),
+                  style: TextStyle(color: AppColors.blue5004, fontSize: 12),
                 )
               else
                 Expanded(
@@ -2228,7 +2228,7 @@ class _TopCurrentMonthRevenueCard extends StatelessWidget {
               const Text(
                 'Fixed to current month progression',
                 style: TextStyle(
-                  color: Color(0xFF6D84A8),
+                  color: AppColors.blue5004,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -2276,14 +2276,14 @@ class _TopCurrentMonthAppointmentsCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 33,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF2BA58D),
+                  color: AppColors.successTeal,
                 ),
               ),
               const Spacer(),
               Text(
                 '$total total appointments this month',
                 style: const TextStyle(
-                  color: Color(0xFF6D84A8),
+                  color: AppColors.blue5004,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -2322,7 +2322,7 @@ class _TopMonthRevenueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final up = changePct >= 0;
-    final color = up ? const Color(0xFF2BA58D) : const Color(0xFFD6455D);
+    final color = up ? AppColors.successTeal : AppColors.dangerRose;
     final maxBar = math.max(
       1.0,
       math.max(
@@ -2352,7 +2352,7 @@ class _TopMonthRevenueCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
                   height: 8,
-                  color: const Color(0xFFEAF2FC),
+                  color: AppColors.violet1005,
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
                     widthFactor: (value / maxBar).clamp(0.0, 1.0),
@@ -2426,7 +2426,7 @@ class _TopMonthRevenueCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               barLine(
-                  thisMonthLabel, thisMonthRevenue, const Color(0xFF2D7BD8)),
+                  thisMonthLabel, thisMonthRevenue, AppColors.brandBlue),
               const SizedBox(height: 4),
               barLine(
                   lastMonthLabel, lastMonthRevenue, const Color(0xFF9BB9DD)),
@@ -2511,7 +2511,7 @@ class _TopMonthlyRevenueBarsCard extends StatelessWidget {
                                               const BorderRadius.vertical(
                                                   top: Radius.circular(4)),
                                           color: item.value == latest
-                                              ? const Color(0xFF2D7BD8)
+                                              ? AppColors.brandBlue
                                               : const Color(0xFFB8CCE6),
                                         ),
                                       ),
@@ -2523,7 +2523,7 @@ class _TopMonthlyRevenueBarsCard extends StatelessWidget {
                                   item.month,
                                   style: const TextStyle(
                                     fontSize: 9,
-                                    color: Color(0xFF6D84A8),
+                                    color: AppColors.blue5004,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -2573,7 +2573,7 @@ class _DailyRevenueChartCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
+              color: AppColors.blue7502,
             ),
           ),
           const SizedBox(height: 8),
@@ -2593,7 +2593,7 @@ class _DailyRevenueChartCard extends StatelessWidget {
                             formatIndianShortCurrency(tick),
                             style: const TextStyle(
                               fontSize: 9,
-                              color: Color(0xFF5B789F),
+                              color: AppColors.textBlueMuted,
                             ),
                           ),
                         )
@@ -2641,7 +2641,7 @@ class _DailyRevenueChartCard extends StatelessWidget {
                                           gradient: const LinearGradient(
                                             colors: [
                                               Color(0xFF66A8F0),
-                                              Color(0xFF2D7BD8),
+                                              AppColors.brandBlue,
                                             ],
                                             begin: Alignment.topCenter,
                                             end: Alignment.bottomCenter,
@@ -2666,21 +2666,21 @@ class _DailyRevenueChartCard extends StatelessWidget {
                             startLabel,
                             style: const TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF5B789F),
+                              color: AppColors.textBlueMuted,
                             ),
                           ),
                           const Text(
                             'Date',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF5B789F),
+                              color: AppColors.textBlueMuted,
                             ),
                           ),
                           Text(
                             endLabel,
                             style: const TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF5B789F),
+                              color: AppColors.textBlueMuted,
                             ),
                           ),
                         ],
@@ -2736,7 +2736,7 @@ class _AppointmentTrendChartCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF183A67),
+              color: AppColors.blue7502,
             ),
           ),
           const SizedBox(height: 8),
@@ -2756,7 +2756,7 @@ class _AppointmentTrendChartCard extends StatelessWidget {
                             '$tick',
                             style: const TextStyle(
                               fontSize: 9,
-                              color: Color(0xFF5B789F),
+                              color: AppColors.textBlueMuted,
                             ),
                           ),
                         )
@@ -2804,7 +2804,7 @@ class _AppointmentTrendChartCard extends StatelessWidget {
                                           gradient: const LinearGradient(
                                             colors: [
                                               Color(0xFF6ED1B3),
-                                              Color(0xFF2BA58D),
+                                              AppColors.successTeal,
                                             ],
                                             begin: Alignment.topCenter,
                                             end: Alignment.bottomCenter,
@@ -2829,21 +2829,21 @@ class _AppointmentTrendChartCard extends StatelessWidget {
                             startLabel,
                             style: const TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF5B789F),
+                              color: AppColors.textBlueMuted,
                             ),
                           ),
                           const Text(
                             'Date',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF5B789F),
+                              color: AppColors.textBlueMuted,
                             ),
                           ),
                           Text(
                             endLabel,
                             style: const TextStyle(
                               fontSize: 10,
-                              color: Color(0xFF5B789F),
+                              color: AppColors.textBlueMuted,
                             ),
                           ),
                         ],
@@ -2891,7 +2891,7 @@ class _RevenueCard extends StatelessWidget {
     final doctorFeePct =
         revenueTotal <= 0 ? 0.0 : ((doctorFee / revenueTotal) * 100);
     final profitColor =
-        netProfit >= 0 ? const Color(0xFF1F8D5A) : const Color(0xFFD6455D);
+        netProfit >= 0 ? const Color(0xFF1F8D5A) : AppColors.dangerRose;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
@@ -2916,7 +2916,7 @@ class _RevenueCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEAF2FC),
+                      color: AppColors.violet1005,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: const Text(
@@ -3055,8 +3055,8 @@ class _StatusSummaryCard extends StatelessWidget {
                           const Color(0xFFFFF4D9)),
                       _statusChip(
                         'Scheduled $scheduled',
-                        const Color(0xFF214F86),
-                        const Color(0xFFE6F0FD),
+                        const Color(0xFFE9EFF5),
+                        const Color(0xFFD6E1EC),
                       ),
                       _statusChip('Treatment $treatment',
                           const Color(0xFF1E40AF), const Color(0xFFEAF0FF)),
@@ -3285,7 +3285,7 @@ class _FilterChipTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF2FC),
+        color: AppColors.violet1005,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFD0E2F7)),
       ),
@@ -3312,7 +3312,7 @@ class _FilterChipTag extends StatelessWidget {
             child: const Icon(
               FluentIcons.chrome_close,
               size: 10,
-              color: Color(0xFF2D7BD8),
+              color: AppColors.brandBlue,
             ),
           ),
         ],

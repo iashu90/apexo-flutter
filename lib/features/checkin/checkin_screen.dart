@@ -11,6 +11,7 @@ import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/common_widgets/selectable_chip_group.dart';
 import 'package:apexo/common_widgets/patient_timeline_card.dart';
 import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
@@ -710,45 +711,6 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
     );
   }
 
-  Widget _buildSelectableHistoryChips({
-    required List<String> options,
-    required Set<String> selected,
-    required void Function(String value) onToggle,
-  }) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: options.map((item) {
-        final isSelected = selected.contains(item);
-        return GestureDetector(
-          onTap: () => onToggle(item),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.brandBlue
-                  : AppColors.slate1004,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: isSelected
-                    ? AppColors.brandBlue
-                    : AppColors.violet1503,
-              ),
-            ),
-            child: Text(
-              item,
-              style: TextStyle(
-                color: isSelected ? Colors.white : AppColors.blue6503,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        );
-      }).toList(growable: false),
-    );
-  }
-
   Widget _historyCell(
     String value, {
     int flex = 1,
@@ -800,7 +762,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _popupFieldLabel('Medical History:'),
-                _buildSelectableHistoryChips(
+                SelectableChipGroup(
                   options: patientMedicalHistorySuggestions,
                   selected: _selectedMedicalHistory,
                   onToggle: (value) => _toggleItem(
@@ -814,7 +776,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                 ),
                 const SizedBox(height: 10),
                 _popupFieldLabel('Drug History:'),
-                _buildSelectableHistoryChips(
+                SelectableChipGroup(
                   options: patientDrugHistorySuggestions,
                   selected: _selectedDrugHistory,
                   onToggle: (value) => _toggleItem(
@@ -828,7 +790,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                 ),
                 const SizedBox(height: 10),
                 _popupFieldLabel('Maternal History:'),
-                _buildSelectableHistoryChips(
+                SelectableChipGroup(
                   options: patientMaternalHistorySuggestions,
                   selected: _selectedMaternalHistory,
                   onToggle: (value) => _toggleItem(
@@ -842,7 +804,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                 ),
                 const SizedBox(height: 10),
                 _popupFieldLabel('Habits:'),
-                _buildSelectableHistoryChips(
+                SelectableChipGroup(
                   options: patientHabitsSuggestions,
                   selected: _selectedHabits,
                   onToggle: (value) => _toggleItem(
@@ -887,35 +849,27 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                     ),
                   )
                 else
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: 900,
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceBlueSoft,
-                              border:
-                                  Border.all(color: AppColors.violet1508),
-                            ),
-                            child: Row(
-                              children: [
-                                _historyCell('Date', flex: 2, header: true),
-                                _historyCell('Treatment',
-                                    flex: 3, header: true),
-                                _historyCell('Teeth', flex: 2, header: true),
-                                _historyCell('Diagnosis',
-                                    flex: 3, header: true),
-                                _historyCell('Chief Complaint',
-                                    flex: 3, header: true),
-                                _historyCell('Doctor', flex: 2, header: true),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          ...visibleRows.map((row) {
+                  Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceBlueSoft,
+                          border: Border.all(color: AppColors.violet1508),
+                        ),
+                        child: Row(
+                          children: [
+                            _historyCell('Date', flex: 2, header: true),
+                            _historyCell('Treatment', flex: 3, header: true),
+                            _historyCell('Teeth', flex: 2, header: true),
+                            _historyCell('Diagnosis', flex: 3, header: true),
+                            _historyCell('Chief Complaint',
+                                flex: 3, header: true),
+                            _historyCell('Doctor', flex: 2, header: true),
+                          ],
+                        ),
+                      ),
+                      ...visibleRows.map((row) {
                             final treatmentText = row.selectedTreatments
                                 .where((e) => e.trim().isNotEmpty)
                                 .join(', ')
@@ -938,9 +892,8 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                                 .join(', ')
                                 .trim();
 
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 6),
-                              padding: const EdgeInsets.symmetric(vertical: 2),
+                        return Container(
+                              padding: const EdgeInsets.symmetric(vertical: 1),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 border:
@@ -978,11 +931,9 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                                       flex: 2),
                                 ],
                               ),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
+                        );
+                      }),
+                    ],
                   ),
                 if (rows.length > 5) ...[
                   const SizedBox(height: 8),
@@ -1186,7 +1137,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
             final billingList = filtered
                 .where(
                   (a) =>
-                      (a.checkinStage == 'checkout' || a.checkinStage == 'billing') &&
+                      (a.checkinStage == 'checkout' ||
+                          a.checkinStage == 'billing') &&
                       !a.isDone &&
                       a.checkinStage != 'completed',
                 )
@@ -1223,32 +1175,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             runSpacing: 8,
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              const Text(
-                                'Check-in',
-                                style: TextStyle(
+                              Text(
+                                'Check-in (${todaysAppointments.length})',
+                                style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.blue750,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.violet1005,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                      color: AppColors.violet1505),
-                                ),
-                                child: Text(
-                                  'Patients: ${todaysAppointments.length}',
-                                  style: const TextStyle(
-                                    color: AppColors.brandBlueDark,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
                                 ),
                               ),
                             ],
@@ -1308,33 +1240,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text(
-                                'Check-in',
-                                style: TextStyle(
+                              Text(
+                                'Check-in (${todaysAppointments.length})',
+                                style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.blue750,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.violet1005,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                      color: AppColors.violet1505),
-                                ),
-                                child: Text(
-                                  'Patients: ${todaysAppointments.length}',
-                                  style: const TextStyle(
-                                    color: AppColors.brandBlueDark,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
                                 ),
                               ),
                             ],
@@ -2497,7 +2408,6 @@ class _CompactTimelineTable extends StatelessWidget {
   }
 }
 
-
 class _CheckoutPaymentCard extends StatefulWidget {
   final Appointment appointment;
   final TextEditingController priceController;
@@ -2640,7 +2550,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       primary.operatorsIDs = [doctorId];
       primary.tags = [
         ...primary.tags
-            .where((tag) => tag.trim().toLowerCase() != 'auto:consultant-monthly')
+            .where(
+                (tag) => tag.trim().toLowerCase() != 'auto:consultant-monthly')
             .toList(growable: false),
         'auto:consultant-monthly',
       ];
@@ -2650,7 +2561,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         duplicate.amount = 0;
         duplicate.tags = [
           ...duplicate.tags
-              .where((tag) => tag.trim().toLowerCase() != 'auto:consultant-duplicate')
+              .where((tag) =>
+                  tag.trim().toLowerCase() != 'auto:consultant-duplicate')
               .toList(growable: false),
           'auto:consultant-duplicate',
         ];
@@ -3228,9 +3140,9 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     },
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
-                      child:
-                            Text(_rupeeSymbol,
-                              style: const TextStyle(color: AppColors.textBlueStrong)),
+                      child: Text(_rupeeSymbol,
+                          style:
+                              const TextStyle(color: AppColors.textBlueStrong)),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -3326,7 +3238,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                             .map(
                               (v) => AppButton(
                                 label: '$v%',
-                                compact: true,
+                                compact: false,
                                 variant: AppButtonVariant.secondary,
                                 onPressed: () {
                                   widget.discountController.text = '$v';
@@ -3343,8 +3255,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         children: [100, 200, 500, 1000]
                             .map(
                               (v) => AppButton(
-                                label: '?$v',
-                                compact: true,
+                                label: '₹$v',
+                                compact: false,
                                 variant: AppButtonVariant.secondary,
                                 onPressed: () {
                                   widget.discountController.text = '$v';
@@ -3376,14 +3288,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     },
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
-                      child:
-                            Text(_rupeeSymbol,
-                              style: const TextStyle(color: AppColors.textBlueStrong)),
+                      child: Text(_rupeeSymbol,
+                          style:
+                              const TextStyle(color: AppColors.textBlueStrong)),
                     ),
                     suffix: Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: Text(
-                        '?${outstanding.toStringAsFixed(0)}',
+                        '₹${outstanding.toStringAsFixed(0)}',
                         style: const TextStyle(
                           color: AppColors.textBlueMuted,
                           fontWeight: FontWeight.w700,
@@ -3549,7 +3461,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           prefix: const Padding(
                             padding: EdgeInsets.only(left: 10),
                             child: Text(_rupeeSymbol,
-                              style: const TextStyle(color: AppColors.textBlueStrong)),
+                                style: const TextStyle(
+                                    color: AppColors.textBlueStrong)),
                           ),
                           placeholder: 'Consultant charge',
                           onChanged: (value) {

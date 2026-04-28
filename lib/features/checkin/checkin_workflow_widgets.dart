@@ -357,24 +357,23 @@ class _WorkflowRow extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    SizedBox(
-                      width: screenWidth < 760 ? 112 : 128,
-                      child: AppButton(
-                        label: 'Update',
-                        onPressed: hasChanged
-                            ? () {
-                                final originalCheckedInAt =
-                                    appointment.checkedInAt;
-                                appointment.date = updatedDateTime;
-                                appointment.checkedInAt = originalCheckedInAt;
-                                appointments.set(appointment);
-                                if (dialogContext.mounted) {
-                                  Navigator.pop(dialogContext);
-                                }
-                              }
-                            : null,
+                    if (hasChanged)
+                      SizedBox(
+                        width: screenWidth < 760 ? 112 : 128,
+                        child: AppButton(
+                          label: 'Update',
+                          onPressed: () {
+                            final originalCheckedInAt =
+                                appointment.checkedInAt;
+                            appointment.date = updatedDateTime;
+                            appointment.checkedInAt = originalCheckedInAt;
+                            appointments.set(appointment);
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+                          },
+                        ),
                       ),
-                    ),
                     SizedBox(
                       width: screenWidth < 760 ? 136 : 160,
                       child: AppButton(
@@ -472,7 +471,7 @@ class _WorkflowRow extends StatelessWidget {
       return;
     }
 
-    if (stage == 'checkout') {
+    if (stage == 'billing') {
       final shouldMove = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => ContentDialog(
@@ -524,7 +523,7 @@ class _WorkflowRow extends StatelessWidget {
         ),
       );
       if (shouldMove != true) return;
-      appointment.checkinStage = 'checkout';
+      appointment.checkinStage = 'billing';
       appointment.isDone = false;
       appointments.set(appointment);
       return;
@@ -666,8 +665,8 @@ class _WorkflowRow extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: GestureDetector(
                       behavior: HitTestBehavior.deferToChild,
-                      onTap: ((stage == 'with_doctor' ||
-                                  stage == 'checkout' ||
+                        onTap: ((stage == 'with_doctor' ||
+                              stage == 'billing' ||
                                   stage == 'completed') &&
                               selected)
                           ? () async {
@@ -699,8 +698,8 @@ class _WorkflowRow extends StatelessWidget {
                               color: AppColors.info,
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              decoration: ((stage == 'with_doctor' ||
-                                          stage == 'checkout' ||
+                                decoration: ((stage == 'with_doctor' ||
+                                      stage == 'billing' ||
                                           stage == 'completed') &&
                                       selected)
                                   ? TextDecoration.underline
@@ -767,7 +766,7 @@ class _WorkflowRow extends StatelessWidget {
                   ),
                 if (stage == 'scheduled' || stage == 'waiting')
                   const SizedBox(width: 8),
-                if (stage == 'checkout')
+                if (stage == 'billing')
                   Tooltip(
                     message: 'Complete',
                     child: IconButton(

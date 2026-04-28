@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
@@ -99,7 +100,11 @@ class _LabworkDialogState extends State<_LabworkDialog> {
       constraints: const BoxConstraints(maxWidth: 1140, maxHeight: 760),
       title: Row(
         children: [
-          const Icon(FluentIcons.test_beaker_solid, size: 20, color: Color(0xFF2D7BD8)),
+          const Icon(
+            FluentIcons.test_beaker_solid,
+            size: 20,
+            color: AppColors.brandBlue,
+          ),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,7 +120,7 @@ class _LabworkDialogState extends State<_LabworkDialog> {
                 'Create a new lab request with patient and case details',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF6B7F9C),
+                  color: AppColors.textBlueMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -128,8 +133,10 @@ class _LabworkDialogState extends State<_LabworkDialog> {
           ),
         ],
       ),
-      content: SingleChildScrollView(
-        child: Column(
+      content: Container(
+        color: AppColors.bgCard,
+        child: SingleChildScrollView(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Wrap(
@@ -412,7 +419,8 @@ class _LabworkDialogState extends State<_LabworkDialog> {
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [
@@ -454,17 +462,16 @@ class _LabworkDialogState extends State<_LabworkDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFEFF4FB),
+          color: selected ? AppColors.brandBlue : AppColors.slate1004,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color:
-                selected ? const Color(0xFF2D7BD8) : const Color(0xFFD6E2F0),
+            color: selected ? AppColors.brandBlue : AppColors.violet1506,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF355279),
+            color: selected ? Colors.white : AppColors.textBlueStrong,
             fontWeight: FontWeight.w700,
             fontSize: 12,
           ),

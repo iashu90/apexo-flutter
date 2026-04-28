@@ -12,12 +12,12 @@ import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
-import 'package:apexo/features/stats/widgets/charts/bar.dart';
 import 'package:apexo/utils/appointment_analytics.dart';
 import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
 import 'package:apexo/utils/indian_money.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 
@@ -1564,63 +1564,113 @@ class _DailyAppointmentsGrossTrendCardState
           const SizedBox(height: 8),
           SizedBox(
             height: 190,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: points
-                  .map(
-                    (point) => Expanded(
-                      child: Tooltip(
-                        message:
-                            '${point.label}: ${point.count.toStringAsFixed(0)} appts, ${formatIndianShortCurrency(point.gross)} gross',
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      height: (100 * (point.count / maxCount))
-                                          .clamp(3, 100)
-                                          .toDouble(),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.brandBlue,
-                                        borderRadius: BorderRadius.circular(3),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Expanded(
-                                    child: Container(
-                                      height: (100 * (point.gross / maxGross))
-                                          .clamp(3, 100)
-                                          .toDouble(),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.successTeal,
-                                        borderRadius: BorderRadius.circular(3),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                point.label,
-                                style: const TextStyle(
-                                  color: AppColors.textBlueMuted,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
+            child: LineChart(
+              LineChartData(
+                minY: 0,
+                maxY: 110,
+                gridData: FlGridData(
+                  show: true,
+                  horizontalInterval: 25,
+                  getDrawingHorizontalLine: (_) => const FlLine(
+                    color: AppColors.slate100,
+                    strokeWidth: 1,
+                  ),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: const Border(
+                    left: BorderSide(color: AppColors.borderSoft),
+                    bottom: BorderSide(color: AppColors.borderSoft),
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 24,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= points.length) {
+                          return const SizedBox.shrink();
+                        }
+                        if (points.length > 12 && index % 2 == 1) {
+                          return const SizedBox.shrink();
+                        }
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          child: Text(
+                            points[index].label,
+                            style: const TextStyle(
+                              color: AppColors.textBlueMuted,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
-                  )
-                  .toList(growable: false),
+                  ),
+                ),
+                lineTouchData: LineTouchData(
+                  handleBuiltInTouches: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) => AppColors.blue750,
+                    getTooltipItems: (spots) {
+                      return spots.map((spot) {
+                        final day = points[spot.x.toInt()];
+                        if (spot.barIndex == 0) {
+                          return LineTooltipItem(
+                            '${day.label}: ${day.count.toStringAsFixed(0)} appts',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          );
+                        }
+                        return LineTooltipItem(
+                          '${day.label}: ₹${formatIndianCompactNumber(day.gross, fractionDigits: 1)}',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        );
+                      }).toList(growable: false);
+                    },
+                  ),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: [
+                      for (var i = 0; i < points.length; i++)
+                        FlSpot(i.toDouble(), (points[i].count / maxCount) * 100),
+                    ],
+                    isCurved: true,
+                    barWidth: 2.5,
+                    color: AppColors.brandBlue,
+                    dotData: const FlDotData(show: false),
+                  ),
+                  LineChartBarData(
+                    spots: [
+                      for (var i = 0; i < points.length; i++)
+                        FlSpot(i.toDouble(), (points[i].gross / maxGross) * 100),
+                    ],
+                    isCurved: true,
+                    barWidth: 2.5,
+                    color: AppColors.successTeal,
+                    dotData: const FlDotData(show: false),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1972,7 +2022,8 @@ class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
             '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
         barColor: AppColors.brandBlue,
-        valueFormatter: formatIndianShortCurrency,
+        valueFormatter: (value) =>
+            '₹${formatIndianCompactNumber(value, fractionDigits: 1)}',
         showValueLabels: false,
       ),
     );
@@ -2015,7 +2066,8 @@ class _MonthlyExpensesTrendWindowCard extends StatelessWidget {
             '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
         barColor: AppColors.dangerRose,
-        valueFormatter: formatIndianShortCurrency,
+        valueFormatter: (value) =>
+            '₹${formatIndianCompactNumber(value, fractionDigits: 1)}',
         showValueLabels: false,
       ),
     );
@@ -2064,7 +2116,8 @@ class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
             '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
         barColor: AppColors.successTeal,
-        valueFormatter: formatIndianShortCurrency,
+        valueFormatter: (value) =>
+            '₹${formatIndianCompactNumber(value, fractionDigits: 1)}',
         showValueLabels: false,
       ),
     );
@@ -2391,10 +2444,152 @@ class _SimpleBarsCard extends StatelessWidget {
       trailing: trailing,
       child: SizedBox(
         height: 250,
-        child: StyledBarChart(
+        child: _FormattedBarChart(
           labels: labels,
-          yAxis: values,
-          accentColor: barColor,
+          values: values,
+          barColor: barColor,
+          valueFormatter: valueFormatter,
+        ),
+      ),
+    );
+  }
+}
+
+class _FormattedBarChart extends StatelessWidget {
+  final List<String> labels;
+  final List<double> values;
+  final Color barColor;
+  final String Function(double value)? valueFormatter;
+
+  const _FormattedBarChart({
+    required this.labels,
+    required this.values,
+    required this.barColor,
+    this.valueFormatter,
+  });
+
+  String _format(double value) {
+    if (valueFormatter != null) return valueFormatter!(value);
+    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (values.isEmpty) {
+      return const Center(
+        child: Text(
+          'No data found',
+          style: TextStyle(color: AppColors.textBlueMuted),
+        ),
+      );
+    }
+
+    final maxValue = values.fold<double>(0, (m, v) => v > m ? v : m);
+    final maxY = maxValue <= 0 ? 1.0 : (maxValue * 1.15);
+
+    return BarChart(
+      BarChartData(
+        maxY: maxY,
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: maxY / 4,
+          getDrawingHorizontalLine: (_) => const FlLine(
+            color: AppColors.slate100,
+            strokeWidth: 1,
+          ),
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: const Border(
+            left: BorderSide(color: AppColors.borderSoft),
+            bottom: BorderSide(color: AppColors.borderSoft),
+          ),
+        ),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 60,
+              interval: maxY / 4,
+              getTitlesWidget: (value, meta) => SideTitleWidget(
+                axisSide: meta.axisSide,
+                child: Text(
+                  _format(value),
+                  style: const TextStyle(
+                    color: AppColors.textBlueMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= labels.length) {
+                  return const SizedBox.shrink();
+                }
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  child: Text(
+                    labels[index],
+                    style: const TextStyle(
+                      color: AppColors.textBlueMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (_) => AppColors.blue750,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              return BarTooltipItem(
+                '${labels[groupIndex]}\n${_format(rod.toY)}',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              );
+            },
+          ),
+        ),
+        barGroups: List<BarChartGroupData>.generate(
+          values.length,
+          (index) => BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: values[index],
+                width: 16,
+                borderRadius: BorderRadius.circular(4),
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    barColor.withValues(alpha: 0.35),
+                    barColor,
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

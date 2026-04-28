@@ -1058,6 +1058,36 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ],
             ),
           ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: AppColors.slate1002),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Expanded(flex: 12, child: _LedgerHeadCell('Date')),
+                Expanded(flex: 26, child: _LedgerHeadCell('Expense')),
+                Expanded(flex: 12, child: _LedgerHeadCell('Category')),
+                Expanded(flex: 12, child: _LedgerHeadCell('Doctor')),
+                Expanded(flex: 10, child: _LedgerHeadCell('Mode')),
+                Expanded(
+                  flex: 10,
+                  child: _LedgerHeadCell('Amount', align: TextAlign.end),
+                ),
+                Expanded(
+                  flex: 10,
+                  child: _LedgerHeadCell('To Pay', align: TextAlign.end),
+                ),
+                Expanded(flex: 10, child: _LedgerHeadCell('Status')),
+                Expanded(
+                  flex: 8,
+                  child: _LedgerHeadCell('Actions', align: TextAlign.center),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: rows.isEmpty
                 ? const Center(
@@ -1066,7 +1096,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       style: TextStyle(color: AppColors.blue5003),
                     ),
                   )
-                : _buildGroupedLedger(rows),
+                : _buildLedgerTableRows(rows),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1102,178 +1132,162 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildGroupedLedger(List<Expense> rows) {
-    final grouped = <String, List<Expense>>{};
-    for (final expense in rows) {
-      final key = formatClinicDate(expense.date, pattern: 'yyyy-MM-dd');
-      grouped.putIfAbsent(key, () => <Expense>[]).add(expense);
-    }
-    final keys = grouped.keys.toList(growable: false)
-      ..sort((a, b) => b.compareTo(a));
-
+  Widget _buildLedgerTableRows(List<Expense> rows) {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: keys.length,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      itemCount: rows.length,
       itemBuilder: (context, index) {
-        final key = keys[index];
-        final dayRows = grouped[key]!;
-        final dailyTotal = dayRows.fold<double>(0, (sum, e) => sum + e.amount);
+        final expense = rows[index];
+        final category = expense.items.isEmpty ? '-' : expense.items.first;
+        final expenseLabel = expense.note.trim().isEmpty
+            ? category
+            : expense.note.trim();
+        final paymentMode = _paymentMode(expense);
+        final toPay = expense.paid ? 0.0 : expense.amount;
+        final status = _expenseStatus(expense);
+        final recurring = _isRecurringExpense(expense);
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 8, bottom: 8),
-              child: Row(
-                children: [
-                  Text(
-                    formatClinicDate(dayRows.first.date,
-                        pattern: 'dd MMM yyyy'),
-                    style: const TextStyle(
-                      color: AppColors.blue7003,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.violet1007,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '₹${NumberFormat('#,##0').format(dailyTotal)}',
-                      style: const TextStyle(
-                        color: AppColors.blue6002,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ],
+        return GestureDetector(
+          onTap: () => unawaited(_openExpenseModal(expense)),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: AppColors.slate1002),
               ),
             ),
-            ...dayRows.map((e) {
-              final category = e.items.isEmpty ? '-' : e.items.first;
-              final paymentMode = _paymentMode(e);
-
-              return GestureDetector(
-                onTap: () => unawaited(_openExpenseModal(e)),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.violet1004,
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 12,
+                  child: Text(
+                    formatClinicDate(expense.date, pattern: 'dd MMM yyyy'),
+                    style: const TextStyle(
+                      color: AppColors.blue7003,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                     ),
                   ),
+                ),
+                Expanded(
+                  flex: 26,
                   child: Row(
                     children: [
-                      Container(
-                        width: 3,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: paymentMode == 'UPI'
-                              ? AppColors.brandBlue
-                              : AppColors.green5003,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        flex: 24,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              category,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.blue7506,
-                                fontWeight: FontWeight.w700,
-                              ),
+                      if (recurring)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 6),
+                          child: Tooltip(
+                            message: 'Recurring monthly expense',
+                            child: Icon(
+                              FluentIcons.repeat_all,
+                              size: 12,
+                              color: AppColors.violet550,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              e.note.trim().isEmpty
-                                  ? 'No note added'
-                                  : e.note.trim(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.textBlueMuted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
                       Expanded(
-                        flex: 14,
                         child: Text(
-                          _doctorDetails(e),
+                          expenseLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: AppColors.blue6004,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 9,
-                        child: Text(
-                          paymentMode,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: paymentMode == 'UPI'
-                                ? AppColors.brandBlue
-                                : AppColors.green5502,
+                            color: AppColors.blue7506,
                             fontWeight: FontWeight.w700,
+                            fontSize: 12,
                           ),
                         ),
-                      ),
-                      Expanded(
-                        flex: 10,
-                        child: Text(
-                          '₹${NumberFormat('#,##0').format(e.amount)}',
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(
-                            color: AppColors.dangerRose,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      _ExpenseActionIconButton(
-                        icon: FluentIcons.edit,
-                        color: AppColors.violet550,
-                        hoverColor: AppColors.slate1008,
-                        onTap: () => unawaited(_openExpenseModal(e)),
-                      ),
-                      const SizedBox(width: 8),
-                      _ExpenseActionIconButton(
-                        icon: FluentIcons.delete,
-                        color: AppColors.dangerRose,
-                        hoverColor: AppColors.amber100,
-                        onTap: () => _deleteExpense(e),
                       ),
                     ],
                   ),
                 ),
-              );
-            }),
-          ],
+                Expanded(
+                  flex: 12,
+                  child: Text(
+                    category,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textBlueMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 12,
+                  child: Text(
+                    _doctorDetails(expense),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.blue6004,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 10,
+                  child: _ExpenseModeBadge(mode: paymentMode),
+                ),
+                Expanded(
+                  flex: 10,
+                  child: Text(
+                    '₹${NumberFormat('#,##0').format(expense.amount)}',
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      color: AppColors.blue750,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 10,
+                  child: Text(
+                    toPay <= 0 ? '-' : '₹${NumberFormat('#,##0').format(toPay)}',
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      color: toPay <= 0 ? AppColors.textBlueMuted : AppColors.amber5002,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Expanded(flex: 10, child: _ExpenseStatusPill(status: status)),
+                Expanded(
+                  flex: 8,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _ExpenseActionIconButton(
+                        icon: FluentIcons.edit,
+                        color: AppColors.violet550,
+                        hoverColor: AppColors.slate1008,
+                        onTap: () => unawaited(_openExpenseModal(expense)),
+                      ),
+                      const SizedBox(width: 6),
+                      _ExpenseActionIconButton(
+                        icon: FluentIcons.delete,
+                        color: AppColors.dangerRose,
+                        hoverColor: AppColors.amber100,
+                        onTap: () => _deleteExpense(expense),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
+  }
+
+  _ExpenseStatus _expenseStatus(Expense expense) {
+    if (expense.paid) return _ExpenseStatus.paid;
+    if (expense.amount >= 10000) return _ExpenseStatus.highValue;
+    return _ExpenseStatus.toPay;
   }
 
   // ignore: unused_element
@@ -2161,6 +2175,105 @@ class _DetailRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+enum _ExpenseStatus { paid, highValue, toPay }
+
+class _LedgerHeadCell extends StatelessWidget {
+  final String label;
+  final TextAlign align;
+
+  const _LedgerHeadCell(this.label, {this.align = TextAlign.left});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      textAlign: align,
+      style: const TextStyle(
+        color: AppColors.blue65010,
+        fontWeight: FontWeight.w800,
+        fontSize: 12,
+      ),
+    );
+  }
+}
+
+class _ExpenseModeBadge extends StatelessWidget {
+  final String mode;
+
+  const _ExpenseModeBadge({required this.mode});
+
+  @override
+  Widget build(BuildContext context) {
+    final upi = mode.toUpperCase() == 'UPI';
+    return Row(
+      children: [
+        Icon(
+          upi ? FluentIcons.mobile_selected : FluentIcons.money,
+          size: 12,
+          color: upi ? AppColors.brandBlue : AppColors.green5502,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          mode,
+          style: TextStyle(
+            color: upi ? AppColors.brandBlue : AppColors.green5502,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExpenseStatusPill extends StatelessWidget {
+  final _ExpenseStatus status;
+
+  const _ExpenseStatusPill({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    late final String label;
+    late final Color fg;
+    late final Color bg;
+
+    switch (status) {
+      case _ExpenseStatus.paid:
+        label = 'Paid';
+        fg = AppColors.green5502;
+        bg = AppColors.green1002;
+        break;
+      case _ExpenseStatus.highValue:
+        label = 'High Value';
+        fg = AppColors.amber5002;
+        bg = AppColors.amber1004;
+        break;
+      case _ExpenseStatus.toPay:
+        label = 'To Pay';
+        fg = AppColors.rose550;
+        bg = AppColors.amber100;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: fg,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
