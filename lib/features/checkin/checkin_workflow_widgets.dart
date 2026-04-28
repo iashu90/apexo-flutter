@@ -57,7 +57,7 @@ class _WorkflowColumn extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFD6E2F0)),
+            border: Border.all(color: AppColors.violet1506),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -98,7 +98,7 @@ class _WorkflowColumn extends StatelessWidget {
                   padding: EdgeInsets.all(12),
                   child: Text(
                     'Collapsed',
-                    style: TextStyle(color: Color(0xFF6D84A8)),
+                    style: TextStyle(color: AppColors.blue5004),
                   ),
                 )
               else if (rows.isEmpty)
@@ -106,7 +106,7 @@ class _WorkflowColumn extends StatelessWidget {
                   padding: EdgeInsets.all(12),
                   child: Text(
                     'No appointments in this state.',
-                    style: TextStyle(color: Color(0xFF6D84A8)),
+                    style: TextStyle(color: AppColors.blue5004),
                   ),
                 )
               else
@@ -179,7 +179,8 @@ class _WorkflowRow extends StatelessWidget {
     bool confirmCancel = false;
 
     final screenWidth = MediaQuery.of(context).size.width;
-    final dialogWidth = screenWidth < 760 ? screenWidth * 0.96 : 760.0;
+    // final dialogWidth = screenWidth < 760 ? screenWidth * 0.97 : 840.0;
+    final dialogWidth = (screenWidth - 24).clamp(340.0, 1040.0);
 
     await showDialog<void>(
       context: context,
@@ -206,7 +207,7 @@ class _WorkflowRow extends StatelessWidget {
             ),
             content: ConstrainedBox(
               constraints: BoxConstraints(
-                minWidth: screenWidth < 760 ? 360 : 560,
+                minWidth: screenWidth < 760 ? 360 : 600,
                 maxWidth: dialogWidth,
                 maxHeight: 540,
               ),
@@ -223,7 +224,7 @@ class _WorkflowRow extends StatelessWidget {
                             : _toTitleCase(appointment.title),
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF183A67),
+                          color: AppColors.blue750,
                           fontSize: 20,
                         ),
                       ),
@@ -288,7 +289,7 @@ class _WorkflowRow extends StatelessWidget {
                       Text(
                         'Current: ${formatClinicDateTime(originalDate, pattern: 'dd MMM yyyy, h:mm a')}',
                         style: const TextStyle(
-                          color: Color(0xFF5F789B),
+                          color: AppColors.textBlueMuted,
                           fontSize: 16,
                         ),
                       ),
@@ -296,8 +297,8 @@ class _WorkflowRow extends StatelessWidget {
                         'Updated: ${formatClinicDateTime(updatedDateTime, pattern: 'dd MMM yyyy, h:mm a')}',
                         style: TextStyle(
                           color: hasChanged
-                              ? const Color(0xFF1459AD)
-                              : const Color(0xFF5F789B),
+                              ? AppColors.brandBlueDark
+                              : AppColors.textBlueMuted,
                           fontSize: 16,
                           fontWeight:
                               hasChanged ? FontWeight.w700 : FontWeight.w500,
@@ -309,14 +310,14 @@ class _WorkflowRow extends StatelessWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF4F4),
+                            color: AppColors.slate10014,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFF3C3C8)),
+                            border: Border.all(color: AppColors.amber2002),
                           ),
                           child: const Text(
                             'Delete confirmation: this action is permanent and cannot be undone.',
                             style: TextStyle(
-                              color: Color(0xFFA11E34),
+                              color: AppColors.rose750,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -329,14 +330,14 @@ class _WorkflowRow extends StatelessWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF4F4),
+                            color: AppColors.slate10014,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFF3C3C8)),
+                            border: Border.all(color: AppColors.amber2002),
                           ),
                           child: const Text(
                             'Cancel confirmation: this appointment will be moved to Cancelled.',
                             style: TextStyle(
-                              color: Color(0xFFA11E34),
+                              color: AppColors.rose750,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -349,56 +350,76 @@ class _WorkflowRow extends StatelessWidget {
               ),
             ),
             actions: [
-              AppButton(
-                label: 'Update',
-                onPressed: hasChanged
-                    ? () {
-                        final originalCheckedInAt = appointment.checkedInAt;
-                        appointment.date = updatedDateTime;
-                        appointment.checkedInAt = originalCheckedInAt;
-                        appointments.set(appointment);
-                        if (dialogContext.mounted) {
-                          Navigator.of(dialogContext, rootNavigator: true).pop();
-                        }
-                        onSelect?.call(appointment);
-                      }
-                    : null,
-              ),
-              AppButton(
-                label: confirmCancel ? 'Confirm Cancel' : 'Cancel Appointment',
-                variant: AppButtonVariant.warning,
-                onPressed: () async {
-                  if (!confirmCancel) {
-                    setStateDialog(() {
-                      confirmCancel = true;
-                      confirmDelete = false;
-                    });
-                    return;
-                  }
-                  appointment.checkinStage = 'cancelled';
-                  appointment.isCheckedIn = false;
-                  appointments.set(appointment);
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                  }
-                },
-              ),
-              AppButton(
-                label: confirmDelete ? 'Confirm Delete' : 'Delete',
-                variant: AppButtonVariant.danger,
-                onPressed: () async {
-                  if (!confirmDelete) {
-                    setStateDialog(() {
-                      confirmDelete = true;
-                      confirmCancel = false;
-                    });
-                    return;
-                  }
-                  await _deleteScheduledAppointment(context, appointment);
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                  }
-                },
+              SizedBox(
+                width: dialogWidth - 48,
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    SizedBox(
+                      width: screenWidth < 760 ? 112 : 128,
+                      child: AppButton(
+                        label: 'Update',
+                        onPressed: hasChanged
+                            ? () {
+                                final originalCheckedInAt =
+                                    appointment.checkedInAt;
+                                appointment.date = updatedDateTime;
+                                appointment.checkedInAt = originalCheckedInAt;
+                                appointments.set(appointment);
+                                if (dialogContext.mounted) {
+                                  Navigator.pop(dialogContext);
+                                }
+                              }
+                            : null,
+                      ),
+                    ),
+                    SizedBox(
+                      width: screenWidth < 760 ? 136 : 160,
+                      child: AppButton(
+                        label:
+                            confirmCancel ? 'Confirm Cancel' : 'Cancel Appt',
+                        variant: AppButtonVariant.warning,
+                        onPressed: () async {
+                          if (!confirmCancel) {
+                            setStateDialog(() {
+                              confirmCancel = true;
+                              confirmDelete = false;
+                            });
+                            return;
+                          }
+                          appointment.checkinStage = 'cancelled';
+                          appointment.isCheckedIn = false;
+                          appointments.set(appointment);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: screenWidth < 760 ? 112 : 128,
+                      child: AppButton(
+                        label: confirmDelete ? 'Confirm Delete' : 'Delete',
+                        variant: AppButtonVariant.danger,
+                        onPressed: () async {
+                          if (!confirmDelete) {
+                            setStateDialog(() {
+                              confirmDelete = true;
+                              confirmCancel = false;
+                            });
+                            return;
+                          }
+                          await _deleteScheduledAppointment(context, appointment);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           );
@@ -579,7 +600,7 @@ class _WorkflowRow extends StatelessWidget {
             ? AppColors.checkinCompletedBg
             : Colors.transparent,
         border: const Border(
-          top: BorderSide(color: Color(0xFFE2ECF8)),
+          top: BorderSide(color: AppColors.violet1002),
         ),
       ),
       child: GestureDetector(
@@ -600,7 +621,7 @@ class _WorkflowRow extends StatelessWidget {
                   Text(
                     patientName,
                     style: const TextStyle(
-                      color: Color(0xFF000000),
+                      color: AppColors.neutralBlack,
                       fontWeight: FontWeight.w600,
                       fontSize: 18,
                     ),
@@ -611,7 +632,7 @@ class _WorkflowRow extends StatelessWidget {
                       Text(
                         '$age$genderLabel · $phone',
                         style: const TextStyle(
-                          color: Color(0xFF6B7280),
+                          color: AppColors.blue5509,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -669,13 +690,13 @@ class _WorkflowRow extends StatelessWidget {
                           const Icon(
                             FluentIcons.contact,
                             size: 12,
-                            color: Color(0xFF3B82F6),
+                            color: AppColors.info,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             doctorLabel,
                             style: TextStyle(
-                              color: const Color(0xFF3B82F6),
+                              color: AppColors.info,
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                               decoration: ((stage == 'with_doctor' ||
@@ -711,9 +732,9 @@ class _WorkflowRow extends StatelessWidget {
                           ),
                         ),
                         backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFFFFF4E8)),
+                            WidgetStateProperty.all(AppColors.amber1003),
                         foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFFC97A11)),
+                            WidgetStateProperty.all(AppColors.amber500),
                       ),
                       onPressed: interactionsEnabled
                           ? () => _undoStage(context)
@@ -737,7 +758,7 @@ class _WorkflowRow extends StatelessWidget {
                           ),
                         ),
                         foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFF6B7280)),
+                            WidgetStateProperty.all(AppColors.blue5509),
                       ),
                       onPressed: interactionsEnabled
                           ? () => _openScheduleActions(context, appointment)
@@ -764,10 +785,10 @@ class _WorkflowRow extends StatelessWidget {
                           ),
                         ),
                         backgroundColor: WidgetStateProperty.all(
-                          const Color(0xFFE8F8ED),
+                          AppColors.slate1003,
                         ),
                         foregroundColor: WidgetStateProperty.all(
-                          const Color(0xFF2A8D3F),
+                          AppColors.green550,
                         ),
                       ),
                       onPressed: interactionsEnabled
@@ -790,9 +811,9 @@ class _WorkflowRow extends StatelessWidget {
                           ),
                         ),
                         backgroundColor:
-                            WidgetStateProperty.all(const Color(0xFFEAF2FF)),
+                            WidgetStateProperty.all(AppColors.violet1006),
                         foregroundColor:
-                            WidgetStateProperty.all(const Color(0xFF2D7BD8)),
+                            WidgetStateProperty.all(AppColors.brandBlue),
                       ),
                       onPressed: interactionsEnabled
                           ? () =>

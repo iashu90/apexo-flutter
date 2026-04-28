@@ -461,18 +461,6 @@ Future<void> showPatientCheckinLookupDialog({
                     ],
                   ),
                 ),
-                AppButton(
-                  label: 'New Patient',
-                  onPressed: () async {
-                    final navigator = Navigator.of(dialogContext);
-                    final created = await onAddPatient(queryController.text);
-                    if (created == null) return;
-                    await onCheckInPatient(created);
-                    if (navigator.mounted) {
-                      navigator.pop();
-                    }
-                  },
-                ),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(FluentIcons.chrome_close, size: 12),
