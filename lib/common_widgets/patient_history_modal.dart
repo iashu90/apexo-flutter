@@ -110,6 +110,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
   bool _isExportingPdf = false;
   StreamSubscription<dynamic>? _appointmentsSubscription;
 
+  // ignore: unused_element
   String? _bestEditableAppointmentId([_LedgerRowData? preferred]) {
     if (preferred?.appointmentId != null &&
         preferred!.appointmentId!.trim().isNotEmpty) {

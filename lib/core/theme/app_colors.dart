@@ -32,5 +32,7 @@ class AppColors {
   static const error = Color(0xFFEF4444);
   static const info = Color(0xFF3B82F6);
 
+  static const checkinCompletedBg = Color(0xFFEBFAE6);
+
   static const borderSoft = Color(0xFFE6EAF2);
 }
