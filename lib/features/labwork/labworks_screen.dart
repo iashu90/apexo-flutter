@@ -5,6 +5,7 @@ import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/common_widgets/lab_bulk_update_dialog.dart';
 import 'package:apexo/common_widgets/month_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_history_modal.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
@@ -146,7 +147,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
         const Text(
           'Labwork',
           style: TextStyle(
-            color: Color(0xFF233B5F),
+            color: AppColors.blue7508,
             fontSize: 34,
             fontWeight: FontWeight.w700,
           ),
@@ -280,13 +281,13 @@ class _LabworksScreenState extends State<LabworksScreen> {
         title: 'LAB',
         subtitle: 'cases',
         value: '$inLab',
-        color: const Color(0xFFE09C31),
+        color: AppColors.amber350,
       ),
       (
         title: 'READY',
         subtitle: 'cases',
         value: '$ready',
-        color: const Color(0xFF2D7BD8),
+        color: AppColors.brandBlue,
       ),
       (
         title: 'DELIVERED',
@@ -296,8 +297,8 @@ class _LabworksScreenState extends State<LabworksScreen> {
             ? '₹0'
             : '₹${NumberFormat('#,##0').format(filteredDueAmount)}',
         color: filteredDues.isEmpty
-            ? const Color(0xFF2BA58D)
-            : const Color(0xFFD6455D),
+            ? AppColors.green500
+            : AppColors.dangerRose,
       ),
     ];
 
@@ -921,7 +922,7 @@ class _LabworkBoard extends StatelessWidget {
         final inLabColumn = _LabworkBoardColumn(
           title: 'In Lab',
           count: inLab.length,
-          color: const Color(0xFFE4A11B),
+          color: AppColors.amber350,
           items: inLab,
           collapsed: inLabCollapsed,
           onToggle: onToggleInLab,
@@ -932,7 +933,7 @@ class _LabworkBoard extends StatelessWidget {
         final readyColumn = _LabworkBoardColumn(
           title: 'Ready',
           count: ready.length,
-          color: const Color(0xFF2D7BD8),
+          color: AppColors.brandBlue,
           items: ready,
           collapsed: readyCollapsed,
           onToggle: onToggleReady,
@@ -943,7 +944,7 @@ class _LabworkBoard extends StatelessWidget {
         final deliveredColumn = _LabworkBoardColumn(
           title: 'Filtered Due',
           count: delivered.length,
-          color: const Color(0xFF2BA58D),
+          color: AppColors.green500,
           items: delivered,
           collapsed: deliveredCollapsed,
           onToggle: onToggleDelivered,
@@ -972,7 +973,7 @@ class _LabworkBoard extends StatelessWidget {
               child: _LabworkBoardColumn(
                 title: 'In Lab',
                 count: inLab.length,
-                color: const Color(0xFFE4A11B),
+                color: AppColors.amber350,
                 items: inLab,
                 collapsed: inLabCollapsed,
                 onToggle: onToggleInLab,
@@ -986,7 +987,7 @@ class _LabworkBoard extends StatelessWidget {
               child: _LabworkBoardColumn(
                 title: 'Ready',
                 count: ready.length,
-                color: const Color(0xFF2D7BD8),
+                color: AppColors.brandBlue,
                 items: ready,
                 collapsed: readyCollapsed,
                 onToggle: onToggleReady,
@@ -1000,7 +1001,7 @@ class _LabworkBoard extends StatelessWidget {
               child: _LabworkBoardColumn(
                 title: 'Delivered',
                 count: delivered.length,
-                color: const Color(0xFF2BA58D),
+                color: AppColors.green500,
                 items: delivered,
                 collapsed: deliveredCollapsed,
                 onToggle: onToggleDelivered,
@@ -1043,9 +1044,9 @@ class _LabworkBoardColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD6E2F0)),
+        border: Border.all(color: AppColors.violet1506),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1087,7 +1088,7 @@ class _LabworkBoardColumn extends StatelessWidget {
               padding: EdgeInsets.all(12),
               child: Text(
                 'Collapsed',
-                style: TextStyle(color: Color(0xFF6D84A8)),
+                style: TextStyle(color: AppColors.blue5004),
               ),
             )
           else if (items.isEmpty)
@@ -1095,7 +1096,7 @@ class _LabworkBoardColumn extends StatelessWidget {
               padding: EdgeInsets.all(12),
               child: Text(
                 'No labworks in this state.',
-                style: TextStyle(color: Color(0xFF6D84A8)),
+                style: TextStyle(color: AppColors.blue5004),
               ),
             )
           else
@@ -1112,7 +1113,7 @@ class _LabworkBoardColumn extends StatelessWidget {
                         Container(
                           height: 1,
                           margin: const EdgeInsets.symmetric(horizontal: 8),
-                          color: const Color(0xFFDCE8F6),
+                          color: AppColors.borderBlueSoft,
                         ),
                     ],
                   ),

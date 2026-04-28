@@ -66,6 +66,33 @@ class StyledBarChart extends StatelessWidget {
     );
   }
 
+  FlTitlesData titles(List<String> labels) {
+    return FlTitlesData(
+      show: true,
+      bottomTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          maxIncluded: false,
+          reservedSize: 32,
+          getTitlesWidget: (index, meta) {
+            return SideTitleWidget(
+              axisSide: meta.axisSide,
+              space: 12,
+              child: Text(labels[index.toInt()]),
+            );
+          },
+        ),
+      ),
+      rightTitles: const AxisTitles(
+        sideTitles: SideTitles(showTitles: false),
+      ),
+      topTitles: const AxisTitles(
+        sideTitles: SideTitles(showTitles: false),
+      ),
+      // ... other titles (left, right, top)
+    );
+  }
+
   T getDeterministicItem<T>(List<T> items, String input) {
     // Convert the input string to a hash code
     int hash = utf8.encode(input).fold(0, (prev, element) => prev + element);
