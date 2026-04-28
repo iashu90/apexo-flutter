@@ -42,7 +42,7 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage.scrollable(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 14),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 10),
       children: [
         MStreamBuilder(
           streams: [
@@ -59,7 +59,7 @@ class _ReportScreenState extends State<ReportScreen> {
               builder: (context, constraints) {
                 final available = constraints.maxWidth;
                 const spacing = 8.0;
-                const maxCrossAxisExtent = 360.0;
+                const maxCrossAxisExtent = 320.0;
                 final columnCount = math.max(
                   1,
                   ((available + spacing) / (maxCrossAxisExtent + spacing))
@@ -97,7 +97,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
                 return MediaQuery(
                   data: MediaQuery.of(context)
-                      .copyWith(textScaler: const TextScaler.linear(0.93)),
+                      .copyWith(textScaler: const TextScaler.linear(0.9)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -2735,7 +2735,7 @@ class _ReportContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -2757,7 +2757,7 @@ class _ReportContainer extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     color: Color(0xFF183A67),
                     fontWeight: FontWeight.w700,
                   ),
@@ -2777,7 +2777,7 @@ class _ReportContainer extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           child,
         ],
       ),

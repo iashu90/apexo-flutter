@@ -28,6 +28,8 @@ import 'package:apexo/features/checkin/checkin_timeline_mapper.dart';
 import 'package:apexo/features/checkin/odontogram/tooth_model.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/expenses/expense_model.dart';
+import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -2124,7 +2126,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                         (a) => a.id == appointment.id,
                         orElse: () => appointment);
                     final paid = latest.paid;
-                    return Text('?${paid.toStringAsFixed(0)}');
+                    return Text('\u20B9${paid.toStringAsFixed(0)}');
                   },
                 ),
               ),
@@ -2520,6 +2522,7 @@ class _CheckoutPaymentCard extends StatefulWidget {
 
 class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   static const Duration _receiptPdfBuildTimeout = Duration(seconds: 30);
+  static const String _rupeeSymbol = '\u20B9';
   String _paymentMode = 'Cash';
   final TextEditingController _consultantChargeController =
       TextEditingController();
@@ -2530,6 +2533,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   String _discountMode = 'flat';
   double _basePrice = 0;
   String? _selectedConsultantDoctorId;
+  String? _initialConsultantDoctorId;
+  DateTime? _initialConsultantMonthAnchor;
 
   @override
   void initState() {
@@ -2539,6 +2544,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     _discountMode = a.discountType == 'percent' ? 'percent' : 'flat';
     _basePrice = a.price;
     _selectedConsultantDoctorId = a.consultantDoctorID;
+    _initialConsultantDoctorId = a.consultantDoctorID;
+    _initialConsultantMonthAnchor = DateTime(a.date.year, a.date.month, 1);
     _consultantChargeController.text =
         a.priceToPayDoctor <= 0 ? '' : a.priceToPayDoctor.toStringAsFixed(0);
   }
@@ -2560,6 +2567,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       _autosaveDebounce = null;
       _hasPendingAutosave = false;
       appointments.set(appointment);
+      unawaited(_syncConsultantMonthlyExpenseEntries());
       return;
     }
 
@@ -2568,7 +2576,102 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     _autosaveDebounce = Timer(const Duration(milliseconds: 900), () {
       _hasPendingAutosave = false;
       appointments.set(appointment);
+      unawaited(_syncConsultantMonthlyExpenseEntries());
     });
+  }
+
+  Future<void> _syncConsultantMonthlyExpenseEntries() async {
+    final targets = <MapEntry<String, DateTime>>[];
+
+    void addTarget(String? doctorId, DateTime? monthAnchor) {
+      final id = (doctorId ?? '').trim();
+      if (id.isEmpty || monthAnchor == null) return;
+      final normalized = DateTime(monthAnchor.year, monthAnchor.month, 1);
+      final alreadyTracked = targets.any((entry) =>
+          entry.key == id &&
+          entry.value.year == normalized.year &&
+          entry.value.month == normalized.month);
+      if (!alreadyTracked) {
+        targets.add(MapEntry<String, DateTime>(id, normalized));
+      }
+    }
+
+    final a = widget.appointment;
+    addTarget(_initialConsultantDoctorId, _initialConsultantMonthAnchor);
+    addTarget(a.consultantDoctorID, DateTime(a.date.year, a.date.month, 1));
+
+    for (final target in targets) {
+      _syncConsultantExpenseForDoctorMonth(
+        doctorId: target.key,
+        monthAnchor: target.value,
+      );
+    }
+  }
+
+  void _syncConsultantExpenseForDoctorMonth({
+    required String doctorId,
+    required DateTime monthAnchor,
+  }) {
+    final monthlyTotal = appointments.present.values.where((row) {
+      if ((row.consultantDoctorID ?? '').trim() != doctorId) return false;
+      if (row.date.year != monthAnchor.year ||
+          row.date.month != monthAnchor.month) {
+        return false;
+      }
+      return row.priceToPayDoctor > 0;
+    }).fold<double>(0, (sum, row) => sum + row.priceToPayDoctor);
+
+    final existingRows = expenses.present.values.where((expense) {
+      if (expense.items.isEmpty) return false;
+      if (expense.items.first.trim().toLowerCase() != 'consultant') {
+        return false;
+      }
+      if (!expense.operatorsIDs.contains(doctorId)) return false;
+      return expense.date.year == monthAnchor.year &&
+          expense.date.month == monthAnchor.month;
+    }).toList(growable: true);
+
+    if (existingRows.isNotEmpty) {
+      final primary = existingRows.first;
+      primary.amount = monthlyTotal;
+      primary.date = monthAnchor;
+      primary.items = const ['Consultant'];
+      primary.operatorsIDs = [doctorId];
+      primary.tags = [
+        ...primary.tags
+            .where((tag) => tag.trim().toLowerCase() != 'auto:consultant-monthly')
+            .toList(growable: false),
+        'auto:consultant-monthly',
+      ];
+      expenses.set(primary);
+
+      for (final duplicate in existingRows.skip(1)) {
+        duplicate.amount = 0;
+        duplicate.tags = [
+          ...duplicate.tags
+              .where((tag) => tag.trim().toLowerCase() != 'auto:consultant-duplicate')
+              .toList(growable: false),
+          'auto:consultant-duplicate',
+        ];
+        expenses.set(duplicate);
+      }
+      return;
+    }
+
+    if (monthlyTotal <= 0) return;
+
+    final doctorTitle = doctors.get(doctorId)?.title.trim();
+    final row = Expense.fromJson({});
+    row.date = monthAnchor;
+    row.amount = monthlyTotal;
+    row.items = const ['Consultant'];
+    row.operatorsIDs = [doctorId];
+    row.issuer = (doctorTitle == null || doctorTitle.isEmpty)
+        ? 'Consultant'
+        : doctorTitle;
+    row.note = 'Auto consultant monthly total';
+    row.tags = const ['auto:consultant-monthly'];
+    expenses.set(row);
   }
 
   void _recalculatePrice() {
@@ -3125,7 +3228,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
                       child:
-                          Text('?', style: TextStyle(color: Color(0xFF355279))),
+                            Text(_rupeeSymbol,
+                              style: const TextStyle(color: Color(0xFF355279))),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -3272,7 +3376,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
                       child:
-                          Text('?', style: TextStyle(color: Color(0xFF355279))),
+                            Text(_rupeeSymbol,
+                              style: const TextStyle(color: Color(0xFF355279))),
                     ),
                     suffix: Padding(
                       padding: const EdgeInsets.only(right: 10),
@@ -3442,8 +3547,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           ],
                           prefix: const Padding(
                             padding: EdgeInsets.only(left: 10),
-                            child: Text('?',
-                                style: TextStyle(color: Color(0xFF355279))),
+                            child: Text(_rupeeSymbol,
+                              style: const TextStyle(color: Color(0xFF355279))),
                           ),
                           placeholder: 'Consultant charge',
                           onChanged: (value) {

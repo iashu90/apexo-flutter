@@ -178,6 +178,9 @@ class _WorkflowRow extends StatelessWidget {
     bool confirmDelete = false;
     bool confirmCancel = false;
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final dialogWidth = screenWidth < 760 ? screenWidth * 0.96 : 760.0;
+
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -202,8 +205,11 @@ class _WorkflowRow extends StatelessWidget {
               ],
             ),
             content: ConstrainedBox(
-              constraints: const BoxConstraints(
-                  minWidth: 480, maxWidth: 750, maxHeight: 520),
+              constraints: BoxConstraints(
+                minWidth: screenWidth < 760 ? 360 : 560,
+                maxWidth: dialogWidth,
+                maxHeight: 540,
+              ),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(),
                 child: SingleChildScrollView(
@@ -351,15 +357,15 @@ class _WorkflowRow extends StatelessWidget {
                         appointment.date = updatedDateTime;
                         appointment.checkedInAt = originalCheckedInAt;
                         appointments.set(appointment);
-                        onSelect?.call(appointment);
                         if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext);
+                          Navigator.of(dialogContext, rootNavigator: true).pop();
                         }
+                        onSelect?.call(appointment);
                       }
                     : null,
               ),
               AppButton(
-                label: confirmCancel ? 'Confirm Cancel' : 'Cancel Appt',
+                label: confirmCancel ? 'Confirm Cancel' : 'Cancel Appointment',
                 variant: AppButtonVariant.warning,
                 onPressed: () async {
                   if (!confirmCancel) {
@@ -570,7 +576,7 @@ class _WorkflowRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: stage == 'completed'
-            ? const Color.fromARGB(255, 235, 250, 230)
+            ? AppColors.checkinCompletedBg
             : Colors.transparent,
         border: const Border(
           top: BorderSide(color: Color(0xFFE2ECF8)),
@@ -580,6 +586,8 @@ class _WorkflowRow extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: !interactionsEnabled
             ? null
+            : stage == 'cancelled'
+                ? null
             : (stage == 'waiting' || stage == 'scheduled')
                 ? () => _moveStage(context)
                 : (onSelect == null ? null : () => onSelect!(appointment)),
