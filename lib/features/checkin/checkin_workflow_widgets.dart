@@ -27,7 +27,6 @@ class _WorkflowColumn extends StatelessWidget {
   final Color color;
   final List<Appointment> rows;
   final Set<String> duplicatePatientIds;
-  final String Function(Appointment)? rowStageBuilder;
   final bool showHistoryAction;
   final bool expanded;
   final VoidCallback onToggleExpanded;
@@ -41,7 +40,6 @@ class _WorkflowColumn extends StatelessWidget {
     required this.color,
     required this.rows,
     required this.duplicatePatientIds,
-    this.rowStageBuilder,
     required this.expanded,
     required this.onToggleExpanded,
     this.showHistoryAction = false,
@@ -115,7 +113,7 @@ class _WorkflowColumn extends StatelessWidget {
                 ...rows.map(
                   (a) => _WorkflowRow(
                     appointment: a,
-                    stage: rowStageBuilder?.call(a) ?? stage,
+                    stage: stage,
                     duplicateRecord: a.patientID != null &&
                         duplicatePatientIds.contains(a.patientID),
                     showHistoryAction: showHistoryAction,
@@ -203,10 +201,11 @@ class _WorkflowRow extends StatelessWidget {
                 ),
               ],
             ),
-            content: SizedBox(
-              width: 650,
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(
+                  minWidth: 480, maxWidth: 750, maxHeight: 520),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 430),
+                constraints: const BoxConstraints(),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -353,12 +352,14 @@ class _WorkflowRow extends StatelessWidget {
                         appointment.checkedInAt = originalCheckedInAt;
                         appointments.set(appointment);
                         onSelect?.call(appointment);
-                        Navigator.of(dialogContext, rootNavigator: true).pop();
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
                       }
                     : null,
               ),
               AppButton(
-                label: confirmCancel ? 'Confirm Cancel' : 'Cancel Appointment',
+                label: confirmCancel ? 'Confirm Cancel' : 'Cancel Appt',
                 variant: AppButtonVariant.warning,
                 onPressed: () async {
                   if (!confirmCancel) {

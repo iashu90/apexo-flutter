@@ -43,6 +43,10 @@ class Patient extends Model {
           final preceptionPaymentMode =
               appointment.prescriptionGpayPaid == true ? 'GPay' : 'Cash';
 
+          final doctorNameStr = appointment.operators.isEmpty
+              ? ''
+              : appointment.operators.map((d) => d.title.trim()).join(', ');
+
           return ReportDetailRow(
             appointmentId: appointment.id,
             date: dateStr,
@@ -54,6 +58,7 @@ class Patient extends Model {
             isDone: appointment.isDone,
             treatmentPaymentMode: treatmentPaymentMode,
             preceptionPaymentMode: preceptionPaymentMode,
+            doctorName: doctorNameStr,
           );
         }),
         ...labworks.present.values.where((lw) => lw.patientID == id).map((lw) {

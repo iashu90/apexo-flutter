@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
@@ -780,20 +780,11 @@ class _ReportDoctorAppointmentDoneCardState
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ExportFileActionButton(
-            type: ExportFileType.pdf,
-            busy: _isExportingPdf,
-            onPressed: (_isExportingCsv || _isExportingPdf || rows.isEmpty)
-                ? null
-                : () => _exportPdf(rows),
-          ),
-          const SizedBox(width: 6),
-          ExportFileActionButton(
-            type: ExportFileType.csv,
-            busy: _isExportingCsv,
-            onPressed: (_isExportingCsv || _isExportingPdf || rows.isEmpty)
-                ? null
-                : () => _exportCsv(rows),
+          ExportButtons(
+            csvBusy: _isExportingCsv,
+            pdfBusy: _isExportingPdf,
+            onCsv: (_isExportingCsv || _isExportingPdf || rows.isEmpty) ? null : () => _exportCsv(rows),
+            onPdf: (_isExportingCsv || _isExportingPdf || rows.isEmpty) ? null : () => _exportPdf(rows),
           ),
         ],
       ),
