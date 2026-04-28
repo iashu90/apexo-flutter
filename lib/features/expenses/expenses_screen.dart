@@ -3,6 +3,7 @@ import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/core/theme/app_theme.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
 import 'package:apexo/core/ui/components/app_pagination.dart';
@@ -47,6 +48,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
   bool _recurringOnly = false;
+  bool _recurringSyncInProgress = false;
 
   static const int _pageSize = 10;
   static const List<String> _defaultExpenseCategories = [
@@ -95,6 +97,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         _page = 1;
       });
     });
+    unawaited(Future<void>.microtask(_ensureRecurringEntriesUpToDate));
   }
 
   @override
@@ -106,6 +109,104 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   bool _isRecurringExpense(Expense expense) {
     return expense.tags
         .any((tag) => tag.toLowerCase().startsWith('recurring:'));
+  }
+
+  bool _isRecurringMonthly(Expense expense) {
+    return expense.tags
+        .any((tag) => tag.trim().toLowerCase() == 'recurring:monthly');
+  }
+
+  bool _isGeneratedRecurring(Expense expense) {
+    return expense.tags
+        .any((tag) => tag.trim().toLowerCase() == 'recurring:generated');
+  }
+
+  String? _tagValueByPrefix(Expense expense, String prefix) {
+    final p = prefix.toLowerCase();
+    for (final tag in expense.tags) {
+      final lower = tag.toLowerCase();
+      if (lower.startsWith(p)) {
+        return tag.substring(prefix.length).trim();
+      }
+    }
+    return null;
+  }
+
+  Future<void> _ensureRecurringEntriesUpToDate() async {
+    if (_recurringSyncInProgress) return;
+    _recurringSyncInProgress = true;
+    try {
+      final now = DateTime.now();
+      final thisMonth = DateTime(now.year, now.month, 1);
+      final roots = expenses.present.values
+          .where((expense) =>
+              _isRecurringMonthly(expense) && !_isGeneratedRecurring(expense))
+          .toList(growable: false)
+        ..sort((a, b) => a.date.compareTo(b.date));
+
+      for (final root in roots) {
+        var seriesId = _tagValueByPrefix(root, 'recurring:series:');
+        if (seriesId == null || seriesId.isEmpty) {
+          seriesId = root.id;
+          root.tags = [
+            ...root.tags.where((tag) =>
+                !tag.toLowerCase().startsWith('recurring:series:')),
+            'recurring:series:$seriesId',
+          ];
+          expenses.set(root);
+        }
+
+        var cursor = DateTime(root.date.year, root.date.month, 1);
+        while (!cursor.isAfter(thisMonth)) {
+          final lastDay = DateTime(cursor.year, cursor.month + 1, 0).day;
+          final day = root.date.day > lastDay ? lastDay : root.date.day;
+          final dueDate = DateTime(cursor.year, cursor.month, day);
+
+          if (!dueDate.isAfter(now)) {
+            final exists = expenses.present.values.any((expense) {
+              final sameSeries = expense.tags
+                  .any((tag) => tag.toLowerCase() == 'recurring:series:$seriesId');
+              if (!sameSeries) return false;
+              return expense.date.year == dueDate.year &&
+                  expense.date.month == dueDate.month;
+            });
+
+            if (!exists) {
+              final generated = Expense.fromJson({});
+              generated.date = dueDate;
+              generated.amount = root.amount;
+              generated.paid = root.paid;
+              generated.issuer = root.issuer;
+              generated.phoneNumber = root.phoneNumber;
+              generated.note = root.note;
+              generated.items = root.items.toList(growable: false);
+              generated.operatorsIDs = root.operatorsIDs.toList(growable: false);
+
+              final cleanedTags = root.tags
+                  .where((tag) {
+                    final lower = tag.toLowerCase();
+                    return lower != 'recurring:generated' &&
+                        !lower.startsWith('recurring:source:') &&
+                        !lower.startsWith('recurring:series:');
+                  })
+                  .toList(growable: false);
+              generated.tags = [
+                ...cleanedTags,
+                'recurring:monthly',
+                'recurring:generated',
+                'recurring:series:$seriesId',
+                'recurring:source:${root.id}',
+              ];
+              expenses.set(generated);
+            }
+          }
+
+          cursor = DateTime(cursor.year, cursor.month + 1, 1);
+        }
+      }
+    } finally {
+      _recurringSyncInProgress = false;
+    }
   }
 
   @override
@@ -144,27 +245,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               return Column(
                 children: [
                   _buildHeader(filtered),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   // Summary strip + overview side by side (matching screenshot)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        // Add this
-                        flex:
-                            66, // Adjust this ratio so it balances with the 34 below
+                        flex: 65,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildSummaryStrip(cards),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             _buildFilters(rows),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
-                        flex: 34,
+                        flex: 35,
                         child: _buildExpenseOverviewCard(sorted),
                       ),
                     ],
@@ -190,7 +289,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   Widget _buildHeader(List<Expense> rows) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
           const Expanded(
@@ -200,17 +299,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 Text(
                   'Expenses',
                   style: TextStyle(
-                    color: Color(0xFF1F3554),
-                    fontSize: 26,
+                    color: AppColors.blue7503,
+                    fontSize: 24,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: 2),
                 Text(
                   'Track and manage your clinic expenses',
                   style: TextStyle(
-                    color: Color(0xFF4D678D),
+                    color: AppColors.blue6006,
                     fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -323,13 +423,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     const pieColors = [
-      Color(0xFF2D7BD8),
-      Color(0xFFD6455D),
-      Color(0xFFCE7A1A),
-      Color(0xFF377D4C),
-      Color(0xFF7B4FA8),
-      Color(0xFF1B9988),
-      Color(0xFFB55E11),
+      AppColors.brandBlue,
+      AppColors.dangerRose,
+      AppColors.amber5002,
+      AppColors.green5503,
+      AppColors.violet600,
+      AppColors.green5002,
+      AppColors.rose550,
     ];
 
     // Group smaller items into "Others"
@@ -352,27 +452,27 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDCE6F2)),
+        border: Border.all(color: AppColors.borderSoft),
         boxShadow: const [
           BoxShadow(
-              color: Color(0x0F0D2E59), blurRadius: 10, offset: Offset(0, 3)),
+              color: AppColors.overlay15, blurRadius: 10, offset: Offset(0, 3)),
         ],
       ),
       child: total <= 0
           ? const Row(
               children: [
                 Icon(FluentIcons.pie_single,
-                    size: 16, color: Color(0xFF2D6EC2)),
+                    size: 16, color: AppColors.blue6002),
                 SizedBox(width: 8),
                 Text(
                   'Expense Overview',
                   style: TextStyle(
-                      color: Color(0xFF214162), fontWeight: FontWeight.w800),
+                      color: AppColors.blue7507, fontWeight: FontWeight.w800),
                 ),
                 SizedBox(width: 12),
                 Text('No records',
                     style: TextStyle(
-                        color: Color(0xFF7A8FAF), fontWeight: FontWeight.w600)),
+                        color: AppColors.violet450, fontWeight: FontWeight.w600)),
               ],
             )
           : Row(
@@ -387,12 +487,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       Row(
                         children: [
                           const Icon(FluentIcons.pie_single,
-                              size: 16, color: Color(0xFF2D6EC2)),
+                              size: 16, color: AppColors.blue6002),
                           const SizedBox(width: 8),
                           const Text(
                             'Expense Overview',
                             style: TextStyle(
-                                color: Color(0xFF214162),
+                                color: AppColors.blue7507,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 14),
                           ),
@@ -400,7 +500,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           Text(
                             'Total ₹${NumberFormat('#,##0').format(total)}',
                             style: const TextStyle(
-                                color: Color(0xFF5A7397),
+                                color: AppColors.textBlueMuted,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12),
                           ),
@@ -428,7 +528,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 child: Text(
                                   item.key,
                                   style: const TextStyle(
-                                      color: Color(0xFF243F60),
+                                      color: AppColors.blue75010,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13),
                                   overflow: TextOverflow.ellipsis,
@@ -486,10 +586,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   Widget _buildSummaryStrip(List<_ExpenseSummaryCardData> cards) {
     final accents = [
-      const Color(0xFF2D7BD8),
-      const Color(0xFFD6455D),
-      const Color(0xFFCE7A1A),
-      const Color(0xFF377D4C),
+      AppColors.brandBlue,
+      AppColors.dangerRose,
+      AppColors.amber5002,
+      AppColors.green5503,
     ];
 
     return LayoutBuilder(
@@ -503,10 +603,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               color: Colors.white,
-              border: Border.all(color: const Color(0xFFDDE8F6)),
+              border: Border.all(color: AppColors.borderBlueSoft),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x120D2E59),
+                  color: AppColors.overlay18,
                   blurRadius: 12,
                   offset: Offset(0, 3),
                 ),
@@ -530,7 +630,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       Text(
                         data.title,
                         style: const TextStyle(
-                          color: Color(0xFF547196),
+                          color: AppColors.textBlueMuted,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.3,
@@ -605,19 +705,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDDE8F6)),
+        border: Border.all(color: AppColors.borderBlueSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Row 1: fixed quick-filter chips
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: [
               _buildTimeChip(label: 'This Week', value: 'this_week'),
               _buildTimeChip(label: 'This Month', value: 'this_month'),
@@ -627,11 +727,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               _buildTimeChip(label: 'High Value > ₹10k', value: 'high_value'),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           // Row 2: dropdowns + date range + clear all
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               AppDropdownMenu<String>(
@@ -741,24 +841,24 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0F5FF),
+                    color: AppColors.slate1006,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFD0DFFC)),
+                    border: Border.all(color: AppColors.violet150),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(FluentIcons.calendar,
-                          size: 13, color: Color(0xFF3A5FA8)),
+                          size: 13, color: AppColors.blue6003),
                       const SizedBox(width: 6),
                       Text(dateLabel,
                           style: const TextStyle(
-                              color: Color(0xFF2D4A88),
+                              color: AppColors.blue7007,
                               fontWeight: FontWeight.w700,
                               fontSize: 12)),
                       const SizedBox(width: 4),
                       const Icon(FluentIcons.chevron_down,
-                          size: 10, color: Color(0xFF3A5FA8)),
+                          size: 10, color: AppColors.blue6003),
                     ],
                   ),
                 ),
@@ -790,11 +890,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFD0DFFC)),
+                    border: Border.all(color: AppColors.violet150),
                   ),
                   child: const Text('Clear All',
                       style: TextStyle(
-                          color: Color(0xFF2D5FA8),
+                          color: AppColors.blue6502,
                           fontWeight: FontWeight.w700,
                           fontSize: 12)),
                 ),
@@ -815,20 +915,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFF3F8FF),
+          color: selected ? AppColors.brandBlue : AppColors.slate10010,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
               color:
-                  selected ? const Color(0xFF2D7BD8) : const Color(0xFFD9E6F8)),
+                  selected ? AppColors.brandBlue : AppColors.violet15011),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF36557D),
+            color: selected ? Colors.white : AppColors.textBlueStrong,
             fontWeight: FontWeight.w700,
-            fontSize: 12,
+            fontSize: 11.5,
           ),
         ),
       ),
@@ -839,9 +939,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF4FB),
+        color: AppColors.slate1004,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFD6E2F0)),
+        border: Border.all(color: AppColors.violet1506),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -867,7 +967,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Text(
             formatClinicDate(_monthAnchor, pattern: 'MMMM yyyy'),
             style: const TextStyle(
-              color: Color(0xFF355279),
+              color: AppColors.textBlueStrong,
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
@@ -911,14 +1011,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDCE6F2)),
+        border: Border.all(color: AppColors.borderSoft),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: const BoxDecoration(
-              color: Color(0xFFF4F9FF),
+              color: AppColors.slate10012,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -929,7 +1029,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 const Text(
                   'Expense Ledger',
                   style: TextStyle(
-                    color: Color(0xFF234466),
+                    color: AppColors.blue7509,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                   ),
@@ -963,7 +1063,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ? const Center(
                     child: Text(
                       'No expenses found for selected filters.',
-                      style: TextStyle(color: Color(0xFF6B7F9C)),
+                      style: TextStyle(color: AppColors.blue5003),
                     ),
                   )
                 : _buildGroupedLedger(rows),
@@ -971,7 +1071,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: Color(0xFFE8EFF7))),
+              border: Border(top: BorderSide(color: AppColors.slate1002)),
             ),
             child: Row(
               children: [
@@ -979,7 +1079,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   total == 0
                       ? 'Showing 0 of 0'
                       : 'Showing $start-$end of $total',
-                  style: const TextStyle(color: Color(0xFF5A7397)),
+                  style: const TextStyle(color: AppColors.textBlueMuted),
                 ),
                 const Spacer(),
                 SizedBox(
@@ -1030,7 +1130,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     formatClinicDate(dayRows.first.date,
                         pattern: 'dd MMM yyyy'),
                     style: const TextStyle(
-                      color: Color(0xFF2B486D),
+                      color: AppColors.blue7003,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -1039,13 +1139,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEAF3FF),
+                      color: AppColors.violet1007,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       '₹${NumberFormat('#,##0').format(dailyTotal)}',
                       style: const TextStyle(
-                        color: Color(0xFF2D6EC2),
+                        color: AppColors.blue6002,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
                       ),
@@ -1069,7 +1169,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: const Color(0xFFE5EEF9),
+                      color: AppColors.violet1004,
                     ),
                   ),
                   child: Row(
@@ -1079,8 +1179,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         height: 42,
                         decoration: BoxDecoration(
                           color: paymentMode == 'UPI'
-                              ? const Color(0xFF2D7BD8)
-                              : const Color(0xFF3C9A56),
+                              ? AppColors.brandBlue
+                              : AppColors.green5003,
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
@@ -1095,7 +1195,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Color(0xFF213E61),
+                                color: AppColors.blue7506,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -1107,7 +1207,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Color(0xFF607A9D),
+                                color: AppColors.textBlueMuted,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1122,7 +1222,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Color(0xFF4B6488),
+                            color: AppColors.blue6004,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1134,8 +1234,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: paymentMode == 'UPI'
-                                ? const Color(0xFF2D7BD8)
-                                : const Color(0xFF2D8A4E),
+                                ? AppColors.brandBlue
+                                : AppColors.green5502,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1146,7 +1246,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           '₹${NumberFormat('#,##0').format(e.amount)}',
                           textAlign: TextAlign.end,
                           style: const TextStyle(
-                            color: Color(0xFFD6455D),
+                            color: AppColors.dangerRose,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -1154,15 +1254,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       const SizedBox(width: 10),
                       _ExpenseActionIconButton(
                         icon: FluentIcons.edit,
-                        color: const Color(0xFF8267D6),
-                        hoverColor: const Color(0xFFF1EDFB),
+                        color: AppColors.violet550,
+                        hoverColor: AppColors.slate1008,
                         onTap: () => unawaited(_openExpenseModal(e)),
                       ),
                       const SizedBox(width: 8),
                       _ExpenseActionIconButton(
                         icon: FluentIcons.delete,
-                        color: const Color(0xFFD6455D),
-                        hoverColor: const Color(0xFFFFECEF),
+                        color: AppColors.dangerRose,
+                        hoverColor: AppColors.amber100,
                         onTap: () => _deleteExpense(e),
                       ),
                     ],
@@ -1187,7 +1287,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDCE6F2)),
+        border: Border.all(color: AppColors.borderSoft),
       ),
       padding: const EdgeInsets.all(14),
       child: selected == null
@@ -1195,7 +1295,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               child: Text(
                 'Select an expense to inspect details.',
                 style: TextStyle(
-                  color: Color(0xFF6B7F9C),
+                  color: AppColors.blue5003,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1206,7 +1306,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 const Text(
                   'Expense Details',
                   style: TextStyle(
-                    color: Color(0xFF1F3C5E),
+                    color: AppColors.blue7504,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                   ),
@@ -1234,7 +1334,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 const Text(
                   'Note',
                   style: TextStyle(
-                    color: Color(0xFF4B6488),
+                    color: AppColors.blue6004,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1244,16 +1344,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F9FF),
+                    color: AppColors.slate50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE1ECFA)),
+                    border: Border.all(color: AppColors.violet100),
                   ),
                   child: Text(
                     selected.note.trim().isEmpty
                         ? 'No note provided.'
                         : selected.note.trim(),
                     style: const TextStyle(
-                      color: Color(0xFF35557D),
+                      color: AppColors.textBlueStrong,
                       height: 1.35,
                     ),
                   ),
@@ -1265,14 +1365,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF6E8),
+                      color: AppColors.amber1004,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFF0D9A8)),
+                      border: Border.all(color: AppColors.amber200),
                     ),
                     child: Text(
                       'Consultant outstanding: ₹${NumberFormat('#,##0').format(outstanding)}',
                       style: const TextStyle(
-                        color: Color(0xFF94620E),
+                        color: AppColors.rose6002,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1526,22 +1626,22 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       _ExpenseSummaryCardData(
         title: 'Today Spent',
         value: todaySpent,
-        valueColor: const Color(0xFF2D476D),
+        valueColor: AppColors.blue7006,
       ),
       _ExpenseSummaryCardData(
         title: 'This Month',
         value: monthlySpent,
-        valueColor: const Color(0xFFD6455D),
+        valueColor: AppColors.dangerRose,
       ),
       _ExpenseSummaryCardData(
         title: 'Pending Payments',
         value: pendingSpent,
-        valueColor: const Color(0xFFCE7A1A),
+        valueColor: AppColors.amber5002,
       ),
       _ExpenseSummaryCardData(
         title: 'Avg Daily Spend',
         value: avgDaily,
-        valueColor: const Color(0xFF377D4C),
+        valueColor: AppColors.green5503,
       ),
     ];
   }
@@ -1630,7 +1730,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 30,
-                      color: Color(0xFF1F2A3A),
+                      color: AppColors.blue8002,
                     ),
                   ),
                 ),
@@ -1719,7 +1819,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 padding: const EdgeInsets.all(2),
                                 decoration: BoxDecoration(
                                   border: Border.all(
-                                      color: const Color(0xFFD4E2F3)),
+                                      color: AppColors.violet1503),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -1765,7 +1865,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: Text(
                             categoryError!,
                             style: const TextStyle(
-                                color: Color(0xFFD6455D), fontSize: 11),
+                                color: AppColors.dangerRose, fontSize: 11),
                           ),
                         ),
                       if (selectedCategory == 'Other') ...[
@@ -1800,7 +1900,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           child: Text(
                             amountError!,
                             style: const TextStyle(
-                                color: Color(0xFFD6455D), fontSize: 11),
+                                color: AppColors.dangerRose, fontSize: 11),
                           ),
                         ),
                       const SizedBox(height: 10),
@@ -1837,13 +1937,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                       horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
                                     color: selected
-                                        ? const Color(0xFF2D7BD8)
-                                        : const Color(0xFFEFF4FB),
+                                        ? AppColors.brandBlue
+                                        : AppColors.slate1004,
                                     borderRadius: BorderRadius.circular(999),
                                     border: Border.all(
                                       color: selected
-                                          ? const Color(0xFF2D7BD8)
-                                          : const Color(0xFFD4E2F3),
+                                          ? AppColors.brandBlue
+                                          : AppColors.violet1503,
                                     ),
                                   ),
                                   child: Text(
@@ -1853,7 +1953,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                     style: TextStyle(
                                       color: selected
                                           ? Colors.white
-                                          : const Color(0xFF345982),
+                                          : AppColors.blue6503,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 11,
                                     ),
@@ -1940,11 +2040,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     }
                     // If single doctor with new record, the draft itself IS the new record
                     // (already saved above) so skip the draft.set below
+                    unawaited(_ensureRecurringEntriesUpToDate());
                     Navigator.pop(dialogContext);
                     return;
                   }
 
                   expenses.set(draft);
+                  unawaited(_ensureRecurringEntriesUpToDate());
                   Navigator.pop(dialogContext);
                 },
               ),
@@ -1956,6 +2058,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Future<void> _openRecurringExpenseDialog() async {
+    await _ensureRecurringEntriesUpToDate();
     final recurringRows = expenses.present.values
         .where(_isRecurringExpense)
         .toList(growable: false)
@@ -1984,9 +2087,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF4F8FF),
+                        color: AppColors.slate10011,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFD8E5F8)),
+                        border: Border.all(color: AppColors.violet15010),
                       ),
                       child: Row(
                         children: [
@@ -1994,7 +2097,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             child: Text(
                               '$category • ₹${NumberFormat('#,##0').format(row.amount)} • ${_paymentMode(row)}',
                               style: const TextStyle(
-                                color: Color(0xFF2B4A6E),
+                                color: AppColors.blue7004,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -2042,7 +2145,7 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: Color(0xFF5C779B),
+                color: AppColors.textBlueMuted,
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
               ),
@@ -2052,7 +2155,7 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               value,
               style: const TextStyle(
-                color: Color(0xFF213E61),
+                color: AppColors.blue7506,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -2087,7 +2190,7 @@ class _SortableHead extends StatelessWidget {
             label,
             style: TextStyle(
               color:
-                  selected ? const Color(0xFF1459AD) : const Color(0xFF3F577B),
+                  selected ? AppColors.brandBlueDark : AppColors.blue65010,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -2099,7 +2202,7 @@ class _SortableHead extends StatelessWidget {
                     : FluentIcons.chevron_down_small)
                 : FluentIcons.switch_user,
             size: 10,
-            color: selected ? const Color(0xFF1459AD) : const Color(0xFF89A0BF),
+            color: selected ? AppColors.brandBlueDark : AppColors.violet400,
           ),
         ],
       ),
@@ -2138,17 +2241,17 @@ class _ModeTab extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF2D7BD8) : Colors.transparent,
+          color: selected ? AppColors.brandBlue : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD4E2F3),
+            color: selected ? AppColors.brandBlue : AppColors.violet1503,
           ),
         ),
         child: Center(
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF355A82),
+              color: selected ? Colors.white : AppColors.textBlueStrong,
               fontWeight: FontWeight.w700,
             ),
           ),

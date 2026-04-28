@@ -12,7 +12,10 @@ class StyledBarChart extends StatelessWidget {
     super.key,
     required this.labels,
     required this.yAxis,
+    this.accentColor,
   });
+
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +30,7 @@ class StyledBarChart extends StatelessWidget {
         maxY: max + 0.05 * max,
         barTouchData: barTouchData(labels),
         titlesData: titles(labels),
-        gridData: grid(max),
+        gridData: const FlGridData(show: false),
         borderData: border(),
         barGroups: List.generate(
           labels.length,
@@ -38,8 +41,11 @@ class StyledBarChart extends StatelessWidget {
                 toY: yAxis[index].toDouble(),
                 gradient: LinearGradient(
                   colors: [
-                    getDeterministicItem(Colors.accentColors, "${index}1").withValues(alpha: 0.3),
-                    getDeterministicItem(Colors.accentColors, index.toString()),
+                    getDeterministicItem(
+                            [accentColor ?? Colors.blue], "${index}1")
+                        .withValues(alpha: 0.3),
+                    getDeterministicItem(
+                        [accentColor ?? Colors.blue], index.toString()),
                   ],
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
@@ -47,7 +53,7 @@ class StyledBarChart extends StatelessWidget {
                 width: barWidth(labels),
                 borderRadius: BorderRadius.circular(10),
                 backDrawRodData: BackgroundBarChartRodData(
-                  show: true,
+                  show: false,
                   fromY: 0,
                   toY: (yAxis.reduce((a, b) => a > b ? a : b) * 1.2).toDouble(),
                   color: Colors.grey.withValues(alpha: 0.1),

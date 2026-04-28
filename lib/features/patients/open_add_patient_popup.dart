@@ -1,6 +1,8 @@
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/common_widgets/selectable_chip_group.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -36,45 +38,6 @@ Widget _popupFieldLabel(String text) {
         color: Color(0xFF1F446E),
       ),
     ),
-  );
-}
-
-Widget _buildSelectableHistoryChips({
-  required List<String> options,
-  required Set<String> selected,
-  required void Function(String value) onToggle,
-}) {
-  return Wrap(
-    spacing: 6,
-    runSpacing: 6,
-    children: options.map((item) {
-      final isSelected = selected.contains(item);
-      return GestureDetector(
-        onTap: () => onToggle(item),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? const Color(0xFF2D7BD8)
-                : const Color(0xFFEFF4FB),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: isSelected
-                  ? const Color(0xFF2D7BD8)
-                  : const Color(0xFFD4E2F3),
-            ),
-          ),
-          child: Text(
-            item,
-            style: TextStyle(
-              color: isSelected ? Colors.white : const Color(0xFF345982),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      );
-    }).toList(growable: false),
   );
 }
 
@@ -122,6 +85,7 @@ Future<Patient?> openAddPatientPopup({
   String? nameError;
   String? ageError;
   String? phoneError;
+  Patient? duplicatePhonePatient;
 
   return showDialog<Patient>(
     context: context,
@@ -243,7 +207,7 @@ Future<Patient?> openAddPatientPopup({
                       ),
                     ),
                   ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _popupFieldLabel('Phone:'),
                 TextBox(
                   controller: phoneController,
@@ -254,8 +218,11 @@ Future<Patient?> openAddPatientPopup({
                     LengthLimitingTextInputFormatter(10),
                   ],
                   onChanged: (_) {
-                    if (phoneError != null) {
-                      setStateDialog(() => phoneError = null);
+                    if (phoneError != null || duplicatePhonePatient != null) {
+                      setStateDialog(() {
+                        phoneError = null;
+                        duplicatePhonePatient = null;
+                      });
                     }
                   },
                 ),
@@ -270,15 +237,50 @@ Future<Patient?> openAddPatientPopup({
                       ),
                     ),
                   ),
+                if (duplicatePhonePatient != null)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.amber100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.dangerRose),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          FluentIcons.warning,
+                          size: 14,
+                          color: AppColors.dangerRose,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Phone already exists: ${duplicatePhonePatient!.title} '
+                            '(Age ${duplicatePhonePatient!.age}) • ${duplicatePhonePatient!.phone}',
+                            style: const TextStyle(
+                              color: AppColors.dangerRose,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 _popupFieldLabel('Address:'),
                 TextBox(
                   controller: addressController,
                   placeholder: 'Address',
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _popupFieldLabel('Medical History:'),
-                _buildSelectableHistoryChips(
+                SelectableChipGroup(
                   options: patientMedicalHistorySuggestions,
                   selected: selectedMedicalHistory,
                   onToggle: (item) {
@@ -291,9 +293,9 @@ Future<Patient?> openAddPatientPopup({
                     });
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _popupFieldLabel('Drug History:'),
-                _buildSelectableHistoryChips(
+                SelectableChipGroup(
                   options: patientDrugHistorySuggestions,
                   selected: selectedDrugHistory,
                   onToggle: (item) {
@@ -306,9 +308,9 @@ Future<Patient?> openAddPatientPopup({
                     });
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _popupFieldLabel('Maternal History:'),
-                _buildSelectableHistoryChips(
+                SelectableChipGroup(
                   options: patientMaternalHistorySuggestions,
                   selected: selectedMaternalHistory,
                   onToggle: (item) {
@@ -321,9 +323,9 @@ Future<Patient?> openAddPatientPopup({
                     });
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _popupFieldLabel('Habits:'),
-                _buildSelectableHistoryChips(
+                SelectableChipGroup(
                   options: patientHabitsSuggestions,
                   selected: selectedHabitsHistory,
                   onToggle: (item) {
@@ -390,6 +392,24 @@ Future<Patient?> openAddPatientPopup({
 
               if (computedAgeError != null) return;
               if (computedNameError != null || computedPhoneError != null) {
+                return;
+              }
+
+              Patient? duplicatePatient;
+              for (final p in patients.docs.values) {
+                if (isEditMode && p.id == existingPatient.id) {
+                  continue;
+                }
+                if (_normalizePhoneDigits(p.phone) == rawPhone) {
+                  duplicatePatient = p;
+                  break;
+                }
+              }
+              if (duplicatePatient != null) {
+                setStateDialog(() {
+                  phoneError = 'Phone number already exists.';
+                  duplicatePhonePatient = duplicatePatient;
+                });
                 return;
               }
 

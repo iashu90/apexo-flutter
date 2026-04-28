@@ -207,7 +207,7 @@ Future<void> _showNextAppointmentPromptDialog(
                 const Text(
                   'Consultant/Doctor',
                   style: TextStyle(
-                    color: Color(0xFF355279),
+                    color: AppColors.textBlueStrong,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -236,13 +236,13 @@ Future<void> _showNextAppointmentPromptDialog(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: selected
-                                ? const Color(0xFF2D7BD8)
-                                : const Color(0xFFEFF4FB),
+                                ? AppColors.brandBlue
+                                : AppColors.slate1004,
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
                               color: selected
-                                  ? const Color(0xFF2D7BD8)
-                                  : const Color(0xFFD4E2F3),
+                                  ? AppColors.brandBlue
+                                  : AppColors.violet1503,
                             ),
                           ),
                           child: Text(
@@ -252,7 +252,7 @@ Future<void> _showNextAppointmentPromptDialog(
                             style: TextStyle(
                               color: selected
                                   ? Colors.white
-                                  : const Color(0xFF355A84),
+                                  : AppColors.textBlueStrong,
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
                             ),
@@ -704,7 +704,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
         style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF1F446E),
+          color: AppColors.blue7505,
         ),
       ),
     );
@@ -726,19 +726,19 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF2D7BD8)
-                  : const Color(0xFFEFF4FB),
+                  ? AppColors.brandBlue
+                  : AppColors.slate1004,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF2D7BD8)
-                    : const Color(0xFFD4E2F3),
+                    ? AppColors.brandBlue
+                    : AppColors.violet1503,
               ),
             ),
             child: Text(
               item,
               style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF345982),
+                color: isSelected ? Colors.white : AppColors.blue6503,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -765,7 +765,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
           overflow: TextOverflow.ellipsis,
           textAlign: textAlign,
           style: TextStyle(
-            color: header ? const Color(0xFF4E6789) : const Color(0xFF25466F),
+            color: header ? AppColors.blue6007 : AppColors.blue7002,
             fontWeight: header ? FontWeight.w700 : FontWeight.w600,
             fontSize: header ? 11 : 12,
           ),
@@ -792,9 +792,9 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FBFF),
+              color: AppColors.slate504,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFDCE8F8)),
+              border: Border.all(color: AppColors.borderBlueSoft),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -862,9 +862,9 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FBFF),
+              color: AppColors.slate504,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFDCE8F8)),
+              border: Border.all(color: AppColors.borderBlueSoft),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -872,7 +872,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                 const Text(
                   'Last Treatments',
                   style: TextStyle(
-                    color: Color(0xFF2D476D),
+                    color: AppColors.blue7006,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
@@ -882,7 +882,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                   const Text(
                     'No previous treatments found.',
                     style: TextStyle(
-                      color: Color(0xFF5A7397),
+                      color: AppColors.textBlueMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   )
@@ -896,9 +896,9 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEFF5FF),
+                              color: AppColors.surfaceBlueSoft,
                               border:
-                                  Border.all(color: const Color(0xFFD7E5F7)),
+                                  Border.all(color: AppColors.violet1508),
                             ),
                             child: Row(
                               children: [
@@ -944,7 +944,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 border:
-                                    Border.all(color: const Color(0xFFDCE8F8)),
+                                    Border.all(color: AppColors.borderBlueSoft),
                               ),
                               child: Row(
                                 children: [
@@ -1228,7 +1228,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF183A67),
+                                  color: AppColors.blue750,
                                 ),
                               ),
                               Container(
@@ -1237,15 +1237,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEAF2FC),
+                                  color: AppColors.violet1005,
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                      color: const Color(0xFFD5E5F7)),
+                                      color: AppColors.violet1505),
                                 ),
                                 child: Text(
                                   'Patients: ${todaysAppointments.length}',
                                   style: const TextStyle(
-                                    color: Color(0xFF1459AD),
+                                    color: AppColors.brandBlueDark,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -1313,7 +1313,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF183A67),
+                                  color: AppColors.blue750,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1323,15 +1323,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEAF2FC),
+                                  color: AppColors.violet1005,
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                      color: const Color(0xFFD5E5F7)),
+                                      color: AppColors.violet1505),
                                 ),
                                 child: Text(
                                   'Patients: ${todaysAppointments.length}',
                                   style: const TextStyle(
-                                    color: Color(0xFF1459AD),
+                                    color: AppColors.brandBlueDark,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -1357,6 +1357,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           const SizedBox(width: 12),
                           AppButton(
                             onPressed: _openNewPatientAndCheckin,
+                            variant: AppButtonVariant.secondary,
                             label: 'New Patient',
                             leading:
                                 const Icon(FluentIcons.add_friend, size: 12),
@@ -1423,7 +1424,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         final waitingColumn = _WorkflowColumn(
                           title: 'Waiting (${waiting.length})',
                           stage: 'waiting',
-                          color: const Color(0xFFE4A11B),
+                          color: AppColors.amber350,
                           rows: waiting,
                           duplicatePatientIds: duplicatePatientIds,
                           showHistoryAction: false,
@@ -1439,7 +1440,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         final scheduledColumn = _WorkflowColumn(
                           title: 'Scheduled (${scheduled.length})',
                           stage: 'scheduled',
-                          color: const Color(0xFF4E79AF),
+                          color: AppColors.blue5502,
                           rows: scheduled,
                           duplicatePatientIds: duplicatePatientIds,
                           showHistoryAction: false,
@@ -1455,7 +1456,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         final cancelledColumn = _WorkflowColumn(
                           title: 'Cancelled (${cancelled.length})',
                           stage: 'cancelled',
-                          color: const Color(0xFFC2415B),
+                          color: AppColors.rose6003,
                           rows: cancelled,
                           duplicatePatientIds: duplicatePatientIds,
                           showHistoryAction: false,
@@ -1471,7 +1472,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         final withDoctorColumn = _WorkflowColumn(
                           title: 'Treatment (${withDoctor.length})',
                           stage: 'with_doctor',
-                          color: const Color(0xFF2D7BD8),
+                          color: AppColors.brandBlue,
                           rows: withDoctor,
                           duplicatePatientIds: duplicatePatientIds,
                           showHistoryAction: false,
@@ -1487,7 +1488,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         final billingColumn = _WorkflowColumn(
                           title: 'Billing (${billingList.length})',
                           stage: 'billing',
-                          color: const Color(0xFF6C4CCF),
+                          color: AppColors.blue6008,
                           rows: billingList,
                           duplicatePatientIds: duplicatePatientIds,
                           onSelect: _selectAndOpenAppointment,
@@ -1503,7 +1504,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         final completedColumn = _WorkflowColumn(
                           title: 'Completed (${completedList.length})',
                           stage: 'completed',
-                          color: const Color(0xFF16A34A),
+                          color: AppColors.green500,
                           rows: completedList,
                           duplicatePatientIds: duplicatePatientIds,
                           onSelect: _selectAndOpenAppointment,
@@ -1640,7 +1641,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                               Text(
                                 _patientFocusSummary(appointment),
                                 style: const TextStyle(
-                                  color: Color(0xFF355279),
+                                  color: AppColors.textBlueStrong,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -1649,7 +1650,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                                 const Text(
                                   'Selected Doctors',
                                   style: TextStyle(
-                                    color: Color(0xFF15803D),
+                                    color: AppColors.green600,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -1672,17 +1673,17 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFDFF7E8),
+                                          color: AppColors.green1002,
                                           borderRadius:
                                               BorderRadius.circular(999),
                                           border: Border.all(
-                                            color: const Color(0xFF22C55E),
+                                            color: AppColors.green400,
                                           ),
                                         ),
                                         child: Text(
                                           doctorName,
                                           style: const TextStyle(
-                                            color: Color(0xFF166534),
+                                            color: AppColors.green650,
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
@@ -1697,7 +1698,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                               const Text(
                                 'Other Doctors',
                                 style: TextStyle(
-                                  color: Color(0xFF355A84),
+                                  color: AppColors.textBlueStrong,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -1719,17 +1720,17 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFEFF4FB),
+                                        color: AppColors.slate1004,
                                         borderRadius:
                                             BorderRadius.circular(999),
                                         border: Border.all(
-                                          color: const Color(0xFFD2E1F2),
+                                          color: AppColors.violet1502,
                                         ),
                                       ),
                                       child: Text(
                                         doctorName,
                                         style: const TextStyle(
-                                          color: Color(0xFF355A84),
+                                          color: AppColors.textBlueStrong,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -1842,7 +1843,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   child: Text(
                     medicalHistorySummary,
                     style: const TextStyle(
-                      color: Color(0xFFC63A4D),
+                      color: AppColors.rose650,
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
@@ -1860,7 +1861,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF183A67),
+                          color: AppColors.blue750,
                         ),
                       ),
                     ),
@@ -1880,7 +1881,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                           const Text(
                             'Doctor:',
                             style: TextStyle(
-                              color: Color(0xFF6D84A8),
+                              color: AppColors.blue5004,
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
@@ -1891,7 +1892,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                                 ? 'Unnamed doctor'
                                 : doctorName,
                             style: const TextStyle(
-                              color: Color(0xFF1459AD),
+                              color: AppColors.brandBlueDark,
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
@@ -1961,7 +1962,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+          border: Border(top: BorderSide(color: AppColors.violet1002)),
         ),
         child: SizedBox(
           width: double.infinity,
@@ -1992,7 +1993,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+          border: Border(top: BorderSide(color: AppColors.violet1002)),
         ),
         child: Row(
           children: [
@@ -2059,7 +2060,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+          border: Border(top: BorderSide(color: AppColors.violet1002)),
         ),
         child: Row(
           children: [
@@ -2141,7 +2142,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Color(0xFFE2ECF8))),
+          border: Border(top: BorderSide(color: AppColors.violet1002)),
         ),
         child: Row(
           children: [
@@ -2190,13 +2191,13 @@ class _LastAppointmentInsightCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FBFF),
+          color: AppColors.slate504,
           borderRadius: BorderRadius.circular(10),
         ),
         child: const Text(
           'No previous appointment history available.',
           style: TextStyle(
-            color: Color(0xFF5B7394),
+            color: AppColors.textBlueMuted,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -2223,7 +2224,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FBFF),
+        color: AppColors.slate504,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -2232,7 +2233,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           const Text(
             'Last Appointment',
             style: TextStyle(
-              color: Color(0xFF223B5E),
+              color: AppColors.blue7508,
               fontWeight: FontWeight.w800,
               fontSize: 15,
             ),
@@ -2241,7 +2242,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           Text(
             formatClinicDateTime(last.date, pattern: 'dd MMM yyyy • h:mm a'),
             style: const TextStyle(
-              color: Color(0xFF355279),
+              color: AppColors.textBlueStrong,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -2249,7 +2250,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           Text(
             'Diagnosis: ${diagnosis.isEmpty ? '-' : diagnosis}',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2257,7 +2258,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           Text(
             'Chief Complaints: ${chiefComplaints.isEmpty ? '-' : chiefComplaints}',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2265,7 +2266,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           Text(
             'Treatment: ${treatmentSummary.isEmpty ? '-' : treatmentSummary}',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2273,7 +2274,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           Text(
             'Doctor: $doctorSummary',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2281,7 +2282,7 @@ class _LastAppointmentInsightCard extends StatelessWidget {
           Text(
             'Teeth: ${teethSummary.isEmpty ? '-' : teethSummary}',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2321,7 +2322,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FBFF),
+        color: AppColors.slate504,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -2330,7 +2331,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           const Text(
             'Today Appointment',
             style: TextStyle(
-              color: Color(0xFF223B5E),
+              color: AppColors.blue7508,
               fontWeight: FontWeight.w800,
               fontSize: 15,
             ),
@@ -2340,7 +2341,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
             formatClinicDateTime(appointment.date,
                 pattern: 'dd MMM yyyy • h:mm a'),
             style: const TextStyle(
-              color: Color(0xFF355279),
+              color: AppColors.textBlueStrong,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -2348,7 +2349,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           Text(
             'Diagnosis: ${diagnosis.isEmpty ? '-' : diagnosis}',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2356,7 +2357,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           Text(
             'Chief Complaints: ${chiefComplaints.isEmpty ? '-' : chiefComplaints}',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2364,7 +2365,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           Text(
             'Treatment: ${treatments.isEmpty ? '-' : treatments}',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2372,7 +2373,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           Text(
             'Doctor: $doctorSummary',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2380,7 +2381,7 @@ class TodayAppointmentInsightCard extends StatelessWidget {
           Text(
             'Teeth: ${teethSummary.isEmpty ? '-' : teethSummary}',
             style: const TextStyle(
-              color: Color(0xFF5B7394),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2404,7 +2405,7 @@ class _CompactTimelineTable extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FBFF),
+        color: AppColors.slate504,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -2413,7 +2414,7 @@ class _CompactTimelineTable extends StatelessWidget {
           const Text(
             'Patient Timeline',
             style: TextStyle(
-              color: Color(0xFF223B5E),
+              color: AppColors.blue7508,
               fontWeight: FontWeight.w800,
               fontSize: 15,
             ),
@@ -2423,7 +2424,7 @@ class _CompactTimelineTable extends StatelessWidget {
             const Text(
               'No timeline entries available.',
               style: TextStyle(
-                color: Color(0xFF5B7394),
+                color: AppColors.textBlueMuted,
                 fontWeight: FontWeight.w600,
               ),
             )
@@ -2775,19 +2776,19 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   }
 
   ButtonStyle _pillStyle(
-      {required bool selected, Color accent = const Color(0xFF2D7BD8)}) {
+      {required bool selected, Color accent = AppColors.brandBlue}) {
     return ButtonStyle(
       padding: WidgetStateProperty.all(
         const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       ),
       backgroundColor: WidgetStateProperty.all(
-        selected ? accent.withValues(alpha: 0.12) : const Color(0xFFF8FBFF),
+        selected ? accent.withValues(alpha: 0.12) : AppColors.slate504,
       ),
       shape: WidgetStateProperty.all(
         RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(
-            color: selected ? accent : const Color(0xFFD8E3F1),
+            color: selected ? accent : AppColors.violet1509,
           ),
         ),
       ),
@@ -3199,7 +3200,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   const Text(
                     'Treatment Cost',
                     style: TextStyle(
-                      color: Color(0xFF355279),
+                      color: AppColors.textBlueStrong,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -3229,7 +3230,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       padding: EdgeInsets.only(left: 10),
                       child:
                             Text(_rupeeSymbol,
-                              style: const TextStyle(color: Color(0xFF355279))),
+                              style: const TextStyle(color: AppColors.textBlueStrong)),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -3239,7 +3240,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     children: [100, 200, 500, 1000, 2000, 2500]
                         .map(
                           (v) => AppButton(
-                            label: '?$v',
+                            label: '₹$v',
                             compact: false,
                             variant: AppButtonVariant.secondary,
                             onPressed: () {
@@ -3257,7 +3258,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       const Text(
                         'Enable Discount',
                         style: TextStyle(
-                          color: Color(0xFF355279),
+                          color: AppColors.textBlueStrong,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -3358,7 +3359,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   const Text(
                     'Amount Collected',
                     style: TextStyle(
-                      color: Color(0xFF355279),
+                      color: AppColors.textBlueStrong,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -3377,14 +3378,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       padding: EdgeInsets.only(left: 10),
                       child:
                             Text(_rupeeSymbol,
-                              style: const TextStyle(color: Color(0xFF355279))),
+                              style: const TextStyle(color: AppColors.textBlueStrong)),
                     ),
                     suffix: Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: Text(
                         '?${outstanding.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          color: Color(0xFF5A7397),
+                          color: AppColors.textBlueMuted,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -3397,7 +3398,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     children: [
                       ...[100, 200, 500, 1000, 2000, 2500].map(
                         (v) => AppButton(
-                          label: '?$v',
+                          label: '₹$v',
                           compact: false,
                           variant: AppButtonVariant.secondary,
                           onPressed: () {
@@ -3427,7 +3428,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                             const Text(
                               'Payment Mode',
                               style: TextStyle(
-                                color: Color(0xFF355279),
+                                color: AppColors.textBlueStrong,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -3463,7 +3464,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           const Text(
                             'Date',
                             style: TextStyle(
-                              color: Color(0xFF355279),
+                              color: AppColors.textBlueStrong,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -3492,7 +3493,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                   const Text(
                     'Consultant Charge',
                     style: TextStyle(
-                      color: Color(0xFF355279),
+                      color: AppColors.textBlueStrong,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -3548,7 +3549,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           prefix: const Padding(
                             padding: EdgeInsets.only(left: 10),
                             child: Text(_rupeeSymbol,
-                              style: const TextStyle(color: Color(0xFF355279))),
+                              style: const TextStyle(color: AppColors.textBlueStrong)),
                           ),
                           placeholder: 'Consultant charge',
                           onChanged: (value) {
@@ -3585,7 +3586,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                             icon: const Icon(
                               FluentIcons.share,
                               size: 18,
-                              color: Color(0xFF7C3AED),
+                              color: AppColors.accentViolet,
                             ),
                             onPressed: _openShareOptions,
                           ),
@@ -3685,14 +3686,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFF5A7397),
+              color: AppColors.textBlueMuted,
               fontWeight: FontWeight.w600,
             ),
           ),
           Text(
             value,
             style: TextStyle(
-              color: valueColor ?? const Color(0xFF2D476D),
+              color: valueColor ?? AppColors.blue7006,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -3719,24 +3720,24 @@ class EnhancedTeethPickerCard extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFF5FAFF), Color(0xFFEDF6FF)],
+          colors: [AppColors.slate502, AppColors.violet1008],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD4E6FA)),
+        border: Border.all(color: AppColors.violet1504),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(FluentIcons.accounts, size: 13, color: Color(0xFF2D7BD8)),
+              Icon(FluentIcons.accounts, size: 13, color: AppColors.brandBlue),
               SizedBox(width: 6),
               Text(
                 'Teeth Map (Enhanced)',
                 style: TextStyle(
-                  color: Color(0xFF2C4E76),
+                  color: AppColors.blue7005,
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),

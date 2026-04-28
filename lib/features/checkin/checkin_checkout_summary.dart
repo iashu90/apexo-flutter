@@ -115,9 +115,9 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FBFF),
+          color: AppColors.slate504,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFDCE8F8)),
+          border: Border.all(color: AppColors.borderBlueSoft),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,7 +128,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                   child: Text(
                     title,
                     style: const TextStyle(
-                      color: Color(0xFF2D476D),
+                      color: AppColors.blue7006,
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
@@ -157,22 +157,22 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F7FF),
+                      color: AppColors.slate1007,
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFBDD4F2)),
+                      border: Border.all(color: AppColors.violet200),
                     ),
                     child: Row(
                       children: [
-                        const Text('Doctor: ', style: TextStyle(color: Color(0xFF4B6488), fontWeight: FontWeight.w700, fontSize: 13)),
+                        const Text('Doctor: ', style: TextStyle(color: AppColors.blue6004, fontWeight: FontWeight.w700, fontSize: 13)),
                         Expanded(
                           child: Text(
                             resolvedDoctorNames.isEmpty ? '-' : resolvedDoctorNames.join(', '),
-                            style: const TextStyle(color: Color(0xFF1F3C5E), fontWeight: FontWeight.w700, fontSize: 13),
+                            style: const TextStyle(color: AppColors.blue7504, fontWeight: FontWeight.w700, fontSize: 13),
                           ),
                         ),
-                        const Icon(FluentIcons.edit, size: 12, color: Color(0xFF5A7FAD)),
+                        const Icon(FluentIcons.edit, size: 12, color: AppColors.blue5002),
                         const SizedBox(width: 4),
-                        const Text('Change', style: TextStyle(color: Color(0xFF2D7BD8), fontWeight: FontWeight.w600, fontSize: 12)),
+                        const Text('Change', style: TextStyle(color: AppColors.brandBlue, fontWeight: FontWeight.w600, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -199,9 +199,9 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
+                color: AppColors.slate10013,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFF4C4CB)),
+                border: Border.all(color: AppColors.amber2003),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,7 +209,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                   const Icon(
                     FluentIcons.warning,
                     size: 14,
-                    color: Color(0xFFD6455D),
+                    color: AppColors.dangerRose,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -219,7 +219,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                         const Text(
                           'Previous Balance',
                           style: TextStyle(
-                            color: Color(0xFFD6455D),
+                            color: AppColors.dangerRose,
                             fontWeight: FontWeight.w800,
                             fontSize: 12,
                           ),
@@ -228,7 +228,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                         Text(
                           '₹${displayedOutstanding.toStringAsFixed(0)}',
                           style: const TextStyle(
-                            color: Color(0xFFB42336),
+                            color: AppColors.rose700,
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
                           ),
@@ -250,12 +250,12 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
                     : a.discountType == 'percent'
                         ? '-${a.discount.toStringAsFixed(0)}%'
                         : '-₹${a.discount.toStringAsFixed(0)}',
-                valueColor: const Color(0xFFD6455D),
+                valueColor: AppColors.dangerRose,
               ),
               _checkoutSummaryLine(
                 'Discounted Total',
                 '₹${discountedTotal.toStringAsFixed(0)}',
-                valueColor: const Color(0xFF1459AD),
+                valueColor: AppColors.brandBlueDark,
               ),
             ],
             _checkoutSummaryLine(
@@ -265,7 +265,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
             _checkoutSummaryLine(
               'Today Balance',
               '₹${todayBalance.toStringAsFixed(0)}',
-              valueColor: const Color(0xFFD6455D),
+              valueColor: AppColors.dangerRose,
             ),
             const Divider(direction: Axis.horizontal),
             const SizedBox(height: 8),
@@ -278,16 +278,16 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: status == 'PAID'
-                    ? const Color(0xFFDCFCE7)
-                    : const Color(0xFFFFF1F2),
+                    ? AppColors.green100
+                    : AppColors.slate10013,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
                 status,
                 style: TextStyle(
                   color: status == 'PAID'
-                      ? const Color(0xFF16A34A)
-                      : const Color(0xFFD6455D),
+                      ? AppColors.green500
+                      : AppColors.dangerRose,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -308,14 +308,14 @@ Widget _checkoutSummaryLine(String label, String value, {Color? valueColor}) {
         Text(
           label,
           style: const TextStyle(
-            color: Color(0xFF5A7397),
+            color: AppColors.textBlueMuted,
             fontWeight: FontWeight.w600,
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            color: valueColor ?? const Color(0xFF2D476D),
+            color: valueColor ?? AppColors.blue7006,
             fontWeight: FontWeight.w700,
           ),
         ),

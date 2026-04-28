@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_financials.dart';
@@ -11,6 +12,7 @@ import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/features/stats/widgets/charts/bar.dart';
 import 'package:apexo/utils/appointment_analytics.dart';
 import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
@@ -113,14 +115,14 @@ class _ReportScreenState extends State<ReportScreen> {
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFF12355F),
+                                    color: AppColors.blue800,
                                   ),
                                 ),
                                 SizedBox(height: 2),
                                 Text(
                                   'Compact analytics view',
                                   style: TextStyle(
-                                    color: Color(0xFF5A7397),
+                                    color: AppColors.textBlueMuted,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -232,7 +234,7 @@ class _ReportSkeletonCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: FluentTheme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E3F0)),
+        border: Border.all(color: AppColors.borderSoft),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -243,7 +245,7 @@ class _ReportSkeletonCard extends StatelessWidget {
               width: 180,
               height: 14,
               decoration: BoxDecoration(
-                color: const Color(0xFFE4ECF7),
+                color: AppColors.violet1003,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -252,7 +254,7 @@ class _ReportSkeletonCard extends StatelessWidget {
               width: double.infinity,
               height: 10,
               decoration: BoxDecoration(
-                color: const Color(0xFFE8EEF8),
+                color: AppColors.slate100,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -261,7 +263,7 @@ class _ReportSkeletonCard extends StatelessWidget {
               width: double.infinity,
               height: 10,
               decoration: BoxDecoration(
-                color: const Color(0xFFE8EEF8),
+                color: AppColors.slate100,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -270,7 +272,7 @@ class _ReportSkeletonCard extends StatelessWidget {
               width: width * 0.5,
               height: 10,
               decoration: BoxDecoration(
-                color: const Color(0xFFE8EEF8),
+                color: AppColors.slate100,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -437,15 +439,15 @@ class _ReportGenderDistributionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Total: $total', style: const TextStyle(color: Color(0xFF5A7397))),
+          Text('Total: $total', style: const TextStyle(color: AppColors.textBlueMuted)),
           const SizedBox(height: 8),
-          _distributionLine('Male', male, malePct, const Color(0xFF2D7BD8)),
+          _distributionLine('Male', male, malePct, AppColors.brandBlue),
           const SizedBox(height: 8),
           _distributionLine(
             'Female',
             female,
             femalePct,
-            const Color(0xFF2BA58D),
+            AppColors.successTeal,
           ),
         ],
       ),
@@ -461,7 +463,7 @@ class _ReportGenderDistributionCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: Container(
               height: 8,
-              color: const Color(0xFFEAF2FC),
+              color: AppColors.violet1005,
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
                 widthFactor: ratio.clamp(0.0, 1.0),
@@ -545,7 +547,7 @@ class _ReportAgeDistributionCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
                       height: 8,
-                      color: const Color(0xFFEAF2FC),
+                      color: AppColors.violet1005,
                       child: FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: ratio.clamp(0.0, 1.0),
@@ -557,14 +559,14 @@ class _ReportAgeDistributionCard extends StatelessWidget {
                                     Expanded(
                                       flex: entry.value.male,
                                       child: Container(
-                                        color: const Color(0xFF2D7BD8),
+                                        color: AppColors.brandBlue,
                                       ),
                                     ),
                                   if (entry.value.female > 0)
                                     Expanded(
                                       flex: entry.value.female,
                                       child: Container(
-                                        color: const Color(0xFF2BA58D),
+                                        color: AppColors.successTeal,
                                       ),
                                     ),
                                 ],
@@ -797,7 +799,7 @@ class _ReportDoctorAppointmentDoneCardState
                 child: _summaryTile(
                   value: '$totalDone',
                   label: 'Appointments',
-                  color: const Color(0xFF2D7BD8),
+                  color: AppColors.brandBlue,
                 ),
               ),
               const SizedBox(width: 8),
@@ -805,7 +807,7 @@ class _ReportDoctorAppointmentDoneCardState
                 child: _summaryTile(
                   value: formatIndianShortCurrency(totalRevenue),
                   label: 'Revenue',
-                  color: const Color(0xFF2D7BD8),
+                  color: AppColors.brandBlue,
                 ),
               ),
               const SizedBox(width: 8),
@@ -813,7 +815,7 @@ class _ReportDoctorAppointmentDoneCardState
                 child: _summaryTile(
                   value: formatIndianShortCurrency(totalFee),
                   label: 'Doctor Fee',
-                  color: const Color(0xFFD6455D),
+                  color: AppColors.dangerRose,
                 ),
               ),
               const SizedBox(width: 8),
@@ -821,7 +823,7 @@ class _ReportDoctorAppointmentDoneCardState
                 child: _summaryTile(
                   value: formatIndianShortCurrency(totalNet),
                   label: 'Net Profit',
-                  color: const Color(0xFF2BA58D),
+                  color: AppColors.successTeal,
                 ),
               ),
               const SizedBox(width: 8),
@@ -829,7 +831,7 @@ class _ReportDoctorAppointmentDoneCardState
                 child: _summaryTile(
                   value: '${totalProfitPct.toStringAsFixed(1)}%',
                   label: '%',
-                  color: const Color(0xFF355279),
+                  color: AppColors.textBlueStrong,
                 ),
               ),
             ],
@@ -872,13 +874,13 @@ class _ReportDoctorAppointmentDoneCardState
           if (rows.isEmpty)
             const Text(
               'No completion data in selected range.',
-              style: TextStyle(color: Color(0xFF6D84A8)),
+              style: TextStyle(color: AppColors.blue5004),
             )
           else
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFDCE8F6)),
+                border: Border.all(color: AppColors.borderBlueSoft),
               ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -892,7 +894,7 @@ class _ReportDoctorAppointmentDoneCardState
                           vertical: 8,
                         ),
                         decoration: const BoxDecoration(
-                          color: Color(0xFFEFF5FF),
+                          color: AppColors.surfaceBlueSoft,
                         ),
                         child: const Row(
                           children: [
@@ -901,7 +903,7 @@ class _ReportDoctorAppointmentDoneCardState
                               child: Text(
                                 'Doctor',
                                 style: TextStyle(
-                                  color: Color(0xFF355279),
+                                  color: AppColors.textBlueStrong,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
@@ -912,7 +914,7 @@ class _ReportDoctorAppointmentDoneCardState
                               child: Text(
                                 'Appointments',
                                 style: TextStyle(
-                                  color: Color(0xFF355279),
+                                  color: AppColors.textBlueStrong,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
@@ -923,7 +925,7 @@ class _ReportDoctorAppointmentDoneCardState
                               child: Text(
                                 'Revenue',
                                 style: TextStyle(
-                                  color: Color(0xFF355279),
+                                  color: AppColors.textBlueStrong,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
@@ -934,7 +936,7 @@ class _ReportDoctorAppointmentDoneCardState
                               child: Text(
                                 'Doctor Fee',
                                 style: TextStyle(
-                                  color: Color(0xFF355279),
+                                  color: AppColors.textBlueStrong,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
@@ -945,7 +947,7 @@ class _ReportDoctorAppointmentDoneCardState
                               child: Text(
                                 'Net Profit',
                                 style: TextStyle(
-                                  color: Color(0xFF355279),
+                                  color: AppColors.textBlueStrong,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
@@ -956,7 +958,7 @@ class _ReportDoctorAppointmentDoneCardState
                               child: Text(
                                 '%',
                                 style: TextStyle(
-                                  color: Color(0xFF355279),
+                                  color: AppColors.textBlueStrong,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
@@ -973,7 +975,7 @@ class _ReportDoctorAppointmentDoneCardState
                           ),
                           decoration: const BoxDecoration(
                             border: Border(
-                              top: BorderSide(color: Color(0xFFE2ECF8)),
+                              top: BorderSide(color: AppColors.violet1002),
                             ),
                           ),
                           child: Row(
@@ -984,7 +986,7 @@ class _ReportDoctorAppointmentDoneCardState
                                   row.doctor.title,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    color: Color(0xFF1F446E),
+                                    color: AppColors.blue7505,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -995,7 +997,7 @@ class _ReportDoctorAppointmentDoneCardState
                                 child: Text(
                                   '${row.done}',
                                   style: const TextStyle(
-                                    color: Color(0xFF1F2B40),
+                                    color: AppColors.blue8003,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -1006,7 +1008,7 @@ class _ReportDoctorAppointmentDoneCardState
                                 child: Text(
                                   formatIndianShortCurrency(row.revenue),
                                   style: const TextStyle(
-                                    color: Color(0xFF2D7BD8),
+                                    color: AppColors.brandBlue,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -1017,7 +1019,7 @@ class _ReportDoctorAppointmentDoneCardState
                                 child: Text(
                                   formatIndianShortCurrency(row.fee),
                                   style: const TextStyle(
-                                    color: Color(0xFFD6455D),
+                                    color: AppColors.dangerRose,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -1029,8 +1031,8 @@ class _ReportDoctorAppointmentDoneCardState
                                   formatIndianShortCurrency(row.hospitalGained),
                                   style: TextStyle(
                                     color: row.hospitalGained < 0
-                                        ? const Color(0xFFD6455D)
-                                        : const Color(0xFF2BA58D),
+                                        ? AppColors.dangerRose
+                                        : AppColors.successTeal,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -1041,7 +1043,7 @@ class _ReportDoctorAppointmentDoneCardState
                                 child: Text(
                                   '${row.profitPct.toStringAsFixed(1)}%',
                                   style: const TextStyle(
-                                    color: Color(0xFF355279),
+                                    color: AppColors.textBlueStrong,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -1069,9 +1071,9 @@ class _ReportDoctorAppointmentDoneCardState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F7FF),
+        color: AppColors.slate1009,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFDCE8F6)),
+        border: Border.all(color: AppColors.borderBlueSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1089,7 +1091,7 @@ class _ReportDoctorAppointmentDoneCardState
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFF4D6488),
+              color: AppColors.blue6005,
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
@@ -1174,15 +1176,15 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
             spacing: 10,
             runSpacing: 8,
             children: [
-              _pill('New', '$newCount', const Color(0xFF2D7BD8)),
-              _pill('Returning', '$returningCount', const Color(0xFF2BA58D)),
-              _pill('Total', '$total', const Color(0xFF5A7397)),
+              _pill('New', '$newCount', AppColors.brandBlue),
+              _pill('Returning', '$returningCount', AppColors.successTeal),
+              _pill('Total', '$total', AppColors.textBlueMuted),
             ],
           ),
           const SizedBox(height: 12),
-          _ratioBar('New', newPct, const Color(0xFF2D7BD8)),
+          _ratioBar('New', newPct, AppColors.brandBlue),
           const SizedBox(height: 8),
-          _ratioBar('Returning', returningPct, const Color(0xFF2BA58D)),
+          _ratioBar('Returning', returningPct, AppColors.successTeal),
         ],
       ),
     );
@@ -1192,9 +1194,9 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6FAFF),
+        color: AppColors.slate503,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFDCE8F6)),
+        border: Border.all(color: AppColors.borderBlueSoft),
       ),
       child: Text(
         '$label: $value',
@@ -1215,7 +1217,7 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
           child: Text(
             label,
             style: const TextStyle(
-              color: Color(0xFF36557C),
+              color: AppColors.textBlueStrong,
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
@@ -1226,7 +1228,7 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
             borderRadius: BorderRadius.circular(8),
             child: Container(
               height: 10,
-              color: const Color(0xFFEAF2FC),
+              color: AppColors.violet1005,
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
                 widthFactor: (pct / 100).clamp(0.0, 1.0),
@@ -1239,7 +1241,7 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
         Text(
           '${pct.toStringAsFixed(1)}%',
           style: const TextStyle(
-            color: Color(0xFF36557C),
+            color: AppColors.textBlueStrong,
             fontWeight: FontWeight.w700,
             fontSize: 12,
           ),
@@ -1269,12 +1271,12 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
     final distributionRows = _treatmentDistributionRows(scoped);
     final total = distributionRows.fold<int>(0, (s, e) => s + e.value);
     const colors = [
-      Color(0xFF2D7BD8),
-      Color(0xFF2BA58D),
-      Color(0xFFE09C31),
-      Color(0xFF7D8FA7),
-      Color(0xFFD6455D),
-      Color(0xFF8D5CF6),
+      AppColors.brandBlue,
+      AppColors.successTeal,
+      AppColors.amber400,
+      AppColors.violet4502,
+      AppColors.dangerRose,
+      AppColors.violet5502,
     ];
 
     return SizedBox(
@@ -1289,7 +1291,7 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'No treatment data for this month.',
-                    style: TextStyle(color: Color(0xFF6D84A8)),
+                    style: TextStyle(color: AppColors.blue5004),
                   ),
                 )
               : Row(
@@ -1308,7 +1310,7 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
                             child: Text(
                               '$total',
                               style: const TextStyle(
-                                color: Color(0xFF1D3E67),
+                                color: AppColors.blue7502,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -1343,7 +1345,7 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        color: Color(0xFF36557C),
+                                        color: AppColors.textBlueStrong,
                                         fontWeight: FontWeight.w700,
                                         fontSize: 12,
                                       ),
@@ -1436,13 +1438,13 @@ class _FilterChips extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: selected == range
-                          ? const Color(0xFF2D7BD8)
-                          : const Color(0xFFEFF4FB),
+                          ? AppColors.brandBlue
+                          : AppColors.slate1004,
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
                         color: selected == range
-                            ? const Color(0xFF2D7BD8)
-                            : const Color(0xFFD6E2F0),
+                            ? AppColors.brandBlue
+                            : AppColors.violet1506,
                       ),
                     ),
                     child: Text(
@@ -1450,7 +1452,7 @@ class _FilterChips extends StatelessWidget {
                       style: TextStyle(
                         color: selected == range
                             ? Colors.white
-                            : const Color(0xFF355279),
+                            : AppColors.textBlueStrong,
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                       ),
@@ -1554,9 +1556,9 @@ class _DailyAppointmentsGrossTrendCardState
         children: [
           const Row(
             children: [
-              _LegendDot(color: Color(0xFF2D7BD8), label: 'Appointments'),
+              _LegendDot(color: AppColors.brandBlue, label: 'Appointments'),
               SizedBox(width: 10),
-              _LegendDot(color: Color(0xFF2BA58D), label: 'Gross Revenue'),
+              _LegendDot(color: AppColors.successTeal, label: 'Gross Revenue'),
             ],
           ),
           const SizedBox(height: 8),
@@ -1584,7 +1586,7 @@ class _DailyAppointmentsGrossTrendCardState
                                           .clamp(3, 100)
                                           .toDouble(),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF2D7BD8),
+                                        color: AppColors.brandBlue,
                                         borderRadius: BorderRadius.circular(3),
                                       ),
                                     ),
@@ -1596,7 +1598,7 @@ class _DailyAppointmentsGrossTrendCardState
                                           .clamp(3, 100)
                                           .toDouble(),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF2BA58D),
+                                        color: AppColors.successTeal,
                                         borderRadius: BorderRadius.circular(3),
                                       ),
                                     ),
@@ -1607,7 +1609,7 @@ class _DailyAppointmentsGrossTrendCardState
                               Text(
                                 point.label,
                                 style: const TextStyle(
-                                  color: Color(0xFF5A7397),
+                                  color: AppColors.textBlueMuted,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 10,
                                 ),
@@ -1650,7 +1652,7 @@ class _LegendDot extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            color: Color(0xFF36557C),
+            color: AppColors.textBlueStrong,
             fontWeight: FontWeight.w700,
             fontSize: 11,
           ),
@@ -1829,7 +1831,7 @@ class _DailyAppointmentsTrendWindowCard extends StatelessWidget {
         title: 'Appointment Trend (Daily)',
         subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
         rows: points,
-        barColor: const Color(0xFF2D7BD8),
+        barColor: AppColors.brandBlue,
         trailing: _TrendNavButtons(
           canGoForward: monthOffset > 0,
           onBack: onBack,
@@ -1876,7 +1878,7 @@ class _MonthlyAppointmentsTrendWindowCard extends StatelessWidget {
         subtitle:
             '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
-        barColor: const Color(0xFF2BA58D),
+        barColor: AppColors.successTeal,
       ),
     );
   }
@@ -1921,7 +1923,7 @@ class _DailyRevenueTrendWindowCard extends StatelessWidget {
         title: 'Gross Revenue Trend (Daily)',
         subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
         rows: points,
-        barColor: const Color(0xFF1468CC),
+        barColor: AppColors.blue600,
         valueFormatter: formatIndianShortCurrency,
         verticalValueLabels: true,
         trailing: _TrendNavButtons(
@@ -1969,7 +1971,7 @@ class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
         subtitle:
             '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
-        barColor: const Color(0xFF2D7BD8),
+        barColor: AppColors.brandBlue,
         valueFormatter: formatIndianShortCurrency,
         showValueLabels: false,
       ),
@@ -2012,7 +2014,7 @@ class _MonthlyExpensesTrendWindowCard extends StatelessWidget {
         subtitle:
             '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
-        barColor: const Color(0xFFD6455D),
+        barColor: AppColors.dangerRose,
         valueFormatter: formatIndianShortCurrency,
         showValueLabels: false,
       ),
@@ -2061,7 +2063,7 @@ class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
         subtitle:
             '${formatClinicDate(starts.first, pattern: 'MMM yyyy')} - ${formatClinicDate(starts.last, pattern: 'MMM yyyy')}',
         rows: points,
-        barColor: const Color(0xFF2BA58D),
+        barColor: AppColors.successTeal,
         valueFormatter: formatIndianShortCurrency,
         showValueLabels: false,
       ),
@@ -2139,16 +2141,16 @@ class _PaymentModeStatusCard extends StatelessWidget {
               label: 'UPI',
               count: upiCount,
               pct: upiPct,
-              fg: const Color(0xFF1F4B8F),
-              bg: const Color(0xFFEAF2FF),
+              fg: AppColors.blue700,
+              bg: AppColors.violet1006,
             ),
             const SizedBox(height: 8),
             modeRow(
               label: 'Cash',
               count: cashCount,
               pct: cashPct,
-              fg: const Color(0xFF8A5A00),
-              bg: const Color(0xFFFFF4D9),
+              fg: AppColors.rose600,
+              bg: AppColors.amber1002,
             ),
           ],
         ),
@@ -2171,12 +2173,12 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
       ..sort((a, b) => b.value.compareTo(a.value));
     final total = rows.fold<int>(0, (sum, e) => sum + e.value);
     const colors = [
-      Color(0xFF2D7BD8),
-      Color(0xFF2BA58D),
-      Color(0xFFE09C31),
-      Color(0xFFD6455D),
-      Color(0xFF7D8FA7),
-      Color(0xFF8D5CF6),
+      AppColors.brandBlue,
+      AppColors.successTeal,
+      AppColors.amber400,
+      AppColors.dangerRose,
+      AppColors.violet4502,
+      AppColors.violet5502,
     ];
 
     return SizedBox(
@@ -2191,7 +2193,7 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'No referral source data found.',
-                    style: TextStyle(color: Color(0xFF6D84A8)),
+                    style: TextStyle(color: AppColors.blue5004),
                   ),
                 )
               : Row(
@@ -2207,7 +2209,7 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
                             child: Text(
                               '$total',
                               style: const TextStyle(
-                                color: Color(0xFF1D3E67),
+                                color: AppColors.blue7502,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -2242,7 +2244,7 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        color: Color(0xFF36557C),
+                                        color: AppColors.textBlueStrong,
                                         fontWeight: FontWeight.w700,
                                         fontSize: 12,
                                       ),
@@ -2320,7 +2322,7 @@ class _ReportMonthNavigator extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFD7E3F0)),
+        border: Border.all(color: AppColors.borderSoft),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2337,7 +2339,7 @@ class _ReportMonthNavigator extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFF36557C),
+              color: AppColors.textBlueStrong,
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),
@@ -2380,7 +2382,8 @@ class _SimpleBarsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final max = rows.fold<double>(1, (m, row) => row.value > m ? row.value : m);
+    final labels = rows.map((row) => row.label).toList(growable: false);
+    final values = rows.map((row) => row.value).toList(growable: false);
 
     return _ReportContainer(
       title: title,
@@ -2388,81 +2391,10 @@ class _SimpleBarsCard extends StatelessWidget {
       trailing: trailing,
       child: SizedBox(
         height: 250,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: rows
-              .asMap()
-              .entries
-              .map(
-                (entry) => Expanded(
-                  child: Tooltip(
-                    message:
-                        '${entry.value.label}: ${valueFormatter == null ? entry.value.value.toStringAsFixed(0) : valueFormatter!(entry.value.value)}',
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (showValueLabels &&
-                              !verticalValueLabels &&
-                              entry.value.value > 0)
-                            Text(
-                              valueFormatter == null
-                                  ? entry.value.value.toStringAsFixed(0)
-                                  : valueFormatter!(entry.value.value),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF36557C),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 10,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          if (showValueLabels &&
-                              verticalValueLabels &&
-                              entry.value.value > 0)
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                valueFormatter == null
-                                    ? entry.value.value.toStringAsFixed(0)
-                                    : valueFormatter!(entry.value.value),
-                                maxLines: 1,
-                                style: const TextStyle(
-                                  color: Color(0xFF36557C),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 9,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          const SizedBox(height: 3),
-                          Container(
-                            height: (145 * (entry.value.value / max))
-                                .clamp(0, 145)
-                                .toDouble(),
-                            decoration: BoxDecoration(
-                              color: barColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            entry.value.label,
-                            style: const TextStyle(
-                              color: Color(0xFF5A7397),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              )
-              .toList(growable: false),
+        child: StyledBarChart(
+          labels: labels,
+          yAxis: values,
+          accentColor: barColor,
         ),
       ),
     );
@@ -2556,7 +2488,7 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
                                       : '',
                                   style: const TextStyle(
                                     fontSize: 10,
-                                    color: Color(0xFF36557C),
+                                    color: AppColors.textBlueStrong,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -2572,7 +2504,7 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
                                       .clamp(4, 120)
                                       .toDouble(),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF2D7BD8),
+                                    color: AppColors.brandBlue,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
@@ -2582,7 +2514,7 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontSize: 10,
-                                    color: Color(0xFF5A7397),
+                                    color: AppColors.textBlueMuted,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -2680,7 +2612,7 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
                                       ? point.value.toStringAsFixed(0)
                                       : '',
                                   style: const TextStyle(
-                                    color: Color(0xFF36557C),
+                                    color: AppColors.textBlueStrong,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 10,
                                   ),
@@ -2691,7 +2623,7 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
                                       .clamp(4, 130)
                                       .toDouble(),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF2BA58D),
+                                    color: AppColors.successTeal,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
@@ -2699,7 +2631,7 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
                                 Text(
                                   point.label,
                                   style: const TextStyle(
-                                    color: Color(0xFF5A7397),
+                                    color: AppColors.textBlueMuted,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 11,
                                   ),
@@ -2739,10 +2671,10 @@ class _ReportContainer extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFD7E3F0)),
+        border: Border.all(color: AppColors.borderSoft),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x160D2F5B),
+            color: AppColors.overlay22,
             blurRadius: 10,
             offset: Offset(0, 2),
           ),
@@ -2758,7 +2690,7 @@ class _ReportContainer extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF183A67),
+                    color: AppColors.blue750,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -2771,7 +2703,7 @@ class _ReportContainer extends StatelessWidget {
             Text(
               subtitle!,
               style: const TextStyle(
-                color: Color(0xFF5A7397),
+                color: AppColors.textBlueMuted,
                 fontWeight: FontWeight.w700,
                 fontSize: 11,
               ),
