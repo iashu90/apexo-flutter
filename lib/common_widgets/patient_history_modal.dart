@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patient_report.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/utils/pdf_export_layout.dart';
 import 'package:apexo/utils/share_actions.dart';
@@ -107,6 +108,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
   bool _sortAscending = false;
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
+  StreamSubscription<dynamic>? _appointmentsSubscription;
 
   String? _bestEditableAppointmentId([_LedgerRowData? preferred]) {
     if (preferred?.appointmentId != null &&
@@ -384,7 +386,9 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
             phone: widget.patient.phone.trim().isEmpty
                 ? '-'
                 : widget.patient.phone,
-            doctor: 'Dr Nowfar',
+            doctor: firstRow == null || firstRow.doctor.trim().isEmpty
+                ? '-'
+                : firstRow.doctor,
             age: '${widget.patient.age}',
             gender: widget.patient.gender == 1 ? 'Male' : 'Female',
           ),
@@ -428,7 +432,8 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
   }
 
   List<_LedgerRowData> get _allRows {
-    return widget.rows.asMap().entries.map((entry) {
+    final liveRows = widget.patient.patientDetails;
+    return liveRows.asMap().entries.map((entry) {
       final row = entry.value;
       final modeRaw = row.treatmentPaymentMode.trim().isEmpty
           ? (row.preceptionPaymentMode.trim().isEmpty
@@ -442,7 +447,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
         date: row.date,
         tooth: row.teeth.trim().isEmpty ? '-' : row.teeth,
         treatment: row.treatment.trim().isEmpty ? '-' : row.treatment,
-        doctor: 'Dr Nowfar',
+        doctor: row.doctorName.trim().isEmpty ? '-' : row.doctorName,
         cost: _toAmount(row.cost),
         paid: _toAmount(row.paid),
         mode: mode,
@@ -767,10 +772,15 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });
+    _appointmentsSubscription =
+        appointments.observableMap.stream.listen((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _appointmentsSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -962,7 +972,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Patient ID: ${widget.patient.id}  •  Phone: ${widget.patient.phone.trim().isEmpty ? '-' : widget.patient.phone}  •  Last Visit: $lastVisit  •  Doctor: Dr Nowfar',
+                        'Patient ID: ${widget.patient.id}  •  Phone: ${widget.patient.phone.trim().isEmpty ? '-' : widget.patient.phone}  •  Last Visit: $lastVisit',
                         style: const TextStyle(
                           color: Color(0xFF64748B),
                           fontWeight: FontWeight.w600,
@@ -978,38 +988,16 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                   alignment: WrapAlignment.end,
                   children: [
                     if (widget.onEditTreatment != null)
-                      AppButton(
-                        label: 'Edit Treatment',
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () {
-                          final callback = widget.onEditTreatment;
-                          final appointmentId = _bestEditableAppointmentId();
-                          if (callback == null ||
-                              appointmentId == null ||
-                              appointmentId.trim().isEmpty) {
-                            return;
-                          }
-                          unawaited(callback(appointmentId));
-                        },
-                      ),
                     AppButton(
                       label: 'Share',
                       variant: AppButtonVariant.secondary,
                       onPressed: _openShareOptions,
                     ),
-                    ExportFileActionButton(
-                      type: ExportFileType.csv,
-                      busy: _isExportingCsv,
-                      onPressed: _isExportingCsv || _isExportingPdf
-                          ? null
-                          : _exportCsv,
-                    ),
-                    ExportFileActionButton(
-                      type: ExportFileType.pdf,
-                      busy: _isExportingPdf,
-                      onPressed: _isExportingCsv || _isExportingPdf
-                          ? null
-                          : _exportPdf,
+                    ExportButtons(
+                      csvBusy: _isExportingCsv,
+                      pdfBusy: _isExportingPdf,
+                      onCsv: (_isExportingCsv || _isExportingPdf) ? null : _exportCsv,
+                      onPdf: (_isExportingCsv || _isExportingPdf) ? null : _exportPdf,
                     ),
                   ],
                 ),

@@ -606,6 +606,7 @@ class ReportDetailRow {
   final String preceptionPaymentMode;
   final String doctorPaid;
   final String doctorTotalPay;
+  final String doctorName;
 
   ReportDetailRow({
     this.appointmentId,
@@ -621,5 +622,6 @@ class ReportDetailRow {
     this.preceptionPaymentMode = '',
     this.doctorPaid = '',
     this.doctorTotalPay = '',
+    this.doctorName = '',
   });
 }

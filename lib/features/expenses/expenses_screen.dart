@@ -1,11 +1,11 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
-import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
 import 'package:apexo/core/ui/components/app_pagination.dart';
-import 'package:apexo/core/ui/components/app_search_field.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -34,6 +34,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _paymentFilter = 'all';
   String _statusFilter = 'all';
   String _rangeFilter = 'month';
+  String _quickFilter = 'this_month';
+  String _doctorIdFilter = 'all';
+  String _amountFilter = 'all';
   DateTime _monthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _fromDate;
@@ -44,7 +47,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
   bool _recurringOnly = false;
-  OverlayEntry? _expenseDetailsOverlay;
 
   static const int _pageSize = 10;
   static const List<String> _defaultExpenseCategories = [
@@ -97,62 +99,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   @override
   void dispose() {
-    _hideExpenseOverlay();
     _searchCtrl.dispose();
     super.dispose();
   }
 
   bool _isRecurringExpense(Expense expense) {
-    return expense.tags.any((tag) => tag.toLowerCase().startsWith('recurring:'));
-  }
-
-  void _hideExpenseOverlay() {
-    _expenseDetailsOverlay?.remove();
-    _expenseDetailsOverlay = null;
-  }
-
-  void _showExpenseOverlay(Expense expense) {
-    _hideExpenseOverlay();
-    final overlay = Overlay.of(context, rootOverlay: true);
-
-    _expenseDetailsOverlay = OverlayEntry(
-      builder: (overlayContext) => Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _hideExpenseOverlay,
-              child: Container(color: const Color(0x66000000)),
-            ),
-          ),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520, maxHeight: 620),
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFDCE6F2)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x22000F2A),
-                      blurRadius: 24,
-                      offset: Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: _buildDetailsPane(
-                  expense,
-                  onClose: _hideExpenseOverlay,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    overlay.insert(_expenseDetailsOverlay!);
+    return expense.tags
+        .any((tag) => tag.toLowerCase().startsWith('recurring:'));
   }
 
   @override
@@ -192,11 +145,31 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 children: [
                   _buildHeader(filtered),
                   const SizedBox(height: 12),
-                  _buildSummaryStrip(cards),
-                  const SizedBox(height: 12),
-                  _buildExpenseOverviewCard(sorted),
-                  const SizedBox(height: 12),
-                  _buildFilters(rows),
+                  // Summary strip + overview side by side (matching screenshot)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        // Add this
+                        flex:
+                            66, // Adjust this ratio so it balances with the 34 below
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSummaryStrip(cards),
+                            const SizedBox(height: 12),
+                            _buildFilters(rows),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 34,
+                        child: _buildExpenseOverviewCard(sorted),
+                      ),
+                    ],
+                  ),
+
                   const SizedBox(height: 12),
                   Expanded(
                     child: _buildTableCard(
@@ -218,15 +191,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget _buildHeader(List<Expense> rows) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF6FAFF), Color(0xFFEAF3FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: const Color(0xFFD5E4F8)),
-      ),
       child: Row(
         children: [
           const Expanded(
@@ -252,18 +216,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ],
             ),
           ),
-          ExportFileActionButton(
-            type: ExportFileType.csv,
-            busy: _isExportingCsv,
-            onPressed:
-                (_isExportingCsv || rows.isEmpty) ? null : () => _exportCsv(rows),
-          ),
-          const SizedBox(width: 8),
-          ExportFileActionButton(
-            type: ExportFileType.pdf,
-            busy: _isExportingPdf,
-            onPressed:
-                (_isExportingPdf || rows.isEmpty) ? null : () => _exportPdf(rows),
+          AppButton(
+            onPressed: () => _openExpenseModal(),
+            label: 'New Expense',
+            leading: const Icon(FluentIcons.add, size: 14),
           ),
           const SizedBox(width: 8),
           AppButton(
@@ -273,10 +229,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             leading: const Icon(FluentIcons.repeat_all, size: 13),
           ),
           const SizedBox(width: 8),
-          AppButton(
-            onPressed: () => _openExpenseModal(),
-            label: 'New Expense',
-            leading: const Icon(FluentIcons.add, size: 14),
+          ExportButtons(
+            csvBusy: _isExportingCsv,
+            pdfBusy: _isExportingPdf,
+            onCsv: (_isExportingCsv || rows.isEmpty)
+                ? null
+                : () => _exportCsv(rows),
+            onPdf: (_isExportingPdf || rows.isEmpty)
+                ? null
+                : () => _exportPdf(rows),
           ),
         ],
       ),
@@ -393,20 +354,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFDCE6F2)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0F0D2E59), blurRadius: 10, offset: Offset(0, 3)),
+          BoxShadow(
+              color: Color(0x0F0D2E59), blurRadius: 10, offset: Offset(0, 3)),
         ],
       ),
       child: total <= 0
           ? const Row(
               children: [
-                Icon(FluentIcons.pie_single, size: 16, color: Color(0xFF2D6EC2)),
+                Icon(FluentIcons.pie_single,
+                    size: 16, color: Color(0xFF2D6EC2)),
                 SizedBox(width: 8),
                 Text(
                   'Expense Overview',
-                  style: TextStyle(color: Color(0xFF214162), fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                      color: Color(0xFF214162), fontWeight: FontWeight.w800),
                 ),
                 SizedBox(width: 12),
-                Text('No records', style: TextStyle(color: Color(0xFF7A8FAF), fontWeight: FontWeight.w600)),
+                Text('No records',
+                    style: TextStyle(
+                        color: Color(0xFF7A8FAF), fontWeight: FontWeight.w600)),
               ],
             )
           : Row(
@@ -420,16 +386,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(FluentIcons.pie_single, size: 16, color: Color(0xFF2D6EC2)),
+                          const Icon(FluentIcons.pie_single,
+                              size: 16, color: Color(0xFF2D6EC2)),
                           const SizedBox(width: 8),
                           const Text(
                             'Expense Overview',
-                            style: TextStyle(color: Color(0xFF214162), fontWeight: FontWeight.w800, fontSize: 14),
+                            style: TextStyle(
+                                color: Color(0xFF214162),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14),
                           ),
                           const SizedBox(width: 10),
                           Text(
                             'Total ₹${NumberFormat('#,##0').format(total)}',
-                            style: const TextStyle(color: Color(0xFF5A7397), fontWeight: FontWeight.w700, fontSize: 12),
+                            style: const TextStyle(
+                                color: Color(0xFF5A7397),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12),
                           ),
                         ],
                       ),
@@ -437,7 +410,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       ...display.asMap().entries.map((entry) {
                         final idx = entry.key;
                         final item = entry.value;
-                        final pct = total > 0 ? (item.value / total * 100) : 0.0;
+                        final pct =
+                            total > 0 ? (item.value / total * 100) : 0.0;
                         final color = pieColors[idx % pieColors.length];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 6),
@@ -446,19 +420,26 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               Container(
                                 width: 12,
                                 height: 12,
-                                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                                decoration: BoxDecoration(
+                                    color: color, shape: BoxShape.circle),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   item.key,
-                                  style: const TextStyle(color: Color(0xFF243F60), fontWeight: FontWeight.w600, fontSize: 13),
+                                  style: const TextStyle(
+                                      color: Color(0xFF243F60),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               Text(
                                 '${pct.toStringAsFixed(0)}%',
-                                style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 13),
+                                style: TextStyle(
+                                    color: color,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13),
                               ),
                             ],
                           ),
@@ -479,7 +460,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       sections: display.asMap().entries.map((entry) {
                         final idx = entry.key;
                         final item = entry.value;
-                        final pct = total > 0 ? (item.value / total * 100) : 0.0;
+                        final pct =
+                            total > 0 ? (item.value / total * 100) : 0.0;
                         final color = pieColors[idx % pieColors.length];
                         return PieChartSectionData(
                           value: item.value,
@@ -580,7 +562,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             children.length,
             (i) => Expanded(
               child: Padding(
-                padding: EdgeInsets.only(right: i == children.length - 1 ? 0 : 8),
+                padding:
+                    EdgeInsets.only(right: i == children.length - 1 ? 0 : 8),
                 child: children[i],
               ),
             ),
@@ -591,14 +574,38 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Widget _buildFilters(List<Expense> allRows) {
-    final categories = [
-      'all',
-      ..._orderedExpenseCategories(),
+    final categories = ['all', ..._orderedExpenseCategories()];
+    final doctorItems = [
+      const AppDropdownItem<String>(value: 'all', label: 'Doctor'),
+      ...doctors.present.values.toList(growable: false).map((d) =>
+          AppDropdownItem<String>(
+              value: d.id,
+              label: d.title.trim().isEmpty ? 'Unnamed' : d.title)),
     ];
-    final quickCategories = _orderedExpenseCategories().take(6).toList(growable: false);
+
+    // Date range label for second row
+    String dateLabel;
+    if (_rangeFilter == 'month') {
+      dateLabel =
+          '${DateFormat('01 MMM').format(_monthAnchor)} – ${DateFormat('dd MMM yyyy').format(DateTime(_monthAnchor.year, _monthAnchor.month + 1, 0))}';
+    } else if (_rangeFilter == 'custom' &&
+        (_fromDate != null || _toDate != null)) {
+      final a = _fromDate ?? _toDate!;
+      final b = _toDate ?? _fromDate!;
+      dateLabel =
+          '${DateFormat('dd MMM').format(a)} – ${DateFormat('dd MMM yyyy').format(b)}';
+    } else if (_rangeFilter == 'today') {
+      dateLabel = 'Today';
+    } else if (_rangeFilter == 'week') {
+      dateLabel = 'This Week';
+    } else if (_rangeFilter == 'last_month') {
+      dateLabel = 'Last Month';
+    } else {
+      dateLabel = 'All Dates';
+    }
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -607,210 +614,214 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Row 1: fixed quick-filter chips
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildQuickFilterChip(label: 'All', value: 'all'),
-              ...quickCategories.map(
-                (category) => _buildQuickFilterChip(
-                  label: category,
-                  value: category,
-                ),
-              ),
+              _buildTimeChip(label: 'This Week', value: 'this_week'),
+              _buildTimeChip(label: 'This Month', value: 'this_month'),
+              _buildTimeChip(label: 'Pending Payments', value: 'pending'),
+              _buildTimeChip(label: 'Lab Expenses', value: 'lab'),
+              _buildTimeChip(label: 'Salaries', value: 'salaries'),
+              _buildTimeChip(label: 'High Value > ₹10k', value: 'high_value'),
             ],
           ),
           const SizedBox(height: 10),
+          // Row 2: dropdowns + date range + clear all
           Wrap(
             spacing: 8,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              AppSearchField(
-                hint: 'Search notes, category, doctor...',
-                controller: _searchCtrl,
-                width: 280,
-                onClear: () {
-                  _searchCtrl.clear();
-                  setState(() {
-                    _query = '';
-                    _page = 1;
-                  });
-                },
-              ),
               AppDropdownMenu<String>(
-                width: 170,
+                width: 160,
                 value: _categoryFilter,
                 items: categories
-                    .map(
-                      (v) => AppDropdownItem<String>(
-                        value: v,
-                        label: v == 'all' ? 'Category' : v,
-                      ),
-                    )
+                    .map((v) => AppDropdownItem<String>(
+                        value: v, label: v == 'all' ? 'Category' : v))
                     .toList(growable: false),
-                onChanged: (v) {
-                  setState(() {
-                    _categoryFilter = v;
-                    _page = 1;
-                  });
-                },
+                onChanged: (v) => setState(() {
+                  _categoryFilter = v;
+                  _page = 1;
+                }),
               ),
               AppDropdownMenu<String>(
                 width: 150,
                 value: _paymentFilter,
                 items: const [
-                  AppDropdownItem<String>(value: 'all', label: 'All Payments'),
-                  AppDropdownItem<String>(value: 'upi', label: 'UPI Payments'),
-                  AppDropdownItem<String>(value: 'cash', label: 'Cash Payments'),
+                  AppDropdownItem<String>(value: 'all', label: 'Payment Mode'),
+                  AppDropdownItem<String>(value: 'upi', label: 'UPI'),
+                  AppDropdownItem<String>(value: 'cash', label: 'Cash'),
                 ],
-                onChanged: (v) {
-                  setState(() {
-                    _paymentFilter = v;
-                    _page = 1;
-                  });
-                },
-              ),
-              AppDropdownMenu<String>(
-                width: 150,
-                value: _statusFilter,
-                items: const [
-                  AppDropdownItem<String>(value: 'all', label: 'All Status'),
-                  AppDropdownItem<String>(value: 'paid', label: 'Paid'),
-                  AppDropdownItem<String>(value: 'pending', label: 'Pending'),
-                  AppDropdownItem<String>(value: 'high', label: 'High Value'),
-                ],
-                onChanged: (v) {
-                  setState(() {
-                    _statusFilter = v;
-                    _page = 1;
-                  });
-                },
-              ),
-              GestureDetector(
-                onTap: () => setState(() {
-                  _recurringOnly = !_recurringOnly;
+                onChanged: (v) => setState(() {
+                  _paymentFilter = v;
                   _page = 1;
                 }),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _recurringOnly
-                        ? const Color(0xFF2D7BD8)
-                        : const Color(0xFFEFF4FB),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _recurringOnly
-                          ? const Color(0xFF2D7BD8)
-                          : const Color(0xFFD6E2F0),
-                    ),
-                  ),
-                  child: Text(
-                    'Recurring',
-                    style: TextStyle(
-                      color: _recurringOnly ? Colors.white : const Color(0xFF355279),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
               ),
               AppDropdownMenu<String>(
                 width: 160,
-                value: _rangeFilter,
+                value: _doctorIdFilter,
+                items: doctorItems,
+                onChanged: (v) => setState(() {
+                  _doctorIdFilter = v;
+                  _page = 1;
+                }),
+              ),
+              AppDropdownMenu<String>(
+                width: 150,
+                value: _amountFilter,
                 items: const [
-                  AppDropdownItem<String>(value: 'all', label: 'All Dates'),
-                  AppDropdownItem<String>(value: 'today', label: 'Today'),
-                  AppDropdownItem<String>(value: 'week', label: 'This Week'),
-                  AppDropdownItem<String>(value: 'month', label: 'Monthly'),
-                  AppDropdownItem<String>(value: 'last_month', label: 'Last Month'),
-                  AppDropdownItem<String>(value: 'custom', label: 'Custom Date'),
+                  AppDropdownItem<String>(value: 'all', label: 'Amount'),
+                  AppDropdownItem<String>(value: 'lt1000', label: '< ₹1,000'),
+                  AppDropdownItem<String>(value: '1k5k', label: '₹1k – ₹5k'),
+                  AppDropdownItem<String>(value: 'gt5000', label: '> ₹5,000'),
+                  AppDropdownItem<String>(value: 'gt10000', label: '> ₹10,000'),
                 ],
-                onChanged: (v) async {
-                  if (v == 'custom') {
-                    await _pickCustomRange();
-                    return;
-                  }
-                  setState(() {
-                    _rangeFilter = v;
-                    if (v == 'month') {
-                      _monthAnchor =
-                          DateTime(DateTime.now().year, DateTime.now().month, 1);
-                    }
-                    _fromDate = null;
-                    _toDate = null;
-                    _page = 1;
-                  });
+                onChanged: (v) => setState(() {
+                  _amountFilter = v;
+                  _page = 1;
+                }),
+              ),
+              // Date range button
+              GestureDetector(
+                onTap: () async {
+                  final options = [
+                    'All Dates',
+                    'Today',
+                    'This Week',
+                    'This Month',
+                    'Last Month',
+                    'Custom Range'
+                  ];
+                  await showDialog<void>(
+                    context: context,
+                    builder: (ctx) => ContentDialog(
+                      title: const Text('Select Date Range'),
+                      content: SizedBox(
+                        width: 300,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: options.map((opt) {
+                            return ListTile(
+                              title: Text(opt),
+                              onPressed: () async {
+                                Navigator.pop(ctx);
+                                final map = {
+                                  'All Dates': 'all',
+                                  'Today': 'today',
+                                  'This Week': 'week',
+                                  'This Month': 'month',
+                                  'Last Month': 'last_month',
+                                  'Custom Range': 'custom'
+                                };
+                                final val = map[opt]!;
+                                if (val == 'custom') {
+                                  await _pickCustomRange();
+                                  return;
+                                }
+                                setState(() {
+                                  _rangeFilter = val;
+                                  if (val == 'month')
+                                    _monthAnchor = DateTime(DateTime.now().year,
+                                        DateTime.now().month, 1);
+                                  _fromDate = null;
+                                  _toDate = null;
+                                  _page = 1;
+                                });
+                              },
+                            );
+                          }).toList(growable: false),
+                        ),
+                      ),
+                    ),
+                  );
                 },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F5FF),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFD0DFFC)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(FluentIcons.calendar,
+                          size: 13, color: Color(0xFF3A5FA8)),
+                      const SizedBox(width: 6),
+                      Text(dateLabel,
+                          style: const TextStyle(
+                              color: Color(0xFF2D4A88),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12)),
+                      const SizedBox(width: 4),
+                      const Icon(FluentIcons.chevron_down,
+                          size: 10, color: Color(0xFF3A5FA8)),
+                    ],
+                  ),
+                ),
               ),
               if (_rangeFilter == 'month') _buildMonthSelector(),
-              AppButton(
-                label: 'Reset',
-                variant: AppButtonVariant.secondary,
-                onPressed: () {
-                  setState(() {
-                    _query = '';
-                    _searchCtrl.text = '';
-                    _categoryFilter = 'all';
-                    _paymentFilter = 'all';
-                    _statusFilter = 'all';
-                    _recurringOnly = false;
-                    _rangeFilter = 'month';
-                    _monthAnchor =
-                        DateTime(DateTime.now().year, DateTime.now().month, 1);
-                    _fromDate = null;
-                    _toDate = null;
-                    _sortBy = 'date';
-                    _sortAscending = false;
-                    _page = 1;
-                  });
-                },
-              ),
-              Text(
-                'Total Records: ${allRows.length}',
-                style: const TextStyle(
-                  color: Color(0xFF5A7397),
-                  fontWeight: FontWeight.w700,
+              // Clear All
+              GestureDetector(
+                onTap: () => setState(() {
+                  _query = '';
+                  _searchCtrl.text = '';
+                  _categoryFilter = 'all';
+                  _paymentFilter = 'all';
+                  _doctorIdFilter = 'all';
+                  _amountFilter = 'all';
+                  _statusFilter = 'all';
+                  _recurringOnly = false;
+                  _quickFilter = 'this_month';
+                  _rangeFilter = 'month';
+                  _monthAnchor =
+                      DateTime(DateTime.now().year, DateTime.now().month, 1);
+                  _fromDate = null;
+                  _toDate = null;
+                  _sortBy = 'date';
+                  _sortAscending = false;
+                  _page = 1;
+                }),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFD0DFFC)),
+                  ),
+                  child: const Text('Clear All',
+                      style: TextStyle(
+                          color: Color(0xFF2D5FA8),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12)),
                 ),
               ),
             ],
           ),
-          if (_rangeFilter == 'custom' && (_fromDate != null || _toDate != null))
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '${formatClinicDate(_fromDate ?? _toDate!, pattern: 'dd MMM')} - ${formatClinicDate(_toDate ?? _fromDate!, pattern: 'dd MMM')}',
-                style: const TextStyle(
-                  color: Color(0xFF2D4A70),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickFilterChip({required String label, required String value}) {
-    final selected = _categoryFilter.toLowerCase() == value.toLowerCase();
+  Widget _buildTimeChip({required String label, required String value}) {
+    final selected = _quickFilter == value;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _categoryFilter = value;
-          _page = 1;
-        });
-      },
+      onTap: () => setState(() {
+        _quickFilter = value;
+        _page = 1;
+      }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFF3F8FF),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? const Color(0xFF2D7BD8) : const Color(0xFFD9E6F8),
-          ),
+              color:
+                  selected ? const Color(0xFF2D7BD8) : const Color(0xFFD9E6F8)),
         ),
         child: Text(
           label,
@@ -914,13 +925,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
             ),
             child: Row(
-              children: [
-                const Icon(
-                  FluentIcons.bulleted_list,
-                  size: 16,
-                  color: Color(0xFF2D6EC2),
-                ),
-                const SizedBox(width: 8),
+              children: [ 
                 const Text(
                   'Expense Ledger',
                   style: TextStyle(
@@ -1022,7 +1027,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               child: Row(
                 children: [
                   Text(
-                    formatClinicDate(dayRows.first.date, pattern: 'dd MMM yyyy'),
+                    formatClinicDate(dayRows.first.date,
+                        pattern: 'dd MMM yyyy'),
                     style: const TextStyle(
                       color: Color(0xFF2B486D),
                       fontWeight: FontWeight.w800,
@@ -1030,7 +1036,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEAF3FF),
                       borderRadius: BorderRadius.circular(999),
@@ -1052,11 +1059,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               final paymentMode = _paymentMode(e);
 
               return GestureDetector(
-                onTap: () => _showExpenseOverlay(e),
+                onTap: () => unawaited(_openExpenseModal(e)),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 120),
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
@@ -1093,7 +1101,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              e.note.trim().isEmpty ? 'No note added' : e.note.trim(),
+                              e.note.trim().isEmpty
+                                  ? 'No note added'
+                                  : e.note.trim(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -1146,7 +1156,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         icon: FluentIcons.edit,
                         color: const Color(0xFF8267D6),
                         hoverColor: const Color(0xFFF1EDFB),
-                        onTap: () => _showExpenseOverlay(e),
+                        onTap: () => unawaited(_openExpenseModal(e)),
                       ),
                       const SizedBox(width: 8),
                       _ExpenseActionIconButton(
@@ -1166,10 +1176,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildDetailsPane(Expense? selected, {VoidCallback? onClose}) {
-    final category = selected == null || selected.items.isEmpty
-        ? '-'
-        : selected.items.first;
+    final category =
+        selected == null || selected.items.isEmpty ? '-' : selected.items.first;
     final paymentMode = selected == null ? '-' : _paymentMode(selected);
     final outstanding = selected == null ? 0 : _doctorOutstanding(selected);
 
@@ -1210,9 +1220,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ),
                   ),
                 const SizedBox(height: 10),
-                _DetailRow(label: 'Date', value: formatClinicDate(selected.date, pattern: 'dd MMM yyyy')),
+                _DetailRow(
+                    label: 'Date',
+                    value: formatClinicDate(selected.date,
+                        pattern: 'dd MMM yyyy')),
                 _DetailRow(label: 'Category', value: category),
-                _DetailRow(label: 'Amount', value: '₹${NumberFormat('#,##0').format(selected.amount)}'),
+                _DetailRow(
+                    label: 'Amount',
+                    value: '₹${NumberFormat('#,##0').format(selected.amount)}'),
                 _DetailRow(label: 'Payment', value: paymentMode),
                 _DetailRow(label: 'Doctor', value: _doctorDetails(selected)),
                 const SizedBox(height: 10),
@@ -1234,7 +1249,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     border: Border.all(color: const Color(0xFFE1ECFA)),
                   ),
                   child: Text(
-                    selected.note.trim().isEmpty ? 'No note provided.' : selected.note.trim(),
+                    selected.note.trim().isEmpty
+                        ? 'No note provided.'
+                        : selected.note.trim(),
                     style: const TextStyle(
                       color: Color(0xFF35557D),
                       height: 1.35,
@@ -1245,7 +1262,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF6E8),
                       borderRadius: BorderRadius.circular(8),
@@ -1357,6 +1375,36 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
+    // Quick filter date range
+    DateTime? quickFrom;
+    DateTime? quickTo;
+    String? quickCategoryKey;
+    bool? quickPendingOnly;
+    bool? quickHighValue;
+    switch (_quickFilter) {
+      case 'this_week':
+        final monday = today.subtract(Duration(days: today.weekday - 1));
+        quickFrom = monday;
+        quickTo = monday.add(const Duration(days: 6));
+        break;
+      case 'this_month':
+        quickFrom = DateTime(today.year, today.month, 1);
+        quickTo = DateTime(today.year, today.month + 1, 0);
+        break;
+      case 'pending':
+        quickPendingOnly = true;
+        break;
+      case 'lab':
+        quickCategoryKey = 'labwork';
+        break;
+      case 'salaries':
+        quickCategoryKey = 'salaries';
+        break;
+      case 'high_value':
+        quickHighValue = true;
+        break;
+    }
+
     DateTime? from;
     DateTime? to;
     if (_rangeFilter == 'today') {
@@ -1380,6 +1428,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
 
     return input.where((e) {
+      // Quick filter
+      if (quickFrom != null || quickTo != null) {
+        final d = DateTime(e.date.year, e.date.month, e.date.day);
+        if (quickFrom != null && d.isBefore(quickFrom)) return false;
+        if (quickTo != null && d.isAfter(quickTo)) return false;
+      }
+      if (quickPendingOnly == true && e.paid) return false;
+      if (quickCategoryKey != null &&
+          !e.items.any((item) => item.trim().toLowerCase() == quickCategoryKey))
+        return false;
+      if (quickHighValue == true && e.amount < 10000) return false;
+
       if (_query.isNotEmpty) {
         final hay = [
           _doctorDetails(e),
@@ -1396,6 +1456,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             item.trim().toLowerCase() == _categoryFilter.toLowerCase());
         if (!hasCategory) return false;
       }
+
+      // Doctor filter
+      if (_doctorIdFilter != 'all' && !e.operatorsIDs.contains(_doctorIdFilter))
+        return false;
+
+      // Amount filter
+      if (_amountFilter == 'lt1000' && e.amount >= 1000) return false;
+      if (_amountFilter == '1k5k' && (e.amount < 1000 || e.amount > 5000))
+        return false;
+      if (_amountFilter == 'gt5000' && e.amount <= 5000) return false;
+      if (_amountFilter == 'gt10000' && e.amount <= 10000) return false;
 
       final mode = _paymentMode(e);
       if (_paymentFilter == 'upi' && mode != 'UPI') return false;
@@ -1443,13 +1514,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
 
     final weekDays = weekEnd.difference(weekStart).inDays + 1;
-    final avgDaily = weekDays <= 0 ? 0.0 : rows
-            .where((e) {
+    final avgDaily = weekDays <= 0
+        ? 0.0
+        : rows.where((e) {
               final d = DateTime(e.date.year, e.date.month, e.date.day);
               return !d.isBefore(weekStart) && !d.isAfter(weekEnd);
-            })
-            .fold<double>(0, (sum, e) => sum + e.amount) /
-        weekDays;
+            }).fold<double>(0, (sum, e) => sum + e.amount) /
+            weekDays;
 
     return [
       _ExpenseSummaryCardData(
@@ -1844,41 +1915,33 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       // Find existing Consultant expense for same doctor + same month
                       final existing = expenses.present.values.where((e) {
                         if (e.id == draft.id) return false;
-                        if (e.items.isEmpty || e.items.first.toLowerCase() != 'consultant') return false;
+                        if (e.items.isEmpty ||
+                            e.items.first.toLowerCase() != 'consultant')
+                          return false;
                         if (!e.operatorsIDs.contains(doctorId)) return false;
-                        return e.date.year == selectedDate.year && e.date.month == selectedDate.month;
+                        return e.date.year == selectedDate.year &&
+                            e.date.month == selectedDate.month;
                       });
                       if (existing.isNotEmpty) {
                         final toUpdate = existing.first;
                         toUpdate.amount = amount;
                         expenses.set(toUpdate);
-                        continue;
+                      } else {
+                        // Create a new per-doctor record
+                        final perDoctor = Expense.fromJson({});
+                        perDoctor.date = selectedDate;
+                        perDoctor.amount = amount;
+                        perDoctor.note = noteController.text.trim();
+                        perDoctor.items = [normalizedCategory];
+                        perDoctor.operatorsIDs = [doctorId];
+                        perDoctor.tags = tags;
+                        expenses.set(perDoctor);
                       }
-                      // No existing record - will create new via draft below (only for first doctor)
                     }
-                    // If multiple doctors, create separate records for each
-                    if (selectedDoctors.length > 1) {
-                      for (final doctorId in selectedDoctors) {
-                        final existing = expenses.present.values.where((e) {
-                          if (e.id == draft.id) return false;
-                          if (e.items.isEmpty || e.items.first.toLowerCase() != 'consultant') return false;
-                          if (!e.operatorsIDs.contains(doctorId)) return false;
-                          return e.date.year == selectedDate.year && e.date.month == selectedDate.month;
-                        });
-                        if (existing.isEmpty) {
-                          final perDoctor = Expense.fromJson({});
-                          perDoctor.date = selectedDate;
-                          perDoctor.amount = amount;
-                          perDoctor.note = noteController.text.trim();
-                          perDoctor.items = [normalizedCategory];
-                          perDoctor.operatorsIDs = [doctorId];
-                          perDoctor.tags = tags;
-                          expenses.set(perDoctor);
-                        }
-                      }
-                      Navigator.pop(dialogContext);
-                      return;
-                    }
+                    // If single doctor with new record, the draft itself IS the new record
+                    // (already saved above) so skip the draft.set below
+                    Navigator.pop(dialogContext);
+                    return;
                   }
 
                   expenses.set(draft);

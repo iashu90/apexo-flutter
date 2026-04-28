@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
-import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/common_widgets/patient_history_modal.dart';
 import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/theme/app_theme.dart';
@@ -1698,20 +1698,11 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    ExportFileActionButton(
-                      type: ExportFileType.csv,
-                      busy: _isExportingCsv,
-                      onPressed: (_isExportingCsv || doctorEntries.isEmpty)
-                          ? null
-                          : _exportVisibleCsv,
-                    ),
-                    const SizedBox(width: 8),
-                    ExportFileActionButton(
-                      type: ExportFileType.pdf,
-                      busy: _isExportingPdf,
-                      onPressed: (_isExportingPdf || doctorEntries.isEmpty)
-                          ? null
-                          : _exportVisiblePdf,
+                    ExportButtons(
+                      csvBusy: _isExportingCsv,
+                      pdfBusy: _isExportingPdf,
+                      onCsv: (_isExportingCsv || doctorEntries.isEmpty) ? null : _exportVisibleCsv,
+                      onPdf: (_isExportingPdf || doctorEntries.isEmpty) ? null : _exportVisiblePdf,
                     ),
                   ],
                 ),
@@ -3048,20 +3039,11 @@ class _DoctorAppointmentDoneChartCardState
                   ),
                 ),
                 const Spacer(),
-                ExportFileActionButton(
-                  type: ExportFileType.csv,
-                  busy: _isExportingCsv,
-                  onPressed: (_isExportingCsv || widget.rows.isEmpty)
-                      ? null
-                      : _exportCsv,
-                ),
-                const SizedBox(width: 8),
-                ExportFileActionButton(
-                  type: ExportFileType.pdf,
-                  busy: _isExportingPdf,
-                  onPressed: (_isExportingPdf || widget.rows.isEmpty)
-                      ? null
-                      : _exportPdf,
+                ExportButtons(
+                  csvBusy: _isExportingCsv,
+                  pdfBusy: _isExportingPdf,
+                  onCsv: (_isExportingCsv || widget.rows.isEmpty) ? null : _exportCsv,
+                  onPdf: (_isExportingPdf || widget.rows.isEmpty) ? null : _exportPdf,
                 ),
               ],
             ),

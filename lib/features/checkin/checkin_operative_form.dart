@@ -296,6 +296,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     return rows.take(10).map((e) => e.key).toList(growable: false);
   }
 
+  // ignore: unused_element
   Future<void> _confirmDoneToggle() async {
     final a = widget.appointment;
     if (a.isDone) {
@@ -353,6 +354,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     _scheduleAutosave(immediate: true);
   }
 
+  // ignore: unused_element
   Future<void> _moveBackToWithDoctor() async {
     final patientName = _patientDisplayName(widget.appointment);
     final shouldMove = await showDialog<bool>(

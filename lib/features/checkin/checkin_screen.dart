@@ -1,4 +1,4 @@
-﻿// ignore_for_file: unused_element, unused_field, unused_local_variable, unused_import, dead_code
+// ignore_for_file: unused_element, unused_field, unused_local_variable, unused_import, dead_code
 
 import 'dart:async';
 import 'dart:io';
@@ -8,7 +8,7 @@ import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_search_button.dart';
 import 'package:apexo/common_widgets/patient_history_modal.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
-import 'package:apexo/common_widgets/export_file_action_button.dart';
+import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/common_widgets/patient_timeline_card.dart';
@@ -1181,23 +1181,22 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     a.checkinStage == 'treatment')
                 .toList(growable: true)
               ..sort((a, b) => a.date.compareTo(b.date));
-            final billingAndCompleted = filtered
+            final billingList = filtered
                 .where(
                   (a) =>
-                      a.checkinStage == 'checkout' ||
-                      a.checkinStage == 'billing' ||
-                      a.checkinStage == 'completed' ||
-                      a.isDone,
+                      (a.checkinStage == 'checkout' || a.checkinStage == 'billing') &&
+                      !a.isDone &&
+                      a.checkinStage != 'completed',
                 )
                 .toList(growable: true)
-              ..sort((a, b) {
-                final aCompleted =
-                    a.checkinStage == 'completed' || a.isDone ? 1 : 0;
-                final bCompleted =
-                    b.checkinStage == 'completed' || b.isDone ? 1 : 0;
-                if (aCompleted != bCompleted) return aCompleted - bCompleted;
-                return a.date.compareTo(b.date);
-              });
+              ..sort((a, b) => a.date.compareTo(b.date));
+
+            final completedList = filtered
+                .where(
+                  (a) => a.checkinStage == 'completed' || a.isDone,
+                )
+                .toList(growable: true)
+              ..sort((a, b) => a.date.compareTo(b.date));
 
             final now = DateTime.now();
             final isToday = _selectedDate.year == now.year &&
@@ -1484,21 +1483,34 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         );
 
                         final billingColumn = _WorkflowColumn(
-                          title:
-                              'Billing & Completed (${billingAndCompleted.length})',
-                          stage: 'billing_completed',
+                          title: 'Billing (${billingList.length})',
+                          stage: 'billing',
                           color: const Color(0xFF6C4CCF),
-                          rows: billingAndCompleted,
+                          rows: billingList,
                           duplicatePatientIds: duplicatePatientIds,
-                          rowStageBuilder: _billingCombinedRowStage,
                           onSelect: _selectAndOpenAppointment,
                           selectedAppointmentId: _selectedAppointment?.id,
                           interactionsEnabled: !isDoctorLogin,
-                          expanded:
-                              _expandedStages['billing_completed'] ?? true,
+                          expanded: _expandedStages['billing'] ?? true,
                           onToggleExpanded: () => setState(() {
-                            _expandedStages['billing_completed'] =
-                                !(_expandedStages['billing_completed'] ?? true);
+                            _expandedStages['billing'] =
+                                !(_expandedStages['billing'] ?? true);
+                          }),
+                        );
+
+                        final completedColumn = _WorkflowColumn(
+                          title: 'Completed (${completedList.length})',
+                          stage: 'completed',
+                          color: const Color(0xFF16A34A),
+                          rows: completedList,
+                          duplicatePatientIds: duplicatePatientIds,
+                          onSelect: _selectAndOpenAppointment,
+                          selectedAppointmentId: _selectedAppointment?.id,
+                          interactionsEnabled: !isDoctorLogin,
+                          expanded: _expandedStages['completed'] ?? true,
+                          onToggleExpanded: () => setState(() {
+                            _expandedStages['completed'] =
+                                !(_expandedStages['completed'] ?? true);
                           }),
                         );
 
@@ -1518,6 +1530,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               withDoctorColumn,
                               const SizedBox(height: 10),
                               billingColumn,
+                              const SizedBox(height: 10),
+                              completedColumn,
                             ],
                           );
                         }
@@ -1543,7 +1557,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             const SizedBox(width: 10),
                             Expanded(child: withDoctorColumn),
                             const SizedBox(width: 10),
-                            Expanded(child: billingColumn),
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  billingColumn,
+                                  const SizedBox(height: 10),
+                                  completedColumn,
+                                ],
+                              ),
+                            ),
                           ],
                         );
                       },
@@ -2102,7 +2124,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                         (a) => a.id == appointment.id,
                         orElse: () => appointment);
                     final paid = latest.paid;
-                    return Text('₹${paid.toStringAsFixed(0)}');
+                    return Text('?${paid.toStringAsFixed(0)}');
                   },
                 ),
               ),
@@ -3103,7 +3125,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
                       child:
-                          Text('₹', style: TextStyle(color: Color(0xFF355279))),
+                          Text('?', style: TextStyle(color: Color(0xFF355279))),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -3113,7 +3135,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     children: [100, 200, 500, 1000, 2000, 2500]
                         .map(
                           (v) => AppButton(
-                            label: '₹$v',
+                            label: '?$v',
                             compact: false,
                             variant: AppButtonVariant.secondary,
                             onPressed: () {
@@ -3155,7 +3177,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       runSpacing: 8,
                       children: [
                         AppButton(
-                          label: _discountMode == 'flat' ? '₹ Flat' : 'Flat',
+                          label: _discountMode == 'flat' ? '? Flat' : 'Flat',
                           compact: true,
                           variant: _discountMode == 'flat'
                               ? AppButtonVariant.primary
@@ -3216,7 +3238,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                         children: [100, 200, 500, 1000]
                             .map(
                               (v) => AppButton(
-                                label: '₹$v',
+                                label: '?$v',
                                 compact: true,
                                 variant: AppButtonVariant.secondary,
                                 onPressed: () {
@@ -3250,12 +3272,12 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
                       child:
-                          Text('₹', style: TextStyle(color: Color(0xFF355279))),
+                          Text('?', style: TextStyle(color: Color(0xFF355279))),
                     ),
                     suffix: Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: Text(
-                        '₹${outstanding.toStringAsFixed(0)}',
+                        '?${outstanding.toStringAsFixed(0)}',
                         style: const TextStyle(
                           color: Color(0xFF5A7397),
                           fontWeight: FontWeight.w700,
@@ -3270,7 +3292,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     children: [
                       ...[100, 200, 500, 1000, 2000, 2500].map(
                         (v) => AppButton(
-                          label: '₹$v',
+                          label: '?$v',
                           compact: false,
                           variant: AppButtonVariant.secondary,
                           onPressed: () {
@@ -3420,7 +3442,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                           ],
                           prefix: const Padding(
                             padding: EdgeInsets.only(left: 10),
-                            child: Text('₹',
+                            child: Text('?',
                                 style: TextStyle(color: Color(0xFF355279))),
                           ),
                           placeholder: 'Consultant charge',
@@ -3449,8 +3471,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       mainAxisSize: MainAxisSize.max,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        ExportFileActionButton(
-                          type: ExportFileType.pdf,
+                        ExportPdfButton(
                           onPressed: _downloadReceiptPdf,
                         ),
                         Tooltip(

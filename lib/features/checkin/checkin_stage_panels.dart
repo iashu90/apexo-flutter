@@ -139,7 +139,7 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
                 discountEnabled: appointment.discount > 0,
                 totalPaidOverride: appointment.paid,
                 includeTodayInOutstanding: true,
-                showTreatmentAndToothSection: false,
+                showTreatmentAndToothSection: true,
                 onDoctorEdit: () async {
                   final picked = await pickDoctorDialog(
                     context,
