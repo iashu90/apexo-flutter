@@ -148,8 +148,10 @@ class _ReportScreenState extends State<ReportScreen> {
                             _DailyAppointmentsGrossTrendCard(
                               rows: allAppointments,
                             ),
-                            _DailyAppointmentsGrossBarTrendCard(
-                              rows: allAppointments,
+                            _WideReportTile(
+                              child: _DailyAppointmentsGrossBarTrendCard(
+                                rows: allAppointments,
+                              ),
                             ),
                             _MonthlyAppointmentsTrendSection(
                               rows: allAppointments,
@@ -178,7 +180,10 @@ class _ReportScreenState extends State<ReportScreen> {
                               ),
                             ),
                             _CompactReportTile(
-                              child: _TrafficByTimeCard(rows: allAppointments),
+                              child: _TrafficByTimeCard(
+                                rows: allAppointments,
+                                monthOffset: _monthlyOffset,
+                              ),
                             ),
                             _CompactReportTile(
                               child: _TrafficByDayCard(rows: allAppointments),
@@ -187,7 +192,10 @@ class _ReportScreenState extends State<ReportScreen> {
                                 child: _ReportGenderDistributionCard(
                                     rows: allAppointments)),
                             _CompactReportTile(
-                              child: _NewVsReturningCard(rows: allAppointments),
+                              child: _NewVsReturningCard(
+                                rows: allAppointments,
+                                monthOffset: _monthlyOffset,
+                              ),
                             ),
                             _CompactReportTile(
                               child: _ReportAgeDistributionCard(
@@ -415,7 +423,7 @@ class _ReportGenderDistributionCard extends StatelessWidget {
     return _ReportContainer(
       title: 'Gender Distribution',
       child: SizedBox(
-        height: 180,
+        height: 220,
         child: total == 0
             ? const Align(
                 alignment: Alignment.centerLeft,
@@ -1092,36 +1100,21 @@ class _ReportDoctorAppointmentDoneCardState
 
 class _NewVsReturningCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int monthOffset;
 
   const _NewVsReturningCard({
     required this.rows,
+    required this.monthOffset,
   });
 
   @override
   Widget build(BuildContext context) {
-    return _NewVsReturningCardBody(rows: rows);
-  }
-}
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month - monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
 
-class _NewVsReturningCardBody extends StatefulWidget {
-  final List<Appointment> rows;
-
-  const _NewVsReturningCardBody({required this.rows});
-
-  @override
-  State<_NewVsReturningCardBody> createState() =>
-      _NewVsReturningCardBodyState();
-}
-
-class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
-  _RangeFilter _range = _RangeFilter.month;
-  DateTime _monthAnchor =
-      DateTime(DateTime.now().year, DateTime.now().month, 1);
-
-  @override
-  Widget build(BuildContext context) {
     final firstVisitByPatient = <String, DateTime>{};
-    for (final row in widget.rows) {
+    for (final row in rows) {
       final pid = row.patientID;
       if (pid == null || pid.isEmpty) continue;
       final existing = firstVisitByPatient[pid];
@@ -1130,11 +1123,9 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
       }
     }
 
-    final scoped = _rangeRows(
-      widget.rows,
-      _range,
-      monthAnchor: _monthAnchor,
-    );
+    final scoped = rows
+        .where((a) => !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
+        .toList(growable: false);
     final newCount = scoped.where((a) {
       final pid = a.patientID;
       if (pid == null || pid.isEmpty) return false;
@@ -1149,88 +1140,82 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
 
     return _ReportContainer(
       title: 'New vs Returning',
+      subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _FilterChips(
-            selected: _range,
-            onChanged: (v) => setState(() => _range = v),
-            monthAnchor: _monthAnchor,
-            monthOptions: _monthOptions(widget.rows),
-            onMonthChanged: (value) => setState(() => _monthAnchor = value),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            children: [
-              _pill('New', '$newCount', AppColors.brandBlue),
-              _pill('Returning', '$returningCount', AppColors.successTeal),
-              _pill('Total', '$total', AppColors.textBlueMuted),
-            ],
-          ),
-          const SizedBox(height: 12),
           SizedBox(
-            height: 150,
+            height: 160,
             child: total == 0
                 ? const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'No data for selected range.',
+                      'No data for this month.',
                       style: TextStyle(color: AppColors.textBlueMuted),
                     ),
                   )
-                : PieChart(
-                    PieChartData(
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 28,
-                      sections: [
-                        PieChartSectionData(
-                          value: newCount.toDouble(),
-                          color: AppColors.brandBlue,
-                          title: '${newPct.toStringAsFixed(0)}%',
-                          titleStyle: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10,
+                : Row(
+                    children: [
+                      SizedBox(
+                        width: 130,
+                        height: 130,
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 28,
+                            sections: [
+                              PieChartSectionData(
+                                value: newCount.toDouble(),
+                                color: AppColors.brandBlue,
+                                title: '${newPct.toStringAsFixed(0)}%',
+                                titleStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                                radius: 42,
+                              ),
+                              PieChartSectionData(
+                                value: returningCount.toDouble(),
+                                color: AppColors.successTeal,
+                                title: '${returningPct.toStringAsFixed(0)}%',
+                                titleStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                                radius: 42,
+                              ),
+                            ],
                           ),
-                          radius: 40,
                         ),
-                        PieChartSectionData(
-                          value: returningCount.toDouble(),
-                          color: AppColors.successTeal,
-                          title: '${returningPct.toStringAsFixed(0)}%',
-                          titleStyle: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10,
-                          ),
-                          radius: 40,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _LegendDot(
+                                color: AppColors.brandBlue,
+                                label: 'New: $newCount'),
+                            const SizedBox(height: 8),
+                            _LegendDot(
+                              color: AppColors.successTeal,
+                              label: 'Returning: $returningCount',
+                            ),
+                            const SizedBox(height: 8),
+                            _LegendDot(
+                              color: AppColors.textBlueMuted,
+                              label: 'Total: $total',
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _pill(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.slate503,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderBlueSoft),
-      ),
-      child: Text(
-        '$label: $value',
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
-        ),
       ),
     );
   }
@@ -1269,7 +1254,7 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
         title: 'Monthly Treatment Distribution',
         subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
         child: SizedBox(
-          height: 250,
+          height: 220,
           child: distributionRows.isEmpty
               ? const Align(
                   alignment: Alignment.centerLeft,
@@ -1280,72 +1265,45 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
                 )
               : Row(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8, right: 2),
-                      child: SizedBox(
-                        width: 112,
-                        height: 112,
-                        child: PieChart(
-                          PieChartData(
-                            sectionsSpace: 2,
-                            centerSpaceRadius: 24,
-                            sections:
-                                distributionRows.asMap().entries.map((entry) {
-                              final row = entry.value;
-                              final pct =
-                                  total == 0 ? 0.0 : (row.value / total) * 100;
-                              return PieChartSectionData(
-                                value: row.value.toDouble(),
-                                color: colors[entry.key % colors.length],
-                                title: pct >= 8
-                                    ? '${pct.toStringAsFixed(0)}%'
-                                    : '',
-                                titleStyle: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 10,
-                                ),
-                                radius: 40,
-                              );
-                            }).toList(growable: false),
-                          ),
+                    SizedBox(
+                      width: 130,
+                      height: 130,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 28,
+                          sections: distributionRows.asMap().entries.map((entry) {
+                            final row = entry.value;
+                            final pct =
+                                total == 0 ? 0.0 : (row.value / total) * 100;
+                            return PieChartSectionData(
+                              value: row.value.toDouble(),
+                              color: colors[entry.key % colors.length],
+                              title: pct >= 8 ? '${pct.toStringAsFixed(0)}%' : '',
+                              titleStyle: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                              ),
+                              radius: 42,
+                            );
+                          }).toList(growable: false),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children:
-                              distributionRows.asMap().entries.map((entry) {
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: distributionRows.asMap().entries.map((entry) {
                             final row = entry.value;
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 9,
-                                    height: 9,
-                                    decoration: BoxDecoration(
-                                      color: colors[entry.key % colors.length],
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      '${row.key} (${row.value})',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: AppColors.textBlueStrong,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              child: _LegendDot(
+                                color: colors[entry.key % colors.length],
+                                label: '${row.key} (${row.value})',
                               ),
                             );
                           }).toList(growable: false),
@@ -1715,6 +1673,7 @@ class _DailyAppointmentsGrossBarTrendCardState
             height: 220,
             child: BarChart(
               BarChartData(
+                alignment: BarChartAlignment.spaceBetween,
                 maxY: 110,
                 gridData: FlGridData(
                   show: true,
@@ -1774,17 +1733,11 @@ class _DailyAppointmentsGrossBarTrendCardState
                     getTooltipColor: (_) => AppColors.blue750,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final day = points[groupIndex];
-                      if (rodIndex == 0) {
-                        return BarTooltipItem(
-                          '${day.label}\n${day.count.toStringAsFixed(0)} appts',
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        );
+                      if (rodIndex != 0) {
+                        return null;
                       }
                       return BarTooltipItem(
-                        '${day.label}\n₹${formatIndianCompactNumber(day.gross, fractionDigits: 1)}',
+                        '${day.label}\nAppts: ${day.count.toStringAsFixed(0)}\nGross: ₹${formatIndianCompactNumber(day.gross, fractionDigits: 1)}',
                         const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -2290,65 +2243,91 @@ class _PaymentModeStatusCard extends StatelessWidget {
     final upiPct = total == 0 ? 0.0 : (upiCount * 100) / total;
     final cashPct = total == 0 ? 0.0 : (cashCount * 100) / total;
 
-    Widget modeRow({
-      required String label,
-      required int count,
-      required double pct,
-      required Color fg,
-      required Color bg,
-    }) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                '$label • $count',
-                style: TextStyle(
-                  color: fg,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-            Text(
-              '${pct.toStringAsFixed(1)}%',
-              style: TextStyle(
-                color: fg,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return _ReportContainer(
       title: 'Total Payment Status ($total)',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          modeRow(
-            label: 'UPI',
-            count: upiCount,
-            pct: upiPct,
-            fg: AppColors.blue700,
-            bg: AppColors.violet1006,
-          ),
-          const SizedBox(height: 8),
-          modeRow(
-            label: 'Cash',
-            count: cashCount,
-            pct: cashPct,
-            fg: AppColors.rose600,
-            bg: AppColors.amber1002,
-          ),
-        ],
+      child: SizedBox(
+        height: 220,
+        child: total == 0
+            ? const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'No payment data found.',
+                  style: TextStyle(color: AppColors.textBlueMuted),
+                ),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 130,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 130,
+                          height: 130,
+                          child: PieChart(
+                            PieChartData(
+                              sectionsSpace: 2,
+                              centerSpaceRadius: 28,
+                              sections: [
+                                PieChartSectionData(
+                                  value: upiCount.toDouble(),
+                                  color: AppColors.brandBlue,
+                                  title: '${upiPct.toStringAsFixed(0)}%',
+                                  titleStyle: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                  radius: 42,
+                                ),
+                                PieChartSectionData(
+                                  value: cashCount.toDouble(),
+                                  color: AppColors.dangerRose,
+                                  title: '${cashPct.toStringAsFixed(0)}%',
+                                  titleStyle: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                  radius: 42,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _LegendDot(
+                                color: AppColors.brandBlue,
+                                label: 'UPI: $upiCount',
+                              ),
+                              const SizedBox(height: 8),
+                              _LegendDot(
+                                color: AppColors.dangerRose,
+                                label: 'Cash: $cashCount',
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Total: $total',
+                                style: const TextStyle(
+                                  color: AppColors.textBlueMuted,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -2382,7 +2361,7 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
         title: 'Referral Source Report',
         subtitle: 'Patient acquisition channels',
         child: SizedBox(
-          height: 250,
+          height: 220,
           child: rows.isEmpty
               ? const Align(
                   alignment: Alignment.centerLeft,
@@ -2393,70 +2372,45 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
                 )
               : Row(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8, right: 2),
-                      child: SizedBox(
-                        width: 112,
-                        height: 112,
-                        child: PieChart(
-                          PieChartData(
-                            sectionsSpace: 2,
-                            centerSpaceRadius: 24,
-                            sections: rows.asMap().entries.map((entry) {
-                              final row = entry.value;
-                              final pct =
-                                  total == 0 ? 0.0 : (row.value / total) * 100;
-                              return PieChartSectionData(
-                                value: row.value.toDouble(),
-                                color: colors[entry.key % colors.length],
-                                title: pct >= 8
-                                    ? '${pct.toStringAsFixed(0)}%'
-                                    : '',
-                                titleStyle: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 10,
-                                ),
-                                radius: 40,
-                              );
-                            }).toList(growable: false),
-                          ),
+                    SizedBox(
+                      width: 130,
+                      height: 130,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 28,
+                          sections: rows.asMap().entries.map((entry) {
+                            final row = entry.value;
+                            final pct =
+                                total == 0 ? 0.0 : (row.value / total) * 100;
+                            return PieChartSectionData(
+                              value: row.value.toDouble(),
+                              color: colors[entry.key % colors.length],
+                              title: pct >= 8 ? '${pct.toStringAsFixed(0)}%' : '',
+                              titleStyle: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                              ),
+                              radius: 42,
+                            );
+                          }).toList(growable: false),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: rows.asMap().entries.map((entry) {
                             final row = entry.value;
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 9,
-                                    height: 9,
-                                    decoration: BoxDecoration(
-                                      color: colors[entry.key % colors.length],
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      '${row.key} (${row.value})',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: AppColors.textBlueStrong,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              child: _LegendDot(
+                                color: colors[entry.key % colors.length],
+                                label: '${row.key} (${row.value})',
                               ),
                             );
                           }).toList(growable: false),
@@ -2627,6 +2581,18 @@ class _FormattedBarChart extends StatelessWidget {
     return value.toStringAsFixed(1);
   }
 
+  double _axisStep(double maxValue) {
+    if (maxValue <= 0) return 50;
+    final rough = maxValue / 4;
+    final exponent = (math.log(rough) / math.ln10).floorToDouble();
+    final magnitude = math.pow(10, exponent).toDouble();
+    final normalized = rough / magnitude;
+    if (normalized <= 1) return 1 * magnitude;
+    if (normalized <= 2) return 2 * magnitude;
+    if (normalized <= 5) return 5 * magnitude;
+    return 10 * magnitude;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (values.isEmpty) {
@@ -2639,15 +2605,17 @@ class _FormattedBarChart extends StatelessWidget {
     }
 
     final maxValue = values.fold<double>(0, (m, v) => v > m ? v : m);
-    final maxY = maxValue <= 0 ? 1.0 : (maxValue * 1.15);
+    final step = _axisStep(maxValue);
+    final maxY = math.max(step, (maxValue / step).ceilToDouble() * step);
 
     return BarChart(
       BarChartData(
+        alignment: BarChartAlignment.spaceBetween,
         maxY: maxY,
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: maxY / 4,
+          horizontalInterval: step,
           getDrawingHorizontalLine: (_) => const FlLine(
             color: AppColors.slate100,
             strokeWidth: 1,
@@ -2670,8 +2638,8 @@ class _FormattedBarChart extends StatelessWidget {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 60,
-              interval: maxY / 4,
+              reservedSize: 42,
+              interval: step,
               getTitlesWidget: (value, meta) => SideTitleWidget(
                 axisSide: meta.axisSide,
                 child: Text(
@@ -2749,23 +2717,20 @@ class _FormattedBarChart extends StatelessWidget {
   }
 }
 
-class _TrafficByTimeCard extends StatefulWidget {
+class _TrafficByTimeCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int monthOffset;
 
-  const _TrafficByTimeCard({required this.rows});
-
-  @override
-  State<_TrafficByTimeCard> createState() => _TrafficByTimeCardState();
-}
-
-class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
-  _RangeFilter _range = _RangeFilter.lastMonth;
-  DateTime _monthAnchor =
-      DateTime(DateTime.now().year, DateTime.now().month, 1);
+  const _TrafficByTimeCard({required this.rows, required this.monthOffset});
 
   @override
   Widget build(BuildContext context) {
-    final scoped = _rangeRows(widget.rows, _range, monthAnchor: _monthAnchor);
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month - monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final scoped = rows
+        .where((a) => !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
+        .toList(growable: false);
     final buckets = <String, double>{
       '12-3 AM': 0,
       '3-6 AM': 0,
@@ -2804,17 +2769,10 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
 
     return _ReportContainer(
       title: 'Traffic by Time',
+      subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _FilterChips(
-            selected: _range,
-            onChanged: (v) => setState(() => _range = v),
-            monthAnchor: _monthAnchor,
-            monthOptions: _monthOptions(widget.rows),
-            onMonthChanged: (value) => setState(() => _monthAnchor = value),
-          ),
-          const SizedBox(height: 10),
           SizedBox(
             height: 220,
             child: _FormattedBarChart(

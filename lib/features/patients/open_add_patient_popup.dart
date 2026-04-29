@@ -81,7 +81,22 @@ Future<Patient?> openAddPatientPopup({
   String? nameError;
   String? ageError;
   String? phoneError;
-  Patient? duplicatePhonePatient;
+  List<Patient> possibleDuplicatePatients = <Patient>[];
+
+  List<Patient> findPossibleDuplicates(String phoneDigits) {
+    if (phoneDigits.length < 8) return const <Patient>[];
+    final matches = patients.docs.values
+        .where((p) {
+          if (isEditMode && p.id == existingPatient.id) {
+            return false;
+          }
+          final existingDigits = _normalizePhoneDigits(p.phone);
+          if (existingDigits.isEmpty) return false;
+          return existingDigits.contains(phoneDigits);
+        })
+        .toList(growable: false);
+    return matches;
+  }
 
   return showDialog<Patient>(
     context: context,
@@ -216,11 +231,15 @@ Future<Patient?> openAddPatientPopup({
                       FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(10),
                     ],
-                    onChanged: (_) {
-                      if (phoneError != null || duplicatePhonePatient != null) {
+                    onChanged: (value) {
+                      final digits = _normalizePhoneDigits(value);
+                      final matches = findPossibleDuplicates(digits);
+                      if (phoneError != null ||
+                          possibleDuplicatePatients.isNotEmpty ||
+                          matches.isNotEmpty) {
                         setStateDialog(() {
                           phoneError = null;
-                          duplicatePhonePatient = null;
+                          possibleDuplicatePatients = matches;
                         });
                       }
                     },
@@ -236,7 +255,7 @@ Future<Patient?> openAddPatientPopup({
                         ),
                       ),
                     ),
-                  if (duplicatePhonePatient != null)
+                  if (possibleDuplicatePatients.isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(top: 8),
                       padding: const EdgeInsets.symmetric(
@@ -244,30 +263,44 @@ Future<Patient?> openAddPatientPopup({
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.amber100,
+                        color: const Color(0xFFF1FBF4),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.dangerRose),
+                        border: Border.all(color: const Color(0xFFB7E3C1)),
                       ),
-                      child: Row(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            FluentIcons.warning,
-                            size: 14,
-                            color: AppColors.dangerRose,
+                          Text(
+                            'Could be duplicate of ${possibleDuplicatePatients.length} existing patient(s). You can still create this patient.',
+                            style: const TextStyle(
+                              color: Color(0xFF116132),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Phone already exists: ${duplicatePhonePatient!.title} '
-                              '(Age ${duplicatePhonePatient!.age}) • ${duplicatePhonePatient!.phone}',
+                          const SizedBox(height: 6),
+                          ...possibleDuplicatePatients.take(4).map(
+                            (patient) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                '${patient.title.trim().isEmpty ? 'Unnamed patient' : patient.title} • ${patient.phone} • Age ${patient.age}',
+                                style: const TextStyle(
+                                  color: Color(0xFF1F446E),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (possibleDuplicatePatients.length > 4)
+                            Text(
+                              '+${possibleDuplicatePatients.length - 4} more',
                               style: const TextStyle(
-                                color: AppColors.dangerRose,
+                                color: AppColors.textBlueMuted,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -390,24 +423,6 @@ Future<Patient?> openAddPatientPopup({
 
                 if (computedAgeError != null) return;
                 if (computedNameError != null || computedPhoneError != null) {
-                  return;
-                }
-
-                Patient? duplicatePatient;
-                for (final p in patients.docs.values) {
-                  if (isEditMode && p.id == existingPatient.id) {
-                    continue;
-                  }
-                  if (_normalizePhoneDigits(p.phone) == rawPhone) {
-                    duplicatePatient = p;
-                    break;
-                  }
-                }
-                if (duplicatePatient != null) {
-                  setStateDialog(() {
-                    phoneError = 'Phone number already exists.';
-                    duplicatePhonePatient = duplicatePatient;
-                  });
                   return;
                 }
 
