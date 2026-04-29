@@ -118,14 +118,6 @@ class _ReportScreenState extends State<ReportScreen> {
                                     color: AppColors.blue800,
                                   ),
                                 ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Compact analytics view',
-                                  style: TextStyle(
-                                    color: AppColors.textBlueMuted,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
                               ],
                             ),
                           ),

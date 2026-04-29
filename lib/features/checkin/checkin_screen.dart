@@ -3194,7 +3194,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       runSpacing: 8,
                       children: [
                         AppButton(
-                          label: _discountMode == 'flat' ? '? Flat' : 'Flat',
+                          label: _discountMode == 'flat' ? '₹ Flat' : 'Flat',
                           compact: true,
                           variant: _discountMode == 'flat'
                               ? AppButtonVariant.primary
