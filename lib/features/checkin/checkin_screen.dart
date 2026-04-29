@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_search_button.dart';
 import 'package:apexo/common_widgets/patient_history_modal.dart';
+import 'package:apexo/common_widgets/app_screen_title.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
@@ -1240,13 +1241,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                'Check-in (${todaysAppointments.length})',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.blue750,
-                                ),
+                              AppScreenTitle(
+                                title: 'Check-in (${todaysAppointments.length})',
                               ),
                             ],
                           ),
@@ -1351,7 +1347,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         final scheduledColumn = _WorkflowColumn(
                           title: 'Scheduled (${scheduled.length})',
                           stage: 'scheduled',
-                          color: AppColors.blue5502,
+                          color: AppColors.scheduledChipFg,
                           rows: scheduled,
                           duplicatePatientIds: duplicatePatientIds,
                           showHistoryAction: false,

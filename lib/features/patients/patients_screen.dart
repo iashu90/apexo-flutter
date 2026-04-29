@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'dart:math' as math;
 
+import 'package:apexo/common_widgets/app_screen_title.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/common_widgets/export_progress_dialog.dart';
 import 'package:apexo/common_widgets/patient_history_modal.dart';
@@ -747,7 +748,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const _TopBar(),
+                      const AppScreenTitle(title: 'Patients'),
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
@@ -763,7 +764,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 else
                   Row(
                     children: [
-                      const Expanded(child: _TopBar()),
+                      const Expanded(child: AppScreenTitle(title: 'Patients')),
                       SizedBox(
                         width: isTablet ? 160 : 180,
                         child: AppButton(
@@ -1246,22 +1247,6 @@ class _InsightRow extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Text(
-      'Patients',
-      style: TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF112E54),
-        letterSpacing: 0.1,
-      ),
-    );
-  }
-}
 
 class _MetricCard extends StatelessWidget {
   final String title;

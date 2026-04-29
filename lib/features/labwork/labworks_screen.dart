@@ -1,5 +1,6 @@
 // ignore_for_file: unused_element
 
+import 'package:apexo/common_widgets/app_screen_title.dart';
 import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/common_widgets/lab_bulk_update_dialog.dart';
@@ -144,14 +145,7 @@ class _LabworksScreenState extends State<LabworksScreen> {
   Widget _buildHeader(List<Labwork> rows) {
     return Row(
       children: [
-        const Text(
-          'Labwork',
-          style: TextStyle(
-            color: AppColors.blue7508,
-            fontSize: 34,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        const AppScreenTitle(title: 'Labworks'),
         const Spacer(),
         ExportButtons(
           csvBusy: _isExportingCsv,

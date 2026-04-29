@@ -352,70 +352,83 @@ class _WorkflowRow extends StatelessWidget {
             actions: [
               SizedBox(
                 width: dialogWidth - 48,
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  runSpacing: 8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (hasChanged)
-                      SizedBox(
-                        width: screenWidth < 760 ? 112 : 128,
-                        child: AppButton(
-                          label: 'Update',
-                          onPressed: () {
-                            final originalCheckedInAt =
-                                appointment.checkedInAt;
-                            appointment.date = updatedDateTime;
-                            appointment.checkedInAt = originalCheckedInAt;
-                            appointments.set(appointment);
-                            if (dialogContext.mounted) {
-                              Navigator.pop(dialogContext);
-                            }
-                          },
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            label: hasChanged ? 'Update' : 'No Changes',
+                            onPressed: hasChanged
+                                ? () {
+                                    final originalCheckedInAt =
+                                        appointment.checkedInAt;
+                                    appointment.date = updatedDateTime;
+                                    appointment.checkedInAt =
+                                        originalCheckedInAt;
+                                    appointments.set(appointment);
+                                    if (dialogContext.mounted) {
+                                      Navigator.pop(dialogContext);
+                                    }
+                                  }
+                                : null,
+                          ),
                         ),
-                      ),
-                    SizedBox(
-                      width: screenWidth < 760 ? 136 : 160,
-                      child: AppButton(
-                        label:
-                            confirmCancel ? 'Confirm Cancel' : 'Cancel Appt',
-                        variant: AppButtonVariant.warning,
-                        onPressed: () async {
-                          if (!confirmCancel) {
-                            setStateDialog(() {
-                              confirmCancel = true;
-                              confirmDelete = false;
-                            });
-                            return;
-                          }
-                          appointment.checkinStage = 'cancelled';
-                          appointment.isCheckedIn = false;
-                          appointments.set(appointment);
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
-                          }
-                        },
-                      ),
+                      ],
                     ),
-                    SizedBox(
-                      width: screenWidth < 760 ? 112 : 128,
-                      child: AppButton(
-                        label: confirmDelete ? 'Confirm Delete' : 'Delete',
-                        variant: AppButtonVariant.danger,
-                        onPressed: () async {
-                          if (!confirmDelete) {
-                            setStateDialog(() {
-                              confirmDelete = true;
-                              confirmCancel = false;
-                            });
-                            return;
-                          }
-                          await _deleteScheduledAppointment(context, appointment);
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
-                          }
-                        },
-                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            label: confirmCancel
+                                ? 'Confirm Cancel'
+                                : 'Cancel Appt',
+                            variant: AppButtonVariant.warning,
+                            onPressed: () async {
+                              if (!confirmCancel) {
+                                setStateDialog(() {
+                                  confirmCancel = true;
+                                  confirmDelete = false;
+                                });
+                                return;
+                              }
+                              appointment.checkinStage = 'cancelled';
+                              appointment.isCheckedIn = false;
+                              appointments.set(appointment);
+                              if (dialogContext.mounted) {
+                                Navigator.pop(dialogContext);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: AppButton(
+                            label: confirmDelete
+                                ? 'Confirm Delete'
+                                : 'Delete',
+                            variant: AppButtonVariant.danger,
+                            onPressed: () async {
+                              if (!confirmDelete) {
+                                setStateDialog(() {
+                                  confirmDelete = true;
+                                  confirmCancel = false;
+                                });
+                                return;
+                              }
+                              await _deleteScheduledAppointment(
+                                context,
+                                appointment,
+                              );
+                              if (dialogContext.mounted) {
+                                Navigator.pop(dialogContext);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -649,7 +662,7 @@ class _WorkflowRow extends StatelessWidget {
                         AppBadge(
                           text:
                               'Scheduled · ${formatClinicDateTime(appointment.date, pattern: 'h:mm a')}',
-                          type: BadgeType.primary,
+                          color: AppColors.scheduledChipFg,
                         ),
                       ],
                       if (duplicateRecord) ...[

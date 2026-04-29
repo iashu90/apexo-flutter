@@ -44,6 +44,9 @@ class AppColors {
   static const borderBlueSoft = Color(0xFFDCE8F6);
 
   static const checkinCompletedBg = Color(0xFFEBFAE6);
+  static const scheduledChipFg = Color(0xFF5F7288);
+  static const scheduledChipBg = Color(0xFFE9EFF5);
+  static const scheduledChipBorder = Color(0xFFD6E1EC);
 
   
   static const overlay15 = Color(0x0F0D2E59);

@@ -43,7 +43,7 @@ class _InlineNextAppointmentCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD7E0EB)),
+            border: Border.all(color: AppColors.borderBlueSoft),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,7 +51,7 @@ class _InlineNextAppointmentCard extends StatelessWidget {
               const Text(
                 'Next Appointment',
                 style: TextStyle(
-                  color: Color(0xFF223B5E),
+                  color: AppColors.blue7508,
                   fontWeight: FontWeight.w800,
                   fontSize: 14,
                 ),
@@ -63,8 +63,8 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                     : '${upcomingRows.length} future appointment(s)',
                 style: TextStyle(
                   color: upcomingRows.isEmpty
-                      ? const Color(0xFF5A6B7F)
-                      : const Color(0xFF1459AD),
+                      ? AppColors.textBlueMuted
+                      : AppColors.brandBlueDark,
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
@@ -81,7 +81,7 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                             formatClinicDateTime(row.date,
                                 pattern: 'dd MMM yyyy • h:mm a'),
                             style: const TextStyle(
-                              color: Color(0xFF184A9C),
+                              color: AppColors.blue700,
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
                             ),
@@ -105,7 +105,7 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                             icon: const Icon(
                               FluentIcons.blocked2,
                               size: 14,
-                              color: Color(0xFFC2415B),
+                              color: AppColors.rose6003,
                             ),
                             onPressed: () =>
                                 _confirmCancelScheduledFollowUpAppointment(
@@ -120,7 +120,7 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                             icon: const Icon(
                               FluentIcons.delete,
                               size: 14,
-                              color: Color(0xFFD6455D),
+                              color: AppColors.dangerRose,
                             ),
                             onPressed: () =>
                                 _confirmDeleteScheduledFollowUpAppointment(
@@ -141,7 +141,7 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                 Text(
                   'Cancelled (${cancelledRows.length})',
                   style: const TextStyle(
-                    color: Color(0xFFC2415B),
+                    color: AppColors.rose6003,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
@@ -157,7 +157,7 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                             formatClinicDateTime(row.date,
                                 pattern: 'dd MMM yyyy • h:mm a'),
                             style: const TextStyle(
-                              color: Color(0xFF8A5066),
+                              color: AppColors.rose700,
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
                             ),
@@ -169,7 +169,7 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                             icon: const Icon(
                               material.Icons.undo_rounded,
                               size: 14,
-                              color: Color(0xFF7A5AF8),
+                              color: AppColors.violet550,
                             ),
                             onPressed: () {
                               row.checkinStage = 'scheduled';

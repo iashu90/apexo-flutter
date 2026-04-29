@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:apexo/common_widgets/app_screen_title.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/core/theme/app_colors.dart';
@@ -84,14 +85,15 @@ class _ReportScreenState extends State<ReportScreen> {
                                   : tileWidth)
                               : cards[i] is _CompactReportTile
                                   ? tileWidth
-                              : allowWideTiles && (i % 7 == 0 || i % 11 == 0)
-                                  ? (tileWidth * 2) + spacing
-                                  : tileWidth,
+                                  : allowWideTiles &&
+                                          (i % 7 == 0 || i % 11 == 0)
+                                      ? (tileWidth * 2) + spacing
+                                      : tileWidth,
                           child: cards[i] is _WideReportTile
                               ? (cards[i] as _WideReportTile).child
                               : cards[i] is _CompactReportTile
                                   ? (cards[i] as _CompactReportTile).child
-                              : cards[i],
+                                  : cards[i],
                         ),
                     ],
                   );
@@ -110,14 +112,7 @@ class _ReportScreenState extends State<ReportScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Reports',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.blue800,
-                                  ),
-                                ),
+                                AppScreenTitle(title: 'Reports'),
                               ],
                             ),
                           ),
@@ -153,6 +148,9 @@ class _ReportScreenState extends State<ReportScreen> {
                             _DailyAppointmentsGrossTrendCard(
                               rows: allAppointments,
                             ),
+                            _DailyAppointmentsGrossBarTrendCard(
+                              rows: allAppointments,
+                            ),
                             _MonthlyAppointmentsTrendSection(
                               rows: allAppointments,
                               windowOffset: _monthlyOffset,
@@ -170,10 +168,14 @@ class _ReportScreenState extends State<ReportScreen> {
                               expenseRows: allExpenses,
                               windowOffset: _monthlyOffset,
                             ),
-                            _ReferralSourceDistributionCard(),
-                            _MonthlyTreatmentDistributionCard(
-                              rows: allAppointments,
-                              monthOffset: _monthlyOffset,
+                            _CompactReportTile(
+                              child: _ReferralSourceDistributionCard(),
+                            ),
+                            _CompactReportTile(
+                              child: _MonthlyTreatmentDistributionCard(
+                                rows: allAppointments,
+                                monthOffset: _monthlyOffset,
+                              ),
                             ),
                             _CompactReportTile(
                               child: _TrafficByTimeCard(rows: allAppointments),
@@ -181,23 +183,24 @@ class _ReportScreenState extends State<ReportScreen> {
                             _CompactReportTile(
                               child: _TrafficByDayCard(rows: allAppointments),
                             ),
+                            _CompactReportTile(
+                                child: _ReportGenderDistributionCard(
+                                    rows: allAppointments)),
+                            _CompactReportTile(
+                              child: _NewVsReturningCard(rows: allAppointments),
+                            ),
+                            _CompactReportTile(
+                              child: _ReportAgeDistributionCard(
+                                  rows: allAppointments),
+                            ),
+                            _CompactReportTile(
+                              child:
+                                  _PaymentModeStatusCard(rows: allAppointments),
+                            ),
                             _WideReportTile(
                               child: _ReportDoctorAppointmentDoneCard(
                                 rows: allAppointments,
                               ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _ReportGenderDistributionCard(rows: allAppointments),
-                                const SizedBox(height: 6),
-                                _NewVsReturningCard(rows: allAppointments),
-                                const SizedBox(height: 6),
-                                _ReportAgeDistributionCard(rows: allAppointments),
-                              ],
-                            ),
-                            _CompactReportTile(
-                              child: _PaymentModeStatusCard(rows: allAppointments),
                             ),
                           ],
                         ),
@@ -293,21 +296,15 @@ class _CompactReportTile extends StatelessWidget {
   Widget build(BuildContext context) => child;
 }
 
-enum _RangeFilter { today, week,lastMonth, month, sixMonths, ytd, year, all }
+enum _RangeFilter { lastMonth, month, ytd, year, all }
 
 extension _RangeFilterLabel on _RangeFilter {
   String get label {
     switch (this) {
-      case _RangeFilter.today:
-        return 'Today';
-      case _RangeFilter.week:
-        return 'Week';
       case _RangeFilter.month:
         return 'Monthly';
       case _RangeFilter.lastMonth:
         return 'Last Month';
-      case _RangeFilter.sixMonths:
-        return '6M';
       case _RangeFilter.ytd:
         return 'YTD';
       case _RangeFilter.year:
@@ -333,12 +330,6 @@ List<Appointment> _rangeRows(
   DateTime endExclusive = today.add(const Duration(days: 1));
 
   switch (range) {
-    case _RangeFilter.today:
-      start = today;
-      break;
-    case _RangeFilter.week:
-      start = today.subtract(const Duration(days: 6));
-      break;
     case _RangeFilter.month:
       final anchor = monthAnchor ?? today;
       start = DateTime(anchor.year, anchor.month, 1);
@@ -348,9 +339,6 @@ List<Appointment> _rangeRows(
       final prev = DateTime(today.year, today.month - 1, 1);
       start = prev;
       endExclusive = DateTime(prev.year, prev.month + 1, 1);
-      break;
-    case _RangeFilter.sixMonths:
-      start = DateTime(today.year, today.month - 5, 1);
       break;
     case _RangeFilter.ytd:
       start = DateTime(today.year, 1, 1);
@@ -423,50 +411,81 @@ class _ReportGenderDistributionCard extends StatelessWidget {
     }
 
     final total = male + female;
-    final malePct = total == 0 ? 0.0 : male / total;
-    final femalePct = total == 0 ? 0.0 : female / total;
 
     return _ReportContainer(
       title: 'Gender Distribution',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Total: $total', style: const TextStyle(color: AppColors.textBlueMuted)),
-          const SizedBox(height: 8),
-          _distributionLine('Male', male, malePct, AppColors.brandBlue),
-          const SizedBox(height: 8),
-          _distributionLine(
-            'Female',
-            female,
-            femalePct,
-            AppColors.successTeal,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _distributionLine(String label, int value, double ratio, Color color) {
-    return Row(
-      children: [
-        SizedBox(width: 70, child: Text(label)),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 8,
-              color: AppColors.violet1005,
-              child: FractionallySizedBox(
+      child: SizedBox(
+        height: 180,
+        child: total == 0
+            ? const Align(
                 alignment: Alignment.centerLeft,
-                widthFactor: ratio.clamp(0.0, 1.0),
-                child: Container(color: color),
+                child: Text(
+                  'No gender data found.',
+                  style: TextStyle(color: AppColors.textBlueMuted),
+                ),
+              )
+            : Row(
+                children: [
+                  SizedBox(
+                    width: 130,
+                    height: 130,
+                    child: PieChart(
+                      PieChartData(
+                        sectionsSpace: 2,
+                        centerSpaceRadius: 28,
+                        sections: [
+                          PieChartSectionData(
+                            value: male.toDouble(),
+                            color: AppColors.brandBlue,
+                            title:
+                                '${((male / total) * 100).toStringAsFixed(0)}%',
+                            titleStyle: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                            radius: 42,
+                          ),
+                          PieChartSectionData(
+                            value: female.toDouble(),
+                            color: AppColors.successTeal,
+                            title:
+                                '${((female / total) * 100).toStringAsFixed(0)}%',
+                            titleStyle: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                            radius: 42,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Total: $total',
+                          style:
+                              const TextStyle(color: AppColors.textBlueMuted),
+                        ),
+                        const SizedBox(height: 8),
+                        _LegendDot(
+                            color: AppColors.brandBlue, label: 'Male $male'),
+                        const SizedBox(height: 6),
+                        _LegendDot(
+                            color: AppColors.successTeal,
+                            label: 'Female $female'),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text('$value'),
-      ],
+      ),
     );
   }
 }
@@ -520,59 +539,20 @@ class _ReportAgeDistributionCard extends StatelessWidget {
       }
     }
 
-    final maxValue = buckets.values
-        .fold<int>(0, (max, bucket) => math.max(max, bucket.total))
-        .toDouble();
+    final labels = buckets.keys.toList(growable: false);
+    final values = buckets.values
+        .map((bucket) => bucket.total.toDouble())
+        .toList(growable: false);
 
     return _ReportContainer(
       title: 'Age Distribution',
-      child: Column(
-        children: buckets.entries.map((entry) {
-          final ratio = maxValue == 0 ? 0.0 : entry.value.total / maxValue;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                SizedBox(width: 60, child: Text(entry.key)),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      height: 8,
-                      color: AppColors.violet1005,
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: ratio.clamp(0.0, 1.0),
-                        child: entry.value.total == 0
-                            ? const SizedBox.shrink()
-                            : Row(
-                                children: [
-                                  if (entry.value.male > 0)
-                                    Expanded(
-                                      flex: entry.value.male,
-                                      child: Container(
-                                        color: AppColors.brandBlue,
-                                      ),
-                                    ),
-                                  if (entry.value.female > 0)
-                                    Expanded(
-                                      flex: entry.value.female,
-                                      child: Container(
-                                        color: AppColors.successTeal,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text('M ${entry.value.male}  F ${entry.value.female}'),
-              ],
-            ),
-          );
-        }).toList(growable: false),
+      child: SizedBox(
+        height: 220,
+        child: _FormattedBarChart(
+          labels: labels,
+          values: values,
+          barColor: AppColors.successTeal,
+        ),
       ),
     );
   }
@@ -603,15 +583,17 @@ class _ReportDoctorAppointmentDoneCardState
   }
 
   Future<void> _exportCsv(
-    List<({
-      Doctor doctor,
-      int done,
-      int appointments,
-      double fee,
-      double revenue,
-      double hospitalGained,
-      double profitPct,
-    })> rows,
+    List<
+            ({
+              Doctor doctor,
+              int done,
+              int appointments,
+              double fee,
+              double revenue,
+              double hospitalGained,
+              double profitPct,
+            })>
+        rows,
   ) async {
     if (_isExportingCsv || _isExportingPdf || rows.isEmpty) return;
     setState(() => _isExportingCsv = true);
@@ -627,7 +609,9 @@ class _ReportDoctorAppointmentDoneCardState
           'Profit %',
         ],
         ...rows.map((row) => [
-              row.doctor.title.trim().isEmpty ? 'Unnamed doctor' : row.doctor.title,
+              row.doctor.title.trim().isEmpty
+                  ? 'Unnamed doctor'
+                  : row.doctor.title,
               '${row.done}',
               '${row.appointments}',
               row.revenue.toStringAsFixed(2),
@@ -660,15 +644,17 @@ class _ReportDoctorAppointmentDoneCardState
   }
 
   Future<void> _exportPdf(
-    List<({
-      Doctor doctor,
-      int done,
-      int appointments,
-      double fee,
-      double revenue,
-      double hospitalGained,
-      double profitPct,
-    })> rows,
+    List<
+            ({
+              Doctor doctor,
+              int done,
+              int appointments,
+              double fee,
+              double revenue,
+              double hospitalGained,
+              double profitPct,
+            })>
+        rows,
   ) async {
     if (_isExportingCsv || _isExportingPdf || rows.isEmpty) return;
     setState(() => _isExportingPdf = true);
@@ -684,7 +670,9 @@ class _ReportDoctorAppointmentDoneCardState
           'Profit %',
         ],
         ...rows.map((row) => [
-              row.doctor.title.trim().isEmpty ? 'Unnamed doctor' : row.doctor.title,
+              row.doctor.title.trim().isEmpty
+                  ? 'Unnamed doctor'
+                  : row.doctor.title,
               '${row.done}',
               '${row.appointments}',
               row.revenue.toStringAsFixed(2),
@@ -740,7 +728,8 @@ class _ReportDoctorAppointmentDoneCardState
             (sum, a) => sum + a.paid + a.prescriptionPaid,
           );
           final hospitalGained = revenue - fee;
-          final profitPct = revenue <= 0 ? 0.0 : (hospitalGained / revenue) * 100;
+          final profitPct =
+              revenue <= 0 ? 0.0 : (hospitalGained / revenue) * 100;
           return (
             doctor: doctor,
             done: done,
@@ -751,15 +740,16 @@ class _ReportDoctorAppointmentDoneCardState
             profitPct: profitPct,
           );
         })
-        .whereType<({
-          Doctor doctor,
-          int done,
-          int appointments,
-          double fee,
-          double revenue,
-          double hospitalGained,
-          double profitPct,
-        })>()
+        .whereType<
+            ({
+              Doctor doctor,
+              int done,
+              int appointments,
+              double fee,
+              double revenue,
+              double hospitalGained,
+              double profitPct,
+            })>()
         .toList(growable: false)
       ..sort((a, b) => b.done.compareTo(a.done));
 
@@ -767,7 +757,8 @@ class _ReportDoctorAppointmentDoneCardState
     final totalFee = rows.fold<double>(0, (s, r) => s + r.fee);
     final totalRevenue = rows.fold<double>(0, (s, r) => s + r.revenue);
     final totalNet = rows.fold<double>(0, (s, r) => s + r.hospitalGained);
-    final totalProfitPct = totalRevenue <= 0 ? 0.0 : (totalNet / totalRevenue) * 100;
+    final totalProfitPct =
+        totalRevenue <= 0 ? 0.0 : (totalNet / totalRevenue) * 100;
 
     return _ReportContainer(
       title: 'Appointments Done By Doctor',
@@ -777,8 +768,12 @@ class _ReportDoctorAppointmentDoneCardState
           ExportButtons(
             csvBusy: _isExportingCsv,
             pdfBusy: _isExportingPdf,
-            onCsv: (_isExportingCsv || _isExportingPdf || rows.isEmpty) ? null : () => _exportCsv(rows),
-            onPdf: (_isExportingCsv || _isExportingPdf || rows.isEmpty) ? null : () => _exportPdf(rows),
+            onCsv: (_isExportingCsv || _isExportingPdf || rows.isEmpty)
+                ? null
+                : () => _exportCsv(rows),
+            onPdf: (_isExportingCsv || _isExportingPdf || rows.isEmpty)
+                ? null
+                : () => _exportPdf(rows),
           ),
         ],
       ),
@@ -840,7 +835,8 @@ class _ReportDoctorAppointmentDoneCardState
                       .map(
                         (m) => ComboBoxItem<DateTime>(
                           value: m,
-                          child: Text(formatClinicDate(m, pattern: 'MMMM yyyy')),
+                          child:
+                              Text(formatClinicDate(m, pattern: 'MMMM yyyy')),
                         ),
                       )
                       .toList(growable: false),
@@ -1174,9 +1170,47 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
             ],
           ),
           const SizedBox(height: 12),
-          _ratioBar('New', newPct, AppColors.brandBlue),
-          const SizedBox(height: 8),
-          _ratioBar('Returning', returningPct, AppColors.successTeal),
+          SizedBox(
+            height: 150,
+            child: total == 0
+                ? const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'No data for selected range.',
+                      style: TextStyle(color: AppColors.textBlueMuted),
+                    ),
+                  )
+                : PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 28,
+                      sections: [
+                        PieChartSectionData(
+                          value: newCount.toDouble(),
+                          color: AppColors.brandBlue,
+                          title: '${newPct.toStringAsFixed(0)}%',
+                          titleStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                          radius: 40,
+                        ),
+                        PieChartSectionData(
+                          value: returningCount.toDouble(),
+                          color: AppColors.successTeal,
+                          title: '${returningPct.toStringAsFixed(0)}%',
+                          titleStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                          radius: 40,
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
         ],
       ),
     );
@@ -1198,47 +1232,6 @@ class _NewVsReturningCardBodyState extends State<_NewVsReturningCardBody> {
           fontSize: 12,
         ),
       ),
-    );
-  }
-
-  Widget _ratioBar(String label, double pct, Color color) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 90,
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textBlueStrong,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-        ),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 10,
-              color: AppColors.violet1005,
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: (pct / 100).clamp(0.0, 1.0),
-                child: Container(color: color),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '${pct.toStringAsFixed(1)}%',
-          style: const TextStyle(
-            color: AppColors.textBlueStrong,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1271,8 +1264,7 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
       AppColors.violet5502,
     ];
 
-    return SizedBox(
-      width: 560,
+    return IntrinsicWidth(
       child: _ReportContainer(
         title: 'Monthly Treatment Distribution',
         subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
@@ -1293,20 +1285,29 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
                       child: SizedBox(
                         width: 112,
                         height: 112,
-                        child: CustomPaint(
-                          painter: _DonutPainter(
-                            rows: distributionRows,
-                            colors: colors,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '$total',
-                              style: const TextStyle(
-                                color: AppColors.blue7502,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 24,
+                            sections:
+                                distributionRows.asMap().entries.map((entry) {
+                              final row = entry.value;
+                              final pct =
+                                  total == 0 ? 0.0 : (row.value / total) * 100;
+                              return PieChartSectionData(
+                                value: row.value.toDouble(),
+                                color: colors[entry.key % colors.length],
+                                title: pct >= 8
+                                    ? '${pct.toStringAsFixed(0)}%'
+                                    : '',
+                                titleStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                                radius: 40,
+                              );
+                            }).toList(growable: false),
                           ),
                         ),
                       ),
@@ -1316,7 +1317,8 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: distributionRows.asMap().entries.map((entry) {
+                          children:
+                              distributionRows.asMap().entries.map((entry) {
                             final row = entry.value;
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 6),
@@ -1358,41 +1360,6 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
   }
 }
 
-class _DonutPainter extends CustomPainter {
-  final List<MapEntry<String, int>> rows;
-  final List<Color> colors;
-
-  _DonutPainter({required this.rows, required this.colors});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final total = rows.fold<int>(0, (s, e) => s + e.value);
-    if (total == 0) return;
-
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) / 2;
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final stroke = radius * 0.34;
-
-    var start = -math.pi / 2;
-    for (var i = 0; i < rows.length; i++) {
-      final sweep = (rows[i].value / total) * math.pi * 2;
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.round
-        ..color = colors[i % colors.length];
-      canvas.drawArc(rect, start, sweep, false, paint);
-      start += sweep;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DonutPainter oldDelegate) {
-    return oldDelegate.rows != rows || oldDelegate.colors != colors;
-  }
-}
-
 class _FilterChips extends StatelessWidget {
   final _RangeFilter selected;
   final ValueChanged<_RangeFilter> onChanged;
@@ -1412,9 +1379,8 @@ class _FilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final all = _RangeFilter.values
-        .where((r) => includeToday || r != _RangeFilter.today)
-        .toList(growable: false);
+    final all =
+        _RangeFilter.values.where((r) => includeToday).toList(growable: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1531,8 +1497,10 @@ class _DailyAppointmentsGrossTrendCardState
       );
     }).toList(growable: false);
 
-    final maxCount = points.fold<double>(1, (m, p) => p.count > m ? p.count : m);
-    final maxGross = points.fold<double>(1, (m, p) => p.gross > m ? p.gross : m);
+    final maxCount =
+        points.fold<double>(1, (m, p) => p.count > m ? p.count : m);
+    final maxGross =
+        points.fold<double>(1, (m, p) => p.gross > m ? p.gross : m);
 
     return _ReportContainer(
       title: 'Appointment + Gross Trend (Daily)',
@@ -1555,7 +1523,7 @@ class _DailyAppointmentsGrossTrendCardState
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 190,
+            height: 220,
             child: LineChart(
               LineChartData(
                 minY: 0,
@@ -1644,7 +1612,8 @@ class _DailyAppointmentsGrossTrendCardState
                   LineChartBarData(
                     spots: [
                       for (var i = 0; i < points.length; i++)
-                        FlSpot(i.toDouble(), (points[i].count / maxCount) * 100),
+                        FlSpot(
+                            i.toDouble(), (points[i].count / maxCount) * 100),
                     ],
                     isCurved: true,
                     barWidth: 2.5,
@@ -1654,7 +1623,8 @@ class _DailyAppointmentsGrossTrendCardState
                   LineChartBarData(
                     spots: [
                       for (var i = 0; i < points.length; i++)
-                        FlSpot(i.toDouble(), (points[i].gross / maxGross) * 100),
+                        FlSpot(
+                            i.toDouble(), (points[i].gross / maxGross) * 100),
                     ],
                     isCurved: true,
                     barWidth: 2.5,
@@ -1662,6 +1632,188 @@ class _DailyAppointmentsGrossTrendCardState
                     dotData: const FlDotData(show: false),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyAppointmentsGrossBarTrendCard extends StatefulWidget {
+  final List<Appointment> rows;
+
+  const _DailyAppointmentsGrossBarTrendCard({required this.rows});
+
+  @override
+  State<_DailyAppointmentsGrossBarTrendCard> createState() =>
+      _DailyAppointmentsGrossBarTrendCardState();
+}
+
+class _DailyAppointmentsGrossBarTrendCardState
+    extends State<_DailyAppointmentsGrossBarTrendCard> {
+  int _monthOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    final monthStart =
+        DateTime(currentMonth.year, currentMonth.month - _monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final dayCount = monthEnd.difference(monthStart).inDays;
+
+    final starts = List<DateTime>.generate(
+      dayCount,
+      (i) => monthStart.add(Duration(days: i)),
+      growable: false,
+    );
+
+    final points = starts.map((start) {
+      final end = start.add(const Duration(days: 1));
+      final dayRows = widget.rows
+          .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
+          .toList(growable: false);
+      final count = dayRows.length.toDouble();
+      final gross = dayRows.fold<double>(
+        0,
+        (sum, a) => sum + a.paid + a.prescriptionPaid,
+      );
+      return (
+        label: formatClinicDate(start, pattern: 'dd'),
+        count: count,
+        gross: gross,
+      );
+    }).toList(growable: false);
+
+    final maxCount =
+        points.fold<double>(1, (m, p) => p.count > m ? p.count : m);
+    final maxGross =
+        points.fold<double>(1, (m, p) => p.gross > m ? p.gross : m);
+
+    return _ReportContainer(
+      title: 'Appointment + Gross Trend (Daily Bars)',
+      subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
+      trailing: _TrendNavButtons(
+        canGoForward: _monthOffset > 0,
+        onBack: () => setState(() => _monthOffset += 1),
+        onForward:
+            _monthOffset > 0 ? () => setState(() => _monthOffset -= 1) : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              _LegendDot(color: AppColors.brandBlue, label: 'Appointments'),
+              SizedBox(width: 10),
+              _LegendDot(color: AppColors.successTeal, label: 'Gross Revenue'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 220,
+            child: BarChart(
+              BarChartData(
+                maxY: 110,
+                gridData: FlGridData(
+                  show: true,
+                  horizontalInterval: 25,
+                  getDrawingHorizontalLine: (_) => const FlLine(
+                    color: AppColors.slate100,
+                    strokeWidth: 1,
+                  ),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: const Border(
+                    left: BorderSide(color: AppColors.borderSoft),
+                    bottom: BorderSide(color: AppColors.borderSoft),
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 24,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= points.length) {
+                          return const SizedBox.shrink();
+                        }
+                        if (points.length > 12 && index % 2 == 1) {
+                          return const SizedBox.shrink();
+                        }
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          child: Text(
+                            points[index].label,
+                            style: const TextStyle(
+                              color: AppColors.textBlueMuted,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) => AppColors.blue750,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final day = points[groupIndex];
+                      if (rodIndex == 0) {
+                        return BarTooltipItem(
+                          '${day.label}\n${day.count.toStringAsFixed(0)} appts',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        );
+                      }
+                      return BarTooltipItem(
+                        '${day.label}\n₹${formatIndianCompactNumber(day.gross, fractionDigits: 1)}',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                barGroups: List<BarChartGroupData>.generate(
+                  points.length,
+                  (index) => BarChartGroupData(
+                    x: index,
+                    barsSpace: 3,
+                    barRods: [
+                      BarChartRodData(
+                        toY: (points[index].count / maxCount) * 100,
+                        width: 6,
+                        color: AppColors.brandBlue,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      BarChartRodData(
+                        toY: (points[index].gross / maxGross) * 100,
+                        width: 6,
+                        color: AppColors.successTeal,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -1724,9 +1876,8 @@ class _DailyAppointmentsTrendSectionState
       rows: widget.rows,
       monthOffset: _monthOffset,
       onBack: () => setState(() => _monthOffset += 1),
-      onForward: _monthOffset > 0
-          ? () => setState(() => _monthOffset -= 1)
-          : null,
+      onForward:
+          _monthOffset > 0 ? () => setState(() => _monthOffset -= 1) : null,
     );
   }
 }
@@ -1741,8 +1892,7 @@ class _DailyRevenueTrendSection extends StatefulWidget {
       _DailyRevenueTrendSectionState();
 }
 
-class _DailyRevenueTrendSectionState
-    extends State<_DailyRevenueTrendSection> {
+class _DailyRevenueTrendSectionState extends State<_DailyRevenueTrendSection> {
   int _monthOffset = 0;
 
   @override
@@ -1751,9 +1901,8 @@ class _DailyRevenueTrendSectionState
       rows: widget.rows,
       monthOffset: _monthOffset,
       onBack: () => setState(() => _monthOffset += 1),
-      onForward: _monthOffset > 0
-          ? () => setState(() => _monthOffset -= 1)
-          : null,
+      onForward:
+          _monthOffset > 0 ? () => setState(() => _monthOffset -= 1) : null,
     );
   }
 }
@@ -1860,7 +2009,7 @@ class _DailyAppointmentsTrendWindowCard extends StatelessWidget {
 
     final points = starts.map((start) {
       final end = start.add(const Duration(days: 1));
-        final count = rows
+      final count = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .length
           .toDouble();
@@ -1906,7 +2055,7 @@ class _MonthlyAppointmentsTrendWindowCard extends StatelessWidget {
 
     final points = starts.map((start) {
       final end = DateTime(start.year, start.month + 1, 1);
-        final count = rows
+      final count = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .length
           .toDouble();
@@ -1953,7 +2102,7 @@ class _DailyRevenueTrendWindowCard extends StatelessWidget {
 
     final points = starts.map((start) {
       final end = start.add(const Duration(days: 1));
-        final value = rows
+      final value = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
       return (label: formatClinicDate(start, pattern: 'dd'), value: value);
@@ -2000,7 +2149,7 @@ class _MonthlyRevenueTrendWindowCard extends StatelessWidget {
 
     final points = starts.map((start) {
       final end = DateTime(start.year, start.month + 1, 1);
-        final value = rows
+      final value = rows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
       return (label: formatClinicDate(start, pattern: 'MMM'), value: value);
@@ -2090,10 +2239,10 @@ class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
 
     final points = starts.map((start) {
       final end = DateTime(start.year, start.month + 1, 1);
-        final gross = appointmentsRows
+      final gross = appointmentsRows
           .where((a) => !a.date.isBefore(start) && a.date.isBefore(end))
           .fold<double>(0, (sum, a) => sum + a.paid + a.prescriptionPaid);
-        final expensesSum = expenseRows
+      final expensesSum = expenseRows
           .where((e) => !e.date.isBefore(start) && e.date.isBefore(end))
           .fold<double>(0, (sum, e) => sum + e.amount);
       final net = gross - expensesSum;
@@ -2126,9 +2275,11 @@ class _PaymentModeStatusCard extends StatelessWidget {
     var upiCount = 0;
     var cashCount = 0;
     for (final appointment in rows) {
-      final hasPayment = appointment.paid > 0 || appointment.prescriptionPaid > 0;
+      final hasPayment =
+          appointment.paid > 0 || appointment.prescriptionPaid > 0;
       if (!hasPayment) continue;
-      final isUpi = appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
+      final isUpi =
+          appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
       if (isUpi) {
         upiCount += 1;
       } else {
@@ -2180,25 +2331,25 @@ class _PaymentModeStatusCard extends StatelessWidget {
     return _ReportContainer(
       title: 'Total Payment Status ($total)',
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            modeRow(
-              label: 'UPI',
-              count: upiCount,
-              pct: upiPct,
-              fg: AppColors.blue700,
-              bg: AppColors.violet1006,
-            ),
-            const SizedBox(height: 8),
-            modeRow(
-              label: 'Cash',
-              count: cashCount,
-              pct: cashPct,
-              fg: AppColors.rose600,
-              bg: AppColors.amber1002,
-            ),
-          ],
-        ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          modeRow(
+            label: 'UPI',
+            count: upiCount,
+            pct: upiPct,
+            fg: AppColors.blue700,
+            bg: AppColors.violet1006,
+          ),
+          const SizedBox(height: 8),
+          modeRow(
+            label: 'Cash',
+            count: cashCount,
+            pct: cashPct,
+            fg: AppColors.rose600,
+            bg: AppColors.amber1002,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2226,8 +2377,7 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
       AppColors.violet5502,
     ];
 
-    return SizedBox(
-      width: 560,
+    return IntrinsicWidth(
       child: _ReportContainer(
         title: 'Referral Source Report',
         subtitle: 'Patient acquisition channels',
@@ -2248,17 +2398,28 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
                       child: SizedBox(
                         width: 112,
                         height: 112,
-                        child: CustomPaint(
-                          painter: _DonutPainter(rows: rows, colors: colors),
-                          child: Center(
-                            child: Text(
-                              '$total',
-                              style: const TextStyle(
-                                color: AppColors.blue7502,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 24,
+                            sections: rows.asMap().entries.map((entry) {
+                              final row = entry.value;
+                              final pct =
+                                  total == 0 ? 0.0 : (row.value / total) * 100;
+                              return PieChartSectionData(
+                                value: row.value.toDouble(),
+                                color: colors[entry.key % colors.length],
+                                title: pct >= 8
+                                    ? '${pct.toStringAsFixed(0)}%'
+                                    : '',
+                                titleStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                                radius: 40,
+                              );
+                            }).toList(growable: false),
                           ),
                         ),
                       ),
@@ -2598,7 +2759,7 @@ class _TrafficByTimeCard extends StatefulWidget {
 }
 
 class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
-  _RangeFilter _range = _RangeFilter.today;
+  _RangeFilter _range = _RangeFilter.lastMonth;
   DateTime _monthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
 
@@ -2644,78 +2805,26 @@ class _TrafficByTimeCardState extends State<_TrafficByTimeCard> {
     return _ReportContainer(
       title: 'Traffic by Time',
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _FilterChips(
-              selected: _range,
-              onChanged: (v) => setState(() => _range = v),
-              monthAnchor: _monthAnchor,
-              monthOptions: _monthOptions(widget.rows),
-              onMonthChanged: (value) => setState(() => _monthAnchor = value),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _FilterChips(
+            selected: _range,
+            onChanged: (v) => setState(() => _range = v),
+            monthAnchor: _monthAnchor,
+            monthOptions: _monthOptions(widget.rows),
+            onMonthChanged: (value) => setState(() => _monthAnchor = value),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 220,
+            child: _FormattedBarChart(
+              labels: points.map((e) => e.label).toList(growable: false),
+              values: points.map((e) => e.value).toList(growable: false),
+              barColor: AppColors.brandBlue,
             ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 220,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: points
-                    .map(
-                      (point) => Expanded(
-                        child: Tooltip(
-                          message:
-                              '${point.label}: ${point.value.toStringAsFixed(0)}',
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(
-                                  point.value > 0
-                                      ? point.value.toStringAsFixed(0)
-                                      : '',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: AppColors.textBlueStrong,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Container(
-                                  height: (120 *
-                                          (point.value /
-                                              points.fold<double>(
-                                                1,
-                                                (m, e) =>
-                                                    e.value > m ? e.value : m,
-                                              )))
-                                      .clamp(4, 120)
-                                      .toDouble(),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.brandBlue,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  point.label,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: AppColors.textBlueMuted,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2730,7 +2839,7 @@ class _TrafficByDayCard extends StatefulWidget {
 }
 
 class _TrafficByDayCardState extends State<_TrafficByDayCard> {
-  _RangeFilter _range = _RangeFilter.week;
+  _RangeFilter _range = _RangeFilter.lastMonth;
   DateTime _monthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
 
@@ -2763,77 +2872,31 @@ class _TrafficByDayCardState extends State<_TrafficByDayCard> {
     final points = buckets.entries
         .map((e) => (label: e.key, value: e.value))
         .toList(growable: false);
-    final max = points.fold<double>(1, (m, e) => e.value > m ? e.value : m);
 
     return _ReportContainer(
       title: 'Traffic by Day',
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _FilterChips(
-              selected: _range,
-              includeToday: false,
-              onChanged: (v) => setState(() => _range = v),
-              monthAnchor: _monthAnchor,
-              monthOptions: _monthOptions(widget.rows),
-              onMonthChanged: (value) => setState(() => _monthAnchor = value),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _FilterChips(
+            selected: _range,
+            includeToday: false,
+            onChanged: (v) => setState(() => _range = v),
+            monthAnchor: _monthAnchor,
+            monthOptions: _monthOptions(widget.rows),
+            onMonthChanged: (value) => setState(() => _monthAnchor = value),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 220,
+            child: _FormattedBarChart(
+              labels: points.map((e) => e.label).toList(growable: false),
+              values: points.map((e) => e.value).toList(growable: false),
+              barColor: AppColors.successTeal,
             ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 220,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: points
-                    .map(
-                      (point) => Expanded(
-                        child: Tooltip(
-                          message:
-                              '${point.label}: ${point.value.toStringAsFixed(0)}',
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(
-                                  point.value > 0
-                                      ? point.value.toStringAsFixed(0)
-                                      : '',
-                                  style: const TextStyle(
-                                    color: AppColors.textBlueStrong,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Container(
-                                  height: (130 * (point.value / max))
-                                      .clamp(4, 130)
-                                      .toDouble(),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.successTeal,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  point.label,
-                                  style: const TextStyle(
-                                    color: AppColors.textBlueMuted,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 }
