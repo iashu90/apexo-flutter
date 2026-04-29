@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:apexo/common_widgets/app_screen_title.dart';
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/common_widgets/patient_history_modal.dart';
@@ -212,106 +213,101 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     return Stack(
       children: [
         Container(
-        color: AppTheme.light.scaffoldBackgroundColor,
-        child: ScaffoldPage.scrollable(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          children: [
-            MStreamBuilder(
-              streams: [
-                doctors.observableMap.stream,
-                appointments.observableMap.stream,
-              ],
-              builder: (context, _) {
-                final allDoctors = doctors.present.values
-                    .toList(growable: false)
-                  ..sort((a, b) =>
-                      a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-                final allAppointments =
-                    appointments.present.values.toList(growable: false);
+            color: AppTheme.light.scaffoldBackgroundColor,
+            child: ScaffoldPage.scrollable(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              children: [
+                MStreamBuilder(
+                  streams: [
+                    doctors.observableMap.stream,
+                    appointments.observableMap.stream,
+                  ],
+                  builder: (context, _) {
+                    final allDoctors = doctors.present.values
+                        .toList(growable: false)
+                      ..sort((a, b) => a.title
+                          .toLowerCase()
+                          .compareTo(b.title.toLowerCase()));
+                    final allAppointments =
+                        appointments.present.values.toList(growable: false);
 
-                final currentStart =
-                    _handledRange == 'custom' && _customRangeStart != null
-                        ? _customRangeStart!
-                        : _handledRange == 'month'
-                            ? _topMonthAnchor
-                            : _rangeStart(_selectedDate, _handledRange);
-                final currentEnd = _handledRange == 'custom' &&
-                        _customRangeEnd != null
-                    ? _dateOnly(_customRangeEnd!).add(const Duration(days: 1))
-                    : _handledRange == 'month'
-                        ? DateTime(
-                            _topMonthAnchor.year,
-                            _topMonthAnchor.month + 1,
-                            1,
-                          )
-                        : _rangeEndExclusive(_selectedDate);
-                final currentSpanDays =
-                    math.max(1, currentEnd.difference(currentStart).inDays);
-                final compareEnd = currentStart;
-                final compareStart =
-                    compareEnd.subtract(Duration(days: currentSpanDays));
-
-                final scopedCurrent = allAppointments
-                    .where((a) =>
-                        !a.date.isBefore(currentStart) &&
-                        a.date.isBefore(currentEnd))
-                    .toList(growable: false);
-
-                final scopedCompare = allAppointments
-                    .where((a) =>
-                        !a.date.isBefore(compareStart) &&
-                        a.date.isBefore(compareEnd))
-                    .toList(growable: false);
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      height: 56,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Doctors',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF12355F),
-                              ),
-                            ),
-                          ),
-                          Align(
-                            alignment: Alignment.center,
-                            child: _handledRange == 'today'
-                                ? DateNavigatorBar(
-                                    selectedDate: _selectedDate,
-                                    onPrevious: () => _changeDate(-1),
-                                    onNext: () => _changeDate(1),
-                                    onPick: () => _pickDate(context),
-                                    onToday: () {
-                                      _showTopRangeLoading();
-                                      setState(() {
-                                        _selectedDate =
-                                            _dateOnly(DateTime.now());
-                                        _topMonthAnchor = DateTime(
-                                          _selectedDate.year,
-                                          _selectedDate.month,
-                                          1,
-                                        );
-                                        doctorPersistedDate = _selectedDate;
-                                      });
-                                    },
+                    final currentStart =
+                        _handledRange == 'custom' && _customRangeStart != null
+                            ? _customRangeStart!
+                            : _handledRange == 'month'
+                                ? _topMonthAnchor
+                                : _rangeStart(_selectedDate, _handledRange);
+                    final currentEnd =
+                        _handledRange == 'custom' && _customRangeEnd != null
+                            ? _dateOnly(_customRangeEnd!)
+                                .add(const Duration(days: 1))
+                            : _handledRange == 'month'
+                                ? DateTime(
+                                    _topMonthAnchor.year,
+                                    _topMonthAnchor.month + 1,
+                                    1,
                                   )
-                                : _handledRange == 'month'
-                                    ? SizedBox(
-                                        width: 220,
-                                        child: ComboBox<DateTime>(
-                                          isExpanded: true,
-                                          value: _topMonthAnchor,
-                                          items:
-                                              _topMonthOptions(allAppointments)
+                                : _rangeEndExclusive(_selectedDate);
+                    final currentSpanDays =
+                        math.max(1, currentEnd.difference(currentStart).inDays);
+                    final compareEnd = currentStart;
+                    final compareStart =
+                        compareEnd.subtract(Duration(days: currentSpanDays));
+
+                    final scopedCurrent = allAppointments
+                        .where((a) =>
+                            !a.date.isBefore(currentStart) &&
+                            a.date.isBefore(currentEnd))
+                        .toList(growable: false);
+
+                    final scopedCompare = allAppointments
+                        .where((a) =>
+                            !a.date.isBefore(compareStart) &&
+                            a.date.isBefore(compareEnd))
+                        .toList(growable: false);
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          height: 56,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              const Align(
+                                alignment: Alignment.centerLeft,
+                                child: AppScreenTitle(title: 'Doctors'),
+                              ),
+                              Align(
+                                alignment: Alignment.center,
+                                child: _handledRange == 'today'
+                                    ? DateNavigatorBar(
+                                        selectedDate: _selectedDate,
+                                        onPrevious: () => _changeDate(-1),
+                                        onNext: () => _changeDate(1),
+                                        onPick: () => _pickDate(context),
+                                        onToday: () {
+                                          _showTopRangeLoading();
+                                          setState(() {
+                                            _selectedDate =
+                                                _dateOnly(DateTime.now());
+                                            _topMonthAnchor = DateTime(
+                                              _selectedDate.year,
+                                              _selectedDate.month,
+                                              1,
+                                            );
+                                            doctorPersistedDate = _selectedDate;
+                                          });
+                                        },
+                                      )
+                                    : _handledRange == 'month'
+                                        ? SizedBox(
+                                            width: 220,
+                                            child: ComboBox<DateTime>(
+                                              isExpanded: true,
+                                              value: _topMonthAnchor,
+                                              items: _topMonthOptions(
+                                                      allAppointments)
                                                   .map(
                                                     (m) =>
                                                         ComboBoxItem<DateTime>(
@@ -323,72 +319,73 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                                                     ),
                                                   )
                                                   .toList(growable: false),
-                                          onChanged: (value) {
-                                            if (value == null) return;
-                                            _showTopRangeLoading();
-                                            setState(() {
-                                              _topMonthAnchor = value;
-                                              _selectedDate = value;
-                                              doctorPersistedDate = value;
-                                            });
-                                          },
-                                        ),
-                                      )
-                                    : const SizedBox.shrink(),
+                                              onChanged: (value) {
+                                                if (value == null) return;
+                                                _showTopRangeLoading();
+                                                setState(() {
+                                                  _topMonthAnchor = value;
+                                                  _selectedDate = value;
+                                                  doctorPersistedDate = value;
+                                                });
+                                              },
+                                            ),
+                                          )
+                                        : const SizedBox.shrink(),
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: AppButton(
+                                  onPressed: _openAddDoctorModal,
+                                  label: 'Add Doctor',
+                                  leading:
+                                      const Icon(FluentIcons.add, size: 12),
+                                ),
+                              ),
+                            ],
                           ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: AppButton(
-                              onPressed: _openAddDoctorModal,
-                              label: 'Add Doctor',
-                              leading: const Icon(FluentIcons.add, size: 12),
-                            ),
+                        ),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _TopScopeChip(
+                                label: 'Day',
+                                selected: _handledRange == 'today',
+                                onTap: () => _setTopRange('today'),
+                              ),
+                              _TopScopeChip(
+                                label: 'Month',
+                                selected: _handledRange == 'month',
+                                onTap: () => _setTopRange('month'),
+                              ),
+                              _TopScopeChip(
+                                label: _handledRange == 'custom'
+                                    ? _customRangeLabel()
+                                    : 'Custom',
+                                selected: _handledRange == 'custom',
+                                onTap: () => _setTopRange('custom'),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _TopScopeChip(
-                            label: 'Day',
-                            selected: _handledRange == 'today',
-                            onTap: () => _setTopRange('today'),
-                          ),
-                          _TopScopeChip(
-                            label: 'Month',
-                            selected: _handledRange == 'month',
-                            onTap: () => _setTopRange('month'),
-                          ),
-                          _TopScopeChip(
-                            label: _handledRange == 'custom'
-                                ? _customRangeLabel()
-                                : 'Custom',
-                            selected: _handledRange == 'custom',
-                            onTap: () => _setTopRange('custom'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        return _DoctorTodayDetailCard(
-                          doctors: allDoctors,
-                          todaysAppointments: scopedCurrent,
-                          selectedDate: _selectedDate,
-                          selectedRange: _handledRange,
-                        );
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
-        )),
+                        ),
+                        const SizedBox(height: 10),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            return _DoctorTodayDetailCard(
+                              doctors: allDoctors,
+                              todaysAppointments: scopedCurrent,
+                              selectedDate: _selectedDate,
+                              selectedRange: _handledRange,
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            )),
         if (_showTopRangeLoadingOverlay)
           Positioned.fill(
             child: IgnorePointer(
@@ -1414,9 +1411,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     );
 
     if (sameMonthYear) {
-      final dayCsv = uniqueDates
-          .map((date) => DateFormat('dd').format(date))
-          .join(', ');
+      final dayCsv =
+          uniqueDates.map((date) => DateFormat('dd').format(date)).join(', ');
       return '$dayCsv ${DateFormat('MMM yyyy').format(uniqueDates.first)}';
     }
 
@@ -1450,7 +1446,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     );
     final paid = appointments.fold<double>(
       0,
-      (sum, appointment) => sum + appointment.paid + appointment.prescriptionPaid,
+      (sum, appointment) =>
+          sum + appointment.paid + appointment.prescriptionPaid,
     );
 
     if (treatmentTotal <= 0 && paid <= 0) return 'Free';
@@ -1701,8 +1698,12 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                     ExportButtons(
                       csvBusy: _isExportingCsv,
                       pdfBusy: _isExportingPdf,
-                      onCsv: (_isExportingCsv || doctorEntries.isEmpty) ? null : _exportVisibleCsv,
-                      onPdf: (_isExportingPdf || doctorEntries.isEmpty) ? null : _exportVisiblePdf,
+                      onCsv: (_isExportingCsv || doctorEntries.isEmpty)
+                          ? null
+                          : _exportVisibleCsv,
+                      onPdf: (_isExportingPdf || doctorEntries.isEmpty)
+                          ? null
+                          : _exportVisiblePdf,
                     ),
                   ],
                 ),
@@ -1956,7 +1957,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                       SizedBox(
                                           width: timeWidth,
                                           child: Text(
-                                            _showTimeOnly ? 'Time' : 'Date',
+                                              _showTimeOnly ? 'Time' : 'Date',
                                               style: TextStyle(
                                                   fontWeight: FontWeight.w700,
                                                   color: Color(0xFF355279)))),
@@ -2016,49 +2017,54 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                   final groupedAppointments = groupedRow.rows;
                                   final end = appointment.date
                                       .add(const Duration(minutes: 40));
-                                  final groupedCount = groupedAppointments.length;
+                                  final groupedCount =
+                                      groupedAppointments.length;
                                   final treatmentSet = groupedAppointments
-                                    .expand((a) => a.selectedTreatments)
-                                    .map((t) => t.trim())
-                                    .where((t) => t.isNotEmpty)
-                                    .toSet()
-                                    .toList(growable: false);
+                                      .expand((a) => a.selectedTreatments)
+                                      .map((t) => t.trim())
+                                      .where((t) => t.isNotEmpty)
+                                      .toSet()
+                                      .toList(growable: false);
                                   final treatment = treatmentSet.join(', ');
                                   final toothSet = groupedAppointments
-                                    .expand((a) => a.selectedTeeth)
-                                    .map((t) => t.trim())
-                                    .where((t) => t.isNotEmpty)
-                                    .toSet()
-                                    .toList(growable: false);
+                                      .expand((a) => a.selectedTeeth)
+                                      .map((t) => t.trim())
+                                      .where((t) => t.isNotEmpty)
+                                      .toSet()
+                                      .toList(growable: false);
                                   final tooth = toothSet.isEmpty
-                                    ? '-'
-                                    : toothSet.join(', ');
+                                      ? '-'
+                                      : toothSet.join(', ');
                                   final stageSet = groupedAppointments
-                                    .map((a) => _stageLabel(a))
-                                    .toSet();
+                                      .map((a) => _stageLabel(a))
+                                      .toSet();
                                   final stage = stageSet.length > 1
-                                    ? 'Mixed'
-                                    : _stageLabel(appointment);
+                                      ? 'Mixed'
+                                      : _stageLabel(appointment);
                                   final stageColor = _stageColor(stage);
                                   final paid = groupedAppointments.fold<double>(
-                                  0,
-                                  (sum, a) => sum + a.paid + a.prescriptionPaid,
+                                    0,
+                                    (sum, a) =>
+                                        sum + a.paid + a.prescriptionPaid,
                                   );
-                                  final consultantFee = groupedAppointments.fold<double>(
-                                  0,
-                                  (sum, a) => sum + a.doctorPayableAmount,
+                                  final consultantFee =
+                                      groupedAppointments.fold<double>(
+                                    0,
+                                    (sum, a) => sum + a.doctorPayableAmount,
                                   );
                                   final appointmentNet = paid - consultantFee;
                                   final paymentStatus = groupedCount > 1
-                                    ? _paymentStatusForGroupedAppointments(
-                                      groupedAppointments,
-                                    )
-                                    : _paymentStatusForAppointment(appointment);
+                                      ? _paymentStatusForGroupedAppointments(
+                                          groupedAppointments,
+                                        )
+                                      : _paymentStatusForAppointment(
+                                          appointment);
                                   final patientLabel = groupedCount > 1
-                                    ? '${appointment.title.trim().isEmpty ? 'Unnamed patient' : _doctorTitleCase(appointment.title)} ($groupedCount records)'
-                                    : (appointment.title.trim().isEmpty
-                                      ? 'Unnamed patient'
-                                      : _doctorTitleCase(appointment.title));
+                                      ? '${appointment.title.trim().isEmpty ? 'Unnamed patient' : _doctorTitleCase(appointment.title)} ($groupedCount records)'
+                                      : (appointment.title.trim().isEmpty
+                                          ? 'Unnamed patient'
+                                          : _doctorTitleCase(
+                                              appointment.title));
 
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 0),
@@ -2109,8 +2115,11 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                             _showTimeOnly
                                                 ? '${formatClinicDateTime(appointment.date, pattern: 'hh:mm a')} - ${formatClinicDateTime(end, pattern: 'hh:mm a')}'
                                                 : groupedCount > 1
-                                                ? _groupedDateLabel(groupedAppointments)
-                                                    : formatClinicDate(appointment.date, pattern: 'dd MMM yyyy'),
+                                                    ? _groupedDateLabel(
+                                                        groupedAppointments)
+                                                    : formatClinicDate(
+                                                        appointment.date,
+                                                        pattern: 'dd MMM yyyy'),
                                             style: const TextStyle(
                                               color: Color(0xFF4D6488),
                                               fontWeight: FontWeight.w600,
@@ -3042,8 +3051,12 @@ class _DoctorAppointmentDoneChartCardState
                 ExportButtons(
                   csvBusy: _isExportingCsv,
                   pdfBusy: _isExportingPdf,
-                  onCsv: (_isExportingCsv || widget.rows.isEmpty) ? null : _exportCsv,
-                  onPdf: (_isExportingPdf || widget.rows.isEmpty) ? null : _exportPdf,
+                  onCsv: (_isExportingCsv || widget.rows.isEmpty)
+                      ? null
+                      : _exportCsv,
+                  onPdf: (_isExportingPdf || widget.rows.isEmpty)
+                      ? null
+                      : _exportPdf,
                 ),
               ],
             ),
@@ -3102,7 +3115,8 @@ class _DoctorAppointmentDoneChartCardState
                       .map(
                         (m) => ComboBoxItem<DateTime>(
                           value: m,
-                          child: Text(formatClinicDate(m, pattern: 'MMMM yyyy')),
+                          child:
+                              Text(formatClinicDate(m, pattern: 'MMMM yyyy')),
                         ),
                       )
                       .toList(growable: false),
@@ -3829,4 +3843,3 @@ class _SlotPressureHeatmapCard extends StatelessWidget {
     );
   }
 }
-

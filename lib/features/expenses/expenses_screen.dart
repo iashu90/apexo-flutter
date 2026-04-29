@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_screen_title.dart';
 import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
@@ -296,14 +297,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Expenses',
-                  style: TextStyle(
-                    color: AppColors.blue7503,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                AppScreenTitle(title: 'Expenses'),
                 SizedBox(height: 2),
                 Text(
                   'Track and manage your clinic expenses',
@@ -1254,7 +1248,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ),
                   ),
                 ),
-                Expanded(flex: 10, child: _ExpenseStatusPill(status: status)),
+                Expanded(
+                  flex: 10,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _ExpenseStatusPill(status: status),
+                  ),
+                ),
                 Expanded(
                   flex: 8,
                   child: Row(

@@ -2,6 +2,7 @@
 
 import 'dart:math' as math;
 
+import 'package:apexo/common_widgets/app_screen_title.dart';
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
 import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
 import 'package:apexo/core/theme/app_colors.dart';
@@ -616,9 +617,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         cash: morningCash,
                         upi: morningUpi,
                         patientCount: morningPatients,
-                        borderColor: const Color(0xFFE5CC8A),
-                        background: const Color(0xFFFBF5E7),
-                        iconColor: const Color(0xFFC89F2B),
+                        borderColor: AppColors.amber200,
+                        background: AppColors.amber1004,
+                        iconColor: AppColors.amber500,
                       ),
                       _SessionRevenueCard(
                         title: 'Evening',
@@ -627,9 +628,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         cash: eveningCash,
                         upi: eveningUpi,
                         patientCount: eveningPatients,
-                        borderColor: const Color(0xFF8390C9),
-                        background: const Color(0xFFF0F2FA),
-                        iconColor: const Color(0xFF3F4D8F),
+                        borderColor: AppColors.violet400,
+                        background: AppColors.slate1008,
+                        iconColor: AppColors.primary800,
                       ),
                       _TopDailyTreatmentCard(
                         rows: dailyTreatmentDistribution,
@@ -657,18 +658,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             title: 'Treatment Revenue',
                             value: _money(treatmentRevenue),
                             icon: FluentIcons.money,
-                            iconColor: const Color(0xFF16A4AF),
-                            iconBackground: const Color(0xFFD6F2F4),
-                            valueColor: const Color(0xFF1468CC),
+                            iconColor: AppColors.successTeal,
+                            iconBackground: AppColors.violet1005,
+                            valueColor: AppColors.blue600,
                           ),
                           const SizedBox(height: 10),
                           _FinanceCard(
                             title: 'Prescription Revenue',
                             value: _money(prescriptionRevenue),
                             icon: FluentIcons.precipitation,
-                            iconColor: const Color(0xFF16A084),
-                            iconBackground: const Color(0xFFD3F4EA),
-                            valueColor: const Color(0xFF1468CC),
+                            iconColor: AppColors.successTeal,
+                            iconBackground: AppColors.green1002,
+                            valueColor: AppColors.blue600,
                           ),
                           const SizedBox(height: 10),
                           _FinanceCard(
@@ -676,8 +677,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             value: _money(outstandingBalance),
                             icon: FluentIcons.status_error_full,
                             iconColor: AppColors.dangerRose,
-                            iconBackground: const Color(0xFFF8D5DB),
-                            valueColor: const Color(0xFF213B5F),
+                            iconBackground: AppColors.amber2003,
+                            valueColor: AppColors.blue7508,
                             onTap: _openOutstandingDialog,
                           ),
                         ],
@@ -691,9 +692,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             title: 'Treatment Revenue',
                             value: _money(treatmentRevenue),
                             icon: FluentIcons.money,
-                            iconColor: const Color(0xFF16A4AF),
-                            iconBackground: const Color(0xFFD6F2F4),
-                            valueColor: const Color(0xFF1468CC),
+                            iconColor: AppColors.successTeal,
+                            iconBackground: AppColors.violet1005,
+                            valueColor: AppColors.blue600,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -702,9 +703,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             title: 'Prescription Revenue',
                             value: _money(prescriptionRevenue),
                             icon: FluentIcons.precipitation,
-                            iconColor: const Color(0xFF16A084),
-                            iconBackground: const Color(0xFFD3F4EA),
-                            valueColor: const Color(0xFF1468CC),
+                            iconColor: AppColors.successTeal,
+                            iconBackground: AppColors.green1002,
+                            valueColor: AppColors.blue600,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -714,8 +715,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             value: _money(outstandingBalance),
                             icon: FluentIcons.status_error_full,
                             iconColor: AppColors.dangerRose,
-                            iconBackground: const Color(0xFFF8D5DB),
-                            valueColor: const Color(0xFF213B5F),
+                            iconBackground: AppColors.amber2003,
+                            valueColor: AppColors.blue7508,
                             onTap: _openOutstandingDialog,
                           ),
                         ),
@@ -1789,8 +1790,8 @@ class _StatusBadge extends StatelessWidget {
         bg = const Color(0xFFF1EBFF);
       } else if (normalized == 'scheduled' || normalized == 'pending') {
         label = 'Scheduled';
-        fg = const Color(0xFF214F86);
-        bg = const Color(0xFFE6F0FD);
+        fg = AppColors.scheduledChipFg;
+        bg = AppColors.scheduledChipBg;
       } else if (normalized == 'treatment' || normalized == 'with_doctor') {
         label = 'Treatment';
         fg = const Color(0xFF1E40AF);
@@ -1893,10 +1894,10 @@ class _OverviewHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Align(
             alignment: Alignment.centerLeft,
-            child: _SectionTitle('Today\'s Overview'),
+            child: AppScreenTitle(title: 'Today\'s Overview'),
           ),
         ),
         Expanded(
@@ -3055,8 +3056,8 @@ class _StatusSummaryCard extends StatelessWidget {
                           const Color(0xFFFFF4D9)),
                       _statusChip(
                         'Scheduled $scheduled',
-                        const Color(0xFFE9EFF5),
-                        const Color(0xFFD6E1EC),
+                        AppColors.scheduledChipFg,
+                        AppColors.scheduledChipBg,
                       ),
                       _statusChip('Treatment $treatment',
                           const Color(0xFF1E40AF), const Color(0xFFEAF0FF)),

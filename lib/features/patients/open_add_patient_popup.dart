@@ -56,8 +56,7 @@ Future<Patient?> openAddPatientPopup({
         : (looksLikePhone ? '' : _toTitleCaseForPatientPopup(seed)),
   );
   final ageController = TextEditingController(
-    text:
-        isEditMode && existingPatient.age > 0 ? '${existingPatient.age}' : '',
+    text: isEditMode && existingPatient.age > 0 ? '${existingPatient.age}' : '',
   );
   final phoneController = TextEditingController(
     text: isEditMode ? existingPatient.phone : (looksLikePhone ? seed : ''),
@@ -70,18 +69,15 @@ Future<Patient?> openAddPatientPopup({
   String referral = (isEditMode && existingPatient.referralSource.isNotEmpty)
       ? existingPatient.referralSource
       : 'None';
-  final selectedMedicalHistory = isEditMode
-      ? existingPatient.tags.toSet()
-      : <String>{};
-  final selectedDrugHistory = isEditMode
-      ? existingPatient.drugHistorySuggestions.toSet()
-      : <String>{};
+  final selectedMedicalHistory =
+      isEditMode ? existingPatient.tags.toSet() : <String>{};
+  final selectedDrugHistory =
+      isEditMode ? existingPatient.drugHistorySuggestions.toSet() : <String>{};
   final selectedMaternalHistory = isEditMode
       ? existingPatient.maternalHistorySuggestions.toSet()
       : <String>{};
-  final selectedHabitsHistory = isEditMode
-      ? existingPatient.habitsSuggestions.toSet()
-      : <String>{};
+  final selectedHabitsHistory =
+      isEditMode ? existingPatient.habitsSuggestions.toSet() : <String>{};
   String? nameError;
   String? ageError;
   String? phoneError;
@@ -94,347 +90,350 @@ Future<Patient?> openAddPatientPopup({
       final dialogWidth = (screen.width - 24).clamp(360.0, 1100.0);
 
       return StatefulBuilder(
-      builder: (context, setStateDialog) => ContentDialog(
-        constraints: BoxConstraints(maxWidth: dialogWidth),
-        title: Row(
-          children: [
-            
-            Expanded(
-              child: Text(
-                isEditMode ? 'Edit Patient' : 'Add Patient',
-                style: const TextStyle(fontWeight: FontWeight.w700),
+        builder: (context, setStateDialog) => ContentDialog(
+          constraints: BoxConstraints(maxWidth: dialogWidth),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  isEditMode ? 'Edit Patient' : 'Add Patient',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(FluentIcons.chrome_close, size: 12),
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: dialogWidth - 28,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _popupFieldLabel('Name:'),
+                  TextBox(
+                    controller: nameController,
+                    placeholder: 'Patient name',
+                    onChanged: (_) {
+                      if (nameError != null) {
+                        setStateDialog(() => nameError = null);
+                      }
+                    },
+                  ),
+                  if (nameError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        nameError!,
+                        style: const TextStyle(
+                          color: Color(0xFFD6455D),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _popupFieldLabel('Age:'),
+                            TextBox(
+                              controller: ageController,
+                              placeholder: 'Age',
+                              keyboardType: material.TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(3),
+                              ],
+                              onChanged: (_) {
+                                if (ageError != null) {
+                                  setStateDialog(() => ageError = null);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _popupFieldLabel('Gender:'),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AppButton(
+                                    label: 'Male',
+                                    variant: gender == 1
+                                        ? AppButtonVariant.primary
+                                        : AppButtonVariant.secondary,
+                                    onPressed: () =>
+                                        setStateDialog(() => gender = 1),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: AppButton(
+                                    label: 'Female',
+                                    variant: gender == 0
+                                        ? AppButtonVariant.primary
+                                        : AppButtonVariant.secondary,
+                                    onPressed: () =>
+                                        setStateDialog(() => gender = 0),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (ageError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        ageError!,
+                        style: const TextStyle(
+                          color: Color(0xFFD6455D),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  _popupFieldLabel('Phone:'),
+                  TextBox(
+                    controller: phoneController,
+                    placeholder: 'Phone',
+                    keyboardType: material.TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    onChanged: (_) {
+                      if (phoneError != null || duplicatePhonePatient != null) {
+                        setStateDialog(() {
+                          phoneError = null;
+                          duplicatePhonePatient = null;
+                        });
+                      }
+                    },
+                  ),
+                  if (phoneError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        phoneError!,
+                        style: const TextStyle(
+                          color: Color(0xFFD6455D),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  if (duplicatePhonePatient != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.amber100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.dangerRose),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            FluentIcons.warning,
+                            size: 14,
+                            color: AppColors.dangerRose,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Phone already exists: ${duplicatePhonePatient!.title} '
+                              '(Age ${duplicatePhonePatient!.age}) • ${duplicatePhonePatient!.phone}',
+                              style: const TextStyle(
+                                color: AppColors.dangerRose,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  _popupFieldLabel('Address:'),
+                  TextBox(
+                    controller: addressController,
+                    placeholder: 'Address',
+                  ),
+                  const SizedBox(height: 16),
+                  _popupFieldLabel('Medical History:'),
+                  SelectableChipGroup(
+                    options: patientMedicalHistorySuggestions,
+                    selected: selectedMedicalHistory,
+                    onToggle: (item) {
+                      setStateDialog(() {
+                        if (selectedMedicalHistory.contains(item)) {
+                          selectedMedicalHistory.remove(item);
+                        } else {
+                          selectedMedicalHistory.add(item);
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _popupFieldLabel('Drug History:'),
+                  SelectableChipGroup(
+                    options: patientDrugHistorySuggestions,
+                    selected: selectedDrugHistory,
+                    onToggle: (item) {
+                      setStateDialog(() {
+                        if (selectedDrugHistory.contains(item)) {
+                          selectedDrugHistory.remove(item);
+                        } else {
+                          selectedDrugHistory.add(item);
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _popupFieldLabel('Maternal History:'),
+                  SelectableChipGroup(
+                    options: patientMaternalHistorySuggestions,
+                    selected: selectedMaternalHistory,
+                    onToggle: (item) {
+                      setStateDialog(() {
+                        if (selectedMaternalHistory.contains(item)) {
+                          selectedMaternalHistory.remove(item);
+                        } else {
+                          selectedMaternalHistory.add(item);
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _popupFieldLabel('Habits:'),
+                  SelectableChipGroup(
+                    options: patientHabitsSuggestions,
+                    selected: selectedHabitsHistory,
+                    onToggle: (item) {
+                      setStateDialog(() {
+                        if (selectedHabitsHistory.contains(item)) {
+                          selectedHabitsHistory.remove(item);
+                        } else {
+                          selectedHabitsHistory.add(item);
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _popupFieldLabel('Referral:'),
+                  ComboBox<String>(
+                    isExpanded: true,
+                    value: referral,
+                    items: const [
+                      ComboBoxItem(value: 'None', child: Text('None')),
+                      ComboBoxItem(value: 'Google', child: Text('Google')),
+                      ComboBoxItem(
+                          value: 'Social Media', child: Text('Social Media')),
+                      ComboBoxItem(value: 'Friends', child: Text('Friends')),
+                      ComboBoxItem(value: 'Camps', child: Text('Camps')),
+                      ComboBoxItem(
+                          value: 'Name Board', child: Text('Name Board')),
+                    ],
+                    onChanged: (v) =>
+                        setStateDialog(() => referral = v ?? 'None'),
+                  ),
+                ],
               ),
             ),
-            IconButton(
-              icon: const Icon(FluentIcons.chrome_close, size: 12),
+          ),
+          actions: [
+            AppButton(
+              label: 'Close',
+              variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.pop(dialogContext),
+            ),
+            AppButton(
+              label: isEditMode ? 'Save Changes' : 'Add Patient',
+              onPressed: () {
+                final rawName = nameController.text.trim();
+                final parsedAge = int.tryParse(ageController.text.trim()) ?? 0;
+                final rawPhone = _normalizePhoneDigits(phoneController.text);
+
+                final computedNameError =
+                    rawName.isEmpty ? 'Patient name is required.' : null;
+                final computedAgeError =
+                    parsedAge <= 0 ? 'Age is required.' : null;
+                final computedPhoneError = rawPhone.isEmpty
+                    ? 'Phone number is required.'
+                    : rawPhone.length != 10
+                        ? 'Invalid phone number.'
+                        : null;
+
+                setStateDialog(() {
+                  nameError = computedNameError;
+                  ageError = computedAgeError;
+                  phoneError = computedPhoneError;
+                });
+
+                if (computedAgeError != null) return;
+                if (computedNameError != null || computedPhoneError != null) {
+                  return;
+                }
+
+                Patient? duplicatePatient;
+                for (final p in patients.docs.values) {
+                  if (isEditMode && p.id == existingPatient.id) {
+                    continue;
+                  }
+                  if (_normalizePhoneDigits(p.phone) == rawPhone) {
+                    duplicatePatient = p;
+                    break;
+                  }
+                }
+                if (duplicatePatient != null) {
+                  setStateDialog(() {
+                    phoneError = 'Phone number already exists.';
+                    duplicatePhonePatient = duplicatePatient;
+                  });
+                  return;
+                }
+
+                final patient =
+                    existingPatient ?? Patient.fromJson({'id': uuid()});
+                patient
+                  ..title = _toTitleCaseForPatientPopup(rawName)
+                  ..birth = parsedAge
+                  ..gender = gender
+                  ..phone = rawPhone
+                  ..address = addressController.text.trim()
+                  ..tags = selectedMedicalHistory.toList(growable: false)
+                  ..drugHistorySuggestions =
+                      selectedDrugHistory.toList(growable: false)
+                  ..maternalHistorySuggestions =
+                      selectedMaternalHistory.toList(growable: false)
+                  ..habitsSuggestions =
+                      selectedHabitsHistory.toList(growable: false)
+                  ..referralSource = referral;
+                patients.set(patient);
+                Navigator.pop(dialogContext, patient);
+              },
             ),
           ],
         ),
-        content: SizedBox(
-          width: dialogWidth - 28,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _popupFieldLabel('Name:'),
-                TextBox(
-                  controller: nameController,
-                  placeholder: 'Patient name',
-                  onChanged: (_) {
-                    if (nameError != null) {
-                      setStateDialog(() => nameError = null);
-                    }
-                  },
-                ),
-                if (nameError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      nameError!,
-                      style: const TextStyle(
-                        color: Color(0xFFD6455D),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _popupFieldLabel('Age:'),
-                          TextBox(
-                            controller: ageController,
-                            placeholder: 'Age',
-                            keyboardType: material.TextInputType.number,
-                            onChanged: (_) {
-                              if (ageError != null) {
-                                setStateDialog(() => ageError = null);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _popupFieldLabel('Gender:'),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: AppButton(
-                                  label: 'Male',
-                                  variant: gender == 1
-                                      ? AppButtonVariant.primary
-                                      : AppButtonVariant.secondary,
-                                  onPressed: () =>
-                                      setStateDialog(() => gender = 1),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AppButton(
-                                  label: 'Female',
-                                  variant: gender == 0
-                                      ? AppButtonVariant.primary
-                                      : AppButtonVariant.secondary,
-                                  onPressed: () =>
-                                      setStateDialog(() => gender = 0),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (ageError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      ageError!,
-                      style: const TextStyle(
-                        color: Color(0xFFD6455D),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                _popupFieldLabel('Phone:'),
-                TextBox(
-                  controller: phoneController,
-                  placeholder: 'Phone',
-                  keyboardType: material.TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10),
-                  ],
-                  onChanged: (_) {
-                    if (phoneError != null || duplicatePhonePatient != null) {
-                      setStateDialog(() {
-                        phoneError = null;
-                        duplicatePhonePatient = null;
-                      });
-                    }
-                  },
-                ),
-                if (phoneError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      phoneError!,
-                      style: const TextStyle(
-                        color: Color(0xFFD6455D),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                if (duplicatePhonePatient != null)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.amber100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.dangerRose),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(
-                          FluentIcons.warning,
-                          size: 14,
-                          color: AppColors.dangerRose,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Phone already exists: ${duplicatePhonePatient!.title} '
-                            '(Age ${duplicatePhonePatient!.age}) • ${duplicatePhonePatient!.phone}',
-                            style: const TextStyle(
-                              color: AppColors.dangerRose,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                _popupFieldLabel('Address:'),
-                TextBox(
-                  controller: addressController,
-                  placeholder: 'Address',
-                ),
-                const SizedBox(height: 16),
-                _popupFieldLabel('Medical History:'),
-                SelectableChipGroup(
-                  options: patientMedicalHistorySuggestions,
-                  selected: selectedMedicalHistory,
-                  onToggle: (item) {
-                    setStateDialog(() {
-                      if (selectedMedicalHistory.contains(item)) {
-                        selectedMedicalHistory.remove(item);
-                      } else {
-                        selectedMedicalHistory.add(item);
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                _popupFieldLabel('Drug History:'),
-                SelectableChipGroup(
-                  options: patientDrugHistorySuggestions,
-                  selected: selectedDrugHistory,
-                  onToggle: (item) {
-                    setStateDialog(() {
-                      if (selectedDrugHistory.contains(item)) {
-                        selectedDrugHistory.remove(item);
-                      } else {
-                        selectedDrugHistory.add(item);
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                _popupFieldLabel('Maternal History:'),
-                SelectableChipGroup(
-                  options: patientMaternalHistorySuggestions,
-                  selected: selectedMaternalHistory,
-                  onToggle: (item) {
-                    setStateDialog(() {
-                      if (selectedMaternalHistory.contains(item)) {
-                        selectedMaternalHistory.remove(item);
-                      } else {
-                        selectedMaternalHistory.add(item);
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                _popupFieldLabel('Habits:'),
-                SelectableChipGroup(
-                  options: patientHabitsSuggestions,
-                  selected: selectedHabitsHistory,
-                  onToggle: (item) {
-                    setStateDialog(() {
-                      if (selectedHabitsHistory.contains(item)) {
-                        selectedHabitsHistory.remove(item);
-                      } else {
-                        selectedHabitsHistory.add(item);
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                _popupFieldLabel('Referral:'),
-                ComboBox<String>(
-                  isExpanded: true,
-                  value: referral,
-                  items: const [
-                    ComboBoxItem(value: 'None', child: Text('None')),
-                    ComboBoxItem(value: 'Google', child: Text('Google')),
-                    ComboBoxItem(
-                        value: 'Social Media', child: Text('Social Media')),
-                    ComboBoxItem(value: 'Friends', child: Text('Friends')),
-                    ComboBoxItem(value: 'Camps', child: Text('Camps')),
-                    ComboBoxItem(
-                        value: 'Name Board', child: Text('Name Board')),
-                  ],
-                  onChanged: (v) =>
-                      setStateDialog(() => referral = v ?? 'None'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          AppButton(
-            label: 'Close',
-            variant: AppButtonVariant.secondary,
-            onPressed: () => Navigator.pop(dialogContext),
-          ),
-          AppButton(
-            label: isEditMode ? 'Save Changes' : 'Add Patient',
-            onPressed: () {
-              final rawName = nameController.text.trim();
-              final parsedAge = int.tryParse(ageController.text.trim()) ?? 0;
-              final rawPhone = _normalizePhoneDigits(phoneController.text);
-
-              final computedNameError =
-                  rawName.isEmpty ? 'Patient name is required.' : null;
-              final computedAgeError =
-                  parsedAge <= 0 ? 'Age is required.' : null;
-              final computedPhoneError =
-                  rawPhone.isEmpty
-                    ? 'Phone number is required.'
-                    : rawPhone.length != 10
-                      ? 'Invalid phone number.'
-                      : null;
-
-              setStateDialog(() {
-                nameError = computedNameError;
-                ageError = computedAgeError;
-                phoneError = computedPhoneError;
-              });
-
-              if (computedAgeError != null) return;
-              if (computedNameError != null || computedPhoneError != null) {
-                return;
-              }
-
-              Patient? duplicatePatient;
-              for (final p in patients.docs.values) {
-                if (isEditMode && p.id == existingPatient.id) {
-                  continue;
-                }
-                if (_normalizePhoneDigits(p.phone) == rawPhone) {
-                  duplicatePatient = p;
-                  break;
-                }
-              }
-              if (duplicatePatient != null) {
-                setStateDialog(() {
-                  phoneError = 'Phone number already exists.';
-                  duplicatePhonePatient = duplicatePatient;
-                });
-                return;
-              }
-
-              final patient = existingPatient ?? Patient.fromJson({'id': uuid()});
-              patient
-                ..title = _toTitleCaseForPatientPopup(rawName)
-                ..birth = parsedAge
-                ..gender = gender
-                ..phone = rawPhone
-                ..address = addressController.text.trim()
-                ..tags = selectedMedicalHistory.toList(growable: false)
-                ..drugHistorySuggestions =
-                    selectedDrugHistory.toList(growable: false)
-                ..maternalHistorySuggestions =
-                    selectedMaternalHistory.toList(growable: false)
-                ..habitsSuggestions =
-                    selectedHabitsHistory.toList(growable: false)
-                ..referralSource = referral;
-              patients.set(patient);
-              Navigator.pop(dialogContext, patient);
-            },
-          ),
-        ],
-      ),
-    );
+      );
     },
   );
 }
