@@ -33,6 +33,17 @@ class _ReportScreenState extends State<ReportScreen> {
   bool _showHeavyCards = false;
   int _monthlyOffset = 0;
 
+  void _reloadHeavyCardsForMonthChange(int offsetDelta) {
+    setState(() {
+      _monthlyOffset = (_monthlyOffset + offsetDelta).clamp(0, 240);
+      _showHeavyCards = false;
+    });
+    Future<void>.delayed(const Duration(milliseconds: 120), () {
+      if (!mounted) return;
+      setState(() => _showHeavyCards = true);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -92,7 +103,11 @@ class _ReportScreenState extends State<ReportScreen> {
                           child: cards[i] is _WideReportTile
                               ? (cards[i] as _WideReportTile).child
                               : cards[i] is _CompactReportTile
-                                  ? (cards[i] as _CompactReportTile).child
+                                  ? SizedBox(
+                                      height: 300,
+                                      child: (cards[i] as _CompactReportTile)
+                                          .child,
+                                    )
                                   : cards[i],
                         ),
                     ],
@@ -126,9 +141,9 @@ class _ReportScreenState extends State<ReportScreen> {
                               pattern: 'MMM yyyy',
                             ),
                             canGoForward: _monthlyOffset > 0,
-                            onBack: () => setState(() => _monthlyOffset += 1),
+                            onBack: () => _reloadHeavyCardsForMonthChange(1),
                             onForward: _monthlyOffset > 0
-                                ? () => setState(() => _monthlyOffset -= 1)
+                                ? () => _reloadHeavyCardsForMonthChange(-1)
                                 : null,
                           ),
                         ],
@@ -181,10 +196,15 @@ class _ReportScreenState extends State<ReportScreen> {
                             ),
                             _CompactReportTile(
                               child: _ReportAgeDistributionCard(
-                                  rows: allAppointments),
+                                rows: allAppointments,
+                                monthOffset: _monthlyOffset,
+                              ),
                             ),
                             _CompactReportTile(
-                              child: _ReferralSourceDistributionCard(),
+                              child: _ReferralSourceDistributionCard(
+                                rows: allAppointments,
+                                monthOffset: _monthlyOffset,
+                              ),
                             ),
                             _CompactReportTile(
                               child: _MonthlyTreatmentDistributionCard(
@@ -193,8 +213,11 @@ class _ReportScreenState extends State<ReportScreen> {
                               ),
                             ),
                             _CompactReportTile(
-                                child: _ReportGenderDistributionCard(
-                                    rows: allAppointments)),
+                              child: _ReportGenderDistributionCard(
+                                rows: allAppointments,
+                                monthOffset: _monthlyOffset,
+                              ),
+                            ),
                             _CompactReportTile(
                               child: _NewVsReturningCard(
                                 rows: allAppointments,
@@ -202,8 +225,10 @@ class _ReportScreenState extends State<ReportScreen> {
                               ),
                             ),
                             _CompactReportTile(
-                              child:
-                                  _PaymentModeStatusCard(rows: allAppointments),
+                              child: _PaymentModeStatusCard(
+                                rows: allAppointments,
+                                monthOffset: _monthlyOffset,
+                              ),
                             ),
                             _WideReportTile(
                               child: _ReportDoctorAppointmentDoneCard(
@@ -402,14 +427,25 @@ class _AgeGenderCount {
 
 class _ReportGenderDistributionCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int monthOffset;
 
-  const _ReportGenderDistributionCard({required this.rows});
+  const _ReportGenderDistributionCard({
+    required this.rows,
+    required this.monthOffset,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month - monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final scoped = rows
+        .where((a) => !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
+        .toList(growable: false);
+
     int male = 0;
     int female = 0;
-    for (final row in rows) {
+    for (final row in scoped) {
       final bucket = _genderBucket(row.patient?.gender);
       if (bucket == 'female') {
         female += 1;
@@ -422,74 +458,60 @@ class _ReportGenderDistributionCard extends StatelessWidget {
 
     return _ReportContainer(
       title: 'Gender Distribution',
+      subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
       child: SizedBox(
         height: 220,
         child: total == 0
             ? const Align(
-                alignment: Alignment.centerLeft,
+                alignment: Alignment.center,
                 child: Text(
                   'No gender data found.',
                   style: TextStyle(color: AppColors.textBlueMuted),
                 ),
               )
-            : Row(
-                children: [
-                  SizedBox(
-                    width: 130,
-                    height: 130,
-                    child: PieChart(
-                      PieChartData(
-                        sectionsSpace: 2,
-                        centerSpaceRadius: 28,
-                        sections: [
-                          PieChartSectionData(
-                            value: male.toDouble(),
-                            color: AppColors.brandBlue,
-                            title:
-                                '${((male / total) * 100).toStringAsFixed(0)}%',
-                            titleStyle: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                            ),
-                            radius: 42,
-                          ),
-                          PieChartSectionData(
-                            value: female.toDouble(),
-                            color: AppColors.successTeal,
-                            title:
-                                '${((female / total) * 100).toStringAsFixed(0)}%',
-                            titleStyle: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                            ),
-                            radius: 42,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Total: $total',
-                          style:
-                              const TextStyle(color: AppColors.textBlueMuted),
+            : _PieLegendLayout(
+                pie: PieChart(
+                  PieChartData(
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 28,
+                    sections: [
+                      PieChartSectionData(
+                        value: male.toDouble(),
+                        color: AppColors.brandBlue,
+                        title: '${((male / total) * 100).toStringAsFixed(0)}%',
+                        titleStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
                         ),
-                        const SizedBox(height: 8),
-                        _LegendDot(
-                            color: AppColors.brandBlue, label: 'Male $male'),
-                        const SizedBox(height: 6),
-                        _LegendDot(
-                            color: AppColors.successTeal,
-                            label: 'Female $female'),
-                      ],
-                    ),
+                        radius: 42,
+                      ),
+                      PieChartSectionData(
+                        value: female.toDouble(),
+                        color: AppColors.successTeal,
+                        title:
+                            '${((female / total) * 100).toStringAsFixed(0)}%',
+                        titleStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                        ),
+                        radius: 42,
+                      ),
+                    ],
+                  ),
+                ),
+                legend: [
+                  Text(
+                    'Total: $total',
+                    style: const TextStyle(color: AppColors.textBlueMuted),
+                  ),
+                  const SizedBox(height: 8),
+                  _LegendDot(color: AppColors.brandBlue, label: 'Male $male'),
+                  const SizedBox(height: 6),
+                  _LegendDot(
+                    color: AppColors.successTeal,
+                    label: 'Female $female',
                   ),
                 ],
               ),
@@ -500,11 +522,22 @@ class _ReportGenderDistributionCard extends StatelessWidget {
 
 class _ReportAgeDistributionCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int monthOffset;
 
-  const _ReportAgeDistributionCard({required this.rows});
+  const _ReportAgeDistributionCard({
+    required this.rows,
+    required this.monthOffset,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month - monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final scoped = rows
+        .where((a) => !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
+        .toList(growable: false);
+
     final buckets = <String, _AgeGenderCount>{
       '<13': _AgeGenderCount(),
       '13-17': _AgeGenderCount(),
@@ -516,7 +549,7 @@ class _ReportAgeDistributionCard extends StatelessWidget {
       '65+': _AgeGenderCount(),
     };
 
-    for (final row in rows) {
+    for (final row in scoped) {
       final age = row.patient?.age ?? 0;
       final gender = _genderBucket(row.patient?.gender);
       String key;
@@ -554,6 +587,7 @@ class _ReportAgeDistributionCard extends StatelessWidget {
 
     return _ReportContainer(
       title: 'Age Distribution',
+      subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
       child: SizedBox(
         height: 220,
         child: _FormattedBarChart(
@@ -2223,14 +2257,25 @@ class _MonthlyNetRevenueTrendWindowCard extends StatelessWidget {
 
 class _PaymentModeStatusCard extends StatelessWidget {
   final List<Appointment> rows;
+  final int monthOffset;
 
-  const _PaymentModeStatusCard({required this.rows});
+  const _PaymentModeStatusCard({
+    required this.rows,
+    required this.monthOffset,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month - monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final scoped = rows
+        .where((a) => !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
+        .toList(growable: false);
+
     var upiCount = 0;
     var cashCount = 0;
-    for (final appointment in rows) {
+    for (final appointment in scoped) {
       final hasPayment =
           appointment.paid > 0 || appointment.prescriptionPaid > 0;
       if (!hasPayment) continue;
@@ -2248,85 +2293,65 @@ class _PaymentModeStatusCard extends StatelessWidget {
 
     return _ReportContainer(
       title: 'Total Payment Status ($total)',
+      subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
       child: SizedBox(
         height: 220,
         child: total == 0
             ? const Align(
-                alignment: Alignment.centerLeft,
+                alignment: Alignment.center,
                 child: Text(
                   'No payment data found.',
                   style: TextStyle(color: AppColors.textBlueMuted),
                 ),
               )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: 130,
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 130,
-                          height: 130,
-                          child: PieChart(
-                            PieChartData(
-                              sectionsSpace: 2,
-                              centerSpaceRadius: 28,
-                              sections: [
-                                PieChartSectionData(
-                                  value: upiCount.toDouble(),
-                                  color: AppColors.brandBlue,
-                                  title: '${upiPct.toStringAsFixed(0)}%',
-                                  titleStyle: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
-                                  radius: 42,
-                                ),
-                                PieChartSectionData(
-                                  value: cashCount.toDouble(),
-                                  color: AppColors.dangerRose,
-                                  title: '${cashPct.toStringAsFixed(0)}%',
-                                  titleStyle: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
-                                  radius: 42,
-                                ),
-                              ],
-                            ),
-                          ),
+            : _PieLegendLayout(
+                pie: PieChart(
+                  PieChartData(
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 28,
+                    sections: [
+                      PieChartSectionData(
+                        value: upiCount.toDouble(),
+                        color: AppColors.brandBlue,
+                        title: '${upiPct.toStringAsFixed(0)}%',
+                        titleStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _LegendDot(
-                                color: AppColors.brandBlue,
-                                label: 'UPI: $upiCount',
-                              ),
-                              const SizedBox(height: 8),
-                              _LegendDot(
-                                color: AppColors.dangerRose,
-                                label: 'Cash: $cashCount',
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Total: $total',
-                                style: const TextStyle(
-                                  color: AppColors.textBlueMuted,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
+                        radius: 42,
+                      ),
+                      PieChartSectionData(
+                        value: cashCount.toDouble(),
+                        color: AppColors.dangerRose,
+                        title: '${cashPct.toStringAsFixed(0)}%',
+                        titleStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
                         ),
-                      ],
+                        radius: 42,
+                      ),
+                    ],
+                  ),
+                ),
+                legend: [
+                  _LegendDot(
+                    color: AppColors.brandBlue,
+                    label: 'UPI: $upiCount',
+                  ),
+                  const SizedBox(height: 8),
+                  _LegendDot(
+                    color: AppColors.dangerRose,
+                    label: 'Cash: $cashCount',
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Total: $total',
+                    style: const TextStyle(
+                      color: AppColors.textBlueMuted,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -2337,19 +2362,36 @@ class _PaymentModeStatusCard extends StatelessWidget {
 }
 
 class _ReferralSourceDistributionCard extends StatelessWidget {
+  final List<Appointment> rows;
+  final int monthOffset;
+
+  const _ReferralSourceDistributionCard({
+    required this.rows,
+    required this.monthOffset,
+  });
+
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month - monthOffset, 1);
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
+    final scoped = rows
+        .where((a) => !a.date.isBefore(monthStart) && a.date.isBefore(monthEnd))
+        .toList(growable: false);
+
     final counts = <String, int>{};
-    for (final patient in patients.present.values) {
+    for (final row in scoped) {
+      final patient = row.patient;
+      if (patient == null) continue;
       final source = patient.referralSource.trim().isEmpty
           ? 'None'
           : patient.referralSource.trim();
       counts[source] = (counts[source] ?? 0) + 1;
     }
 
-    final rows = counts.entries.toList(growable: false)
+    final sourceRows = counts.entries.toList(growable: false)
       ..sort((a, b) => b.value.compareTo(a.value));
-    final total = rows.fold<int>(0, (sum, e) => sum + e.value);
+    final total = sourceRows.fold<int>(0, (sum, e) => sum + e.value);
     const colors = [
       AppColors.brandBlue,
       AppColors.successTeal,
@@ -2362,68 +2404,88 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
     return IntrinsicWidth(
       child: _ReportContainer(
         title: 'Referral Source Report',
-        subtitle: 'Patient acquisition channels',
+        subtitle: formatClinicDate(monthStart, pattern: 'MMMM yyyy'),
         child: SizedBox(
           height: 220,
-          child: rows.isEmpty
+          child: sourceRows.isEmpty
               ? const Align(
-                  alignment: Alignment.centerLeft,
+                  alignment: Alignment.center,
                   child: Text(
                     'No referral source data found.',
                     style: TextStyle(color: AppColors.blue5004),
                   ),
                 )
-              : Row(
-                  children: [
-                    SizedBox(
-                      width: 130,
-                      height: 130,
-                      child: PieChart(
-                        PieChartData(
-                          sectionsSpace: 2,
-                          centerSpaceRadius: 28,
-                          sections: rows.asMap().entries.map((entry) {
-                            final row = entry.value;
-                            final pct =
-                                total == 0 ? 0.0 : (row.value / total) * 100;
-                            return PieChartSectionData(
-                              value: row.value.toDouble(),
-                              color: colors[entry.key % colors.length],
-                              title:
-                                  pct >= 8 ? '${pct.toStringAsFixed(0)}%' : '',
-                              titleStyle: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 10,
-                              ),
-                              radius: 42,
-                            );
-                          }).toList(growable: false),
-                        ),
-                      ),
+              : _PieLegendLayout(
+                  pie: PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 28,
+                      sections: sourceRows.asMap().entries.map((entry) {
+                        final row = entry.value;
+                        final pct =
+                            total == 0 ? 0.0 : (row.value / total) * 100;
+                        return PieChartSectionData(
+                          value: row.value.toDouble(),
+                          color: colors[entry.key % colors.length],
+                          title: pct >= 8 ? '${pct.toStringAsFixed(0)}%' : '',
+                          titleStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                          radius: 42,
+                        );
+                      }).toList(growable: false),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: rows.asMap().entries.map((entry) {
-                            final row = entry.value;
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: _LegendDot(
-                                color: colors[entry.key % colors.length],
-                                label: '${row.key} (${row.value})',
-                              ),
-                            );
-                          }).toList(growable: false),
+                  ),
+                  legend: [
+                    ...sourceRows.asMap().entries.map((entry) {
+                      final row = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: _LegendDot(
+                          color: colors[entry.key % colors.length],
+                          label: '${row.key} (${row.value})',
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   ],
                 ),
         ),
+      ),
+    );
+  }
+}
+
+class _PieLegendLayout extends StatelessWidget {
+  final Widget pie;
+  final List<Widget> legend;
+
+  const _PieLegendLayout({
+    required this.pie,
+    required this.legend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(width: 130, height: 130, child: pie),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 150,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: legend,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

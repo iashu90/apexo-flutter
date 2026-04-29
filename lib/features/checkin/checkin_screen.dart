@@ -871,67 +871,59 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                         ),
                       ),
                       ...visibleRows.map((row) {
-                            final treatmentText = row.selectedTreatments
-                                .where((e) => e.trim().isNotEmpty)
-                                .join(', ')
-                                .trim();
-                            final doctorText = row.operators
-                                .map((d) => d.title.trim())
-                                .where((d) => d.isNotEmpty)
-                                .join(', ')
-                                .trim();
-                            final teethText = row.selectedTeeth
-                                .where((e) => e.trim().isNotEmpty)
-                                .join(', ')
-                                .trim();
-                            final diagnosisText = row.diagnosis
-                                .where((e) => e.trim().isNotEmpty)
-                                .join(', ')
-                                .trim();
-                            final complaintText = row.chiefComplaints
-                                .where((e) => e.trim().isNotEmpty)
-                                .join(', ')
-                                .trim();
+                        final treatmentText = row.selectedTreatments
+                            .where((e) => e.trim().isNotEmpty)
+                            .join(', ')
+                            .trim();
+                        final doctorText = row.operators
+                            .map((d) => d.title.trim())
+                            .where((d) => d.isNotEmpty)
+                            .join(', ')
+                            .trim();
+                        final teethText = row.selectedTeeth
+                            .where((e) => e.trim().isNotEmpty)
+                            .join(', ')
+                            .trim();
+                        final diagnosisText = row.diagnosis
+                            .where((e) => e.trim().isNotEmpty)
+                            .join(', ')
+                            .trim();
+                        final complaintText = row.chiefComplaints
+                            .where((e) => e.trim().isNotEmpty)
+                            .join(', ')
+                            .trim();
 
                         return Container(
-                              padding: const EdgeInsets.symmetric(vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border:
-                                    Border.all(color: AppColors.borderBlueSoft),
+                          padding: const EdgeInsets.symmetric(vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: AppColors.borderBlueSoft),
+                          ),
+                          child: Row(
+                            children: [
+                              _historyCell(
+                                formatClinicDate(row.date,
+                                    pattern: 'dd MMM yyyy'),
+                                flex: 2,
                               ),
-                              child: Row(
-                                children: [
-                                  _historyCell(
-                                    formatClinicDate(row.date,
-                                        pattern: 'dd MMM yyyy'),
-                                    flex: 2,
-                                  ),
-                                  _historyCell(
-                                      treatmentText.isEmpty
-                                          ? '-'
-                                          : treatmentText,
-                                      flex: 3),
-                                  _historyCell(
-                                      teethText.isEmpty ? '-' : teethText,
-                                      flex: 2),
-                                  _historyCell(
-                                      diagnosisText.isEmpty
-                                          ? '-'
-                                          : diagnosisText,
-                                      flex: 3),
-                                  _historyCell(
-                                      complaintText.isEmpty
-                                          ? '-'
-                                          : complaintText,
-                                      flex: 3),
-                                  _historyCell(
-                                      doctorText.isEmpty
-                                          ? 'Unassigned'
-                                          : doctorText,
-                                      flex: 2),
-                                ],
-                              ),
+                              _historyCell(
+                                  treatmentText.isEmpty ? '-' : treatmentText,
+                                  flex: 3),
+                              _historyCell(teethText.isEmpty ? '-' : teethText,
+                                  flex: 2),
+                              _historyCell(
+                                  diagnosisText.isEmpty ? '-' : diagnosisText,
+                                  flex: 3),
+                              _historyCell(
+                                  complaintText.isEmpty ? '-' : complaintText,
+                                  flex: 3),
+                              _historyCell(
+                                  doctorText.isEmpty
+                                      ? 'Unassigned'
+                                      : doctorText,
+                                  flex: 2),
+                            ],
+                          ),
                         );
                       }),
                     ],
@@ -1242,7 +1234,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               AppScreenTitle(
-                                title: 'Check-in (${todaysAppointments.length})',
+                                title:
+                                    'Check-in (${todaysAppointments.length})',
                               ),
                             ],
                           ),
@@ -2433,6 +2426,15 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   String _paymentMode = 'Cash';
   final TextEditingController _consultantChargeController =
       TextEditingController();
+  final TextEditingController _prescriptionChargeController =
+      TextEditingController();
+  static const List<String> _prescriptionChargeItems = [
+    'Tooth Paste',
+    'Dental Floss',
+    'Mouth Wash',
+    'Gel',
+    'Brush',
+  ];
   Timer? _autosaveDebounce;
   bool _hasPendingAutosave = false;
   DateTime _paymentDate = DateTime.now();
@@ -2440,6 +2442,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   String _discountMode = 'flat';
   double _basePrice = 0;
   String? _selectedConsultantDoctorId;
+  String _selectedPrescriptionChargeItem = 'Tooth Paste';
   String? _initialConsultantDoctorId;
   DateTime? _initialConsultantMonthAnchor;
 
@@ -2455,6 +2458,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     _initialConsultantMonthAnchor = DateTime(a.date.year, a.date.month, 1);
     _consultantChargeController.text =
         a.priceToPayDoctor <= 0 ? '' : a.priceToPayDoctor.toStringAsFixed(0);
+    final presetItem = a.prescriptions.map((item) => item.trim()).firstWhere(
+          (item) => _prescriptionChargeItems.contains(item),
+          orElse: () => _selectedPrescriptionChargeItem,
+        );
+    _selectedPrescriptionChargeItem = presetItem;
+    _prescriptionChargeController.text =
+        a.prescriptionPaid <= 0 ? '' : a.prescriptionPaid.toStringAsFixed(0);
   }
 
   @override
@@ -2464,6 +2474,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       appointments.set(widget.appointment);
     }
     _consultantChargeController.dispose();
+    _prescriptionChargeController.dispose();
     super.dispose();
   }
 
@@ -3394,6 +3405,72 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                             },
                           ),
                         ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Prescription Charge',
+                    style: TextStyle(
+                      color: AppColors.textBlueStrong,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: AppDropdownMenu<String>(
+                          width: double.infinity,
+                          value: _selectedPrescriptionChargeItem,
+                          items: _prescriptionChargeItems
+                              .map(
+                                (item) => AppDropdownItem<String>(
+                                  value: item,
+                                  label: item,
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: (value) {
+                            if (value.trim().isEmpty) return;
+                            setState(() {
+                              _selectedPrescriptionChargeItem = value;
+                              final preserved = a.prescriptions
+                                  .where((item) => !_prescriptionChargeItems
+                                      .contains(item.trim()))
+                                  .toList(growable: true);
+                              preserved.add(value);
+                              a.prescriptions = preserved;
+                            });
+                            _scheduleAutosave();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 5,
+                        child: CupertinoTextField(
+                          controller: _prescriptionChargeController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]')),
+                          ],
+                          prefix: const Padding(
+                            padding: EdgeInsets.only(left: 10),
+                            child: Text(_rupeeSymbol,
+                                style: const TextStyle(
+                                    color: AppColors.textBlueStrong)),
+                          ),
+                          placeholder: 'Prescription charge',
+                          onChanged: (value) {
+                            final parsed = double.tryParse(value) ?? 0;
+                            a.prescriptionPaid = parsed;
+                            a.prescriptionPrice = parsed;
+                            _scheduleAutosave();
+                          },
+                        ),
                       ),
                     ],
                   ),
