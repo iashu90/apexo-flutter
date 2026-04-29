@@ -258,7 +258,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
             );
             final lastVisit = visits.isEmpty
                 ? '-'
-              : formatClinicDate(visits.last.date, pattern: 'dd MMM yyyy');
+                : formatClinicDate(visits.last.date, pattern: 'dd MMM yyyy');
             buffer.writeln(
               [
                 _csvCell(patient.id),
@@ -358,7 +358,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
             );
             final lastVisit = visits.isEmpty
                 ? '-'
-              : formatClinicDate(visits.last.date, pattern: 'dd MMM yyyy');
+                : formatClinicDate(visits.last.date, pattern: 'dd MMM yyyy');
             tableRows.add([
               patient.id,
               _patientDisplayName(patient),
@@ -765,14 +765,12 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   Row(
                     children: [
                       const Expanded(child: AppScreenTitle(title: 'Patients')),
-                      SizedBox(
-                        width: isTablet ? 160 : 180,
-                        child: AppButton(
-                          onPressed: _openAddPatientPopup,
-                          label: 'Add Patient',
-                          leading: const Icon(FluentIcons.add, size: 12),
-                          expanded: true,
-                        ),
+                      AppButton(
+                        variant: AppButtonVariant.secondary,
+                        onPressed: _openAddPatientPopup,
+                        label: 'New Patient',
+                        leading: const Icon(FluentIcons.add_friend, size: 12),
+                        expanded: true,
                       ),
                     ],
                   ),
@@ -1247,7 +1245,6 @@ class _InsightRow extends StatelessWidget {
   }
 }
 
-
 class _MetricCard extends StatelessWidget {
   final String title;
   final String value;
@@ -1374,8 +1371,7 @@ class _PatientGrowthMonthlyCardState extends State<_PatientGrowthMonthlyCard> {
     final peak = visibleRows.fold<int>(1, (m, e) => e.count > m ? e.count : m);
     final hasGrowth = widget.rows.length >= 2 &&
         widget.rows.last.count >= widget.rows[widget.rows.length - 2].count;
-    final trendColor =
-        hasGrowth ? AppColors.successTeal : AppColors.dangerRose;
+    final trendColor = hasGrowth ? AppColors.successTeal : AppColors.dangerRose;
     final canGoBack = safeWindowStart > 0;
     final canGoForward = safeWindowEnd < widget.rows.length;
 
@@ -2590,8 +2586,7 @@ class _TopProcedurePatientsCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             border: Border.all(
-              color:
-                  selected ? AppColors.brandBlue : const Color(0xFFD4E2F3),
+              color: selected ? AppColors.brandBlue : const Color(0xFFD4E2F3),
             ),
             color: selected ? AppColors.brandBlue : const Color(0xFFEFF4FB),
             borderRadius: BorderRadius.circular(12),
@@ -2989,8 +2984,11 @@ class _AllPatientsListCard extends StatelessWidget {
               ExportButtons(
                 csvBusy: isExportingCsv,
                 pdfBusy: isExportingPdf,
-                onCsv: (totalItems == 0 || isExportingCsv || isExportingPdf) ? null : onExportCsv,
-                onPdf: (totalItems == 0 || isExportingCsv || isExportingPdf) ? null
+                onCsv: (totalItems == 0 || isExportingCsv || isExportingPdf)
+                    ? null
+                    : onExportCsv,
+                onPdf: (totalItems == 0 || isExportingCsv || isExportingPdf)
+                    ? null
                     : onExportPdf,
               ),
             ],
@@ -3243,7 +3241,7 @@ class _AllPatientsListCard extends StatelessWidget {
                               final lastVisit = patientVisits.isEmpty
                                   ? '-'
                                   : formatClinicDate(patientVisits.last.date,
-                                    pattern: 'dd MMM yyyy');
+                                      pattern: 'dd MMM yyyy');
                               final paidSoFar = patientVisits.fold<double>(
                                 0,
                                 (sum, visit) =>
@@ -3386,8 +3384,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                             _HoverActionItem(
                                               icon: FluentIcons.test_beaker,
                                               label: 'Lab',
-                                              iconColor:
-                                                  AppColors.successTeal,
+                                              iconColor: AppColors.successTeal,
                                               hoverColor:
                                                   const Color(0xFFEAF8F1),
                                               hoverBorderColor:
@@ -3398,8 +3395,7 @@ class _AllPatientsListCard extends StatelessWidget {
                                             _HoverActionItem(
                                               icon: FluentIcons.delete,
                                               label: 'Delete',
-                                              iconColor:
-                                                  AppColors.dangerRose,
+                                              iconColor: AppColors.dangerRose,
                                               hoverColor:
                                                   const Color(0xFFFCEDEF),
                                               hoverBorderColor:
@@ -3488,8 +3484,7 @@ class _HoverActionItemState extends State<_HoverActionItem> {
             color: _hovered ? widget.hoverColor : Colors.white,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color:
-                  _hovered ? widget.hoverBorderColor : AppColors.violet1506,
+              color: _hovered ? widget.hoverBorderColor : AppColors.violet1506,
             ),
           ),
           child: Row(
@@ -3661,4 +3656,3 @@ class _CardShell extends StatelessWidget {
     );
   }
 }
-
