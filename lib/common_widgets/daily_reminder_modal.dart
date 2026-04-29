@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/checkin/checkin_stage_modals.dart';
@@ -38,9 +39,10 @@ Future<void> showDailyReminderModal(BuildContext context) async {
 
   final todaysAppointments = appointments.forDate(today).toList(growable: false)
     ..sort((a, b) => a.date.compareTo(b.date));
-  final tomorrowAppointments =
-      appointments.forDate(tomorrow).toList(growable: false)
-        ..sort((a, b) => a.date.compareTo(b.date));
+  final tomorrowAppointments = appointments
+      .forDate(tomorrow)
+      .toList(growable: false)
+    ..sort((a, b) => a.date.compareTo(b.date));
   final pendingLabworks = labworks.present.values
       .where((l) => !l.deliveredToPatient)
       .toList(growable: false)
@@ -100,7 +102,6 @@ Future<void> showDailyReminderModal(BuildContext context) async {
       final waited = now.difference(checkedInAt).inMinutes;
       if (waited > 15) waitingOver15Count++;
     }
-
   }
 
   final activeDoctors = <String>{
@@ -132,12 +133,10 @@ Future<void> showDailyReminderModal(BuildContext context) async {
   }();
 
   final queueCount = waitingPatients.length + scheduledPatients.length;
-  final tomorrowQueueCount = tomorrowAppointments
-      .where((a) {
-        final stage = normalizeCheckinStage(a.checkinStage);
-        return stage == 'scheduled' || stage == 'waiting';
-      })
-      .length;
+  final tomorrowQueueCount = tomorrowAppointments.where((a) {
+    final stage = normalizeCheckinStage(a.checkinStage);
+    return stage == 'scheduled' || stage == 'waiting';
+  }).length;
 
   await showDialog<void>(
     context: context,
@@ -148,7 +147,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
           children: [
             const Icon(
               CupertinoIcons.bell_solid,
-              color: Color(0xFF111827),
+              color: AppColors.textPrimary,
               size: 30,
             ),
             const SizedBox(width: 10),
@@ -169,7 +168,7 @@ Future<void> showDailyReminderModal(BuildContext context) async {
                     DateFormat('EEEE, d MMMM yyyy').format(now),
                     style: const TextStyle(
                       fontSize: 16,
-                      color: Color(0xFF4B5563),
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -309,17 +308,17 @@ class _InfoStrip extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF0FF),
+        color: AppColors.violet1006,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(FluentIcons.info, size: 14, color: Color(0xFF2D7BD8)),
+          const Icon(FluentIcons.info, size: 14, color: AppColors.brandBlue),
           const SizedBox(width: 8),
           Text(
             text,
             style: const TextStyle(
-              color: Color(0xFF2D5DAB),
+              color: AppColors.brandBlueDark,
               fontWeight: FontWeight.w700,
               fontSize: 13,
             ),
@@ -352,7 +351,7 @@ class _SectionTitle extends StatelessWidget {
           style: const TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 22,
-            color: Color(0xFF1F2937),
+            color: AppColors.blue8003,
           ),
         ),
       ],
@@ -370,13 +369,13 @@ class _CounterPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFE5EAF4),
+        color: AppColors.slate1002,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         value,
         style: const TextStyle(
-          color: Color(0xFF4B5A76),
+          color: AppColors.blue6005,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -408,14 +407,14 @@ class _NextPatientCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFCF5),
+          color: AppColors.amber1004,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFEFDEC0)),
+          border: Border.all(color: AppColors.amber200),
         ),
         child: const Text(
           'No upcoming patient for today.',
           style: TextStyle(
-            color: Color(0xFF6D84A8),
+            color: AppColors.blue5004,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -443,9 +442,9 @@ class _NextPatientCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFCF5),
+        color: AppColors.amber1004,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE8D9BA)),
+        border: Border.all(color: AppColors.amber200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,14 +455,14 @@ class _NextPatientCard extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE7ECF6),
+                  color: AppColors.slate100,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   _initials(appointment!.title),
                   style: const TextStyle(
-                    color: Color(0xFF32537F),
+                    color: AppColors.blue6503,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -479,7 +478,7 @@ class _NextPatientCard extends StatelessWidget {
                           : appointment!.title,
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF1F2937),
+                        color: AppColors.blue8003,
                         fontSize: 34,
                       ),
                     ),
@@ -487,7 +486,7 @@ class _NextPatientCard extends StatelessWidget {
                       '${DateFormat('hh:mm a').format(appointment!.date)} • ${treatment.isEmpty ? 'Consultation' : treatment}',
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF374151),
+                        color: AppColors.textSecondary,
                         fontSize: 17,
                       ),
                     ),
@@ -495,7 +494,7 @@ class _NextPatientCard extends StatelessWidget {
                     Text(
                       'Dr. $doctorName • $etaText',
                       style: const TextStyle(
-                        color: Color(0xFF6B7280),
+                        color: AppColors.blue5509,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
@@ -507,7 +506,7 @@ class _NextPatientCard extends StatelessWidget {
                 DateFormat('hh:mm a').format(appointment!.date),
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF1F2937),
+                  color: AppColors.blue8003,
                   fontSize: 30,
                 ),
               ),
@@ -520,13 +519,11 @@ class _NextPatientCard extends StatelessWidget {
             spacing: 10,
             runSpacing: 6,
             children: [
+              _chip('Completed ${stageCounts.complete}', AppColors.successTeal),
               _chip(
-                  'Completed ${stageCounts.complete}', const Color(0xFF2BA58D)),
-              _chip('In Treatment ${stageCounts.treatment}',
-                  const Color(0xFF2D7BD8)),
-              _chip('Waiting ${stageCounts.waiting}', const Color(0xFFE09C31)),
-              _chip(
-                  'Next Hour ${stageCounts.nextHour}', const Color(0xFF6AA7F2)),
+                  'In Treatment ${stageCounts.treatment}', AppColors.brandBlue),
+              _chip('Waiting ${stageCounts.waiting}', AppColors.amber400),
+              _chip('Next Hour ${stageCounts.nextHour}', AppColors.primary300),
             ],
           ),
           const SizedBox(height: 8),
@@ -535,7 +532,7 @@ class _NextPatientCard extends StatelessWidget {
               Text(
                 'No-show Risk $noShowRiskCount',
                 style: const TextStyle(
-                  color: Color(0xFF6B7280),
+                  color: AppColors.blue5509,
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
                 ),
@@ -570,7 +567,7 @@ class _NextPatientCard extends StatelessWidget {
         Text(
           text,
           style: const TextStyle(
-            color: Color(0xFF374151),
+            color: AppColors.textSecondary,
             fontWeight: FontWeight.w600,
             fontSize: 13,
           ),
@@ -608,7 +605,7 @@ class _StageProgressBar extends StatelessWidget {
         child: Container(
           height: 6,
           decoration: BoxDecoration(
-            color: count == 0 ? const Color(0xFFE5E7EB) : color,
+            color: count == 0 ? AppColors.borderSoft : color,
             borderRadius: BorderRadius.circular(10),
           ),
         ),
@@ -617,14 +614,14 @@ class _StageProgressBar extends StatelessWidget {
 
     return Row(
       children: [
-        segment(counts.complete, const Color(0xFF2BA58D)),
+        segment(counts.complete, AppColors.successTeal),
         const SizedBox(width: 2),
-        segment(counts.treatment, const Color(0xFF2D7BD8)),
+        segment(counts.treatment, AppColors.brandBlue),
         const SizedBox(width: 2),
-        segment(counts.waiting, const Color(0xFFE09C31)),
+        segment(counts.waiting, AppColors.amber400),
         const SizedBox(width: 2),
         segment(total - counts.complete - counts.treatment - counts.waiting,
-            const Color(0xFFD1D5DB)),
+            AppColors.scheduledChipBorder),
       ],
     );
   }
@@ -669,40 +666,40 @@ class _AppointmentsSummaryGrid extends StatelessWidget {
                 title: 'Scheduled',
                 value: '$scheduled',
                 hint: 'today',
-                color: const Color(0xFF5578A4),
-                bg: const Color(0xFFF3F7FF),
+                color: AppColors.blue5002,
+                bg: AppColors.slate1009,
               ),
               const SizedBox(height: 8),
               _SmallInfoCard(
                 title: 'Waiting',
                 value: '$waiting',
                 hint: waiting == 1 ? 'patient' : 'patients',
-                color: const Color(0xFFE09C31),
-                bg: const Color(0xFFF3F7FF),
+                color: AppColors.amber400,
+                bg: AppColors.slate1009,
               ),
               const SizedBox(height: 8),
               _SmallInfoCard(
                 title: 'Treatment',
                 value: '$treatment',
                 hint: 'active',
-                color: const Color(0xFF2D7BD8),
-                bg: const Color(0xFFF3F7FF),
+                color: AppColors.brandBlue,
+                bg: AppColors.slate1009,
               ),
               const SizedBox(height: 8),
               _SmallInfoCard(
                 title: 'Billing',
                 value: '$billing',
                 hint: 'pending',
-                color: const Color(0xFF7B61D1),
-                bg: const Color(0xFFF3F7FF),
+                color: AppColors.violet550,
+                bg: AppColors.slate1009,
               ),
               const SizedBox(height: 8),
               _SmallInfoCard(
                 title: 'Completed',
                 value: '$complete',
                 hint: 'done',
-                color: const Color(0xFF2BA58D),
-                bg: const Color(0xFFF3F7FF),
+                color: AppColors.successTeal,
+                bg: AppColors.slate1009,
               ),
             ],
           ),
@@ -753,24 +750,23 @@ class _DoctorsAndChairsCard extends StatelessWidget {
       Color dot;
       if (hasTreatment) {
         status = 'In Treatment';
-        dot = const Color(0xFF2D7BD8);
+        dot = AppColors.brandBlue;
       } else if (hasWaiting) {
         status = 'Waiting';
-        dot = const Color(0xFFE09C31);
+        dot = AppColors.amber400;
       } else if (upcoming.isNotEmpty) {
         final mins = upcoming.first.date.difference(DateTime.now()).inMinutes;
         final safeMins = mins < 0 ? 0 : mins;
         if (safeMins > 60) {
           final hours = safeMins / 60;
-          status =
-              'Free in ${hours.toStringAsFixed(hours >= 10 ? 0 : 1)} hr';
+          status = 'Free in ${hours.toStringAsFixed(hours >= 10 ? 0 : 1)} hr';
         } else {
           status = 'Free in $safeMins min';
         }
-        dot = const Color(0xFF2BA58D);
+        dot = AppColors.successTeal;
       } else {
         status = 'Free';
-        dot = const Color(0xFF2BA58D);
+        dot = AppColors.successTeal;
       }
 
       return Row(
@@ -781,7 +777,7 @@ class _DoctorsAndChairsCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: Color(0xFF1F2937),
+                color: AppColors.blue8003,
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),
@@ -792,7 +788,7 @@ class _DoctorsAndChairsCard extends StatelessWidget {
           Text(
             status,
             style: const TextStyle(
-              color: Color(0xFF4B5563),
+              color: AppColors.textSecondary,
               fontWeight: FontWeight.w600,
               fontSize: 14,
             ),
@@ -804,14 +800,14 @@ class _DoctorsAndChairsCard extends StatelessWidget {
     return _SimplePanel(
       titleIcon: FluentIcons.medical,
       title: 'Doctors',
-      titleColor: const Color(0xFF2D7BD8),
+      titleColor: AppColors.brandBlue,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (rows.isEmpty)
             const Text(
               'No active doctors today',
-              style: TextStyle(color: Color(0xFF6B7280)),
+              style: TextStyle(color: AppColors.blue5509),
             )
           else ...[
             ...rows,
@@ -846,7 +842,7 @@ class _StatusCountPanel extends StatelessWidget {
     return _SimplePanel(
       titleIcon: FluentIcons.calendar,
       title: 'Today\'s Appointments ($total)',
-      titleColor: const Color(0xFFE09C31),
+      titleColor: AppColors.amber400,
       onTitleAction: onOpenCheckin,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -855,11 +851,16 @@ class _StatusCountPanel extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _metricChip('Scheduled $scheduled', const Color(0xFF355A84), const Color(0xFFEAF2FF)),
-              _metricChip('Waiting $waiting', const Color(0xFF8A5A00), const Color(0xFFFFF4D9)),
-              _metricChip('Treatment $treatment', const Color(0xFF1E40AF), const Color(0xFFEAF0FF)),
-              _metricChip('Billing $billing', const Color(0xFF5B2FA8), const Color(0xFFF1EBFF)),
-              _metricChip('Completed $completed', const Color(0xFF166534), const Color(0xFFE8F7EE)),
+              _metricChip('Scheduled $scheduled', AppColors.textBlueStrong,
+                  AppColors.violet1006),
+              _metricChip(
+                  'Waiting $waiting', AppColors.rose600, AppColors.amber1002),
+              _metricChip('Treatment $treatment', AppColors.primary800,
+                  AppColors.violet1006),
+              _metricChip(
+                  'Billing $billing', AppColors.violet600, AppColors.slate1008),
+              _metricChip('Completed $completed', AppColors.green650,
+                  AppColors.green1002),
             ],
           ),
         ],
@@ -900,17 +901,17 @@ class _MetricAlertPanel extends StatelessWidget {
     return _SimplePanel(
       titleIcon: FluentIcons.warning,
       title: 'Attention',
-      titleColor: const Color(0xFFE09C31),
+      titleColor: AppColors.amber400,
       child: Column(
         children: [
           _alertRow(
-            iconColor: const Color(0xFFD97706),
+            iconColor: AppColors.amber5002,
             label:
                 '$noShowRiskCount no-show risk patient${noShowRiskCount == 1 ? '' : 's'}',
           ),
           const SizedBox(height: 8),
           _alertRow(
-            iconColor: const Color(0xFFB45309),
+            iconColor: AppColors.rose550,
             label:
                 '$waitingOver15Count patient${waitingOver15Count == 1 ? '' : 's'} waiting > 15 min',
           ),
@@ -924,9 +925,9 @@ class _MetricAlertPanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFCF5),
+        color: AppColors.amber1004,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFF0E0BE)),
+        border: Border.all(color: AppColors.amber200),
       ),
       child: Row(
         children: [
@@ -936,7 +937,7 @@ class _MetricAlertPanel extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: Color(0xFF374151),
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -966,7 +967,7 @@ class _QueueChipsPanel extends StatelessWidget {
     return _SimplePanel(
       titleIcon: FluentIcons.people,
       title: title,
-      titleColor: const Color(0xFF355A84),
+      titleColor: AppColors.textBlueStrong,
       onTitleAction: onOpenCheckin,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -974,7 +975,7 @@ class _QueueChipsPanel extends StatelessWidget {
           if (waitingPatients.isEmpty && scheduledPatients.isEmpty)
             const Text(
               'No waiting or scheduled patients.',
-              style: TextStyle(color: Color(0xFF6B7280)),
+              style: TextStyle(color: AppColors.blue5509),
             )
           else
             Wrap(
@@ -984,16 +985,16 @@ class _QueueChipsPanel extends StatelessWidget {
                 ...waitingPatients.map(
                   (name) => _queueChip(
                     label: name,
-                    bg: const Color(0xFFFFF4D9),
-                    fg: const Color(0xFF8A5A00),
+                    bg: AppColors.amber1002,
+                    fg: AppColors.rose600,
                     prefix: 'W',
                   ),
                 ),
                 ...scheduledPatients.map(
                   (name) => _queueChip(
                     label: name,
-                    bg: const Color(0xFFEAF2FF),
-                    fg: const Color(0xFF1F4B8F),
+                    bg: AppColors.violet1006,
+                    fg: AppColors.blue700,
                     prefix: 'S',
                   ),
                 ),
@@ -1044,7 +1045,7 @@ class _LabFollowUpsCard extends StatelessWidget {
     return _SimplePanel(
       titleIcon: FluentIcons.test_beaker,
       title: 'Lab Follow-ups',
-      titleColor: const Color(0xFFC75A4A),
+      titleColor: AppColors.rose6003,
       onTitleAction: onOpenLabOrders,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1052,7 +1053,7 @@ class _LabFollowUpsCard extends StatelessWidget {
           Text(
             'Showing ${labRows.length} of $totalPending pending follow-ups',
             style: const TextStyle(
-              color: Color(0xFF6B7280),
+              color: AppColors.blue5509,
               fontWeight: FontWeight.w600,
               fontSize: 12,
             ),
@@ -1063,7 +1064,7 @@ class _LabFollowUpsCard extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 'No pending lab follow-ups.',
-                style: TextStyle(color: Color(0xFF6B7280)),
+                style: TextStyle(color: AppColors.blue5509),
               ),
             )
           else
@@ -1079,14 +1080,14 @@ class _LabFollowUpsCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3F3),
+                    color: AppColors.amber100,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFF0DADA)),
+                    border: Border.all(color: AppColors.amber2003),
                   ),
                   child: Text(
                     label,
                     style: const TextStyle(
-                      color: Color(0xFF8A3A3A),
+                      color: AppColors.rose700,
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                     ),
@@ -1124,14 +1125,14 @@ class _TomorrowScheduleCard extends StatelessWidget {
     return _SimplePanel(
       titleIcon: FluentIcons.calendar_work_week,
       title: title,
-      titleColor: const Color(0xFF355A84),
+      titleColor: AppColors.textBlueStrong,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             DateFormat('EEEE, dd MMM yyyy').format(tomorrow),
             style: const TextStyle(
-              color: Color(0xFF4B5563),
+              color: AppColors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1139,7 +1140,7 @@ class _TomorrowScheduleCard extends StatelessWidget {
           if (rows.isEmpty)
             const Text(
               'No scheduled appointments for tomorrow.',
-              style: TextStyle(color: Color(0xFF6B7280)),
+              style: TextStyle(color: AppColors.blue5509),
             )
           else
             Wrap(
@@ -1152,9 +1153,8 @@ class _TomorrowScheduleCard extends StatelessWidget {
                 final stage = normalizeCheckinStage(appointment.checkinStage);
                 final isWaiting = stage == 'waiting';
                 final bg =
-                    isWaiting ? const Color(0xFFFFF4D9) : const Color(0xFFEAF2FF);
-                final fg =
-                    isWaiting ? const Color(0xFF8A5A00) : const Color(0xFF1F4B8F);
+                    isWaiting ? AppColors.amber1002 : AppColors.violet1006;
+                final fg = isWaiting ? AppColors.rose600 : AppColors.blue700;
 
                 return Container(
                   padding:
@@ -1178,7 +1178,7 @@ class _TomorrowScheduleCard extends StatelessWidget {
             Text(
               '+${appointments.length - rows.length} more tomorrow',
               style: const TextStyle(
-                color: Color(0xFF5E738F),
+                color: AppColors.blue5003,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -1200,9 +1200,9 @@ class _AttentionList extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.borderSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1213,13 +1213,13 @@ class _AttentionList extends StatelessWidget {
                 child: Row(
                   children: [
                     const Icon(FluentIcons.warning,
-                        size: 12, color: Color(0xFFE8B242)),
+                        size: 12, color: AppColors.amber500),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         row,
                         style: const TextStyle(
-                          color: Color(0xFF374151),
+                          color: AppColors.textSecondary,
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),
@@ -1268,7 +1268,7 @@ class _SmallInfoCard extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                color: Color(0xFF1F2937),
+                color: AppColors.blue8003,
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),
@@ -1278,7 +1278,7 @@ class _SmallInfoCard extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: Color(0xFF1F2937),
+              color: AppColors.blue8003,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1287,7 +1287,7 @@ class _SmallInfoCard extends StatelessWidget {
             Text(
               hint,
               style: const TextStyle(
-                color: Color(0xFF6B7280),
+                color: AppColors.blue5509,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1324,9 +1324,9 @@ class _SmallActionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD6E2F0)),
+        border: Border.all(color: AppColors.violet1506),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1334,7 +1334,7 @@ class _SmallActionCard extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              color: Color(0xFF183A67),
+              color: AppColors.blue750,
               fontWeight: FontWeight.w800,
               fontSize: 16,
             ),
@@ -1344,7 +1344,7 @@ class _SmallActionCard extends StatelessWidget {
             const Text(
               'No waiting or scheduled patients',
               style: TextStyle(
-                color: Color(0xFF6B7280),
+                color: AppColors.blue5509,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -1357,16 +1357,16 @@ class _SmallActionCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.bgCard,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE3ECF8)),
+                      border: Border.all(color: AppColors.violet1002),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           FluentIcons.contact,
                           size: 12,
-                          color: Color(0xFF2D7BD8),
+                          color: AppColors.brandBlue,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -1375,7 +1375,7 @@ class _SmallActionCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: Color(0xFF1F446E),
+                              color: AppColors.blue7505,
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
                             ),
@@ -1419,9 +1419,9 @@ class _SimplePanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.borderSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1433,7 +1433,7 @@ class _SimplePanel extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  color: Color(0xFF1F2937),
+                  color: AppColors.blue8003,
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
                 ),

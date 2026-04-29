@@ -406,9 +406,7 @@ class _WorkflowRow extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: AppButton(
-                            label: confirmDelete
-                                ? 'Confirm Delete'
-                                : 'Delete',
+                            label: confirmDelete ? 'Confirm Delete' : 'Delete',
                             variant: AppButtonVariant.danger,
                             onPressed: () async {
                               if (!confirmDelete) {
@@ -604,6 +602,20 @@ class _WorkflowRow extends StatelessWidget {
     final age = appointment.patient?.age ?? 0;
     final rawGender = appointment.patient?.gender;
     final genderLabel = rawGender == 1 ? 'M' : 'F';
+    final allVisits =
+        appointment.patient?.allAppointments.toList(growable: false) ??
+            const <Appointment>[];
+    final totalVisits = allVisits.length;
+    final previousVisits = allVisits
+        .where(
+          (row) =>
+              row.id != appointment.id && !row.date.isAfter(appointment.date),
+        )
+        .toList(growable: false)
+      ..sort((x, y) => y.date.compareTo(x.date));
+    final lastVisitLabel = previousVisits.isEmpty
+        ? 'First visit'
+        : formatClinicDate(previousVisits.first.date, pattern: 'dd MMM yyyy');
     final doctorLabel = doctorsList.join(', ');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -621,9 +633,9 @@ class _WorkflowRow extends StatelessWidget {
             ? null
             : stage == 'cancelled'
                 ? null
-            : (stage == 'waiting' || stage == 'scheduled')
-                ? () => _moveStage(context)
-                : (onSelect == null ? null : () => onSelect!(appointment)),
+                : (stage == 'waiting' || stage == 'scheduled')
+                    ? () => _moveStage(context)
+                    : (onSelect == null ? null : () => onSelect!(appointment)),
         child: Row(
           children: [
             Expanded(
@@ -674,12 +686,21 @@ class _WorkflowRow extends StatelessWidget {
                       ],
                     ],
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Visits: $totalVisits · Last visit: $lastVisitLabel',
+                    style: const TextStyle(
+                      color: AppColors.textBlueMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: GestureDetector(
                       behavior: HitTestBehavior.deferToChild,
-                        onTap: ((stage == 'with_doctor' ||
-                              stage == 'billing' ||
+                      onTap: ((stage == 'with_doctor' ||
+                                  stage == 'billing' ||
                                   stage == 'completed') &&
                               selected)
                           ? () async {
@@ -711,8 +732,8 @@ class _WorkflowRow extends StatelessWidget {
                               color: AppColors.info,
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                                decoration: ((stage == 'with_doctor' ||
-                                      stage == 'billing' ||
+                              decoration: ((stage == 'with_doctor' ||
+                                          stage == 'billing' ||
                                           stage == 'completed') &&
                                       selected)
                                   ? TextDecoration.underline
