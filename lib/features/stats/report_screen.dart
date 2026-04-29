@@ -171,15 +171,6 @@ class _ReportScreenState extends State<ReportScreen> {
                               windowOffset: _monthlyOffset,
                             ),
                             _CompactReportTile(
-                              child: _ReferralSourceDistributionCard(),
-                            ),
-                            _CompactReportTile(
-                              child: _MonthlyTreatmentDistributionCard(
-                                rows: allAppointments,
-                                monthOffset: _monthlyOffset,
-                              ),
-                            ),
-                            _CompactReportTile(
                               child: _TrafficByTimeCard(
                                 rows: allAppointments,
                                 monthOffset: _monthlyOffset,
@@ -189,6 +180,19 @@ class _ReportScreenState extends State<ReportScreen> {
                               child: _TrafficByDayCard(rows: allAppointments),
                             ),
                             _CompactReportTile(
+                              child: _ReportAgeDistributionCard(
+                                  rows: allAppointments),
+                            ),
+                            _CompactReportTile(
+                              child: _ReferralSourceDistributionCard(),
+                            ),
+                            _CompactReportTile(
+                              child: _MonthlyTreatmentDistributionCard(
+                                rows: allAppointments,
+                                monthOffset: _monthlyOffset,
+                              ),
+                            ),
+                            _CompactReportTile(
                                 child: _ReportGenderDistributionCard(
                                     rows: allAppointments)),
                             _CompactReportTile(
@@ -196,10 +200,6 @@ class _ReportScreenState extends State<ReportScreen> {
                                 rows: allAppointments,
                                 monthOffset: _monthlyOffset,
                               ),
-                            ),
-                            _CompactReportTile(
-                              child: _ReportAgeDistributionCard(
-                                  rows: allAppointments),
                             ),
                             _CompactReportTile(
                               child:
@@ -1145,7 +1145,7 @@ class _NewVsReturningCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: 160,
+            height: 220,
             child: total == 0
                 ? const Align(
                     alignment: Alignment.centerLeft,
@@ -1272,14 +1272,16 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
                         PieChartData(
                           sectionsSpace: 2,
                           centerSpaceRadius: 28,
-                          sections: distributionRows.asMap().entries.map((entry) {
+                          sections:
+                              distributionRows.asMap().entries.map((entry) {
                             final row = entry.value;
                             final pct =
                                 total == 0 ? 0.0 : (row.value / total) * 100;
                             return PieChartSectionData(
                               value: row.value.toDouble(),
                               color: colors[entry.key % colors.length],
-                              title: pct >= 8 ? '${pct.toStringAsFixed(0)}%' : '',
+                              title:
+                                  pct >= 8 ? '${pct.toStringAsFixed(0)}%' : '',
                               titleStyle: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -1297,7 +1299,8 @@ class _MonthlyTreatmentDistributionCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: distributionRows.asMap().entries.map((entry) {
+                          children:
+                              distributionRows.asMap().entries.map((entry) {
                             final row = entry.value;
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 6),
@@ -2386,7 +2389,8 @@ class _ReferralSourceDistributionCard extends StatelessWidget {
                             return PieChartSectionData(
                               value: row.value.toDouble(),
                               color: colors[entry.key % colors.length],
-                              title: pct >= 8 ? '${pct.toStringAsFixed(0)}%' : '',
+                              title:
+                                  pct >= 8 ? '${pct.toStringAsFixed(0)}%' : '',
                               titleStyle: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -2550,7 +2554,7 @@ class _SimpleBarsCard extends StatelessWidget {
       subtitle: subtitle,
       trailing: trailing,
       child: SizedBox(
-        height: 250,
+        height: 220,
         child: _FormattedBarChart(
           labels: labels,
           values: values,
