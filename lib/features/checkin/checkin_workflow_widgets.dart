@@ -589,6 +589,26 @@ class _WorkflowRow extends StatelessWidget {
     );
   }
 
+  void _openLastTreatmentsDialog(BuildContext context) {
+    final patient = appointment.patient;
+    if (patient == null) return;
+    showLastTreatmentsDialog(
+      context: context,
+      patient: patient,
+    );
+  }
+
+  void _openLabHistoryDialog(BuildContext context) {
+    final patient = appointment.patient;
+    if (patient == null) return;
+    showPatientHistoryDialog(
+      context: context,
+      patient: patient,
+      rows: patient.patientDetails,
+      labsOnly: true,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final patientName = appointment.title.trim().isEmpty
@@ -617,6 +637,9 @@ class _WorkflowRow extends StatelessWidget {
         ? 'First visit'
         : formatClinicDate(previousVisits.first.date, pattern: 'dd MMM yyyy');
     final doctorLabel = doctorsList.join(', ');
+    final hasLabworks = (appointment.patientID ?? '').trim().isNotEmpty &&
+        labworks.present.values
+            .any((labwork) => labwork.patientID == appointment.patientID);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -642,13 +665,45 @@ class _WorkflowRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    patientName,
-                    style: const TextStyle(
-                      color: AppColors.neutralBlack,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        patientName,
+                        style: const TextStyle(
+                          color: AppColors.neutralBlack,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Tooltip(
+                        message: 'Last treatments',
+                        child: IconButton(
+                          icon: const Icon(
+                            FluentIcons.report_document,
+                            size: 14,
+                            color: AppColors.violet550,
+                          ),
+                          onPressed: interactionsEnabled
+                              ? () => _openLastTreatmentsDialog(context)
+                              : null,
+                        ),
+                      ),
+                      if (hasLabworks)
+                        Tooltip(
+                          message: 'Labworks history',
+                          child: IconButton(
+                            icon: const Icon(
+                              FluentIcons.test_beaker,
+                              size: 14,
+                              color: AppColors.green550,
+                            ),
+                            onPressed: interactionsEnabled
+                                ? () => _openLabHistoryDialog(context)
+                                : null,
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Row(

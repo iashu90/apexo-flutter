@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:apexo/common_widgets/date_navigator_bar.dart';
+import 'package:apexo/common_widgets/last_treatments_modal.dart';
 import 'package:apexo/common_widgets/patient_checkin_search_button.dart';
 import 'package:apexo/common_widgets/patient_history_modal.dart';
 import 'package:apexo/common_widgets/app_screen_title.dart';
@@ -32,6 +33,7 @@ import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -110,15 +112,57 @@ Future<void> _showNextAppointmentPromptDialog(
   BuildContext context,
   Appointment appointment,
 ) async {
+  final draft = await _showScheduleAppointmentModal(
+    context: context,
+    baseAppointment: appointment,
+    title: 'Schedule Appointment',
+    scheduleActionLabel: 'Schedule',
+  );
+  if (draft == null) return;
+
   final patient = appointment.patient;
   if (patient == null) return;
 
-  DateTime nextDate = DateTime.now().add(const Duration(days: 7));
-  material.TimeOfDay nextTime = material.TimeOfDay(
-    hour: nextDate.hour,
-    minute: nextDate.minute,
+  final nextAppointment = Appointment.fromJson({
+    'patientID': patient.id,
+    'operatorsIDs': draft.doctorIds.toList(growable: false),
+    'date': draft.scheduledAt.millisecondsSinceEpoch,
+    'checkinStage': 'pending',
+  });
+  appointments.set(nextAppointment);
+}
+
+class _ScheduledAppointmentDraft {
+  final DateTime scheduledAt;
+  final Set<String> doctorIds;
+
+  const _ScheduledAppointmentDraft({
+    required this.scheduledAt,
+    required this.doctorIds,
+  });
+}
+
+Future<_ScheduledAppointmentDraft?> _showScheduleAppointmentModal({
+  required BuildContext context,
+  required Appointment baseAppointment,
+  Appointment? existingScheduled,
+  String title = 'Schedule Appointment',
+  String scheduleActionLabel = 'Save',
+}) async {
+  final patient = baseAppointment.patient;
+  if (patient == null) return null;
+
+  DateTime selectedDate =
+      existingScheduled?.date ?? DateTime.now().add(const Duration(days: 7));
+  material.TimeOfDay selectedTime = material.TimeOfDay(
+    hour: existingScheduled?.date.hour ?? 10,
+    minute: existingScheduled?.date.minute ?? 0,
   );
-  final selectedDoctors = appointment.operatorsIDs.toSet();
+  final selectedDoctors = (existingScheduled?.operatorsIDs.isNotEmpty ?? false)
+      ? existingScheduled!.operatorsIDs.toSet()
+      : baseAppointment.operatorsIDs.toSet();
+
+  _ScheduledAppointmentDraft? result;
 
   await showDialog<void>(
     context: context,
@@ -126,23 +170,41 @@ Future<void> _showNextAppointmentPromptDialog(
       builder: (context, setStateDialog) {
         final doctorRows = doctors.present.values.toList(growable: false)
           ..sort(
-              (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+            (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+          );
+
+        final scheduledAt = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          selectedTime.hour,
+          selectedTime.minute,
+        );
 
         return ContentDialog(
-          title: const Text('Schedule Appointment'),
+          title: Row(
+            children: [
+              Expanded(child: Text(title)),
+              IconButton(
+                icon: const Icon(FluentIcons.chrome_close, size: 11),
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+            ],
+          ),
           content: SizedBox(
             width: 560,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Patient context moved here
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Text(
-                    '${_patientDisplayName(appointment)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+                    '${_patientDisplayName(baseAppointment)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 15),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 Row(
@@ -151,24 +213,23 @@ Future<void> _showNextAppointmentPromptDialog(
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     AppButton(
-                      label: formatClinicDate(nextDate, pattern: 'dd MMM yyyy'),
+                      label:
+                          formatClinicDate(selectedDate, pattern: 'dd MMM yyyy'),
                       variant: AppButtonVariant.secondary,
                       onPressed: () async {
                         final picked = await material.showDatePicker(
                           context: context,
-                          initialDate: nextDate,
+                          initialDate: selectedDate,
                           firstDate: DateTime.now(),
                           lastDate: DateTime(2100, 12, 31),
                           builder: apexoDatePickerBuilder(context),
                         );
                         if (picked == null) return;
                         setStateDialog(() {
-                          nextDate = DateTime(
+                          selectedDate = DateTime(
                             picked.year,
                             picked.month,
                             picked.day,
-                            nextTime.hour,
-                            nextTime.minute,
                           );
                         });
                       },
@@ -182,28 +243,28 @@ Future<void> _showNextAppointmentPromptDialog(
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     AppButton(
-                      label: nextTime.format(context),
+                      label: selectedTime.format(context),
                       variant: AppButtonVariant.secondary,
                       onPressed: () async {
                         final picked = await material.showTimePicker(
                           context: context,
-                          initialTime: nextTime,
+                          initialTime: selectedTime,
                           builder: apexoDatePickerBuilder(context),
                         );
                         if (picked == null) return;
-                        setStateDialog(() {
-                          nextTime = picked;
-                          nextDate = DateTime(
-                            nextDate.year,
-                            nextDate.month,
-                            nextDate.day,
-                            picked.hour,
-                            picked.minute,
-                          );
-                        });
+                        setStateDialog(() => selectedTime = picked);
                       },
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Scheduled: ${formatClinicDateTime(scheduledAt, pattern: 'dd MMM yyyy • h:mm a')}',
+                  style: const TextStyle(
+                    color: AppColors.brandBlueDark,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 const Text(
@@ -228,14 +289,15 @@ Future<void> _showNextAppointmentPromptDialog(
                             if (selected) {
                               selectedDoctors.remove(doctor.id);
                             } else {
-                              selectedDoctors
-                                  .add(doctor.id); // allow multi-select
+                              selectedDoctors.add(doctor.id);
                             }
                           });
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: selected
                                 ? AppColors.brandBlue
@@ -268,28 +330,21 @@ Future<void> _showNextAppointmentPromptDialog(
           ),
           actions: [
             AppButton(
-              label: 'Skip',
+              label: 'Cancel',
               variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.pop(dialogContext),
             ),
             AppButton(
-              label: 'Schedule',
+              label: scheduleActionLabel,
               onPressed: () {
-                final scheduledDate = DateTime(
-                  nextDate.year,
-                  nextDate.month,
-                  nextDate.day,
-                  nextTime.hour,
-                  nextTime.minute,
+                if (scheduledAt.isBefore(DateTime.now())) {
+                  return;
+                }
+                result = _ScheduledAppointmentDraft(
+                  scheduledAt: scheduledAt,
+                  doctorIds: selectedDoctors,
                 );
                 Navigator.pop(dialogContext);
-                final nextAppointment = Appointment.fromJson({
-                  'patientID': patient.id,
-                  'operatorsIDs': selectedDoctors.toList(growable: false),
-                  'date': scheduledDate.millisecondsSinceEpoch,
-                  'checkinStage': 'pending',
-                });
-                appointments.set(nextAppointment);
               },
             ),
           ],
@@ -297,6 +352,8 @@ Future<void> _showNextAppointmentPromptDialog(
       },
     ),
   );
+
+  return result;
 }
 
 Future<void> _upsertScheduledFollowUpAppointment(
@@ -306,34 +363,18 @@ Future<void> _upsertScheduledFollowUpAppointment(
 }) async {
   if ((baseAppointment.patientID ?? '').trim().isEmpty) return;
 
-  final initialDate =
-      existingScheduled?.date ?? DateTime.now().add(const Duration(days: 7));
-  final pickedDate = await material.showDatePicker(
+  final draft = await _showScheduleAppointmentModal(
     context: context,
-    initialDate: initialDate,
-    firstDate: DateTime.now(),
-    lastDate: DateTime(2100, 12, 31),
-    builder: apexoDatePickerBuilder(context),
+    baseAppointment: baseAppointment,
+    existingScheduled: existingScheduled,
+    title: existingScheduled == null
+        ? 'Schedule Appointment'
+        : 'Edit Scheduled Appointment',
+    scheduleActionLabel: existingScheduled == null ? 'Schedule' : 'Update',
   );
-  if (pickedDate == null || !context.mounted) return;
+  if (draft == null) return;
 
-  final pickedTime = await material.showTimePicker(
-    context: context,
-    initialTime: material.TimeOfDay(
-      hour: existingScheduled?.date.hour ?? 10,
-      minute: existingScheduled?.date.minute ?? 0,
-    ),
-    builder: apexoDatePickerBuilder(context),
-  );
-  if (pickedTime == null || !context.mounted) return;
-
-  final scheduledAt = DateTime(
-    pickedDate.year,
-    pickedDate.month,
-    pickedDate.day,
-    pickedTime.hour,
-    pickedTime.minute,
-  );
+  final scheduledAt = draft.scheduledAt;
   if (scheduledAt.isBefore(DateTime.now())) {
     displayInfoBar(
       context,
@@ -356,9 +397,7 @@ Future<void> _upsertScheduledFollowUpAppointment(
   targetAppointment.date = scheduledAt;
   targetAppointment.checkinStage = 'scheduled';
   targetAppointment.isCheckedIn = false;
-  if (targetAppointment.operatorsIDs.isEmpty) {
-    targetAppointment.operatorsIDs = [...baseAppointment.operatorsIDs];
-  }
+  targetAppointment.operatorsIDs = draft.doctorIds.toList(growable: false);
   if (targetAppointment.preOpNotes.trim().isEmpty) {
     targetAppointment.preOpNotes = 'Follow-up visit';
   }
@@ -431,21 +470,33 @@ List<Widget> _buildBillingSummaryLines(
   Appointment appointment, {
   double? paidOverride,
 }) {
+  final treatmentCost = appointment.price.clamp(0, double.infinity).toDouble();
+  final prescriptionCost =
+      appointment.prescriptionPrice.clamp(0, double.infinity).toDouble();
+  final hasPrescriptionCharge = prescriptionCost > 0;
+  final subtotal = treatmentCost + prescriptionCost;
   final discount = appointment.discount;
   final discountedTotal = appointment.discountType == 'percent'
       ? (appointment.price - (appointment.price * discount / 100))
           .clamp(0, double.infinity)
       : (appointment.price - discount).clamp(0, double.infinity);
-  final paid = (paidOverride ?? appointment.paid).clamp(0, double.infinity);
-  final balance = (discountedTotal - paid).clamp(0, double.infinity);
+  final netTotal =
+      (discountedTotal + prescriptionCost).clamp(0, double.infinity);
+  final paid =
+      ((paidOverride ?? appointment.paid) + appointment.prescriptionPaid)
+          .clamp(0, double.infinity);
+  final balance = (netTotal - paid).clamp(0, double.infinity);
   final status = balance <= 0 ? 'PAID' : 'DUE';
 
   return [
-    Text('Treatment Cost: Rs ${appointment.price.toStringAsFixed(0)}'),
+    Text('Treatment Cost: Rs ${treatmentCost.toStringAsFixed(0)}'),
+    if (hasPrescriptionCharge)
+      Text('Prescription Cost: Rs ${prescriptionCost.toStringAsFixed(0)}'),
+    Text('Subtotal: Rs ${subtotal.toStringAsFixed(0)}'),
     Text(
       'Discount: ${discount <= 0 ? '-' : (appointment.discountType == 'percent' ? '-${discount.toStringAsFixed(0)}%' : '-Rs ${discount.toStringAsFixed(0)}')}',
     ),
-    Text('Net Total: Rs ${discountedTotal.toStringAsFixed(0)}'),
+    Text('Net Total: Rs ${netTotal.toStringAsFixed(0)}'),
     Text('Paid: Rs ${paid.toStringAsFixed(0)}'),
     Text('Balance: Rs ${balance.toStringAsFixed(0)}'),
     Text('Status: $status'),
@@ -2429,6 +2480,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   final TextEditingController _prescriptionChargeController =
       TextEditingController();
   static const List<String> _prescriptionChargeItems = [
+    'None',
     'Tooth Paste',
     'Dental Floss',
     'Mouth Wash',
@@ -2437,12 +2489,11 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
   ];
   Timer? _autosaveDebounce;
   bool _hasPendingAutosave = false;
-  DateTime _paymentDate = DateTime.now();
   int _receiptExportSequence = 0;
   String _discountMode = 'flat';
   double _basePrice = 0;
   String? _selectedConsultantDoctorId;
-  String _selectedPrescriptionChargeItem = 'Tooth Paste';
+  String _selectedPrescriptionChargeItem = 'None';
   String? _initialConsultantDoctorId;
   DateTime? _initialConsultantMonthAnchor;
 
@@ -2462,7 +2513,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
           (item) => _prescriptionChargeItems.contains(item),
           orElse: () => _selectedPrescriptionChargeItem,
         );
-    _selectedPrescriptionChargeItem = presetItem;
+    _selectedPrescriptionChargeItem =
+      (presetItem == 'None' && a.prescriptionPaid > 0)
+        ? 'Medicines'
+        : presetItem;
     _prescriptionChargeController.text =
         a.prescriptionPaid <= 0 ? '' : a.prescriptionPaid.toStringAsFixed(0);
   }
@@ -2544,7 +2598,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       if (expense.items.first.trim().toLowerCase() != 'consultant') {
         return false;
       }
-      if (!expense.operatorsIDs.contains(doctorId)) return false;
+      if (expense.operatorsIDs.length != 1) return false;
+      if (expense.operatorsIDs.first != doctorId) return false;
       return expense.date.year == monthAnchor.year &&
           expense.date.month == monthAnchor.month;
     }).toList(growable: true);
@@ -2630,36 +2685,19 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               : upcomingAppointments.first;
         })();
 
-    final initialDate =
-        resolvedExisting?.date ?? DateTime.now().add(const Duration(days: 7));
-    final pickedDate = await material.showDatePicker(
+    final draft = await _showScheduleAppointmentModal(
       context: context,
-      initialDate: initialDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2100, 12, 31),
-      builder: apexoDatePickerBuilder(context),
+      baseAppointment: a,
+      existingScheduled: resolvedExisting,
+      title: resolvedExisting == null
+          ? 'Schedule Appointment'
+          : 'Edit Scheduled Appointment',
+      scheduleActionLabel: resolvedExisting == null ? 'Schedule' : 'Update',
     );
-    if (pickedDate == null) return;
+    if (draft == null) return;
     if (!mounted) return;
 
-    final pickedTime = await material.showTimePicker(
-      context: context,
-      initialTime: material.TimeOfDay(
-        hour: resolvedExisting?.date.hour ?? 10,
-        minute: resolvedExisting?.date.minute ?? 0,
-      ),
-      builder: apexoDatePickerBuilder(context),
-    );
-    if (pickedTime == null) return;
-    if (!mounted) return;
-
-    final scheduledAt = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
-    );
+    final scheduledAt = draft.scheduledAt;
     if (scheduledAt.isBefore(DateTime.now())) {
       displayInfoBar(
         context,
@@ -2682,9 +2720,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     targetAppointment.date = scheduledAt;
     targetAppointment.checkinStage = 'scheduled';
     targetAppointment.isCheckedIn = false;
-    if (targetAppointment.operatorsIDs.isEmpty) {
-      targetAppointment.operatorsIDs = [...a.operatorsIDs];
-    }
+    targetAppointment.operatorsIDs = draft.doctorIds.toList(growable: false);
     if (targetAppointment.preOpNotes.trim().isEmpty) {
       targetAppointment.preOpNotes = 'Follow-up visit';
     }
@@ -2882,7 +2918,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             headers: const ['Details', 'Description', 'Cost', 'Amount'],
             data: [
               [
-                formatClinicDate(_paymentDate, pattern: 'dd MMM yyyy'),
+                formatClinicDate(a.date, pattern: 'dd MMM yyyy'),
                 treatmentLabel.isEmpty ? '-' : treatmentLabel,
                 'Rs ${a.price.toStringAsFixed(0)}',
                 'Rs ${paid.toStringAsFixed(0)}',
@@ -2990,9 +3026,14 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final a = widget.appointment;
     final patientName =
         a.title.trim().isEmpty ? 'Patient' : _toTitleCase(a.title);
-    final paid = double.tryParse(widget.paidController.text.trim()) ?? a.paid;
+    final treatmentPaid =
+      double.tryParse(widget.paidController.text.trim()) ?? a.paid;
+    final paid = treatmentPaid + a.prescriptionPaid;
     final treatmentCost = a.price;
-    final balance = (treatmentCost - paid).clamp(0, double.infinity);
+    final prescriptionCost = a.prescriptionPrice;
+    final hasPrescriptionCharge = prescriptionCost > 0;
+    final totalCost = treatmentCost + prescriptionCost;
+    final balance = (totalCost - paid).clamp(0, double.infinity);
     final status = balance <= 0 ? 'Paid' : 'Due';
     final treatmentCompleted = a.selectedTreatments
         .where((t) => t.trim().isNotEmpty)
@@ -3005,6 +3046,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         'Last Visit: ${formatClinicDate(a.date, pattern: 'dd MMM yyyy')}\n'
         'Treatment Completed: ${treatmentCompleted.isEmpty ? '-' : treatmentCompleted}\n'
         'Treatment Cost: Rs ${treatmentCost.toStringAsFixed(0)}\n'
+        '${hasPrescriptionCharge ? 'Prescription Cost: Rs ${prescriptionCost.toStringAsFixed(0)}\\n' : ''}'
+        'Total Cost: Rs ${totalCost.toStringAsFixed(0)}\n'
         'Paid: Rs ${paid.toStringAsFixed(0)}\n'
         'Balance: Rs ${balance.toStringAsFixed(0)}\n'
         'Status: $status\n\n'
@@ -3069,7 +3112,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final discountedTotal = a.discountType == 'percent'
         ? (a.price - (a.price * a.discount / 100)).clamp(0, double.infinity)
         : (a.price - a.discount).clamp(0, double.infinity);
-    final outstanding = (discountedTotal - a.paid).clamp(0, double.infinity);
+    final netTotal =
+      (discountedTotal + a.prescriptionPrice).clamp(0, double.infinity);
+    final outstanding =
+      (netTotal - (a.paid + a.prescriptionPaid)).clamp(0, double.infinity);
     final status = outstanding <= 0 ? 'PAID' : 'DUE';
     final totalAfter =
         (double.tryParse(widget.paidController.text.trim()) ?? a.paid)
@@ -3292,6 +3338,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     onChanged: (value) {
                       a.paid = double.tryParse(value) ?? 0;
                       _scheduleAutosave();
+                      setState(() {});
                     },
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 10),
@@ -3337,76 +3384,34 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Payment Mode',
-                              style: TextStyle(
-                                color: AppColors.textBlueStrong,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: ['Cash', 'UPI'].map((mode) {
-                                final selected = _paymentMode == mode;
-                                return AppButton(
-                                  label: mode,
-                                  compact: false,
-                                  variant: selected
-                                      ? AppButtonVariant.primary
-                                      : AppButtonVariant.secondary,
-                                  onPressed: () {
-                                    setState(() => _paymentMode = mode);
-                                    final isDigital = mode == 'UPI';
-                                    a.treatmentGpayPaid = isDigital;
-                                    a.prescriptionGpayPaid = isDigital;
-                                    _scheduleAutosave();
-                                  },
-                                );
-                              }).toList(growable: false),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Date',
-                            style: TextStyle(
-                              color: AppColors.textBlueStrong,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          AppButton(
-                            label: formatClinicDate(_paymentDate,
-                                pattern: 'dd MMM yyyy'),
-                            variant: AppButtonVariant.secondary,
-                            onPressed: () async {
-                              final picked = await material.showDatePicker(
-                                context: context,
-                                initialDate: _paymentDate,
-                                firstDate: DateTime(2000, 1, 1),
-                                lastDate: DateTime(2100, 12, 31),
-                                builder: apexoDatePickerBuilder(context),
-                              );
-                              if (picked == null) return;
-                              setState(() => _paymentDate = picked);
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
+                  const Text(
+                    'Payment Mode',
+                    style: TextStyle(
+                      color: AppColors.textBlueStrong,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ['Cash', 'UPI'].map((mode) {
+                      final selected = _paymentMode == mode;
+                      return AppButton(
+                        label: mode,
+                        compact: false,
+                        variant: selected
+                            ? AppButtonVariant.primary
+                            : AppButtonVariant.secondary,
+                        onPressed: () {
+                          setState(() => _paymentMode = mode);
+                          final isDigital = mode == 'UPI';
+                          a.treatmentGpayPaid = isDigital;
+                          a.prescriptionGpayPaid = isDigital;
+                          _scheduleAutosave();
+                        },
+                      );
+                    }).toList(growable: false),
                   ),
                   const SizedBox(height: 12),
                   const Text(
@@ -3440,7 +3445,13 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                                   .where((item) => !_prescriptionChargeItems
                                       .contains(item.trim()))
                                   .toList(growable: true);
-                              preserved.add(value);
+                              if (value == 'None') {
+                                _prescriptionChargeController.clear();
+                                a.prescriptionPaid = 0;
+                                a.prescriptionPrice = 0;
+                              } else {
+                                preserved.add(value);
+                              }
                               a.prescriptions = preserved;
                             });
                             _scheduleAutosave();
@@ -3451,6 +3462,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                       Expanded(
                         flex: 5,
                         child: CupertinoTextField(
+                          enabled: _selectedPrescriptionChargeItem != 'None',
                           controller: _prescriptionChargeController,
                           keyboardType: TextInputType.number,
                           inputFormatters: [
@@ -3463,12 +3475,15 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
                                 style: const TextStyle(
                                     color: AppColors.textBlueStrong)),
                           ),
-                          placeholder: 'Prescription charge',
+                          placeholder: _selectedPrescriptionChargeItem == 'None'
+                              ? 'Select prescription item first'
+                              : 'Prescription charge',
                           onChanged: (value) {
                             final parsed = double.tryParse(value) ?? 0;
                             a.prescriptionPaid = parsed;
                             a.prescriptionPrice = parsed;
                             _scheduleAutosave();
+                            setState(() {});
                           },
                         ),
                       ),

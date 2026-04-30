@@ -533,8 +533,10 @@ class _PatientsScreenState extends State<PatientsScreen> {
               double totalSpent,
               bool hasProcedureFocus,
               bool visitedToday,
+              bool visitedYesterday,
               bool visitedThisMonth,
             })>{};
+            final yesterday = now.subtract(const Duration(days: 1));
             for (final patient in allPatients) {
               final rows = visitsByPatient[patient.id] ?? const <Appointment>[];
               final firstVisit = rows.isEmpty ? null : rows.first.date;
@@ -555,6 +557,10 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   a.date.year == now.year &&
                   a.date.month == now.month &&
                   a.date.day == now.day);
+              final visitedYesterday = rows.any((a) =>
+                  a.date.year == yesterday.year &&
+                  a.date.month == yesterday.month &&
+                  a.date.day == yesterday.day);
               final visitedThisMonth = rows.any(
                   (a) => a.date.year == now.year && a.date.month == now.month);
               patientAnalytics[patient.id] = (
@@ -564,6 +570,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 totalSpent: totalSpent,
                 hasProcedureFocus: hasProcedureFocus,
                 visitedToday: visitedToday,
+                visitedYesterday: visitedYesterday,
                 visitedThisMonth: visitedThisMonth,
               );
             }
@@ -675,6 +682,8 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   return visits == 0;
                 case 'todayVisited':
                   return analytics?.visitedToday ?? false;
+                case 'yesterdayVisited':
+                  return analytics?.visitedYesterday ?? false;
                 default:
                   return true;
               }
@@ -3090,6 +3099,7 @@ class _AllPatientsListCard extends StatelessWidget {
               behaviorChip('invalidPhone', 'Invalid Phone Number'),
               behaviorChip('noVisit', 'No Visit'),
               behaviorChip('todayVisited', "Today's patients"),
+              behaviorChip('yesterdayVisited', "Yesterday's patients"),
               if (behaviorFilter == 'highValue')
                 SizedBox(
                   width: 180,
