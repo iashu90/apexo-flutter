@@ -104,7 +104,7 @@ class _ReportScreenState extends State<ReportScreen> {
                               ? (cards[i] as _WideReportTile).child
                               : cards[i] is _CompactReportTile
                                   ? SizedBox(
-                                      height: 300,
+                                    height: 285,
                                       child: (cards[i] as _CompactReportTile)
                                           .child,
                                     )
@@ -168,22 +168,30 @@ class _ReportScreenState extends State<ReportScreen> {
                                 rows: allAppointments,
                               ),
                             ),
-                            _MonthlyAppointmentsTrendSection(
-                              rows: allAppointments,
-                              windowOffset: _monthlyOffset,
+                            _CompactReportTile(
+                              child: _MonthlyAppointmentsTrendSection(
+                                rows: allAppointments,
+                                windowOffset: _monthlyOffset,
+                              ),
                             ),
-                            _MonthlyRevenueTrendSection(
-                              rows: allAppointments,
-                              windowOffset: _monthlyOffset,
+                            _CompactReportTile(
+                              child: _MonthlyRevenueTrendSection(
+                                rows: allAppointments,
+                                windowOffset: _monthlyOffset,
+                              ),
                             ),
-                            _MonthlyExpensesTrendSection(
-                              rows: allExpenses,
-                              windowOffset: _monthlyOffset,
+                            _CompactReportTile(
+                              child: _MonthlyExpensesTrendSection(
+                                rows: allExpenses,
+                                windowOffset: _monthlyOffset,
+                              ),
                             ),
-                            _MonthlyNetRevenueTrendSection(
-                              appointmentsRows: allAppointments,
-                              expenseRows: allExpenses,
-                              windowOffset: _monthlyOffset,
+                            _CompactReportTile(
+                              child: _MonthlyNetRevenueTrendSection(
+                                appointmentsRows: allAppointments,
+                                expenseRows: allExpenses,
+                                windowOffset: _monthlyOffset,
+                              ),
                             ),
                             _CompactReportTile(
                               child: _TrafficByTimeCard(
@@ -763,7 +771,12 @@ class _ReportDoctorAppointmentDoneCardState
           final done = doctorRows.where((a) => a.isDone).length;
           final fee = doctorRows.fold<double>(
             0,
-            (sum, a) => sum + a.doctorPayableAmount,
+            (sum, a) {
+              final consultantId = a.consultantDoctorID?.trim() ?? '';
+              final attributed =
+                  consultantId == doctor.id ? a.doctorPayableAmount : 0.0;
+              return sum + attributed;
+            },
           );
           final revenue = doctorRows.fold<double>(
             0,

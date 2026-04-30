@@ -27,6 +27,38 @@ String _toTitleCaseForPatientPopup(String input) {
   }).join(' ');
 }
 
+const List<String> _addressSuggestions = [
+  'Ariankuppam',
+  'Bahour',
+  'Chinna Kottakuppam',
+  'Cuddalore',
+  'Embalam',
+  'Indira Nagar',
+  'Kadirkamam',
+  'Kalapet',
+  'Kamaraj Nagar',
+  'Karuvadikuppam',
+  'Kottakuppam',
+  'Lawspet',
+  'Mannadipet',
+  'Marakkanam',
+  'Mudaliarpet',
+  'Muthialpet',
+  'Nellithope',
+  'Nettapakkam',
+  'Orleampet',
+  'Ossudu',
+  'Pondy',
+  'Reddiarpalayam',
+  'Sulthanpet',
+  'Thattanchavady',
+  'Thirubuvanai',
+  'Upalam',
+  'Uzhukarai',
+  'Villianur',
+  'Villupuram',
+];
+
 Widget _popupFieldLabel(String text) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 4),
@@ -306,10 +338,36 @@ Future<Patient?> openAddPatientPopup({
                     ),
                   const SizedBox(height: 12),
                   _popupFieldLabel('Address:'),
-                  TextBox(
-                    controller: addressController,
-                    placeholder: 'Address',
-                  ),
+                  Builder(builder: (context) {
+                    final addressQuery = addressController.text.trim().toLowerCase();
+                    final filteredAddresses = addressQuery.isEmpty
+                        ? _addressSuggestions
+                        : _addressSuggestions
+                            .where((value) =>
+                                value.toLowerCase().startsWith(addressQuery))
+                            .toList(growable: false);
+
+                    return AutoSuggestBox<String>(
+                      controller: addressController,
+                      placeholder: 'Address',
+                      items: filteredAddresses
+                          .map(
+                            (value) => AutoSuggestBoxItem<String>(
+                              value: value,
+                              label: value,
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (_, __) => setStateDialog(() {}),
+                      onSelected: (item) {
+                        addressController.text = item.value ?? item.label;
+                        addressController.selection = TextSelection.collapsed(
+                          offset: addressController.text.length,
+                        );
+                        setStateDialog(() {});
+                      },
+                    );
+                  }),
                   const SizedBox(height: 16),
                   _popupFieldLabel('Medical History:'),
                   SelectableChipGroup(

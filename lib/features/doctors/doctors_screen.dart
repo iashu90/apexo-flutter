@@ -1351,8 +1351,39 @@ class _DoctorTodayDetailCard extends StatefulWidget {
 
 class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   final Set<String> _expandedDoctorIds = {};
+  final Map<String, TextEditingController> _doctorSearchControllers = {};
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
+  final Map<String, String> _doctorStatusFilter = {};
+  final Map<String, String> _doctorSortBy = {};
+  final Map<String, bool> _doctorSortAscending = {};
+
+  TextEditingController _controllerForDoctor(String doctorId) {
+    return _doctorSearchControllers.putIfAbsent(
+      doctorId,
+      () => TextEditingController(),
+    );
+  }
+
+  String _statusFilterForDoctor(String doctorId) {
+    return _doctorStatusFilter.putIfAbsent(doctorId, () => 'All');
+  }
+
+  String _sortByForDoctor(String doctorId) {
+    return _doctorSortBy.putIfAbsent(doctorId, () => 'Date');
+  }
+
+  bool _sortAscendingForDoctor(String doctorId) {
+    return _doctorSortAscending.putIfAbsent(doctorId, () => false);
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _doctorSearchControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 
   Future<void> _openPatientEditor(Appointment appointment) async {
     final patient = appointment.patient;
@@ -1427,6 +1458,94 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
             .clamp(0, double.infinity)
         : (appointment.price - appointment.discount).clamp(0, double.infinity);
     return discountedTotal + appointment.prescriptionPrice;
+  }
+
+  double _doctorFeeFor(Appointment appointment, String doctorId) {
+    final consultantDoctorId = appointment.consultantDoctorID?.trim() ?? '';
+    if (consultantDoctorId.isEmpty || consultantDoctorId != doctorId) {
+      return 0;
+    }
+    return appointment.doctorPayableAmount;
+  }
+
+  List<({Appointment primary, List<Appointment> rows})> _filteredSortedGroupedRows(
+    List<({Appointment primary, List<Appointment> rows})> groupedRows,
+    String doctorId,
+  ) {
+    final query = _controllerForDoctor(doctorId).text.trim().toLowerCase();
+    final rowStatusFilter = _statusFilterForDoctor(doctorId);
+    final rowSortBy = _sortByForDoctor(doctorId);
+    final rowSortAscending = _sortAscendingForDoctor(doctorId);
+    final filtered = groupedRows.where((groupedRow) {
+      final primary = groupedRow.primary;
+      final rows = groupedRow.rows;
+      final groupedStatus = rows.length > 1
+          ? _paymentStatusForGroupedAppointments(rows)
+          : _paymentStatusForAppointment(primary);
+      final patientName = primary.title.trim().toLowerCase();
+
+      final statusPass = rowStatusFilter == 'All' || groupedStatus == rowStatusFilter;
+      final queryPass = query.isEmpty || patientName.contains(query);
+      return statusPass && queryPass;
+    }).toList(growable: false);
+
+    filtered.sort((a, b) {
+      int comparison;
+      switch (rowSortBy) {
+        case 'Patient':
+          comparison = a.primary.title
+              .trim()
+              .toLowerCase()
+              .compareTo(b.primary.title.trim().toLowerCase());
+          break;
+        case 'Paid':
+          final paidA = a.rows.fold<double>(
+            0,
+            (sum, row) => sum + row.paid + row.prescriptionPaid,
+          );
+          final paidB = b.rows.fold<double>(
+            0,
+            (sum, row) => sum + row.paid + row.prescriptionPaid,
+          );
+          comparison = paidA.compareTo(paidB);
+          break;
+        case 'Fee':
+          final feeA = a.rows.fold<double>(
+            0,
+            (sum, row) => sum + _doctorFeeFor(row, doctorId),
+          );
+          final feeB = b.rows.fold<double>(
+            0,
+            (sum, row) => sum + _doctorFeeFor(row, doctorId),
+          );
+          comparison = feeA.compareTo(feeB);
+          break;
+        case 'Net':
+          final paidA = a.rows.fold<double>(
+            0,
+            (sum, row) => sum + row.paid + row.prescriptionPaid,
+          );
+          final paidB = b.rows.fold<double>(
+            0,
+            (sum, row) => sum + row.paid + row.prescriptionPaid,
+          );
+          final feeA = a.rows.fold<double>(
+            0,
+            (sum, row) => sum + _doctorFeeFor(row, doctorId),
+          );
+          final feeB = b.rows.fold<double>(
+            0,
+            (sum, row) => sum + _doctorFeeFor(row, doctorId),
+          );
+          comparison = (paidA - feeA).compareTo(paidB - feeB);
+          break;
+        default:
+          comparison = a.primary.date.compareTo(b.primary.date);
+      }
+      return rowSortAscending ? comparison : -comparison;
+    });
+
+    return filtered;
   }
 
   String _paymentStatusForAppointment(Appointment appointment) {
@@ -1540,7 +1659,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
               ? '-'
               : appointment.selectedTeeth.first;
           final paid = appointment.paid + appointment.prescriptionPaid;
-          final fee = appointment.doctorPayableAmount;
+          final fee = _doctorFeeFor(appointment, doctor.id);
           final net = paid - fee;
           final paymentStatus = _paymentStatusForAppointment(appointment);
 
@@ -1604,7 +1723,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
               ? '-'
               : appointment.selectedTeeth.first;
           final paid = appointment.paid + appointment.prescriptionPaid;
-          final fee = appointment.doctorPayableAmount;
+          final fee = _doctorFeeFor(appointment, doctor.id);
           final net = paid - fee;
           final paymentStatus = _paymentStatusForAppointment(appointment);
 
@@ -1824,7 +1943,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                     );
                     final doctorFee = doctorAppts.fold<double>(
                       0,
-                      (sum, a) => sum + a.doctorPayableAmount,
+                      (sum, a) => sum + _doctorFeeFor(a, doctor.id),
                     );
                     final doctorNet = earned - doctorFee;
                     final doctorNetPct =
@@ -1864,8 +1983,6 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                     final netWidth = baseNetWidth * widthScale;
                     final statusWidth = baseStatusWidth * widthScale;
                     final actionWidth = baseActionWidth * widthScale;
-                    final groupedRows = _patientGroupedRows(doctorAppts);
-
                     return Container(
                       margin: const EdgeInsets.only(bottom: 6),
                       decoration: const BoxDecoration(
@@ -1932,13 +2049,129 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                             ],
                           ),
                         ),
-                        content: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: ConstrainedBox(
-                            constraints:
-                                BoxConstraints(minWidth: minTableWidth),
-                            child: Column(
-                              children: [
+                        content: Builder(builder: (context) {
+                                final groupedRows = _filteredSortedGroupedRows(
+                                  _patientGroupedRows(doctorAppts),
+                                  doctor.id,
+                                );
+                                return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ConstrainedBox(
+                                  constraints:
+                                      BoxConstraints(minWidth: minTableWidth),
+                                  child: Column(
+                                    children: [
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    alignment: WrapAlignment.end,
+                                    children: [
+                                      SizedBox(
+                                        width: 220,
+                                        height: 34,
+                                        child: TextBox(
+                                          controller:
+                                              _controllerForDoctor(doctor.id),
+                                          placeholder: 'Search patient',
+                                          onChanged: (_) => setState(() {}),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 132,
+                                        child: ComboBox<String>(
+                                          value:
+                                              _statusFilterForDoctor(doctor.id),
+                                          items: const [
+                                            ComboBoxItem(
+                                              value: 'All',
+                                              child: Text('All'),
+                                            ),
+                                            ComboBoxItem(
+                                              value: 'Paid',
+                                              child: Text('Paid'),
+                                            ),
+                                            ComboBoxItem(
+                                              value: 'Partial',
+                                              child: Text('Partial'),
+                                            ),
+                                            ComboBoxItem(
+                                              value: 'Nil',
+                                              child: Text('Nil'),
+                                            ),
+                                            ComboBoxItem(
+                                              value: 'Free',
+                                              child: Text('Free'),
+                                            ),
+                                          ],
+                                          onChanged: (value) {
+                                            if (value == null) return;
+                                            setState(() {
+                                              _doctorStatusFilter[doctor.id] =
+                                                  value;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 154,
+                                        child: ComboBox<String>(
+                                          value: _sortByForDoctor(doctor.id),
+                                          items: const [
+                                            ComboBoxItem(
+                                              value: 'Date',
+                                              child: Text('Sort: Date'),
+                                            ),
+                                            ComboBoxItem(
+                                              value: 'Patient',
+                                              child: Text('Sort: Patient'),
+                                            ),
+                                            ComboBoxItem(
+                                              value: 'Paid',
+                                              child: Text('Sort: Paid'),
+                                            ),
+                                            ComboBoxItem(
+                                              value: 'Fee',
+                                              child: Text('Sort: Fee'),
+                                            ),
+                                            ComboBoxItem(
+                                              value: 'Net',
+                                              child: Text('Sort: Net'),
+                                            ),
+                                          ],
+                                          onChanged: (value) {
+                                            if (value == null) return;
+                                            setState(() {
+                                              _doctorSortBy[doctor.id] = value;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 116,
+                                        child: ToggleSwitch(
+                                          checked:
+                                              _sortAscendingForDoctor(doctor.id),
+                                          content: Text(
+                                            _sortAscendingForDoctor(doctor.id)
+                                                ? 'Asc'
+                                                : 'Desc',
+                                          ),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _doctorSortAscending[doctor.id] =
+                                                  value;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 8),
@@ -2050,7 +2283,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                   final consultantFee =
                                       groupedAppointments.fold<double>(
                                     0,
-                                    (sum, a) => sum + a.doctorPayableAmount,
+                                    (sum, a) =>
+                                        sum + _doctorFeeFor(a, doctor.id),
                                   );
                                   final appointmentNet = paid - consultantFee;
                                   final paymentStatus = groupedCount > 1
@@ -2241,10 +2475,11 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                     ),
                                   );
                                 }),
-                              ],
-                            ),
-                          ),
-                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
                       ),
                     );
                   }),
@@ -2473,7 +2708,11 @@ List<
         );
         final consultFee = rows.fold<double>(
           0,
-          (sum, a) => sum + a.doctorPayableAmount,
+          (sum, a) {
+            final consultantId = a.consultantDoctorID?.trim() ?? '';
+            final fee = consultantId == doctor.id ? a.doctorPayableAmount : 0.0;
+            return sum + fee;
+          },
         );
         final revenue = rows.fold<double>(
           0,

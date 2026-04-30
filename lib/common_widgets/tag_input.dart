@@ -2,7 +2,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class TagInputItem extends AutoSuggestBoxItem<String> {
-  TagInputItem({required super.value, required super.label});
+  TagInputItem({required super.value, required super.label, super.child});
 }
 
 class TagInputWidget extends StatefulWidget {
@@ -16,6 +16,7 @@ class TagInputWidget extends StatefulWidget {
   final TextEditingController? controller; // <-- Add this
   final FocusNode? focusNode; // <-- Add this
   final bool clearButton; // <-- Add this
+  final bool useCustomSuggestionPanel;
 
   const TagInputWidget({
     super.key,
@@ -29,6 +30,7 @@ class TagInputWidget extends StatefulWidget {
     this.controller,
     this.focusNode,
     this.clearButton = false, // <-- Add this
+    this.useCustomSuggestionPanel = false,
   });
 
   @override
@@ -41,12 +43,21 @@ class TagInputWidgetState extends State<TagInputWidget> {
   late List<TagInputItem> _tags;
   late List<TagInputItem> _filteredSuggestions;
   final key = GlobalKey<AutoSuggestBoxState>();
+  bool _showCustomSuggestions = false;
+  late final VoidCallback _focusNodeListener;
 
   @override
   void initState() {
     super.initState();
     _controller = widget.controller ?? TextEditingController();
     _focusNode = widget.focusNode ?? FocusNode();
+    _focusNodeListener = () {
+      if (!mounted || !widget.useCustomSuggestionPanel) return;
+      setState(() {
+        _showCustomSuggestions = _focusNode.hasFocus;
+      });
+    };
+    _focusNode.addListener(_focusNodeListener);
     _filteredSuggestions = widget.suggestions;
     _tags = List<TagInputItem>.from(widget.initialValue, growable: true);
   }
@@ -78,12 +89,16 @@ class TagInputWidgetState extends State<TagInputWidget> {
       if (inputVal.isEmpty) {
         _filteredSuggestions = widget.suggestions;
       } else {
+        final query = inputVal.trim().toLowerCase();
         _filteredSuggestions = widget.suggestions
-            .where((suggestion) =>
-                _tags
-                    .map((e) => e.label.toLowerCase())
-                    .contains(suggestion.label.toLowerCase()) ==
-                false)
+            .where((suggestion) {
+              final selected =
+                  _tags.any((selected) => selected.value == suggestion.value);
+              if (selected) return false;
+              final label = suggestion.label.toLowerCase();
+              final value = (suggestion.value ?? '').toLowerCase();
+              return label.contains(query) || value.contains(query);
+            })
             .toList();
 
         // Always add the current input value to the suggestions
@@ -111,8 +126,11 @@ class TagInputWidgetState extends State<TagInputWidget> {
   }
 
   void _onSuggestionSelected(AutoSuggestBoxItem<String> suggestion) {
+    final selected = suggestion is TagInputItem
+        ? suggestion
+        : TagInputItem(value: suggestion.value, label: suggestion.label);
     setState(() {
-      _tags.add(TagInputItem(value: suggestion.value, label: suggestion.label));
+      _tags.add(selected);
       _controller.clear();
       _filteredSuggestions = widget.suggestions;
     });
@@ -136,9 +154,19 @@ class TagInputWidgetState extends State<TagInputWidget> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_focusNodeListener);
     if (widget.controller == null) _controller.dispose();
     if (widget.focusNode == null) _focusNode.dispose();
     super.dispose();
+  }
+
+  List<TagInputItem> _visibleSuggestions() {
+    return _filteredSuggestions
+        .where(
+          (suggestion) =>
+              _tags.where((selected) => selected.value == suggestion.value).isEmpty,
+        )
+        .toList(growable: false);
   }
 
   @override
@@ -164,7 +192,7 @@ class TagInputWidgetState extends State<TagInputWidget> {
               }).toList(),
             ),
           ),
-          if (widget.limit > _tags.length)
+          if (widget.limit > _tags.length && !widget.useCustomSuggestionPanel)
             Stack(
               alignment: Alignment.centerRight,
               children: [
@@ -222,6 +250,95 @@ class TagInputWidgetState extends State<TagInputWidget> {
                   ),
               ],
             ),
+          if (widget.limit > _tags.length && widget.useCustomSuggestionPanel)
+            Builder(builder: (context) {
+              final visibleSuggestions = _visibleSuggestions();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    alignment: Alignment.centerRight,
+                    children: [
+                      TextBox(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        placeholder: widget.placeholder,
+                        onChanged: (value) => _onTextChanged(value, null),
+                        suffix: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                _showCustomSuggestions
+                                    ? FluentIcons.chevron_up
+                                    : FluentIcons.chevron_down,
+                                size: 10,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _showCustomSuggestions =
+                                      !_showCustomSuggestions;
+                                });
+                                if (_showCustomSuggestions) {
+                                  _focusNode.requestFocus();
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (widget.clearButton && _controller.text.isNotEmpty)
+                        Positioned(
+                          right: 28,
+                          child: IconButton(
+                            icon: const Icon(FluentIcons.cancel, size: 14),
+                            onPressed: () {
+                              setState(() {
+                                _controller.clear();
+                                _onTextChanged('', null);
+                              });
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (_showCustomSuggestions)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      constraints: const BoxConstraints(maxHeight: 260),
+                      decoration: BoxDecoration(
+                        color: FluentTheme.of(context).menuColor,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: const Color.fromARGB(255, 220, 220, 220),
+                        ),
+                      ),
+                      child: visibleSuggestions.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Txt(txt("noResultsFound")),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: visibleSuggestions.length,
+                              itemBuilder: (context, index) {
+                                final suggestion = visibleSuggestions[index];
+                                return ListTile.selectable(
+                                  onPressed: () {
+                                    _onSuggestionSelected(suggestion);
+                                    setState(() {
+                                      _showCustomSuggestions = false;
+                                    });
+                                  },
+                                  title:
+                                      suggestion.child ?? Txt(suggestion.label),
+                                );
+                              },
+                            ),
+                    ),
+                ],
+              );
+            }),
         ],
       ),
     );

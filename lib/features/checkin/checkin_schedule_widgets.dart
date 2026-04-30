@@ -74,61 +74,80 @@ class _InlineNextAppointmentCard extends StatelessWidget {
                 ...upcomingRows.map(
                   (row) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                formatClinicDateTime(row.date,
+                                    pattern: 'dd MMM yyyy • h:mm a'),
+                                style: const TextStyle(
+                                  color: AppColors.blue700,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Tooltip(
+                              message: 'Edit scheduled appointment',
+                              child: IconButton(
+                                icon: const Icon(FluentIcons.edit, size: 14),
+                                onPressed: () =>
+                                    _upsertScheduledFollowUpAppointment(
+                                  context,
+                                  appointment,
+                                  existingScheduled: row,
+                                ),
+                              ),
+                            ),
+                            Tooltip(
+                              message: 'Cancel appointment',
+                              child: IconButton(
+                                icon: const Icon(
+                                  FluentIcons.blocked2,
+                                  size: 14,
+                                  color: AppColors.rose6003,
+                                ),
+                                onPressed: () =>
+                                    _confirmCancelScheduledFollowUpAppointment(
+                                  context,
+                                  row,
+                                ),
+                              ),
+                            ),
+                            Tooltip(
+                              message: 'Delete scheduled appointment',
+                              child: IconButton(
+                                icon: const Icon(
+                                  FluentIcons.delete,
+                                  size: 14,
+                                  color: AppColors.dangerRose,
+                                ),
+                                onPressed: () =>
+                                    _confirmDeleteScheduledFollowUpAppointment(
+                                  context,
+                                  row,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2, left: 2),
                           child: Text(
-                            formatClinicDateTime(row.date,
-                                pattern: 'dd MMM yyyy • h:mm a'),
+                            row.operators.isEmpty
+                                ? 'Doctor: Unassigned'
+                                : 'Doctor: ${row.operators.map((d) => d.title.trim().isEmpty ? 'Unnamed doctor' : d.title.trim()).join(', ')}',
                             style: const TextStyle(
-                              color: AppColors.blue700,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
+                              color: AppColors.textBlueMuted,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
                             ),
                           ),
                         ),
-                        Tooltip(
-                          message: 'Edit scheduled appointment',
-                          child: IconButton(
-                            icon: const Icon(FluentIcons.edit, size: 14),
-                            onPressed: () =>
-                                _upsertScheduledFollowUpAppointment(
-                              context,
-                              appointment,
-                              existingScheduled: row,
-                            ),
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Cancel appointment',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.blocked2,
-                              size: 14,
-                              color: AppColors.rose6003,
-                            ),
-                            onPressed: () =>
-                                _confirmCancelScheduledFollowUpAppointment(
-                              context,
-                              row,
-                            ),
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'Delete scheduled appointment',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.delete,
-                              size: 14,
-                              color: AppColors.dangerRose,
-                            ),
-                            onPressed: () =>
-                                _confirmDeleteScheduledFollowUpAppointment(
-                              context,
-                              row,
-                            ),
-                          ),
-                        ),
+                         const Divider(direction: Axis.horizontal),
                       ],
                     ),
                   ),

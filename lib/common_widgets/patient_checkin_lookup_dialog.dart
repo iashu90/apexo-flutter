@@ -1,5 +1,6 @@
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/common_widgets/last_treatments_modal.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
@@ -82,7 +83,8 @@ Future<DateTime?> _pickScheduleDateTime(
                         );
                         if (next == null) return;
                         setStateDialog(() {
-                          pickedDate = DateTime(next.year, next.month, next.day);
+                          pickedDate =
+                              DateTime(next.year, next.month, next.day);
                         });
                       },
                     ),
@@ -184,6 +186,8 @@ Future<void> showPatientCheckinLookupDialog({
       String activeTab = 'search';
 
       final allPatients = patients.present.values.toList(growable: false);
+      final allAppointments =
+          appointments.present.values.toList(growable: false);
       final todaysAppointments = appointments.forDate(selectedDate);
 
       return StatefulBuilder(
@@ -212,7 +216,7 @@ Future<void> showPatientCheckinLookupDialog({
                 return name == query || phone == query;
               });
 
-            final recentToday = allPatients
+          final recentToday = allPatients
               .where((p) => todaysAppointments.any((a) => a.patientID == p.id))
               .toList(growable: false);
 
@@ -241,7 +245,8 @@ Future<void> showPatientCheckinLookupDialog({
 
           Widget statusChip(Appointment? existing) {
             final stage = existing?.checkinStage.trim().toLowerCase() ?? '';
-            final isCompleted = stage == 'completed' || existing?.isDone == true;
+            final isCompleted =
+                stage == 'completed' || existing?.isDone == true;
             final isWaiting = stage == 'waiting';
             final isScheduled = stage == 'scheduled' || stage == 'pending';
             final isTreatment = stage == 'with_doctor' || stage == 'treatment';
@@ -293,9 +298,17 @@ Future<void> showPatientCheckinLookupDialog({
 
           Widget patientCard(Patient patient) {
             final existing = todayAppointment(patient);
+            final allVisits = allAppointments
+                .where((a) => a.patientID == patient.id)
+                .toList(growable: false)
+              ..sort((a, b) => a.date.compareTo(b.date));
+            final visitsCount = allVisits.length;
+            final lastVisitText = visitsCount == 0
+                ? 'No visits'
+                : DateFormat('dd MMM yyyy').format(allVisits.last.date);
             final displayName = patient.title.trim().isEmpty
                 ? 'Unnamed patient'
-                : patient.title;
+              : _toTitleCase(patient.title);
             final phone = patient.phone.trim().isEmpty ? '-' : patient.phone;
 
             return Container(
@@ -341,18 +354,41 @@ Future<void> showPatientCheckinLookupDialog({
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              displayName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF1F2B40),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF1F2B40),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Tooltip(
+                                  message: 'Last treatments',
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      FluentIcons.report_document,
+                                      size: 14,
+                                      color: Color(0xFF2D7BD8),
+                                    ),
+                                    onPressed: () {
+                                      showLastTreatmentsDialog(
+                                        context: context,
+                                        patient: patient,
+                                        maxRows: 12,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const Spacer(),
+                              ],
                             ),
                             Text(
-                              '$phone • ${patient.age}y',
+                              '$phone • ${patient.age}y • Last: $lastVisitText • Visits: $visitsCount',
                               style: const TextStyle(
                                 color: Color(0xFF637A99),
                                 fontWeight: FontWeight.w600,
@@ -386,6 +422,13 @@ Future<void> showPatientCheckinLookupDialog({
                       AppButton(
                         label: 'Check-in',
                         onPressed: () async {
+                          final titledName = patient.title.trim().isEmpty
+                              ? patient.title
+                              : _toTitleCase(patient.title);
+                          if (titledName != patient.title) {
+                            patient.title = titledName;
+                            patients.set(patient);
+                          }
                           final navigator = Navigator.of(dialogContext);
                           await onCheckInPatient(patient);
                           if (navigator.mounted) {
@@ -398,7 +441,8 @@ Future<void> showPatientCheckinLookupDialog({
                         label: 'Schedule',
                         variant: AppButtonVariant.secondary,
                         onPressed: () async {
-                          final scheduledAt = await _scheduleAppointmentForPatient(
+                          final scheduledAt =
+                              await _scheduleAppointmentForPatient(
                             context,
                             patient,
                             selectedDate,
@@ -513,7 +557,8 @@ Future<void> showPatientCheckinLookupDialog({
                         }
                       },
                       onChanged: (value) {
-                        setDialogState(() => query = value.trim().toLowerCase());
+                        setDialogState(
+                            () => query = value.trim().toLowerCase());
                       },
                     ),
                     const SizedBox(height: 8),
@@ -560,7 +605,8 @@ Future<void> showPatientCheckinLookupDialog({
                                     'Add "${queryController.text.trim()}" as new patient',
                                 onPressed: () async {
                                   final navigator = Navigator.of(dialogContext);
-                                  final created = await onAddPatient(queryController.text);
+                                  final created =
+                                      await onAddPatient(queryController.text);
                                   if (created == null) return;
                                   await onCheckInPatient(created);
                                   if (navigator.mounted) {

@@ -44,7 +44,12 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
           ? (row.price - (row.price * row.discount / 100))
               .clamp(0, double.infinity)
           : (row.price - row.discount).clamp(0, double.infinity);
-      return (discounted - row.paid).clamp(0, double.infinity).toDouble();
+      final netTotal = (discounted + row.prescriptionPrice)
+        .clamp(0, double.infinity)
+        .toDouble();
+      final totalPaid =
+        (row.paid + row.prescriptionPaid).clamp(0, double.infinity).toDouble();
+      return (netTotal - totalPaid).clamp(0, double.infinity).toDouble();
     }
 
     final allPatientRows = patientId.isEmpty
@@ -77,12 +82,18 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
     final discountedTotal = a.discountType == 'percent'
         ? (a.price - (a.price * a.discount / 100)).clamp(0, double.infinity)
         : (a.price - a.discount).clamp(0, double.infinity);
-    final outstanding = (discountedTotal - a.paid).clamp(0, double.infinity);
+    final netTotal =
+      (discountedTotal + a.prescriptionPrice).clamp(0, double.infinity);
+    final outstanding =
+      (netTotal - (a.paid + a.prescriptionPaid)).clamp(0, double.infinity);
     final displayedOutstanding =
         allPatientRows.isEmpty ? outstanding : aggregatedOutstanding;
+    final treatmentPaid =
+      (totalPaidOverride ?? a.paid).clamp(0, double.infinity).toDouble();
     final totalAfter =
-        (totalPaidOverride ?? a.paid).clamp(0, double.infinity).toDouble();
-    final treatmentCostForTotal = a.price.clamp(0, double.infinity).toDouble();
+      (treatmentPaid + a.prescriptionPaid).clamp(0, double.infinity).toDouble();
+    final treatmentCostForTotal =
+      (a.price + a.prescriptionPrice).clamp(0, double.infinity).toDouble();
     final todayBalance = (treatmentCostForTotal - totalAfter)
         .clamp(0, double.infinity)
         .toDouble();
@@ -104,6 +115,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
         .trim();
     final toothSummary =
         a.selectedTeeth.where((t) => t.trim().isNotEmpty).join(', ').trim();
+    final hasPrescriptionCharge = a.prescriptionPrice > 0;
 
     Widget sectionCard({
       required String title,
@@ -242,6 +254,9 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
             const SizedBox(height: 10),
             _checkoutSummaryLine(
                 'Treatment Cost', '₹${a.price.toStringAsFixed(0)}'),
+            if (hasPrescriptionCharge)
+              _checkoutSummaryLine(
+                'Prescription Cost', '₹${a.prescriptionPrice.toStringAsFixed(0)}'),
             if (discountEnabled) ...[
               _checkoutSummaryLine(
                 'Discount Applied',
@@ -254,7 +269,7 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
               ),
               _checkoutSummaryLine(
                 'Discounted Total',
-                '₹${discountedTotal.toStringAsFixed(0)}',
+                '₹${netTotal.toStringAsFixed(0)}',
                 valueColor: AppColors.brandBlueDark,
               ),
             ],
