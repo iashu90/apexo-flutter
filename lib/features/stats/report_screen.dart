@@ -104,7 +104,7 @@ class _ReportScreenState extends State<ReportScreen> {
                               ? (cards[i] as _WideReportTile).child
                               : cards[i] is _CompactReportTile
                                   ? SizedBox(
-                                    height: 285,
+                                    height: 280,
                                       child: (cards[i] as _CompactReportTile)
                                           .child,
                                     )
