@@ -61,6 +61,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       DateTime(DateTime.now().year, DateTime.now().month, 1);
   bool _showTopRangeLoadingOverlay = false;
   Timer? _topRangeLoadingTimer;
+  late final Future<void> _bootstrapFuture;
 
   static DateTime _dateOnly(DateTime input) =>
       DateTime(input.year, input.month, input.day);
@@ -68,8 +69,16 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   @override
   void initState() {
     super.initState();
+    _bootstrapFuture = _initializeStores();
     _selectedDate = _dateOnly(doctorPersistedDate);
     _topMonthAnchor = DateTime(_selectedDate.year, _selectedDate.month, 1);
+  }
+
+  Future<void> _initializeStores() async {
+    await Future.wait([
+      doctors.loaded,
+      appointments.loaded,
+    ]);
   }
 
   @override
@@ -210,7 +219,14 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return FutureBuilder<void>(
+      future: _bootstrapFuture,
+      builder: (context, bootSnapshot) {
+        if (bootSnapshot.connectionState != ConnectionState.done) {
+          return const _DoctorsScreenSkeleton();
+        }
+
+        return Stack(
       children: [
         Container(
             color: AppTheme.light.scaffoldBackgroundColor,
@@ -431,9 +447,111 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
             ),
           ),
       ],
-    );
+      );
+        },
+      );
   }
 }
+
+  class _DoctorsScreenSkeleton extends StatelessWidget {
+    const _DoctorsScreenSkeleton();
+
+    Widget _line(double width, {double height = 10}) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.slate100,
+          borderRadius: BorderRadius.circular(999),
+        ),
+      );
+    }
+
+    Widget _card(double width) {
+      return Container(
+        width: width,
+        height: 84,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.violet1506),
+        ),
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _line(width * 0.45, height: 12),
+            const SizedBox(height: 10),
+            _line(width * 0.3, height: 16),
+            const SizedBox(height: 8),
+            _line(width * 0.5),
+          ],
+        ),
+      );
+    }
+
+    @override
+    Widget build(BuildContext context) {
+      return Container(
+        color: AppTheme.light.scaffoldBackgroundColor,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.violet1506),
+                ),
+              ),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cardWidth = (constraints.maxWidth - 24) / 4;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _card(cardWidth),
+                      _card(cardWidth),
+                      _card(cardWidth),
+                      _card(cardWidth),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.violet1506),
+                ),
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  children: List.generate(
+                    5,
+                    (index) => Container(
+                      margin: EdgeInsets.only(bottom: index == 4 ? 0 : 8),
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.slate1006,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    growable: false,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
 
 String _doctorTitleCase(String input) {
   final cleaned = input.trim();
@@ -1354,6 +1472,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   final Map<String, TextEditingController> _doctorSearchControllers = {};
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
+  int _doctorVisibleLimit = 12;
   final Map<String, String> _doctorStatusFilter = {};
   final Map<String, String> _doctorSortBy = {};
   final Map<String, bool> _doctorSortAscending = {};
@@ -1760,6 +1879,9 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   @override
   Widget build(BuildContext context) {
     final doctorEntries = _doctorEntries();
+    final visibleDoctorEntries = doctorEntries
+        .take(_doctorVisibleLimit)
+        .toList(growable: false);
 
     final totalPatients = widget.todaysAppointments.length;
     final revenue = widget.todaysAppointments.fold<double>(
@@ -1933,7 +2055,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                   )
                 else ...[
                   const SizedBox(height: 10),
-                  ...doctorEntries.map((entry) {
+                  ...visibleDoctorEntries.map((entry) {
                     final doctor = entry.key;
                     final doctorAppts = entry.value;
                     final expanded = _expandedDoctorIds.contains(doctor.id);
@@ -2050,6 +2172,10 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           ),
                         ),
                         content: Builder(builder: (context) {
+                                if (!expanded) {
+                                  return const SizedBox.shrink();
+                                }
+
                                 final groupedRows = _filteredSortedGroupedRows(
                                   _patientGroupedRows(doctorAppts),
                                   doctor.id,
@@ -2300,179 +2426,51 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                                           : _doctorTitleCase(
                                               appointment.title));
 
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 0),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(0),
-                                      border: const Border(
-                                        bottom: BorderSide(
-                                          color: Color(0xFFE2ECF8),
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        SizedBox(
-                                          width: patientWidth,
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: GestureDetector(
-                                                  onTap: () =>
-                                                      _openPatientEditor(
-                                                          appointment),
-                                                  child: Text(
-                                                    patientLabel,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: const TextStyle(
-                                                      color:
-                                                          AppColors.textActive,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 13,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: timeWidth,
-                                          child: Text(
-                                            _showTimeOnly
-                                                ? '${formatClinicDateTime(appointment.date, pattern: 'hh:mm a')} - ${formatClinicDateTime(end, pattern: 'hh:mm a')}'
-                                                : groupedCount > 1
-                                                    ? _groupedDateLabel(
-                                                        groupedAppointments)
-                                                    : formatClinicDate(
-                                                        appointment.date,
-                                                        pattern: 'dd MMM yyyy'),
-                                            style: const TextStyle(
-                                              color: Color(0xFF4D6488),
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: treatmentWidth,
-                                          child: Text(
-                                            treatment.isEmpty ? '-' : treatment,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              color: Color(0xFF34567D),
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: toothWidth,
-                                          child: Text(
-                                            tooth,
-                                            style: const TextStyle(
-                                              color: Color(0xFF34567D),
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: stageWidth,
-                                          child: Text(
-                                            stage,
-                                            style: TextStyle(
-                                              color: stageColor,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: paidWidth,
-                                          child: Text(
-                                            '₹${paid.toStringAsFixed(0)}',
-                                            style: const TextStyle(
-                                              color: Color(0xFF34567D),
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: feeWidth,
-                                          child: Text(
-                                            '₹${consultantFee.toStringAsFixed(0)}',
-                                            style: const TextStyle(
-                                              color: Color(0xFFD6455D),
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: netWidth,
-                                          child: Text(
-                                            formatIndianShortCurrency(
-                                                appointmentNet),
-                                            style: TextStyle(
-                                              color: appointmentNet >= 0
-                                                  ? const Color(0xFF2BA58D)
-                                                  : const Color(0xFFD6455D),
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: statusWidth,
-                                          child: _statusPill(
-                                            paymentStatus,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        SizedBox(
-                                          width: actionWidth,
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.start,
-                                            children: [
-                                              Tooltip(
-                                                message: 'Patient History',
-                                                child: IconButton(
-                                                  icon: const Icon(
-                                                    FluentIcons.history,
-                                                    size: 13,
-                                                  ),
-                                                  onPressed: () =>
-                                                      _openPatientHistory(
-                                                          appointment),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Tooltip(
-                                                message: 'Edit treatment',
-                                                child: IconButton(
-                                                  icon: const Icon(
-                                                    FluentIcons.edit,
-                                                    size: 14,
-                                                  ),
-                                                  onPressed: () {
-                                                    openAppointmentJourneyDialog(
-                                                      context,
-                                                      appointment,
-                                                      initialStep: 1,
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                  final rowId =
+                                      '${doctor.id}:${appointment.id}:$groupedCount';
+                                  final dateText = _showTimeOnly
+                                      ? '${formatClinicDateTime(appointment.date, pattern: 'hh:mm a')} - ${formatClinicDateTime(end, pattern: 'hh:mm a')}'
+                                      : groupedCount > 1
+                                          ? _groupedDateLabel(
+                                              groupedAppointments)
+                                          : formatClinicDate(
+                                              appointment.date,
+                                              pattern: 'dd MMM yyyy');
+
+                                  return _DoctorActivityLedgerRow(
+                                    key: ValueKey(rowId),
+                                    patientWidth: patientWidth,
+                                    timeWidth: timeWidth,
+                                    treatmentWidth: treatmentWidth,
+                                    toothWidth: toothWidth,
+                                    stageWidth: stageWidth,
+                                    paidWidth: paidWidth,
+                                    feeWidth: feeWidth,
+                                    netWidth: netWidth,
+                                    statusWidth: statusWidth,
+                                    actionWidth: actionWidth,
+                                    patientLabel: patientLabel,
+                                    dateText: dateText,
+                                    treatment: treatment,
+                                    tooth: tooth,
+                                    stage: stage,
+                                    stageColor: stageColor,
+                                    paid: paid,
+                                    consultantFee: consultantFee,
+                                    appointmentNet: appointmentNet,
+                                    paymentStatus: paymentStatus,
+                                    onEditPatient: () =>
+                                        _openPatientEditor(appointment),
+                                    onOpenHistory: () =>
+                                        _openPatientHistory(appointment),
+                                    onEditTreatment: () {
+                                      openAppointmentJourneyDialog(
+                                        context,
+                                        appointment,
+                                        initialStep: 1,
+                                      );
+                                    },
+                                    statusPillBuilder: _statusPill,
                                   );
                                 }),
                                     ],
@@ -2483,6 +2481,26 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                       ),
                     );
                   }),
+                  if (doctorEntries.length > _doctorVisibleLimit)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Center(
+                        child: AppButton(
+                          label:
+                              'Load more doctors (${doctorEntries.length - _doctorVisibleLimit} remaining)',
+                          variant: AppButtonVariant.secondary,
+                          onPressed: () {
+                            setState(() {
+                              _doctorVisibleLimit =
+                                  (_doctorVisibleLimit + 12).clamp(
+                                12,
+                                doctorEntries.length,
+                              );
+                            });
+                          },
+                        ),
+                      ),
+                    ),
                 ],
               ],
             ),
@@ -2590,6 +2608,227 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                       : const Color(0xFF5E738F),
           fontSize: 11,
           fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _DoctorActivityLedgerRow extends StatefulWidget {
+  final double patientWidth;
+  final double timeWidth;
+  final double treatmentWidth;
+  final double toothWidth;
+  final double stageWidth;
+  final double paidWidth;
+  final double feeWidth;
+  final double netWidth;
+  final double statusWidth;
+  final double actionWidth;
+  final String patientLabel;
+  final String dateText;
+  final String treatment;
+  final String tooth;
+  final String stage;
+  final Color stageColor;
+  final double paid;
+  final double consultantFee;
+  final double appointmentNet;
+  final String paymentStatus;
+  final VoidCallback onEditPatient;
+  final VoidCallback onOpenHistory;
+  final VoidCallback onEditTreatment;
+  final Widget Function(String status) statusPillBuilder;
+
+  const _DoctorActivityLedgerRow({
+    super.key,
+    required this.patientWidth,
+    required this.timeWidth,
+    required this.treatmentWidth,
+    required this.toothWidth,
+    required this.stageWidth,
+    required this.paidWidth,
+    required this.feeWidth,
+    required this.netWidth,
+    required this.statusWidth,
+    required this.actionWidth,
+    required this.patientLabel,
+    required this.dateText,
+    required this.treatment,
+    required this.tooth,
+    required this.stage,
+    required this.stageColor,
+    required this.paid,
+    required this.consultantFee,
+    required this.appointmentNet,
+    required this.paymentStatus,
+    required this.onEditPatient,
+    required this.onOpenHistory,
+    required this.onEditTreatment,
+    required this.statusPillBuilder,
+  });
+
+  @override
+  State<_DoctorActivityLedgerRow> createState() =>
+      _DoctorActivityLedgerRowState();
+}
+
+class _DoctorActivityLedgerRowState extends State<_DoctorActivityLedgerRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 0),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: _hovered ? const Color(0xFFF3F8FF) : Colors.white,
+          borderRadius: BorderRadius.circular(0),
+          border: const Border(
+            bottom: BorderSide(
+              color: Color(0xFFE2ECF8),
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: widget.patientWidth,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: widget.onEditPatient,
+                      child: Text(
+                        widget.patientLabel,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textActive,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: widget.timeWidth,
+              child: Text(
+                widget.dateText,
+                style: const TextStyle(
+                  color: Color(0xFF4D6488),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: widget.treatmentWidth,
+              child: Text(
+                widget.treatment.isEmpty ? '-' : widget.treatment,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF34567D),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: widget.toothWidth,
+              child: Text(
+                widget.tooth,
+                style: const TextStyle(
+                  color: Color(0xFF34567D),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: widget.stageWidth,
+              child: Text(
+                widget.stage,
+                style: TextStyle(
+                  color: widget.stageColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: widget.paidWidth,
+              child: Text(
+                '₹${widget.paid.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  color: Color(0xFF34567D),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: widget.feeWidth,
+              child: Text(
+                '₹${widget.consultantFee.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  color: Color(0xFFD6455D),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: widget.netWidth,
+              child: Text(
+                formatIndianShortCurrency(widget.appointmentNet),
+                style: TextStyle(
+                  color: widget.appointmentNet >= 0
+                      ? const Color(0xFF2BA58D)
+                      : const Color(0xFFD6455D),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: widget.statusWidth,
+              child: widget.statusPillBuilder(widget.paymentStatus),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: widget.actionWidth,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Tooltip(
+                    message: 'Patient History',
+                    child: IconButton(
+                      icon: const Icon(
+                        FluentIcons.history,
+                        size: 13,
+                      ),
+                      onPressed: widget.onOpenHistory,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Tooltip(
+                    message: 'Edit treatment',
+                    child: IconButton(
+                      icon: const Icon(
+                        FluentIcons.edit,
+                        size: 14,
+                      ),
+                      onPressed: widget.onEditTreatment,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

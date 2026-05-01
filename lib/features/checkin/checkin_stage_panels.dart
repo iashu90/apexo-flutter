@@ -7,6 +7,7 @@ class _CheckinTreatmentStageScreen extends StatelessWidget {
   final bool showInlineBottomActions;
   final bool boxed;
   final double? panelHeight;
+  final VoidCallback? onDraftChanged;
 
   const _CheckinTreatmentStageScreen({
     required this.appointment,
@@ -15,6 +16,7 @@ class _CheckinTreatmentStageScreen extends StatelessWidget {
     this.showInlineBottomActions = false,
     this.boxed = false,
     this.panelHeight,
+    this.onDraftChanged,
   });
 
   @override
@@ -25,6 +27,7 @@ class _CheckinTreatmentStageScreen extends StatelessWidget {
         allAppointmentsForPatient: allAppointmentsForPatient,
         showInlineBottomActions: showInlineBottomActions,
         forcedStage: forcedStage,
+        onDraftChanged: onDraftChanged,
       ),
     );
 

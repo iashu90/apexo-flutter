@@ -22,6 +22,10 @@ typedef AppointmentJourneyPrimaryActionLabelBuilder = String? Function(
   int currentStep,
 );
 
+typedef AppointmentJourneyCloseGuard = Future<bool> Function(
+  BuildContext context,
+);
+
 Future<void> showAppointmentJourneyDialog({
   required BuildContext context,
   required String title,
@@ -38,6 +42,7 @@ Future<void> showAppointmentJourneyDialog({
     'Completed',
   ],
   AppointmentJourneyPrimaryActionLabelBuilder? primaryActionLabelBuilder,
+  AppointmentJourneyCloseGuard? onAttemptClose,
 }) async {
   final dynamicMaxStep = (stepSubtitles.length - 2).clamp(0, 8);
   var currentStep = initialStep.clamp(0, dynamicMaxStep);
@@ -80,6 +85,7 @@ Future<void> showAppointmentJourneyDialog({
 
   await showDialog<void>(
     context: context,
+    barrierDismissible: false,
     barrierColor: const Color(0x660A1B33),
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setStateDialog) {
@@ -105,7 +111,12 @@ Future<void> showAppointmentJourneyDialog({
           final selectedColor = stepColor(logicalStep < 0 ? 0 : logicalStep);
 
           return GestureDetector(
-            onTap: () {
+            onTap: () async {
+              if (targetStep == currentStep) return;
+              final beforeAdvance = onBeforeStepAdvance;
+              if (beforeAdvance != null && targetStep > currentStep) {
+                await beforeAdvance(context, currentStep, targetStep);
+              }
               setStateDialog(() {
                 currentStep = targetStep.clamp(0, dynamicMaxStep);
               });
@@ -185,6 +196,16 @@ Future<void> showAppointmentJourneyDialog({
           Navigator.pop(dialogContext);
         }
 
+        Future<void> requestClose() async {
+          final guard = onAttemptClose;
+          if (guard != null) {
+            final canClose = await guard(context);
+            if (!canClose) return;
+          }
+          if (!dialogContext.mounted) return;
+          Navigator.pop(dialogContext);
+        }
+
         String? currentPrimaryLabel() {
           final builder = primaryActionLabelBuilder;
           if (builder != null) {
@@ -259,7 +280,7 @@ Future<void> showAppointmentJourneyDialog({
                           style: ButtonStyle(
                             foregroundColor: WidgetStateProperty.all(Colors.white),
                           ),
-                          onPressed: () => Navigator.pop(dialogContext),
+                          onPressed: requestClose,
                         ),
                       ],
                     ),
@@ -326,7 +347,7 @@ Future<void> showAppointmentJourneyDialog({
                           AppButton(
                             label: 'Cancel',
                             variant: AppButtonVariant.secondary,
-                            onPressed: () => Navigator.pop(dialogContext),
+                            onPressed: requestClose,
                           ),
                           const SizedBox(width: 8),
                           if (currentStep > 0)

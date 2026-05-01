@@ -38,6 +38,7 @@ import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/features/treatment_packages/treatment_package_screen.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:apexo/utils/share_actions.dart';
@@ -559,11 +560,98 @@ int _stepIndexFromStageValue(String stage) {
   return 0;
 }
 
+class _PatientHistoryDraftController {
+  Set<String>? _medicalHistory;
+  Set<String>? _drugHistory;
+  Set<String>? _maternalHistory;
+  Set<String>? _habits;
+
+  void update({
+    required Set<String> medicalHistory,
+    required Set<String> drugHistory,
+    required Set<String> maternalHistory,
+    required Set<String> habits,
+  }) {
+    _medicalHistory = Set<String>.from(medicalHistory);
+    _drugHistory = Set<String>.from(drugHistory);
+    _maternalHistory = Set<String>.from(maternalHistory);
+    _habits = Set<String>.from(habits);
+  }
+
+  void commitToPatient(Patient? patient) {
+    if (patient == null) return;
+    if (_medicalHistory == null ||
+        _drugHistory == null ||
+        _maternalHistory == null ||
+        _habits == null) {
+      return;
+    }
+
+    patient.tags = _medicalHistory!.toList(growable: false);
+    patient.drugHistorySuggestions = _drugHistory!.toList(growable: false);
+    patient.maternalHistorySuggestions =
+        _maternalHistory!.toList(growable: false);
+    patient.habitsSuggestions = _habits!.toList(growable: false);
+    patients.set(patient);
+  }
+}
+
+void _restoreAppointmentFromSnapshot(Appointment target, Appointment snapshot) {
+  final restored = Appointment.fromJson({
+    ...snapshot.toJson(),
+    'id': target.id,
+  });
+
+  target.operatorsIDs = restored.operatorsIDs.toList(growable: false);
+  target.patientID = restored.patientID;
+  target.consultantDoctorID = restored.consultantDoctorID;
+  target.preOpNotes = restored.preOpNotes;
+  target.postOpNotes = restored.postOpNotes;
+  target.prescriptions = restored.prescriptions.toList(growable: false);
+  target.price = restored.price;
+  target.discountedPrice = restored.discountedPrice;
+  target.paid = restored.paid;
+  target.priceToPayDoctor = restored.priceToPayDoctor;
+  target.paidToDoctor = restored.paidToDoctor;
+  target.prescriptionPrice = restored.prescriptionPrice;
+  target.prescriptionPaid = restored.prescriptionPaid;
+  target.imgs = restored.imgs.toList(growable: false);
+  target.date = restored.date;
+  target.isDone = restored.isDone;
+  target.discount = restored.discount;
+  target.discountType = restored.discountType;
+  target.diagnosis = restored.diagnosis.toList(growable: false);
+  target.chiefComplaints = restored.chiefComplaints.toList(growable: false);
+  target.selectedTreatments =
+      restored.selectedTreatments.toList(growable: false);
+  target.subTreatments = restored.subTreatments.toList(growable: false);
+  target.selectedTeeth = restored.selectedTeeth.toList(growable: false);
+  target.treatmentGpayPaid = restored.treatmentGpayPaid;
+  target.prescriptionGpayPaid = restored.prescriptionGpayPaid;
+  target.isCheckedIn = restored.isCheckedIn;
+  target.checkinStage = restored.checkinStage;
+  target.visitType = restored.visitType;
+  target.sourceTimeZone = restored.sourceTimeZone;
+  target.checkedInAt = restored.checkedInAt;
+  target.completedTime = restored.completedTime;
+}
+
 Future<void> openAppointmentJourneyDialog(
   BuildContext context,
   Appointment appointment, {
   int? initialStep,
 }) async {
+  final originalSnapshot = Appointment.fromJson({
+    ...appointment.toJson(),
+    'id': appointment.id,
+  });
+  bool hasUnsavedDraft = false;
+
+  void markDraftChanged() {
+    hasUnsavedDraft = true;
+  }
+
+  final patientHistoryDraft = _PatientHistoryDraftController();
   final isDoctorLogin = permissions.currentRole == UserRole.doctor;
   final rawStartStep = initialStep?.clamp(0, 3) ??
       _stepIndexFromStageValue(appointment.checkinStage);
@@ -587,6 +675,7 @@ Future<void> openAppointmentJourneyDialog(
         return _PatientHistoryStepScreen(
           appointment: appointment,
           allAppointmentsForPatient: allAppointmentsForPatient,
+          draftController: patientHistoryDraft,
         );
       }
 
@@ -598,6 +687,7 @@ Future<void> openAppointmentJourneyDialog(
           showInlineBottomActions: false,
           boxed: true,
           panelHeight: panelHeight,
+          onDraftChanged: markDraftChanged,
         );
       }
 
@@ -619,6 +709,7 @@ Future<void> openAppointmentJourneyDialog(
       return _PatientHistoryStepScreen(
         appointment: appointment,
         allAppointmentsForPatient: allAppointmentsForPatient,
+        draftController: patientHistoryDraft,
       );
     }
 
@@ -630,6 +721,7 @@ Future<void> openAppointmentJourneyDialog(
         showInlineBottomActions: false,
         boxed: true,
         panelHeight: panelHeight,
+        onDraftChanged: markDraftChanged,
       );
     }
 
@@ -679,6 +771,9 @@ Future<void> openAppointmentJourneyDialog(
     },
     stepBuilder: stageBody,
     onBeforeStepAdvance: (dialogContext, currentStep, nextStep) async {
+      if (currentStep == 0 && nextStep > currentStep) {
+        patientHistoryDraft.commitToPatient(appointment.patient);
+      }
       if (isDoctorLogin) {
         if (nextStep == 2) {
           appointment.checkinStage = 'completed';
@@ -699,6 +794,51 @@ Future<void> openAppointmentJourneyDialog(
         appointment.isDone = true;
       }
       appointments.set(appointment);
+      hasUnsavedDraft = false;
+    },
+    onAttemptClose: (dialogContext) async {
+      if (!hasUnsavedDraft) return true;
+
+      final decision = await showDialog<String>(
+        context: dialogContext,
+        builder: (ctx) => ContentDialog(
+          title: const Text('Unsaved Changes'),
+          content: const Text(
+            'You have unsaved treatment changes. Save before closing?',
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.pop(ctx, 'cancel'),
+            ),
+            AppButton(
+              label: 'Dismiss',
+              variant: AppButtonVariant.danger,
+              onPressed: () => Navigator.pop(ctx, 'dismiss'),
+            ),
+            AppButton(
+              label: 'Save',
+              onPressed: () => Navigator.pop(ctx, 'save'),
+            ),
+          ],
+        ),
+      );
+
+      if (decision == 'save') {
+        appointments.set(appointment);
+        hasUnsavedDraft = false;
+        return true;
+      }
+
+      if (decision == 'dismiss') {
+        _restoreAppointmentFromSnapshot(appointment, originalSnapshot);
+        appointments.set(appointment);
+        hasUnsavedDraft = false;
+        return true;
+      }
+
+      return false;
     },
   );
 }
@@ -706,10 +846,12 @@ Future<void> openAppointmentJourneyDialog(
 class _PatientHistoryStepScreen extends StatefulWidget {
   final Appointment appointment;
   final List<Appointment> allAppointmentsForPatient;
+  final _PatientHistoryDraftController? draftController;
 
   const _PatientHistoryStepScreen({
     required this.appointment,
     required this.allAppointmentsForPatient,
+    this.draftController,
   });
 
   @override
@@ -732,16 +874,19 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
     _selectedDrugHistory = {...?patient?.drugHistorySuggestions};
     _selectedMaternalHistory = {...?patient?.maternalHistorySuggestions};
     _selectedHabits = {...?patient?.habitsSuggestions};
+    _syncDraftController();
   }
 
-  void _updatePatient(void Function(Patient patient) updater) {
-    final patient = widget.appointment.patient;
-    if (patient == null) return;
-    updater(patient);
-    patients.set(patient);
+  void _syncDraftController() {
+    widget.draftController?.update(
+      medicalHistory: _selectedMedicalHistory,
+      drugHistory: _selectedDrugHistory,
+      maternalHistory: _selectedMaternalHistory,
+      habits: _selectedHabits,
+    );
   }
 
-  void _toggleItem(Set<String> selected, String value, void Function() onSave) {
+  void _toggleItem(Set<String> selected, String value) {
     setState(() {
       if (selected.contains(value)) {
         selected.remove(value);
@@ -749,7 +894,7 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
         selected.add(value);
       }
     });
-    onSave();
+    _syncDraftController();
   }
 
   Widget _popupFieldLabel(String text) {
@@ -823,10 +968,6 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                   onToggle: (value) => _toggleItem(
                     _selectedMedicalHistory,
                     value,
-                    () => _updatePatient(
-                      (patient) => patient.tags =
-                          _selectedMedicalHistory.toList(growable: false),
-                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -837,10 +978,6 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                   onToggle: (value) => _toggleItem(
                     _selectedDrugHistory,
                     value,
-                    () => _updatePatient(
-                      (patient) => patient.drugHistorySuggestions =
-                          _selectedDrugHistory.toList(growable: false),
-                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -851,10 +988,6 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                   onToggle: (value) => _toggleItem(
                     _selectedMaternalHistory,
                     value,
-                    () => _updatePatient(
-                      (patient) => patient.maternalHistorySuggestions =
-                          _selectedMaternalHistory.toList(growable: false),
-                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -865,10 +998,6 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
                   onToggle: (value) => _toggleItem(
                     _selectedHabits,
                     value,
-                    () => _updatePatient(
-                      (patient) => patient.habitsSuggestions =
-                          _selectedHabits.toList(growable: false),
-                    ),
                   ),
                 ),
               ],
@@ -1003,6 +1132,86 @@ class _PatientHistoryStepScreenState extends State<_PatientHistoryStepScreen> {
   }
 }
 
+class _CheckinScreenSkeleton extends StatelessWidget {
+  const _CheckinScreenSkeleton();
+
+  Widget _skeletonCard({double height = 260}) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.violet1506),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 120,
+            height: 14,
+            decoration: BoxDecoration(
+              color: AppColors.slate100,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...List.generate(
+            5,
+            (_) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                width: double.infinity,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.slate1004,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            growable: false,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppTheme.light.scaffoldBackgroundColor,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.violet1506),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                SizedBox(width: 340, child: _skeletonCard()),
+                SizedBox(width: 340, child: _skeletonCard()),
+                SizedBox(width: 340, child: _skeletonCard()),
+                SizedBox(width: 340, child: _skeletonCard()),
+                SizedBox(width: 340, child: _skeletonCard()),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class CheckinScreen extends StatefulWidget {
   const CheckinScreen({super.key});
 
@@ -1015,6 +1224,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   String _selectedDoctor = '__all__';
   Appointment? _selectedAppointment;
   Timer? _waitingTimer;
+  late final Future<void> _bootstrapFuture;
   final Map<String, bool> _expandedStages = {
     'waiting': true,
     'with_doctor': true,
@@ -1024,10 +1234,20 @@ class _CheckinScreenState extends State<CheckinScreen> {
   @override
   void initState() {
     super.initState();
+    _bootstrapFuture = _initializeStores();
     _waitingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
       setState(() {});
     });
+  }
+
+  Future<void> _initializeStores() async {
+    await Future.wait([
+      appointments.loaded,
+      patients.loaded,
+      doctors.loaded,
+      labworks.loaded,
+    ]);
   }
 
   @override
@@ -1114,13 +1334,24 @@ class _CheckinScreenState extends State<CheckinScreen> {
     await _openAppointmentPopup(appointment);
   }
 
+  Future<void> _openTreatmentPackageManager() async {
+    await showTreatmentPackageManagerDialog(context: context);
+  }
+
   Future<void> _openNextCheckinStepper(Appointment appointment) async {
     await openAppointmentJourneyDialog(context, appointment);
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
+    return FutureBuilder<void>(
+      future: _bootstrapFuture,
+      builder: (context, bootSnapshot) {
+        if (bootSnapshot.connectionState != ConnectionState.done) {
+          return const _CheckinScreenSkeleton();
+        }
+
+        return StreamBuilder(
       stream: appointments.observableMap.stream,
       builder: (context, _) {
         return StreamBuilder(
@@ -1279,6 +1510,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: AppButton(
+                              onPressed: _openTreatmentPackageManager,
+                              variant: AppButtonVariant.secondary,
+                              label: 'Treatment Packages',
+                              leading: const Icon(FluentIcons.medical, size: 12),
+                              expanded: true,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
                               onPressed: () {
                                 final target =
                                     _selectedAppointment ?? filtered.first;
@@ -1325,6 +1567,13 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             label: 'New Patient',
                             leading:
                                 const Icon(FluentIcons.add_friend, size: 12),
+                          ),
+                          const SizedBox(width: 8),
+                          AppButton(
+                            onPressed: _openTreatmentPackageManager,
+                            variant: AppButtonVariant.secondary,
+                            label: 'Treatment Packages',
+                            leading: const Icon(FluentIcons.medical, size: 12),
                           ),
                           const SizedBox(width: 8),
                           SizedBox(
@@ -1543,6 +1792,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
             );
           },
         );
+      },
+    );
       },
     );
   }

@@ -46,6 +46,9 @@ class Patient extends Model {
           final doctorNameStr = appointment.operators.isEmpty
               ? ''
               : appointment.operators.map((d) => d.title.trim()).join(', ');
+            final chiefComplaintStr = appointment.chiefComplaints.isEmpty
+              ? ''
+              : appointment.chiefComplaints.join(', ');
 
           return ReportDetailRow(
             appointmentId: appointment.id,
@@ -59,6 +62,7 @@ class Patient extends Model {
             treatmentPaymentMode: treatmentPaymentMode,
             preceptionPaymentMode: preceptionPaymentMode,
             doctorName: doctorNameStr,
+            chiefComplaint: chiefComplaintStr,
           );
         }),
         ...labworks.present.values.where((lw) => lw.patientID == id).map((lw) {

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/app_screen_title.dart';
-import 'package:apexo/common_widgets/custom_date_range_picker.dart';
 import 'package:apexo/common_widgets/delete_confirmation.dart';
 import 'package:apexo/common_widgets/export_buttons.dart';
 import 'package:apexo/core/theme/app_theme.dart';
@@ -34,15 +33,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   String _query = '';
   String _categoryFilter = 'all';
   String _paymentFilter = 'all';
-  String _statusFilter = 'all';
-  String _rangeFilter = 'month';
-  String _quickFilter = 'this_month';
   String _doctorIdFilter = 'all';
-  String _amountFilter = 'all';
   DateTime _monthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
-  DateTime? _fromDate;
-  DateTime? _toDate;
   int _page = 1;
   String _sortBy = 'date';
   bool _sortAscending = false;
@@ -677,27 +670,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               label: d.title.trim().isEmpty ? 'Unnamed' : d.title)),
     ];
 
-    // Date range label for second row
-    String dateLabel;
-    if (_rangeFilter == 'month') {
-      dateLabel =
-          '${DateFormat('01 MMM').format(_monthAnchor)} – ${DateFormat('dd MMM yyyy').format(DateTime(_monthAnchor.year, _monthAnchor.month + 1, 0))}';
-    } else if (_rangeFilter == 'custom' &&
-        (_fromDate != null || _toDate != null)) {
-      final a = _fromDate ?? _toDate!;
-      final b = _toDate ?? _fromDate!;
-      dateLabel =
-          '${DateFormat('dd MMM').format(a)} – ${DateFormat('dd MMM yyyy').format(b)}';
-    } else if (_rangeFilter == 'today') {
-      dateLabel = 'Today';
-    } else if (_rangeFilter == 'week') {
-      dateLabel = 'This Week';
-    } else if (_rangeFilter == 'last_month') {
-      dateLabel = 'Last Month';
-    } else {
-      dateLabel = 'All Dates';
-    }
-
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
       decoration: BoxDecoration(
@@ -708,26 +680,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: fixed quick-filter chips
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _buildTimeChip(label: 'This Week', value: 'this_week'),
-              _buildTimeChip(label: 'This Month', value: 'this_month'),
-              _buildTimeChip(label: 'Pending Payments', value: 'pending'),
-              _buildTimeChip(label: 'Lab Expenses', value: 'lab'),
-              _buildTimeChip(label: 'Salaries', value: 'salaries'),
-              _buildTimeChip(label: 'High Value > ₹10k', value: 'high_value'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Row 2: dropdowns + date range + clear all
+          // Month selector + dropdown filters + clear all
           Wrap(
             spacing: 6,
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
+              _buildMonthSelector(),
               AppDropdownMenu<String>(
                 width: 160,
                 value: _categoryFilter,
@@ -762,102 +721,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   _page = 1;
                 }),
               ),
-              AppDropdownMenu<String>(
-                width: 150,
-                value: _amountFilter,
-                items: const [
-                  AppDropdownItem<String>(value: 'all', label: 'Amount'),
-                  AppDropdownItem<String>(value: 'lt1000', label: '< ₹1,000'),
-                  AppDropdownItem<String>(value: '1k5k', label: '₹1k – ₹5k'),
-                  AppDropdownItem<String>(value: 'gt5000', label: '> ₹5,000'),
-                  AppDropdownItem<String>(value: 'gt10000', label: '> ₹10,000'),
-                ],
-                onChanged: (v) => setState(() {
-                  _amountFilter = v;
-                  _page = 1;
-                }),
-              ),
-              // Date range button
-              GestureDetector(
-                onTap: () async {
-                  final options = [
-                    'All Dates',
-                    'Today',
-                    'This Week',
-                    'This Month',
-                    'Last Month',
-                    'Custom Range'
-                  ];
-                  await showDialog<void>(
-                    context: context,
-                    builder: (ctx) => ContentDialog(
-                      title: const Text('Select Date Range'),
-                      content: SizedBox(
-                        width: 300,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: options.map((opt) {
-                            return ListTile(
-                              title: Text(opt),
-                              onPressed: () async {
-                                Navigator.pop(ctx);
-                                final map = {
-                                  'All Dates': 'all',
-                                  'Today': 'today',
-                                  'This Week': 'week',
-                                  'This Month': 'month',
-                                  'Last Month': 'last_month',
-                                  'Custom Range': 'custom'
-                                };
-                                final val = map[opt]!;
-                                if (val == 'custom') {
-                                  await _pickCustomRange();
-                                  return;
-                                }
-                                setState(() {
-                                  _rangeFilter = val;
-                                  if (val == 'month')
-                                    _monthAnchor = DateTime(DateTime.now().year,
-                                        DateTime.now().month, 1);
-                                  _fromDate = null;
-                                  _toDate = null;
-                                  _page = 1;
-                                });
-                              },
-                            );
-                          }).toList(growable: false),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.slate1006,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.violet150),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(FluentIcons.calendar,
-                          size: 13, color: AppColors.blue6003),
-                      const SizedBox(width: 6),
-                      Text(dateLabel,
-                          style: const TextStyle(
-                              color: AppColors.blue7007,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12)),
-                      const SizedBox(width: 4),
-                      const Icon(FluentIcons.chevron_down,
-                          size: 10, color: AppColors.blue6003),
-                    ],
-                  ),
-                ),
-              ),
-              if (_rangeFilter == 'month') _buildMonthSelector(),
               // Clear All
               GestureDetector(
                 onTap: () => setState(() {
@@ -866,15 +729,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   _categoryFilter = 'all';
                   _paymentFilter = 'all';
                   _doctorIdFilter = 'all';
-                  _amountFilter = 'all';
-                  _statusFilter = 'all';
                   _recurringOnly = false;
-                  _quickFilter = 'this_month';
-                  _rangeFilter = 'month';
                   _monthAnchor =
                       DateTime(DateTime.now().year, DateTime.now().month, 1);
-                  _fromDate = null;
-                  _toDate = null;
                   _sortBy = 'date';
                   _sortAscending = false;
                   _page = 1;
@@ -896,35 +753,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTimeChip({required String label, required String value}) {
-    final selected = _quickFilter == value;
-    return GestureDetector(
-      onTap: () => setState(() {
-        _quickFilter = value;
-        _page = 1;
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.brandBlue : AppColors.slate10010,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-              color:
-                  selected ? AppColors.brandBlue : AppColors.violet15011),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : AppColors.textBlueStrong,
-            fontWeight: FontWeight.w700,
-            fontSize: 11.5,
-          ),
-        ),
       ),
     );
   }
@@ -1067,14 +895,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 Expanded(flex: 12, child: _LedgerHeadCell('Doctor')),
                 Expanded(flex: 10, child: _LedgerHeadCell('Mode')),
                 Expanded(
-                  flex: 10,
-                  child: _LedgerHeadCell('Amount', align: TextAlign.end),
-                ),
-                Expanded(
-                  flex: 10,
+                  flex: 12,
                   child: _LedgerHeadCell('To Pay', align: TextAlign.end),
                 ),
-                Expanded(flex: 10, child: _LedgerHeadCell('Status')),
                 Expanded(
                   flex: 8,
                   child: _LedgerHeadCell('Actions', align: TextAlign.center),
@@ -1138,7 +961,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             : expense.note.trim();
         final paymentMode = _paymentMode(expense);
         final toPay = expense.paid ? 0.0 : expense.amount;
-        final status = _expenseStatus(expense);
         final recurring = _isRecurringExpense(expense);
 
         return GestureDetector(
@@ -1168,15 +990,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   child: Row(
                     children: [
                       if (recurring)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(right: 6),
-                          child: Tooltip(
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            decoration: const BoxDecoration(
+                              color: AppColors.amber100,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Tooltip(
                             message: 'Recurring monthly expense',
                             child: Icon(
                               FluentIcons.repeat_all,
-                              size: 12,
-                              color: AppColors.violet550,
+                              size: 14,
+                              color: AppColors.dangerRose,
                             ),
+                          ),
                           ),
                         ),
                       Expanded(
@@ -1225,34 +1055,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   child: _ExpenseModeBadge(mode: paymentMode),
                 ),
                 Expanded(
-                  flex: 10,
-                  child: Text(
-                    '₹${NumberFormat('#,##0').format(expense.amount)}',
-                    textAlign: TextAlign.end,
-                    style: const TextStyle(
-                      color: AppColors.blue750,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 10,
+                  flex: 12,
                   child: Text(
                     toPay <= 0 ? '-' : '₹${NumberFormat('#,##0').format(toPay)}',
                     textAlign: TextAlign.end,
                     style: TextStyle(
-                      color: toPay <= 0 ? AppColors.textBlueMuted : AppColors.amber5002,
+                      color:
+                          toPay <= 0 ? AppColors.textBlueMuted : AppColors.dangerRose,
                       fontWeight: FontWeight.w700,
-                      fontSize: 12,
+                      fontSize: 14,
                     ),
-                  ),
-                ),
-                Expanded(
-                  flex: 10,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: _ExpenseStatusPill(status: status),
                   ),
                 ),
                 Expanded(
@@ -1282,12 +1094,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         );
       },
     );
-  }
-
-  _ExpenseStatus _expenseStatus(Expense expense) {
-    if (expense.paid) return _ExpenseStatus.paid;
-    if (expense.amount >= 10000) return _ExpenseStatus.highValue;
-    return _ExpenseStatus.toPay;
   }
 
   // ignore: unused_element
@@ -1468,92 +1274,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     return sorted;
   }
 
-  Future<void> _pickCustomRange() async {
-    final range = await showCustomDateRangePicker(
-      context,
-      initialStart: _fromDate,
-      initialEnd: _toDate,
-    );
-    if (range == null || !mounted) return;
-
-    setState(() {
-      _rangeFilter = 'custom';
-      _fromDate =
-          DateTime(range.start.year, range.start.month, range.start.day);
-      _toDate = DateTime(range.end.year, range.end.month, range.end.day);
-      _page = 1;
-    });
-  }
-
   List<Expense> _applyFilters(List<Expense> input) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    // Quick filter date range
-    DateTime? quickFrom;
-    DateTime? quickTo;
-    String? quickCategoryKey;
-    bool? quickPendingOnly;
-    bool? quickHighValue;
-    switch (_quickFilter) {
-      case 'this_week':
-        final monday = today.subtract(Duration(days: today.weekday - 1));
-        quickFrom = monday;
-        quickTo = monday.add(const Duration(days: 6));
-        break;
-      case 'this_month':
-        quickFrom = DateTime(today.year, today.month, 1);
-        quickTo = DateTime(today.year, today.month + 1, 0);
-        break;
-      case 'pending':
-        quickPendingOnly = true;
-        break;
-      case 'lab':
-        quickCategoryKey = 'labwork';
-        break;
-      case 'salaries':
-        quickCategoryKey = 'salaries';
-        break;
-      case 'high_value':
-        quickHighValue = true;
-        break;
-    }
-
-    DateTime? from;
-    DateTime? to;
-    if (_rangeFilter == 'today') {
-      from = today;
-      to = today;
-    } else if (_rangeFilter == 'week') {
-      final monday = today.subtract(Duration(days: today.weekday - 1));
-      final sunday = monday.add(const Duration(days: 6));
-      from = monday;
-      to = sunday;
-    } else if (_rangeFilter == 'month') {
-      from = DateTime(_monthAnchor.year, _monthAnchor.month, 1);
-      to = DateTime(_monthAnchor.year, _monthAnchor.month + 1, 0);
-    } else if (_rangeFilter == 'last_month') {
-      final prev = DateTime(today.year, today.month - 1, 1);
-      from = prev;
-      to = DateTime(prev.year, prev.month + 1, 0);
-    } else if (_rangeFilter == 'custom') {
-      from = _fromDate;
-      to = _toDate;
-    }
+    final from = DateTime(_monthAnchor.year, _monthAnchor.month, 1);
+    final to = DateTime(_monthAnchor.year, _monthAnchor.month + 1, 0);
 
     return input.where((e) {
-      // Quick filter
-      if (quickFrom != null || quickTo != null) {
-        final d = DateTime(e.date.year, e.date.month, e.date.day);
-        if (quickFrom != null && d.isBefore(quickFrom)) return false;
-        if (quickTo != null && d.isAfter(quickTo)) return false;
-      }
-      if (quickPendingOnly == true && e.paid) return false;
-      if (quickCategoryKey != null &&
-          !e.items.any((item) => item.trim().toLowerCase() == quickCategoryKey))
-        return false;
-      if (quickHighValue == true && e.amount < 10000) return false;
-
       if (_query.isNotEmpty) {
         final hay = [
           _doctorDetails(e),
@@ -1575,28 +1300,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       if (_doctorIdFilter != 'all' && !e.operatorsIDs.contains(_doctorIdFilter))
         return false;
 
-      // Amount filter
-      if (_amountFilter == 'lt1000' && e.amount >= 1000) return false;
-      if (_amountFilter == '1k5k' && (e.amount < 1000 || e.amount > 5000))
-        return false;
-      if (_amountFilter == 'gt5000' && e.amount <= 5000) return false;
-      if (_amountFilter == 'gt10000' && e.amount <= 10000) return false;
-
       final mode = _paymentMode(e);
       if (_paymentFilter == 'upi' && mode != 'UPI') return false;
       if (_paymentFilter == 'cash' && mode != 'Cash') return false;
 
-      if (_statusFilter == 'paid' && !e.paid) return false;
-      if (_statusFilter == 'pending' && e.paid) return false;
-      if (_statusFilter == 'high' && e.amount < 10000) return false;
-
       if (_recurringOnly && !_isRecurringExpense(e)) return false;
 
-      if (from != null || to != null) {
-        final d = DateTime(e.date.year, e.date.month, e.date.day);
-        if (from != null && d.isBefore(from)) return false;
-        if (to != null && d.isAfter(to)) return false;
-      }
+      final d = DateTime(e.date.year, e.date.month, e.date.day);
+      if (d.isBefore(from)) return false;
+      if (d.isAfter(to)) return false;
 
       return true;
     }).toList(growable: false);
@@ -2180,8 +1892,6 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-enum _ExpenseStatus { paid, highValue, toPay }
-
 class _LedgerHeadCell extends StatelessWidget {
   final String label;
   final TextAlign align;
@@ -2227,54 +1937,6 @@ class _ExpenseModeBadge extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ExpenseStatusPill extends StatelessWidget {
-  final _ExpenseStatus status;
-
-  const _ExpenseStatusPill({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    late final String label;
-    late final Color fg;
-    late final Color bg;
-
-    switch (status) {
-      case _ExpenseStatus.paid:
-        label = 'Paid';
-        fg = AppColors.green5502;
-        bg = AppColors.green1002;
-        break;
-      case _ExpenseStatus.highValue:
-        label = 'High Value';
-        fg = AppColors.amber5002;
-        bg = AppColors.amber1004;
-        break;
-      case _ExpenseStatus.toPay:
-        label = 'To Pay';
-        fg = AppColors.rose550;
-        bg = AppColors.amber100;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: fg,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
     );
   }
 }
