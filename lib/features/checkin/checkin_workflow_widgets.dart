@@ -685,7 +685,7 @@ class _WorkflowRow extends StatelessWidget {
                             color: AppColors.violet550,
                           ),
                           onPressed: interactionsEnabled
-                              ? () => _openLastTreatmentsDialog(context)
+                              ? () => _openPatientHistoryDialog(context)
                               : null,
                         ),
                       ),

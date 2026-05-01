@@ -607,6 +607,7 @@ class ReportDetailRow {
   final String doctorPaid;
   final String doctorTotalPay;
   final String doctorName;
+  final String chiefComplaint;
 
   ReportDetailRow({
     this.appointmentId,
@@ -623,5 +624,6 @@ class ReportDetailRow {
     this.doctorPaid = '',
     this.doctorTotalPay = '',
     this.doctorName = '',
+    this.chiefComplaint = '',
   });
 }

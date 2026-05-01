@@ -5,12 +5,14 @@ class _CheckinOperativeForm extends StatefulWidget {
   final List<Appointment> allAppointmentsForPatient;
   final bool showInlineBottomActions;
   final String? forcedStage;
+  final VoidCallback? onDraftChanged;
 
   const _CheckinOperativeForm({
     required this.appointment,
     required this.allAppointmentsForPatient,
     this.showInlineBottomActions = false,
     this.forcedStage,
+    this.onDraftChanged,
   });
 
   @override
@@ -18,7 +20,6 @@ class _CheckinOperativeForm extends StatefulWidget {
 }
 
 class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
-  Timer? _autosaveDebounce;
   late final TextEditingController _postOpController;
   late final TextEditingController _priceController;
   late final TextEditingController _paidController;
@@ -238,29 +239,12 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   }
 
   void _scheduleAutosave({bool immediate = false}) {
-    final appointment = widget.appointment;
-    if (immediate) {
-      _autosaveDebounce?.cancel();
-      _autosaveDebounce = null;
-      _hasPendingAutosave = false;
-      appointments.set(appointment);
-      return;
-    }
-
-    _hasPendingAutosave = true;
-    _autosaveDebounce?.cancel();
-    _autosaveDebounce = Timer(const Duration(milliseconds: 900), () {
-      _hasPendingAutosave = false;
-      appointments.set(appointment);
-    });
+    _hasPendingAutosave = !immediate;
+    widget.onDraftChanged?.call();
   }
 
   @override
   void dispose() {
-    _autosaveDebounce?.cancel();
-    if (_hasPendingAutosave) {
-      appointments.set(widget.appointment);
-    }
     _postOpController.dispose();
     _priceController.dispose();
     _paidController.dispose();
@@ -412,7 +396,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               .toDouble();
           _paidController.text = discountedTotal.toStringAsFixed(0);
           a.paid = discountedTotal;
-          appointments.set(a);
+          _scheduleAutosave(immediate: true);
           setState(() {});
         },
       );
@@ -456,7 +440,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               );
               if (picked == null) return;
               a.operatorsIDs = picked;
-              appointments.set(a);
+              _scheduleAutosave(immediate: true);
               if (mounted) setState(() {});
             },
             child: Container(

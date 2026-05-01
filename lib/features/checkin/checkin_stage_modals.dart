@@ -122,6 +122,15 @@ class CheckinStageModalRouter {
       appointment.isDone = false;
       appointments.set(appointment);
       onUpdated?.call();
+
+      final assigned = await AssignDoctorModal.show(
+        context,
+        appointment,
+        onUpdated: onUpdated,
+      );
+      if (assigned) {
+        await openTreatmentModal(context, appointment);
+      }
       return;
     }
 

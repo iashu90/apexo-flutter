@@ -1,6 +1,6 @@
+import 'package:apexo/common_widgets/patient_history_modal.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/common_widgets/last_treatments_modal.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
@@ -376,10 +376,10 @@ Future<void> showPatientCheckinLookupDialog({
                                       color: Color(0xFF2D7BD8),
                                     ),
                                     onPressed: () {
-                                      showLastTreatmentsDialog(
+                                      showPatientHistoryDialog(
                                         context: context,
                                         patient: patient,
-                                        maxRows: 12,
+                                        rows: patient.patientDetails,
                                       );
                                     },
                                   ),

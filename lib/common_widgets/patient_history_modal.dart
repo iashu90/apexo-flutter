@@ -43,6 +43,7 @@ class _LedgerRowData {
   final String? appointmentId;
   final DateTime date;
   final String tooth;
+  final String chiefComplaint;
   final String treatment;
   final String doctor;
   final double cost;
@@ -56,6 +57,7 @@ class _LedgerRowData {
     this.appointmentId,
     required this.date,
     required this.tooth,
+    required this.chiefComplaint,
     required this.treatment,
     required this.doctor,
     required this.cost,
@@ -447,6 +449,8 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
         appointmentId: row.appointmentId,
         date: row.date,
         tooth: row.teeth.trim().isEmpty ? '-' : row.teeth,
+        chiefComplaint:
+          row.chiefComplaint.trim().isEmpty ? '-' : row.chiefComplaint,
         treatment: row.treatment.trim().isEmpty ? '-' : row.treatment,
         doctor: row.doctorName.trim().isEmpty ? '-' : row.doctorName,
         cost: _toAmount(row.cost),
@@ -503,6 +507,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
         final haystack = [
           DateFormat('dd MMM yyyy').format(row.date),
           row.tooth,
+          row.chiefComplaint,
           row.treatment,
           row.doctor,
           row.mode,
@@ -517,8 +522,16 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
     filtered.sort((a, b) {
       int result;
       switch (_sortBy) {
+        case 'serial':
+          result = a.date.compareTo(b.date);
+          break;
         case 'tooth':
           result = a.tooth.toLowerCase().compareTo(b.tooth.toLowerCase());
+          break;
+        case 'chief':
+          result = a.chiefComplaint
+              .toLowerCase()
+              .compareTo(b.chiefComplaint.toLowerCase());
           break;
         case 'treatment':
           result =
@@ -568,6 +581,18 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
     if (status == 'Paid') return const Color(0xFF16A34A);
     if (status == 'Partial') return const Color(0xFFF59E0B);
     return const Color(0xFFDC2626);
+  }
+
+  Map<String, double> _runningBalances(List<_LedgerRowData> rows) {
+    final chronological = rows.toList(growable: false)
+      ..sort((a, b) => a.date.compareTo(b.date));
+    final runningById = <String, double>{};
+    var running = 0.0;
+    for (final row in chronological) {
+      running += row.cost - row.paid;
+      runningById[row.id] = running;
+    }
+    return runningById;
   }
 
   Future<void> _exportCsv() async {
@@ -895,7 +920,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
         .toList(growable: false);
     final totalCost = summaryRows.fold<double>(0, (s, r) => s + r.cost);
     final totalPaid = summaryRows.fold<double>(0, (s, r) => s + r.paid);
-    final totalBalance = totalCost - totalPaid;
+    final totalBalance = math.max(totalCost - totalPaid, 0);
 
     final lastVisit = _allRows.isEmpty
         ? '-'
@@ -1182,6 +1207,12 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                 ],
               ),
               child: Column(
+                  children: [
+                    Builder(builder: (context) {
+                    final visibleRows = _visibleRows;
+                    final runningBalances = _runningBalances(visibleRows);
+                    return Expanded(
+                      child: Column(
                     children: [
                       Container(
                         color: hasActiveFilters
@@ -1192,25 +1223,32 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                         child: Row(
                           children: [
                             Expanded(
-                                flex: 13,
+                        flex: 7,
+                        child: _sortableHead('S.No', 'serial')),
+                      Expanded(
+                        flex: 12,
                                 child: _sortableHead('Date', 'date')),
                             Expanded(
                                 flex: 9,
                                 child: _sortableHead('Tooth', 'tooth')),
                             Expanded(
-                                flex: 19,
-                                child: _sortableHead('Treatment', 'treatment')),
-                            Expanded(
                                 flex: 14,
                                 child: _sortableHead('Doctor', 'doctor')),
                             Expanded(
-                                flex: 9,
+                        flex: 14,
+                        child:
+                          _sortableHead('Chief Complaint', 'chief')),
+                      Expanded(
+                        flex: 18,
+                        child: _sortableHead('Treatment', 'treatment')),
+                      Expanded(
+                        flex: 8,
                                 child: _sortableHead('Cost', 'cost')),
                             Expanded(
-                                flex: 9,
+                        flex: 8,
                                 child: _sortableHead('Paid', 'paid')),
                             Expanded(
-                                flex: 9,
+                        flex: 9,
                                 child: _sortableHead('Balance', 'balance')),
                             Expanded(
                                 flex: 8,
@@ -1229,11 +1267,13 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                       const Divider(size: 1),
                       Expanded(
                         child: ListView.builder(
-                          itemCount: _visibleRows.length,
+                          itemCount: visibleRows.length,
                           itemBuilder: (context, index) {
-                            final row = _visibleRows[index];
+                            final row = visibleRows[index];
                             final expanded = _expandedRowId == row.id;
                             final statusColor = _statusColor(row.status);
+                            final runningBalance =
+                                runningBalances[row.id] ?? row.balance;
 
                             return MouseRegion(
                               cursor: SystemMouseCursors.click,
@@ -1255,7 +1295,11 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                                       child: Row(
                                         children: [
                                           Expanded(
-                                            flex: 13,
+                                            flex: 7,
+                                            child: Text('${index + 1}'),
+                                          ),
+                                          Expanded(
+                                            flex: 12,
                                             child: Text(formatClinicDate(
                                                 row.date,
                                                 pattern: 'dd MMM yyyy')),
@@ -1264,25 +1308,32 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                                               flex: 9,
                                               child: Text(row.tooth)),
                                           Expanded(
-                                            flex: 19,
-                                            child: Text(
-                                              row.treatment,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Expanded(
                                               flex: 14,
                                               child: Text(
                                                 row.doctor,
                                                 overflow: TextOverflow.ellipsis,
                                               )),
                                           Expanded(
-                                            flex: 9,
+                                            flex: 14,
+                                            child: Text(
+                                              row.chiefComplaint,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 18,
+                                            child: Text(
+                                              row.treatment,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 8,
                                             child: Text(
                                                 '₹${row.cost.toStringAsFixed(0)}'),
                                           ),
                                           Expanded(
-                                            flex: 9,
+                                            flex: 8,
                                             child: Text(
                                               '₹${row.paid.toStringAsFixed(0)}',
                                               style: TextStyle(
@@ -1296,7 +1347,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                                           Expanded(
                                             flex: 9,
                                             child: Text(
-                                              '₹${row.balance.toStringAsFixed(0)}',
+                                              '₹${runningBalance.toStringAsFixed(0)}',
                                               style: const TextStyle(
                                                 color: Color(0xFFDC2626),
                                                 fontWeight: FontWeight.w700,
@@ -1418,6 +1469,10 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                           },
                         ),
                       ),
+                    ],
+                  ),
+                        );
+                      }),
                     ],
                   ),
             ),
