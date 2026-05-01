@@ -109,6 +109,27 @@ String _medicalHistorySummaryText(Patient? patient) {
       : 'Medical History: ${medicalHistoryEntries.join(', ')}';
 }
 
+const List<String> kCheckinFocusNotes = [
+  'Suture removal',
+  'PCS',
+  'Pain',
+  'Scaling',
+  'Filling',
+  'Extraction',
+  'Ortho',
+  'RCT',
+];
+
+Set<String> _normalizeFocusNotes(Iterable<String> values) {
+  final normalized = <String>{};
+  for (final value in values) {
+    final cleaned = value.trim();
+    if (cleaned.isEmpty) continue;
+    normalized.add(cleaned);
+  }
+  return normalized;
+}
+
 Future<void> _showNextAppointmentPromptDialog(
   BuildContext context,
   Appointment appointment,
@@ -129,17 +150,23 @@ Future<void> _showNextAppointmentPromptDialog(
     'operatorsIDs': draft.doctorIds.toList(growable: false),
     'date': draft.scheduledAt.millisecondsSinceEpoch,
     'checkinStage': 'pending',
+    'chiefComplaints': draft.focusNotes.toList(growable: false),
   });
+  if (draft.focusNotes.isNotEmpty) {
+    nextAppointment.preOpNotes = draft.focusNotes.join(', ');
+  }
   appointments.set(nextAppointment);
 }
 
 class _ScheduledAppointmentDraft {
   final DateTime scheduledAt;
   final Set<String> doctorIds;
+  final Set<String> focusNotes;
 
   const _ScheduledAppointmentDraft({
     required this.scheduledAt,
     required this.doctorIds,
+    required this.focusNotes,
   });
 }
 
@@ -162,6 +189,12 @@ Future<_ScheduledAppointmentDraft?> _showScheduleAppointmentModal({
   final selectedDoctors = (existingScheduled?.operatorsIDs.isNotEmpty ?? false)
       ? existingScheduled!.operatorsIDs.toSet()
       : baseAppointment.operatorsIDs.toSet();
+  final selectedFocusNotes = _normalizeFocusNotes(
+    (existingScheduled?.chiefComplaints.isNotEmpty ?? false)
+        ? existingScheduled!.chiefComplaints
+        : baseAppointment.chiefComplaints,
+  );
+  final customNoteController = TextEditingController();
 
   _ScheduledAppointmentDraft? result;
 
@@ -269,6 +302,106 @@ Future<_ScheduledAppointmentDraft?> _showScheduleAppointmentModal({
                 ),
                 const SizedBox(height: 10),
                 const Text(
+                  'Visit Notes',
+                  style: TextStyle(
+                    color: AppColors.textBlueStrong,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: kCheckinFocusNotes.map((note) {
+                    final selected = selectedFocusNotes.contains(note);
+                    return AppButton(
+                      label: note,
+                      compact: true,
+                      variant: selected
+                          ? AppButtonVariant.primary
+                          : AppButtonVariant.secondary,
+                      onPressed: () {
+                        setStateDialog(() {
+                          if (selected) {
+                            selectedFocusNotes.remove(note);
+                          } else {
+                            selectedFocusNotes.add(note);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(growable: false),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextBox(
+                        controller: customNoteController,
+                        placeholder: 'Add custom note and press Enter',
+                        onSubmitted: (value) {
+                          final cleaned = value.trim();
+                          if (cleaned.isEmpty) return;
+                          setStateDialog(() {
+                            selectedFocusNotes.add(cleaned);
+                            customNoteController.clear();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AppButton(
+                      label: 'Add',
+                      variant: AppButtonVariant.secondary,
+                      compact: true,
+                      onPressed: () {
+                        final cleaned = customNoteController.text.trim();
+                        if (cleaned.isEmpty) return;
+                        setStateDialog(() {
+                          selectedFocusNotes.add(cleaned);
+                          customNoteController.clear();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                if (selectedFocusNotes.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: selectedFocusNotes.map((note) {
+                      return GestureDetector(
+                        onTap: () {
+                          setStateDialog(() {
+                            selectedFocusNotes.remove(note);
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.slate1006,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: AppColors.violet150),
+                          ),
+                          child: Text(
+                            note,
+                            style: const TextStyle(
+                              color: AppColors.textBlueStrong,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(growable: false),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                const Text(
                   'Consultant/Doctor',
                   style: TextStyle(
                     color: AppColors.textBlueStrong,
@@ -344,6 +477,7 @@ Future<_ScheduledAppointmentDraft?> _showScheduleAppointmentModal({
                 result = _ScheduledAppointmentDraft(
                   scheduledAt: scheduledAt,
                   doctorIds: selectedDoctors,
+                  focusNotes: selectedFocusNotes,
                 );
                 Navigator.pop(dialogContext);
               },
@@ -353,6 +487,8 @@ Future<_ScheduledAppointmentDraft?> _showScheduleAppointmentModal({
       },
     ),
   );
+
+  customNoteController.dispose();
 
   return result;
 }
@@ -399,6 +535,11 @@ Future<void> _upsertScheduledFollowUpAppointment(
   targetAppointment.checkinStage = 'scheduled';
   targetAppointment.isCheckedIn = false;
   targetAppointment.operatorsIDs = draft.doctorIds.toList(growable: false);
+  targetAppointment.chiefComplaints =
+      draft.focusNotes.toList(growable: false);
+  if (draft.focusNotes.isNotEmpty) {
+    targetAppointment.preOpNotes = draft.focusNotes.join(', ');
+  }
   if (targetAppointment.preOpNotes.trim().isEmpty) {
     targetAppointment.preOpNotes = 'Follow-up visit';
   }
@@ -804,7 +945,7 @@ Future<void> openAppointmentJourneyDialog(
         builder: (ctx) => ContentDialog(
           title: const Text('Unsaved Changes'),
           content: const Text(
-            'You have unsaved treatment changes. Save before closing?',
+            'You have unsaved journey changes. Save before closing?',
           ),
           actions: [
             AppButton(
