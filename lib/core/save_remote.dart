@@ -35,6 +35,11 @@ class VersionedResult {
 }
 
 class SaveRemote {
+  static const int _syncPageSize = 200;
+  static const int _syncOverlapMs = 5 * 60 * 1000;
+  static const int _sessionRecoveryLookbackMs = 2 * 24 * 60 * 60 * 1000;
+  static final Set<String> _sessionRecoveryDoneStores = <String>{};
+
   final String storeName;
   final PocketBase pbInstance;
 
@@ -97,31 +102,41 @@ class SaveRemote {
   }
 
   Future<VersionedResult> getSince({int version = 0}) async {
-    List<Row> result = [];
+    final needsRecoveryPass =
+      version > 0 && !_sessionRecoveryDoneStores.contains(storeName);
+    final overlapToUse =
+      needsRecoveryPass ? _sessionRecoveryLookbackMs : _syncOverlapMs;
+    final effectiveVersion = max(0, version - overlapToUse);
+    var cursorTs = effectiveVersion;
+    var cursorId = "";
+    final latestById = <String, Row>{};
+    var fetchedCount = 0;
+    var cursorAdvancedCount = 0;
+    var pages = 0;
 
-    final date = formatForPocketBase(version);
-    bool nextPageExists = true;
-    int currentPage = 1;
-
-    do {
+    while (true) {
       try {
+        final formattedCursorTs = formatForPocketBase(cursorTs);
+        final filter =
+            '(updated>"$formattedCursorTs"||(updated="$formattedCursorTs"&&id>"$cursorId"))&&store="$storeName"';
+
         ActivityLogger.logApi(
           "${pbInstance.baseURL}/api/collections/data/records",
           "GET",
           params: {
-            "filter": 'updated>"$date"&&store="$storeName"',
-            "sort": "updated",
-            "perPage": 900,
-            "page": currentPage,
+            "filter": filter,
+            "sort": "updated,id",
+            "perPage": _syncPageSize,
+            "page": 1,
             "fields": "data,id,updated,imgs",
           },
         );
 
         final pageResult = await remoteRows.getList(
-          filter: 'updated>"$date"&&store="$storeName"',
-          sort: "updated",
-          perPage: 900,
-          page: currentPage,
+          filter: filter,
+          sort: "updated,id",
+          perPage: _syncPageSize,
+          page: 1,
           fields: "data,id,updated,imgs",
         );
 
@@ -129,35 +144,85 @@ class SaveRemote {
           "${pbInstance.baseURL}/api/collections/data/records",
           "GET_RESPONSE",
           params: {
-            "response": pageResult.items.map((item) => item.data).toList(),
-            "status": pageResult.totalPages,
+            "count": pageResult.items.length,
+            if (pageResult.items.isNotEmpty) "firstId": pageResult.items.first.id,
+            if (pageResult.items.isNotEmpty)
+              "firstUpdated": pageResult.items.first.get<String>("updated"),
+            if (pageResult.items.isNotEmpty) "lastId": pageResult.items.last.id,
+            if (pageResult.items.isNotEmpty)
+              "lastUpdated": pageResult.items.last.get<String>("updated"),
           },
         );
 
-        for (var item in pageResult.items) {
+        if (pageResult.items.isEmpty) {
+          break;
+        }
+
+        pages++;
+        fetchedCount += pageResult.items.length;
+
+        for (final item in pageResult.items) {
           final ts = DateTime.parse(item.get<String>("updated"))
               .millisecondsSinceEpoch;
-          result.add(
-              Row(id: item.id, data: jsonEncode(item.data["data"]), ts: ts));
+          final nextRow =
+              Row(id: item.id, data: jsonEncode(item.data["data"]), ts: ts);
+          final existing = latestById[item.id];
+          if (existing == null || ts >= existing.ts) {
+            latestById[item.id] = nextRow;
+          }
           fullNamesCache
               .addAll({item.id: List<String>.from(item.data["imgs"])});
         }
 
-        // handle pagination
-        if (pageResult.totalPages > currentPage) {
-          currentPage++;
-        } else {
-          nextPageExists = false;
+        final lastItem = pageResult.items.last;
+        final nextCursorTs = DateTime.parse(lastItem.get<String>("updated"))
+            .millisecondsSinceEpoch;
+        final nextCursorId = lastItem.id;
+
+        // Defensive stop to avoid infinite loops if the backend repeats the same edge item.
+        if (nextCursorTs == cursorTs && nextCursorId == cursorId) {
+          break;
+        }
+
+        cursorTs = nextCursorTs;
+        cursorId = nextCursorId;
+        cursorAdvancedCount++;
+
+        if (pageResult.items.length < _syncPageSize) {
+          break;
         }
       } catch (e) {
         ActivityLogger.logException(e, null, "getSince");
         await checkOnline();
         rethrow;
       }
-    } while (nextPageExists);
+    }
+
+    final result = latestById.values.toList()
+      ..sort((a, b) {
+        final tsCmp = a.ts.compareTo(b.ts);
+        return tsCmp != 0 ? tsCmp : a.id.compareTo(b.id);
+      });
+
+    final dedupedCount = max(0, fetchedCount - result.length);
+    ActivityLogger.logSyncTelemetry(
+      store: storeName,
+      fetched: fetchedCount,
+      deduped: dedupedCount,
+      cursorAdvanced: cursorAdvancedCount,
+      recoveryPassUsed: needsRecoveryPass,
+      uniqueRows: result.length,
+      pages: pages,
+    );
+
+    if (needsRecoveryPass) {
+      _sessionRecoveryDoneStores.add(storeName);
+    }
 
     return VersionedResult(
-        result.isNotEmpty ? result.map((r) => r.ts).reduce(max) : 0, result);
+      result.isNotEmpty ? result.map((r) => r.ts).reduce(max) : version,
+      result,
+    );
   }
 
   Future<int> getVersion() async {

@@ -107,6 +107,32 @@ class Route {
 }
 
 class _Routes {
+  _Routes() {
+    currentRouteIndex.observe((_) {
+      final route = currentRoute;
+      ActivityLogger.logEvent(
+        'Navigation',
+        'Route Changed',
+        data: {
+          'route': route.identifier,
+          'title': route.title,
+          'historyDepth': history.length,
+        },
+      );
+    });
+
+    panels.observe((_) {
+      ActivityLogger.logEvent(
+        'Panel',
+        'Panels Updated',
+        data: {
+          'count': panels().length,
+          'active': panels().isNotEmpty ? panels().last.identifier : null,
+        },
+      );
+    });
+  }
+
   final ObservableState<List<Panel>> panels = ObservableState([]);
   final minimizePanels = ObservableState(false);
 
@@ -120,12 +146,29 @@ class _Routes {
       // add to end
       panels(panels()..add(panel));
       routes.minimizePanels(false);
+      ActivityLogger.logEvent(
+        'Panel',
+        'Panel Opened',
+        data: {
+          'identifier': panel.identifier,
+          'store': panel.store.local?.name,
+          'tabs': panel.tabs.length,
+        },
+      );
     }
   }
 
   void bringPanelToFront(int index) {
+    final target = panels()[index];
     panels(panels()..add(panels().removeAt(index)));
     routes.minimizePanels(false);
+    ActivityLogger.logEvent(
+      'Panel',
+      'Panel Brought To Front',
+      data: {
+        'identifier': target.identifier,
+      },
+    );
   }
 
   List<Route> genAllRoutes() => [
@@ -292,11 +335,27 @@ class _Routes {
 
   closePanel(String itemId) {
     panels(panels()..removeWhere((p) => p.item.id == itemId));
+    ActivityLogger.logEvent(
+      'Panel',
+      'Panel Closed',
+      data: {
+        'itemId': itemId,
+      },
+    );
   }
 
   goBack() {
     if (history.isNotEmpty) {
+      final previousIndex = history.last;
       currentRouteIndex(history.removeLast());
+      ActivityLogger.logEvent(
+        'Navigation',
+        'Back Navigation',
+        data: {
+          'toRoute': allRoutes[previousIndex].identifier,
+          'historyDepth': history.length,
+        },
+      );
       if (currentRoute.onSelect != null) {
         currentRoute.onSelect!();
       }
@@ -305,11 +364,17 @@ class _Routes {
 
   navigate(Route route) {
     if (currentRouteIndex() == allRoutes.indexOf(route)) return;
+    final fromRoute = currentRoute.identifier;
     history.add(currentRouteIndex());
     currentRouteIndex(allRoutes.indexOf(route));
-    ActivityLogger.logAction(
-      "Route ${route.title} Clicked",
-      screen: "Navigation",
+    ActivityLogger.logEvent(
+      'Navigation',
+      'Route Clicked',
+      data: {
+        'fromRoute': fromRoute,
+        'toRoute': route.identifier,
+        'title': route.title,
+      },
     );
     if (currentRoute.onSelect != null) {
       currentRoute.onSelect!();

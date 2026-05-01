@@ -6,6 +6,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:http/http.dart';
 import 'package:path/path.dart';
 
+import 'activity_logger.dart';
 import 'model.dart';
 import 'observable.dart';
 import 'save_local.dart';
@@ -478,6 +479,7 @@ class Store<G extends Model> {
     }
 
     lastProcessChanges = DateTime.now().millisecondsSinceEpoch;
+    final syncStopwatch = Stopwatch()..start();
     onSyncStart?.call();
     List<SyncResult> tries = [];
     while (true) {
@@ -485,6 +487,34 @@ class Store<G extends Model> {
       tries.add(result);
       if (result.exception != null) break;
     }
+    syncStopwatch.stop();
+
+    final totalPulled = tries.fold<int>(
+      0,
+      (sum, item) => sum + (item.pulled ?? 0),
+    );
+    final totalPushed = tries.fold<int>(
+      0,
+      (sum, item) => sum + (item.pushed ?? 0),
+    );
+    final totalConflicts = tries.fold<int>(
+      0,
+      (sum, item) => sum + (item.conflicts ?? 0),
+    );
+    final terminalException = tries.isEmpty ? null : tries.last.exception;
+
+    ActivityLogger.logSyncCycleSummary(
+      store: remote?.storeName ?? local?.name ?? 'unknown',
+      attempts: tries.length,
+      pulled: totalPulled,
+      pushed: totalPushed,
+      conflicts: totalConflicts,
+      deferredPresent: deferredPresent,
+      online: remote?.isOnline ?? false,
+      terminalException: terminalException,
+      durationMs: syncStopwatch.elapsedMilliseconds,
+    );
+
     onSyncEnd?.call();
     return tries;
   }

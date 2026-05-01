@@ -126,6 +126,7 @@ class Appointment extends Model {
   String visitType = 'Follow-up Visit';
   String sourceTimeZone = clinicTimeZoneId;
   DateTime? checkedInAt;
+  DateTime? completedTime;
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     /* 1 */ operatorsIDs =
@@ -185,6 +186,13 @@ class Appointment extends Model {
     if (rawCheckedInAt is int) {
       checkedInAt = DateTime.fromMillisecondsSinceEpoch(rawCheckedInAt);
     }
+    final rawCompletedTime = json['completedTime'];
+    if (rawCompletedTime is int) {
+      completedTime = DateTime.fromMillisecondsSinceEpoch(rawCompletedTime);
+    } else if (rawCompletedTime is num) {
+      completedTime =
+          DateTime.fromMillisecondsSinceEpoch(rawCompletedTime.toInt());
+    }
     diagnosis = List<String>.from(json['diagnosis'] ?? []);
     chiefComplaints = List<String>.from(json['chiefComplaints'] ?? []);
   }
@@ -238,6 +246,9 @@ class Appointment extends Model {
     }
     if (checkedInAt != null) {
       json['checkedInAt'] = checkedInAt!.millisecondsSinceEpoch;
+    }
+    if (completedTime != null) {
+      json['completedTime'] = completedTime!.millisecondsSinceEpoch;
     }
     json['diagnosis'] = diagnosis;
     if (chiefComplaints.toString() != d.chiefComplaints.toString()) {

@@ -361,6 +361,15 @@ class AppointmentCard extends StatelessWidget {
         checked: appointment.isDone,
         onChanged: (checked) {
           appointment.isDone = checked == true;
+          if (appointment.isDone) {
+            appointment.checkinStage = 'completed';
+            appointment.completedTime ??= DateTime.now();
+          } else {
+            if (appointment.checkinStage == 'completed') {
+              appointment.checkinStage = 'checkout';
+            }
+            appointment.completedTime = null;
+          }
           appointments.set(appointment);
         },
         style: CheckboxThemeData(

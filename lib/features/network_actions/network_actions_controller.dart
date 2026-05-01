@@ -2,6 +2,7 @@ import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
+import 'package:apexo/core/activity_logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../services/login.dart';
 import '../../core/observable.dart';
@@ -36,13 +37,35 @@ class _NetworkActions {
   Map<String, void Function()> reconnectCallbacks = {};
 
   Future<void> resync() async {
+    ActivityLogger.logEvent(
+      'Network',
+      'Manual Resync Requested',
+      data: {
+        'callbacks': syncCallbacks.length,
+        'online': network.isOnline(),
+      },
+    );
     isSyncing(isSyncing() + 1);
-    await login.activate(login.url, [login.token], true);
-    isSyncing(isSyncing() - 1);
+    try {
+      await login.activate(login.url, [login.token], true);
+    } catch (e, s) {
+      ActivityLogger.logException(e, s, 'NetworkActions.resync');
+      rethrow;
+    } finally {
+      isSyncing(isSyncing() - 1);
+    }
 
     for (var callback in syncCallbacks.values) {
       callback();
     }
+
+    ActivityLogger.logEvent(
+      'Network',
+      'Manual Resync Completed',
+      data: {
+        'callbacks': syncCallbacks.length,
+      },
+    );
   }
 
   List<NetworkAction> get actions {
@@ -51,8 +74,18 @@ class _NetworkActions {
         tooltip: "Theme",
         iconData: (localSettings.selectedTheme == ThemeMode.light) ? FluentIcons.sunny : FluentIcons.clear_night,
         onPressed: () {
-          localSettings.selectedTheme =
+          final nextTheme =
               localSettings.selectedTheme == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+          ActivityLogger.logEvent(
+            'UI',
+            'Theme Toggled',
+            data: {
+              'from': localSettings.selectedTheme.name,
+              'to': nextTheme.name,
+            },
+          );
+          localSettings.selectedTheme =
+              nextTheme;
           localSettings.notifyAndPersist();
         },
         animate: false,
@@ -77,9 +110,29 @@ class _NetworkActions {
             (network.isOnline() && !loginCtrl.proceededOffline()) ? FluentIcons.streaming : FluentIcons.streaming_off,
         onPressed: () async {
           if (launch.isDemo) return;
-          await login.activate(login.url, [login.token], true);
-          for (var callback in reconnectCallbacks.values) {
-            callback();
+          ActivityLogger.logEvent(
+            'Network',
+            'Reconnect Requested',
+            data: {
+              'callbacks': reconnectCallbacks.length,
+              'online': network.isOnline(),
+            },
+          );
+          try {
+            await login.activate(login.url, [login.token], true);
+            for (var callback in reconnectCallbacks.values) {
+              callback();
+            }
+            ActivityLogger.logEvent(
+              'Network',
+              'Reconnect Completed',
+              data: {
+                'callbacks': reconnectCallbacks.length,
+              },
+            );
+          } catch (e, s) {
+            ActivityLogger.logException(e, s, 'NetworkActions.reconnect');
+            rethrow;
           }
         },
         disabled: (network.isOnline() && !loginCtrl.proceededOffline()),
