@@ -589,26 +589,6 @@ class _WorkflowRow extends StatelessWidget {
     );
   }
 
-  void _openLastTreatmentsDialog(BuildContext context) {
-    final patient = appointment.patient;
-    if (patient == null) return;
-    showLastTreatmentsDialog(
-      context: context,
-      patient: patient,
-    );
-  }
-
-  void _openLabHistoryDialog(BuildContext context) {
-    final patient = appointment.patient;
-    if (patient == null) return;
-    showPatientHistoryDialog(
-      context: context,
-      patient: patient,
-      rows: patient.patientDetails,
-      labsOnly: true,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final patientName = appointment.title.trim().isEmpty
@@ -637,9 +617,13 @@ class _WorkflowRow extends StatelessWidget {
         ? 'First visit'
         : formatClinicDate(previousVisits.first.date, pattern: 'dd MMM yyyy');
     final doctorLabel = doctorsList.join(', ');
-    final hasLabworks = (appointment.patientID ?? '').trim().isNotEmpty &&
-        labworks.present.values
-            .any((labwork) => labwork.patientID == appointment.patientID);
+    final focusNotes = <String>{
+      ...appointment.chiefComplaints.where((n) => n.trim().isNotEmpty),
+      ...appointment.preOpNotes
+        .split(',')
+        .map((n) => n.trim())
+        .where((n) => n.isNotEmpty),
+    }.toList(growable: false);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -689,20 +673,6 @@ class _WorkflowRow extends StatelessWidget {
                               : null,
                         ),
                       ),
-                      if (hasLabworks)
-                        Tooltip(
-                          message: 'Labworks history',
-                          child: IconButton(
-                            icon: const Icon(
-                              FluentIcons.test_beaker,
-                              size: 14,
-                              color: AppColors.green550,
-                            ),
-                            onPressed: interactionsEnabled
-                                ? () => _openLabHistoryDialog(context)
-                                : null,
-                          ),
-                        ),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -799,6 +769,40 @@ class _WorkflowRow extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (focusNotes.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: focusNotes
+                            .take(5)
+                            .map(
+                              (note) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.slate1006,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: AppColors.violet150,
+                                  ),
+                                ),
+                                child: Text(
+                                  note,
+                                  style: const TextStyle(
+                                    color: AppColors.textBlueStrong,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(growable: false),
+                      ),
+                    ),
                 ],
               ),
             ),

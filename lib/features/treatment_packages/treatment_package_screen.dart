@@ -2,6 +2,8 @@ import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
@@ -42,7 +44,9 @@ class TreatmentSittingDraft {
 }
 
 class TreatmentPlanDraft {
+  String? patientId;
   String planName;
+  String templateName;
   double totalPackageCost;
   int estimatedSittings;
   TreatmentPlanStatus status;
@@ -50,7 +54,9 @@ class TreatmentPlanDraft {
   List<TreatmentSittingDraft> sittings;
 
   TreatmentPlanDraft({
+    this.patientId,
     required this.planName,
+    this.templateName = 'Custom',
     required this.totalPackageCost,
     required this.estimatedSittings,
     required this.status,
@@ -81,6 +87,52 @@ class _TreatmentPackageRepository {
     plans.add(plan);
   }
 }
+
+class _PackageTemplate {
+  final String name;
+  final int sittings;
+  final double totalCost;
+  final List<String> defaultNotes;
+
+  const _PackageTemplate({
+    required this.name,
+    required this.sittings,
+    required this.totalCost,
+    this.defaultNotes = const <String>[],
+  });
+}
+
+const List<_PackageTemplate> _packageTemplates = [
+  _PackageTemplate(
+    name: 'Custom',
+    sittings: 1,
+    totalCost: 0,
+  ),
+  _PackageTemplate(
+    name: 'RCT Package',
+    sittings: 3,
+    totalCost: 12000,
+    defaultNotes: ['Consultation', 'Canal prep', 'Obturation'],
+  ),
+  _PackageTemplate(
+    name: 'Scaling Package',
+    sittings: 2,
+    totalCost: 4000,
+    defaultNotes: ['Full mouth scaling', 'Review'],
+  ),
+  _PackageTemplate(
+    name: 'Ortho Starter',
+    sittings: 6,
+    totalCost: 30000,
+    defaultNotes: ['Imaging', 'Bonding', 'Monthly follow-up'],
+  ),
+  _PackageTemplate(
+    name: 'Extraction + Review',
+    sittings: 2,
+    totalCost: 7000,
+    defaultNotes: ['Extraction', 'Post-op review'],
+  ),
+];
 
 Future<void> showTreatmentPackageManagerDialog({
   required BuildContext context,
@@ -122,8 +174,13 @@ class _TreatmentPackageManagerScreenState
   final TextEditingController _estimatedSittingsCtrl =
       TextEditingController(text: '1');
   final TextEditingController _notesCtrl = TextEditingController();
+  final Map<String, TextEditingController> _plannedControllers = {};
+  final Map<String, TextEditingController> _paidControllers = {};
+  final Map<String, TextEditingController> _notesControllers = {};
 
   TreatmentPlanStatus _status = TreatmentPlanStatus.active;
+  String? _selectedPatientId;
+  String _selectedTemplate = 'Custom';
   final List<TreatmentSittingDraft> _sittings = <TreatmentSittingDraft>[];
 
   @override
@@ -138,6 +195,15 @@ class _TreatmentPackageManagerScreenState
     _totalCostCtrl.dispose();
     _estimatedSittingsCtrl.dispose();
     _notesCtrl.dispose();
+    for (final controller in _plannedControllers.values) {
+      controller.dispose();
+    }
+    for (final controller in _paidControllers.values) {
+      controller.dispose();
+    }
+    for (final controller in _notesControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -165,6 +231,104 @@ class _TreatmentPackageManagerScreenState
 
   bool get _plannedMismatch => (_plannedSum - _totalPackageCost).abs() > 0.01;
 
+  TextEditingController _plannedControllerFor(TreatmentSittingDraft row) {
+    return _plannedControllers.putIfAbsent(
+      row.id,
+      () => TextEditingController(
+        text: row.plannedAmount == 0 ? '' : row.plannedAmount.toStringAsFixed(2),
+      ),
+    );
+  }
+
+  TextEditingController _paidControllerFor(TreatmentSittingDraft row) {
+    return _paidControllers.putIfAbsent(
+      row.id,
+      () => TextEditingController(
+        text: row.paidAmount == 0 ? '' : row.paidAmount.toStringAsFixed(2),
+      ),
+    );
+  }
+
+  TextEditingController _noteControllerFor(TreatmentSittingDraft row) {
+    return _notesControllers.putIfAbsent(
+      row.id,
+      () => TextEditingController(text: row.notes),
+    );
+  }
+
+  void _syncRowControllers(TreatmentSittingDraft row) {
+    final planned = _plannedControllers[row.id];
+    final paid = _paidControllers[row.id];
+    final note = _notesControllers[row.id];
+    final plannedText = row.plannedAmount == 0 ? '' : row.plannedAmount.toStringAsFixed(2);
+    final paidText = row.paidAmount == 0 ? '' : row.paidAmount.toStringAsFixed(2);
+    if (planned != null && planned.text != plannedText) {
+      planned.text = plannedText;
+    }
+    if (paid != null && paid.text != paidText) {
+      paid.text = paidText;
+    }
+    if (note != null && note.text != row.notes) {
+      note.text = row.notes;
+    }
+  }
+
+  void _removeRowControllers(String rowId) {
+    _plannedControllers.remove(rowId)?.dispose();
+    _paidControllers.remove(rowId)?.dispose();
+    _notesControllers.remove(rowId)?.dispose();
+  }
+
+  void _applyEstimatedSittings(int count) {
+    final safeCount = count < 1 ? 1 : count;
+    setState(() {
+      if (_sittings.length > safeCount) {
+        final removed = _sittings.sublist(safeCount).map((s) => s.id).toList(growable: false);
+        _sittings.removeRange(safeCount, _sittings.length);
+        for (final rowId in removed) {
+          _removeRowControllers(rowId);
+        }
+      } else {
+        while (_sittings.length < safeCount) {
+          _sittings.add(
+            TreatmentSittingDraft(
+              id: uuid(),
+              plannedAmount: 0,
+              paidAmount: 0,
+              dueDate: DateTime.now().add(Duration(days: 7 * (_sittings.length + 1))),
+            ),
+          );
+        }
+      }
+      _estimatedSittingsCtrl.text = safeCount.toString();
+    });
+  }
+
+  void _applyTemplateByName(String templateName) {
+    final template = _packageTemplates.firstWhere(
+      (item) => item.name == templateName,
+      orElse: () => _packageTemplates.first,
+    );
+    setState(() {
+      _selectedTemplate = template.name;
+      if (template.name != 'Custom') {
+        _planNameCtrl.text = template.name;
+        _totalCostCtrl.text = template.totalCost.toStringAsFixed(0);
+        _notesCtrl.text = template.defaultNotes.join(', ');
+      }
+    });
+    _applyEstimatedSittings(template.sittings);
+    if (template.totalCost > 0) {
+      final split = template.totalCost / template.sittings;
+      setState(() {
+        for (final row in _sittings) {
+          row.plannedAmount = split;
+          _syncRowControllers(row);
+        }
+      });
+    }
+  }
+
   void _addSitting() {
     setState(() {
       _sittings.add(
@@ -182,6 +346,7 @@ class _TreatmentPackageManagerScreenState
   void _removeSitting(String id) {
     setState(() {
       _sittings.removeWhere((s) => s.id == id);
+      _removeRowControllers(id);
       if (_sittings.isEmpty) {
         _addSitting();
       } else {
@@ -237,6 +402,7 @@ class _TreatmentPackageManagerScreenState
     setState(() {
       for (var i = 0; i < _sittings.length; i++) {
         _sittings[i].plannedAmount = split;
+        _syncRowControllers(_sittings[i]);
       }
     });
   }
@@ -253,7 +419,9 @@ class _TreatmentPackageManagerScreenState
     }
 
     final draft = TreatmentPlanDraft(
+      patientId: _selectedPatientId,
       planName: name,
+      templateName: _selectedTemplate,
       totalPackageCost: _totalPackageCost,
       estimatedSittings: _estimatedSittings,
       status: _status,
@@ -298,6 +466,8 @@ class _TreatmentPackageManagerScreenState
   Widget build(BuildContext context) {
     final doctorItems = doctors.present.values.toList(growable: false)
       ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    final patientItems = patients.present.values.toList(growable: false)
+      ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -323,7 +493,7 @@ class _TreatmentPackageManagerScreenState
           child: LayoutBuilder(
             builder: (context, constraints) {
               final stacked = constraints.maxWidth < 900;
-              final detailsCard = _buildPlanDetailsCard();
+              final detailsCard = _buildPlanDetailsCard(patientItems);
               final summaryCard = _buildSummaryCard();
 
               return Column(
@@ -377,7 +547,7 @@ class _TreatmentPackageManagerScreenState
     );
   }
 
-  Widget _buildPlanDetailsCard() {
+  Widget _buildPlanDetailsCard(List<Patient> patientItems) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -394,6 +564,53 @@ class _TreatmentPackageManagerScreenState
               color: AppColors.blue700,
               fontWeight: FontWeight.w800,
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: ComboBox<String>(
+                  isExpanded: true,
+                  value: _selectedPatientId,
+                  placeholder: const Text('Assign Patient'),
+                  items: patientItems
+                      .map(
+                        (patient) => ComboBoxItem<String>(
+                          value: patient.id,
+                          child: Text(
+                            patient.title.trim().isEmpty
+                                ? 'Unnamed patient'
+                                : patient.title.trim(),
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (value) {
+                    setState(() => _selectedPatientId = value);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 220,
+                child: ComboBox<String>(
+                  isExpanded: true,
+                  value: _selectedTemplate,
+                  items: _packageTemplates
+                      .map(
+                        (template) => ComboBoxItem<String>(
+                          value: template.name,
+                          child: Text(template.name),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    _applyTemplateByName(value);
+                  },
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Row(
@@ -423,6 +640,9 @@ class _TreatmentPackageManagerScreenState
                 child: TextBox(
                   controller: _estimatedSittingsCtrl,
                   placeholder: 'Estimated Sittings',
+                  onSubmitted: (value) {
+                    _applyEstimatedSittings(_parseInt(value));
+                  },
                 ),
               ),
               const SizedBox(width: 8),
@@ -640,13 +860,9 @@ class _TreatmentPackageManagerScreenState
     required TreatmentSittingDraft row,
     required List<Doctor> doctorItems,
   }) {
-    final plannedCtrl = TextEditingController(
-      text: row.plannedAmount == 0 ? '' : row.plannedAmount.toStringAsFixed(2),
-    );
-    final paidCtrl = TextEditingController(
-      text: row.paidAmount == 0 ? '' : row.paidAmount.toStringAsFixed(2),
-    );
-    final notesCtrl = TextEditingController(text: row.notes);
+    final plannedCtrl = _plannedControllerFor(row);
+    final paidCtrl = _paidControllerFor(row);
+    final notesCtrl = _noteControllerFor(row);
 
     Widget expanded({required int flex, required Widget child}) {
       return Expanded(
@@ -691,7 +907,9 @@ class _TreatmentPackageManagerScreenState
               controller: plannedCtrl,
               placeholder: '0.00',
               onChanged: (value) {
-                setState(() => row.plannedAmount = _parseCurrency(value));
+                setState(() {
+                  row.plannedAmount = _parseCurrency(value);
+                });
               },
             ),
           ),
@@ -731,7 +949,9 @@ class _TreatmentPackageManagerScreenState
               controller: paidCtrl,
               placeholder: '0.00',
               onChanged: (value) {
-                setState(() => row.paidAmount = _parseCurrency(value));
+                setState(() {
+                  row.paidAmount = _parseCurrency(value);
+                });
               },
             ),
           ),
@@ -740,7 +960,9 @@ class _TreatmentPackageManagerScreenState
             child: TextBox(
               controller: notesCtrl,
               placeholder: 'Clinical goals/notes',
-              onChanged: (value) => row.notes = value,
+              onChanged: (value) {
+                row.notes = value;
+              },
             ),
           ),
           expanded(

@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/patient_history_modal.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
@@ -15,7 +16,30 @@ typedef PatientLookupOpenExisting = Future<void> Function(
 );
 typedef PatientLookupCheckInPatient = Future<void> Function(Patient patient);
 
-Future<DateTime?> _pickScheduleDateTime(
+const List<String> kPatientLookupFocusNotes = [
+  'Suture removal',
+  'PCS',
+  'Pain',
+  'Scaling',
+  'Filling',
+  'Extraction',
+  'Ortho',
+  'RCT',
+];
+
+class _VisitActionDraft {
+  final DateTime scheduledAt;
+  final Set<String> doctorIds;
+  final Set<String> focusNotes;
+
+  const _VisitActionDraft({
+    required this.scheduledAt,
+    required this.doctorIds,
+    required this.focusNotes,
+  });
+}
+
+Future<_VisitActionDraft?> _pickScheduleDateTime(
   BuildContext context,
   DateTime selectedDate,
   Patient? patient,
@@ -29,7 +53,10 @@ Future<DateTime?> _pickScheduleDateTime(
     minute: 0,
   );
 
-  DateTime? result;
+  final selectedDoctors = <String>{};
+  final selectedFocusNotes = <String>{};
+  final customNoteController = TextEditingController();
+  _VisitActionDraft? result;
 
   await showDialog<void>(
     context: context,
@@ -122,6 +149,115 @@ Future<DateTime?> _pickScheduleDateTime(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Visit Notes',
+                  style: TextStyle(
+                    color: Color(0xFF355279),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: kPatientLookupFocusNotes.map((note) {
+                    final selected = selectedFocusNotes.contains(note);
+                    return AppButton(
+                      label: note,
+                      compact: true,
+                      variant: selected
+                          ? AppButtonVariant.primary
+                          : AppButtonVariant.secondary,
+                      onPressed: () {
+                        setStateDialog(() {
+                          if (selected) {
+                            selectedFocusNotes.remove(note);
+                          } else {
+                            selectedFocusNotes.add(note);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(growable: false),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextBox(
+                        controller: customNoteController,
+                        placeholder: 'Add custom note and press Enter',
+                        onSubmitted: (value) {
+                          final cleaned = value.trim();
+                          if (cleaned.isEmpty) return;
+                          setStateDialog(() {
+                            selectedFocusNotes.add(cleaned);
+                            customNoteController.clear();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AppButton(
+                      label: 'Add',
+                      compact: true,
+                      variant: AppButtonVariant.secondary,
+                      onPressed: () {
+                        final cleaned = customNoteController.text.trim();
+                        if (cleaned.isEmpty) return;
+                        setStateDialog(() {
+                          selectedFocusNotes.add(cleaned);
+                          customNoteController.clear();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Consultant/Doctor',
+                  style: TextStyle(
+                    color: Color(0xFF355279),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Builder(
+                  builder: (context) {
+                    final doctorRows = doctors.present.values.toList(growable: false)
+                      ..sort((a, b) =>
+                          a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+                    if (doctorRows.isEmpty) {
+                      return const Text('No doctors available to assign.');
+                    }
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: doctorRows.map((doctor) {
+                        final selected = selectedDoctors.contains(doctor.id);
+                        return AppButton(
+                          label: doctor.title.trim().isEmpty
+                              ? 'Unnamed doctor'
+                              : _toTitleCase(doctor.title),
+                          compact: true,
+                          variant: selected
+                              ? AppButtonVariant.primary
+                              : AppButtonVariant.secondary,
+                          onPressed: () {
+                            setStateDialog(() {
+                              if (selected) {
+                                selectedDoctors.remove(doctor.id);
+                              } else {
+                                selectedDoctors.add(doctor.id);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(growable: false),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -134,7 +270,11 @@ Future<DateTime?> _pickScheduleDateTime(
             AppButton(
               label: 'Schedule',
               onPressed: () {
-                result = updatedDateTime;
+                result = _VisitActionDraft(
+                  scheduledAt: updatedDateTime,
+                  doctorIds: selectedDoctors,
+                  focusNotes: selectedFocusNotes,
+                );
                 Navigator.pop(dialogContext);
               },
             ),
@@ -144,25 +284,212 @@ Future<DateTime?> _pickScheduleDateTime(
     ),
   );
 
+  customNoteController.dispose();
+
   return result;
 }
 
-Future<DateTime?> _scheduleAppointmentForPatient(
+Future<_VisitActionDraft?> _scheduleAppointmentForPatient(
   BuildContext context,
   Patient patient,
   DateTime selectedDate,
 ) async {
-  final scheduledAt =
+  final draft =
       await _pickScheduleDateTime(context, selectedDate, patient);
-  if (scheduledAt == null) return null;
+  if (draft == null) return null;
 
   final appointment = Appointment.fromJson({});
   appointment.patientID = patient.id;
-  appointment.date = scheduledAt;
+  appointment.date = draft.scheduledAt;
   appointment.checkinStage = 'scheduled';
+  appointment.operatorsIDs = draft.doctorIds.toList(growable: false);
+  appointment.chiefComplaints = draft.focusNotes.toList(growable: false);
+  if (draft.focusNotes.isNotEmpty) {
+    appointment.preOpNotes = draft.focusNotes.join(', ');
+  }
   appointments.set(appointment);
 
-  return scheduledAt;
+  return draft;
+}
+
+Future<_VisitActionDraft?> _confirmCheckInForPatient(
+  BuildContext context,
+  Patient patient,
+  DateTime selectedDate,
+) async {
+  final selectedDoctors = <String>{};
+  final selectedFocusNotes = <String>{};
+  final customNoteController = TextEditingController();
+  _VisitActionDraft? result;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setStateDialog) {
+        final checkinAt = DateTime.now();
+        final doctorRows = doctors.present.values.toList(growable: false)
+          ..sort((a, b) =>
+              a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+
+        return ContentDialog(
+          title: const Text('Confirm Check-in'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${patient.title.trim().isEmpty ? 'Unnamed patient' : _toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+                  style: const TextStyle(
+                    color: Color(0xFF355279),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Check-in: ${DateFormat('dd MMM yyyy, h:mm a').format(checkinAt)}',
+                  style: const TextStyle(
+                    color: Color(0xFF1459AD),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Visit Notes',
+                  style: TextStyle(
+                    color: Color(0xFF355279),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: kPatientLookupFocusNotes.map((note) {
+                    final selected = selectedFocusNotes.contains(note);
+                    return AppButton(
+                      label: note,
+                      compact: true,
+                      variant: selected
+                          ? AppButtonVariant.primary
+                          : AppButtonVariant.secondary,
+                      onPressed: () {
+                        setStateDialog(() {
+                          if (selected) {
+                            selectedFocusNotes.remove(note);
+                          } else {
+                            selectedFocusNotes.add(note);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(growable: false),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextBox(
+                        controller: customNoteController,
+                        placeholder: 'Add custom note and press Enter',
+                        onSubmitted: (value) {
+                          final cleaned = value.trim();
+                          if (cleaned.isEmpty) return;
+                          setStateDialog(() {
+                            selectedFocusNotes.add(cleaned);
+                            customNoteController.clear();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AppButton(
+                      label: 'Add',
+                      compact: true,
+                      variant: AppButtonVariant.secondary,
+                      onPressed: () {
+                        final cleaned = customNoteController.text.trim();
+                        if (cleaned.isEmpty) return;
+                        setStateDialog(() {
+                          selectedFocusNotes.add(cleaned);
+                          customNoteController.clear();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Consultant/Doctor',
+                  style: TextStyle(
+                    color: Color(0xFF355279),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (doctorRows.isEmpty)
+                  const Text('No doctors available to assign.')
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: doctorRows.map((doctor) {
+                      final selected = selectedDoctors.contains(doctor.id);
+                      return AppButton(
+                        label: doctor.title.trim().isEmpty
+                            ? 'Unnamed doctor'
+                            : _toTitleCase(doctor.title),
+                        compact: true,
+                        variant: selected
+                            ? AppButtonVariant.primary
+                            : AppButtonVariant.secondary,
+                        onPressed: () {
+                          setStateDialog(() {
+                            if (selected) {
+                              selectedDoctors.remove(doctor.id);
+                            } else {
+                              selectedDoctors.add(doctor.id);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(growable: false),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.pop(dialogContext),
+            ),
+            AppButton(
+              label: 'Check-in',
+              onPressed: () {
+                result = _VisitActionDraft(
+                  scheduledAt: DateTime(
+                    selectedDate.year,
+                    selectedDate.month,
+                    selectedDate.day,
+                    checkinAt.hour,
+                    checkinAt.minute,
+                  ),
+                  doctorIds: selectedDoctors,
+                  focusNotes: selectedFocusNotes,
+                );
+                Navigator.pop(dialogContext);
+              },
+            ),
+          ],
+        );
+      },
+    ),
+  );
+
+  customNoteController.dispose();
+  return result;
 }
 
 Future<void> showPatientCheckinLookupDialog({
@@ -422,6 +749,13 @@ Future<void> showPatientCheckinLookupDialog({
                       AppButton(
                         label: 'Check-in',
                         onPressed: () async {
+                          final checkinDraft = await _confirmCheckInForPatient(
+                            context,
+                            patient,
+                            selectedDate,
+                          );
+                          if (checkinDraft == null) return;
+
                           final titledName = patient.title.trim().isEmpty
                               ? patient.title
                               : _toTitleCase(patient.title);
@@ -431,6 +765,36 @@ Future<void> showPatientCheckinLookupDialog({
                           }
                           final navigator = Navigator.of(dialogContext);
                           await onCheckInPatient(patient);
+
+                          final appointmentRows = appointments.present.values
+                              .where((row) => row.patientID == patient.id)
+                              .where((row) {
+                            final rowDate = DateTime(
+                                row.date.year, row.date.month, row.date.day);
+                            final targetDate = DateTime(selectedDate.year,
+                                selectedDate.month, selectedDate.day);
+                            return rowDate == targetDate &&
+                                row.checkinStage == 'waiting';
+                          }).toList(growable: false)
+                            ..sort((a, b) {
+                              final aStamp = a.checkedInAt ?? a.date;
+                              final bStamp = b.checkedInAt ?? b.date;
+                              return bStamp.compareTo(aStamp);
+                            });
+
+                          if (appointmentRows.isNotEmpty) {
+                            final target = appointmentRows.first;
+                            target.operatorsIDs =
+                                checkinDraft.doctorIds.toList(growable: false);
+                            target.chiefComplaints =
+                                checkinDraft.focusNotes.toList(growable: false);
+                            if (checkinDraft.focusNotes.isNotEmpty) {
+                              target.preOpNotes =
+                                  checkinDraft.focusNotes.join(', ');
+                            }
+                            appointments.set(target);
+                          }
+
                           if (navigator.mounted) {
                             navigator.pop();
                           }
@@ -441,19 +805,21 @@ Future<void> showPatientCheckinLookupDialog({
                         label: 'Schedule',
                         variant: AppButtonVariant.secondary,
                         onPressed: () async {
-                          final scheduledAt =
+                          final scheduledDraft =
                               await _scheduleAppointmentForPatient(
                             context,
                             patient,
                             selectedDate,
                           );
-                          if (scheduledAt == null || !context.mounted) return;
+                          if (scheduledDraft == null || !context.mounted) {
+                            return;
+                          }
                           displayInfoBar(
                             context,
                             builder: (context, close) => InfoBar(
                               title: const Text('Appointment scheduled'),
                               content: Text(
-                                'Scheduled for ${DateFormat('dd MMM yyyy, hh:mm a').format(scheduledAt)}',
+                                'Scheduled for ${DateFormat('dd MMM yyyy, hh:mm a').format(scheduledDraft.scheduledAt)}',
                               ),
                               severity: InfoBarSeverity.success,
                             ),
