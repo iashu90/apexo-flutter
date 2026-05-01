@@ -682,6 +682,7 @@ Future<void> openAppointmentJourneyDialog(
       if (isDoctorLogin) {
         if (nextStep == 2) {
           appointment.checkinStage = 'completed';
+          appointment.completedTime = DateTime.now();
           appointment.isDone = true;
         }
         appointments.set(appointment);
@@ -690,9 +691,11 @@ Future<void> openAppointmentJourneyDialog(
 
       if (nextStep == 2) {
         appointment.checkinStage = 'checkout';
+        appointment.completedTime = null;
         appointment.isDone = false;
       } else if (nextStep == 3) {
         appointment.checkinStage = 'completed';
+        appointment.completedTime = DateTime.now();
         appointment.isDone = true;
       }
       appointments.set(appointment);
@@ -1194,7 +1197,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   (a) => a.checkinStage == 'completed' || a.isDone,
                 )
                 .toList(growable: true)
-              ..sort((a, b) => a.date.compareTo(b.date));
+              ..sort((a, b) {
+                final aTs =
+                    a.completedTime?.millisecondsSinceEpoch ??
+                        a.checkedInAt?.millisecondsSinceEpoch ??
+                        a.date.millisecondsSinceEpoch;
+                final bTs =
+                    b.completedTime?.millisecondsSinceEpoch ??
+                        b.checkedInAt?.millisecondsSinceEpoch ??
+                        b.date.millisecondsSinceEpoch;
+                return bTs.compareTo(aTs);
+              });
 
             final now = DateTime.now();
             final isToday = _selectedDate.year == now.year &&
@@ -1742,6 +1755,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
     );
     if (shouldMove != true) return;
     appointment.checkinStage = 'checkout';
+    appointment.completedTime = null;
     appointment.isDone = false;
     appointments.set(appointment);
     if (mounted) {
@@ -1929,6 +1943,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
               if (pickedDoctorIds == null || pickedDoctorIds.isEmpty) return;
               appointment.operatorsIDs = pickedDoctorIds;
               appointment.checkinStage = 'with_doctor';
+              appointment.completedTime = null;
               appointment.isDone = false;
               appointment.checkedInAt = DateTime.now();
               appointments.set(appointment);
@@ -1977,6 +1992,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   if (shouldMove != true) return;
                   appointment.checkinStage = 'waiting';
                   appointment.operatorsIDs = [];
+                  appointment.completedTime = null;
                   appointment.isDone = false;
                   appointments.set(appointment);
                   if (mounted) {
@@ -1992,6 +2008,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                 label: 'Proceed to Billing',
                 onPressed: () {
                   appointment.checkinStage = 'checkout';
+                  appointment.completedTime = null;
                   appointment.isDone = false;
                   appointments.set(appointment);
                   if (mounted) {
@@ -2043,6 +2060,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   );
                   if (shouldMove != true) return;
                   appointment.checkinStage = 'with_doctor';
+                  appointment.completedTime = null;
                   appointment.isDone = false;
                   appointments.set(appointment);
                   if (mounted) {
@@ -2063,6 +2081,7 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                   );
                   if (!shouldComplete) return;
                   appointment.checkinStage = 'completed';
+                  appointment.completedTime = DateTime.now();
                   appointment.isDone = true;
                   appointments.set(appointment);
                   if (mounted) {

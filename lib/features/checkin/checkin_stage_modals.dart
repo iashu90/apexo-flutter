@@ -60,6 +60,7 @@ class AssignDoctorModal {
 
     appointment.operatorsIDs = pickedDoctorIds;
     appointment.checkinStage = 'with_doctor';
+    appointment.completedTime = null;
     appointment.isDone = false;
     appointment.checkedInAt ??= DateTime.now();
     appointments.set(appointment);
@@ -117,6 +118,7 @@ class CheckinStageModalRouter {
       if (shouldCheckin != true) return;
       appointment.checkinStage = 'waiting';
       appointment.checkedInAt = DateTime.now();
+      appointment.completedTime = null;
       appointment.isDone = false;
       appointments.set(appointment);
       onUpdated?.call();

@@ -301,6 +301,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     final a = widget.appointment;
     if (a.isDone) {
       a.checkinStage = 'checkout';
+      a.completedTime = null;
       setState(() => a.isDone = false);
       _scheduleAutosave(immediate: true);
       return;
@@ -314,6 +315,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
 
     if (!shouldComplete) return;
     a.checkinStage = 'completed';
+    a.completedTime = DateTime.now();
     setState(() => a.isDone = true);
     _scheduleAutosave(immediate: true);
     await _openNextAppointmentPrompt(a);
@@ -350,6 +352,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     final a = widget.appointment;
     a.operatorsIDs = [];
     a.checkinStage = 'waiting';
+    a.completedTime = null;
     a.isDone = false;
     _scheduleAutosave(immediate: true);
   }
@@ -380,6 +383,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     if (shouldMove != true) return;
     final a = widget.appointment;
     a.checkinStage = 'with_doctor';
+    a.completedTime = null;
     a.isDone = false;
     _scheduleAutosave(immediate: true);
   }
