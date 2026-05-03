@@ -7,6 +7,7 @@ import 'package:http/http.dart';
 import 'package:path/path.dart';
 
 import 'activity_logger.dart';
+import 'critical_write_journal.dart';
 import 'model.dart';
 import 'observable.dart';
 import 'save_local.dart';
@@ -48,6 +49,7 @@ class Store<G extends Model> {
   bool deferredPresent = false;
   int lastProcessChanges = 0;
   bool? manualSyncOnly;
+  final bool criticalWriteGuardEnabled;
   bool? isDemo;
   ObservableState<bool>? showArchived;
 
@@ -61,6 +63,7 @@ class Store<G extends Model> {
     this.onSyncStart,
     this.onSyncEnd,
     this.manualSyncOnly,
+    this.criticalWriteGuardEnabled = false,
   }) : observableMap = ObservableDict() {
     _instances.add(this);
     // loading from local
@@ -68,6 +71,20 @@ class Store<G extends Model> {
   }
 
   String get _healthStoreName => local?.name ?? remote?.storeName ?? 'unknown';
+
+  bool _isCriticalGuardTargetStore() {
+    if (!criticalWriteGuardEnabled) return false;
+    final store = _healthStoreName;
+    return store == 'appointments' || store == 'patients';
+  }
+
+  void _enforceCriticalWriteGuard(String operation) {
+    if (!_isCriticalGuardTargetStore()) return;
+    syncWriteHealth.ensureHealthyForStores(
+      const ['appointments', 'patients'],
+      operation: operation,
+    );
+  }
 
   static void clearAllInMemory() {
     for (final store in _instances) {
@@ -175,8 +192,21 @@ class Store<G extends Model> {
     }
 
     Map<String, int> lastDeferred;
+    String journalBatchId = '';
     try {
+      if (_isCriticalGuardTargetStore() && toWrite.isNotEmpty) {
+        journalBatchId = await criticalWriteJournal.recordPendingWrite(
+          store: _healthStoreName,
+          entries: toWrite,
+        );
+      }
       await local!.put(toWrite);
+      if (journalBatchId.isNotEmpty) {
+        await criticalWriteJournal.markBatchApplied(
+          store: _healthStoreName,
+          batchId: journalBatchId,
+        );
+      }
       lastDeferred = await local!.getDeferred();
     } catch (e, s) {
       syncWriteHealth.recordWriteFailure(store: _healthStoreName, error: e);
@@ -212,6 +242,7 @@ class Store<G extends Model> {
         }
         return;
       } catch (e, s) {
+        syncWriteHealth.recordSyncFailure(store: _healthStoreName, error: e);
         logger("Error during sending (Will defer updates): $e", s);
       }
     }
@@ -408,6 +439,7 @@ class Store<G extends Model> {
           conflicts: conflicts,
           exception: null);
     } catch (e, s) {
+      syncWriteHealth.recordSyncFailure(store: _healthStoreName, error: e);
       logger("Error during synchronization: $e", s);
       return SyncResult(exception: e.toString());
     }
@@ -583,16 +615,19 @@ class Store<G extends Model> {
 
   /// adds a document
   void set(G item) {
+    _enforceCriticalWriteGuard('saving record');
     observableMap.set(item);
   }
 
   /// adds a list of documents
   void setAll(List<G> items) {
+    _enforceCriticalWriteGuard('saving records');
     observableMap.setAll(items);
   }
 
   /// archives a document by id (the concept of deletion is not supported here)
   void archive(String id) {
+    _enforceCriticalWriteGuard('archiving record');
     G? item = get(id);
     if (item == null) return;
     observableMap.set(item..archived = true);
@@ -600,6 +635,7 @@ class Store<G extends Model> {
 
   /// un-archives a document by id (the concept of deletion is not supported here)
   void unarchive(String id) {
+    _enforceCriticalWriteGuard('unarchiving record');
     G? item = get(id);
     if (item == null) return;
     observableMap.set(item..archived = false);
@@ -607,6 +643,7 @@ class Store<G extends Model> {
 
   /// archives a document by id (the concept of deletion is not supported here)
   void delete(String id) {
+    _enforceCriticalWriteGuard('deleting record');
     archive(id);
   }
 
@@ -700,6 +737,61 @@ class Store<G extends Model> {
   Future<void> hardDelete(String id) async {
     await hardDeleteLocal(id);
     await hardDeleteRemote(id);
+  }
+
+  Future<void> recoverCriticalJournalWrites() async {
+    if (!_isCriticalGuardTargetStore()) return;
+    if (local == null) return;
+
+    final store = _healthStoreName;
+    final batches =
+        await criticalWriteJournal.pendingWriteBatchesForStore(store);
+    if (batches.isEmpty) return;
+
+    final merged = <String, String>{};
+    for (final batch in batches) {
+      merged.addAll(batch.entries);
+    }
+
+    if (merged.isEmpty) {
+      for (final batch in batches) {
+        await criticalWriteJournal.markBatchApplied(
+          store: store,
+          batchId: batch.batchId,
+        );
+      }
+      return;
+    }
+
+    try {
+      await local!.put(merged);
+      for (final batch in batches) {
+        await criticalWriteJournal.markBatchApplied(
+          store: store,
+          batchId: batch.batchId,
+        );
+      }
+      syncWriteHealth.recordLocalWriteSuccess(
+        store: store,
+        records: merged.length,
+      );
+      ActivityLogger.logAction(
+        'CRITICAL_JOURNAL_RECOVERY_APPLIED',
+        screen: 'StorageHealth',
+        data: {
+          'store': store,
+          'records': merged.length,
+          'batches': batches.length,
+        },
+      );
+    } catch (e, s) {
+      syncWriteHealth.recordWriteFailure(store: store, error: e);
+      ActivityLogger.logException(
+        e,
+        s,
+        'Store.recoverCriticalJournalWrites',
+      );
+    }
   }
 
   Future<void> hardDeleteLocal(String id) async {

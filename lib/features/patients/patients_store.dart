@@ -34,6 +34,7 @@ class Patients extends Store<Patient> {
           onSyncEnd: () {
             networkActions.isSyncing(networkActions.isSyncing() - 1);
           },
+          criticalWriteGuardEnabled: true,
         );
 
   @override
@@ -52,6 +53,7 @@ class Patients extends Store<Patient> {
       await loaded;
 
       local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
+      await recoverCriticalJournalWrites();
       await deleteMemoryAndLoadFromPersistence();
       _primeSnapshot();
 

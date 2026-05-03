@@ -1,7 +1,7 @@
 import 'package:apexo/common_widgets/patient_history_modal.dart';
-import 'package:apexo/core/sync_write_health.dart';
 import 'package:apexo/common_widgets/schedule_appointment_dialog.dart';
 import 'package:apexo/core/theme/app_colors.dart';
+import 'package:apexo/core/ui/critical_write_ui_guard.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
@@ -28,35 +28,6 @@ const List<String> kPatientLookupFocusNotes = [
   'RCT',
 ];
 
-bool _guardCheckinWriteHealth(
-  BuildContext context, {
-  required String actionLabel,
-}) {
-  try {
-    syncWriteHealth.ensureHealthyForStores(
-      const ['appointments', 'patients'],
-      operation: actionLabel,
-    );
-    return true;
-  } catch (e) {
-    displayInfoBar(
-      context,
-      builder: (ctx, close) => InfoBar(
-        title: const Text('Write blocked to prevent data loss'),
-        content: Text(
-          'Please wait for storage recovery before $actionLabel.\n$e',
-        ),
-        severity: InfoBarSeverity.error,
-        action: IconButton(
-          icon: const Icon(FluentIcons.clear),
-          onPressed: close,
-        ),
-      ),
-    );
-    return false;
-  }
-}
-
 Future<ScheduleAppointmentDraft?> _scheduleAppointmentForPatient(
   BuildContext context,
   Patient patient,
@@ -75,7 +46,8 @@ Future<ScheduleAppointmentDraft?> _scheduleAppointmentForPatient(
     confirmLabel: 'Schedule',
   );
   if (draft == null) return null;
-  if (!_guardCheckinWriteHealth(context, actionLabel: 'scheduling appointment')) {
+  if (!runCriticalWriteUiGuard(context,
+      actionLabel: 'scheduling appointment')) {
     return null;
   }
 
@@ -109,8 +81,8 @@ Future<ScheduleAppointmentDraft?> _confirmCheckInForPatient(
       builder: (context, setStateDialog) {
         final checkinAt = DateTime.now();
         final doctorRows = doctors.present.values.toList(growable: false)
-          ..sort((a, b) =>
-              a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+          ..sort(
+              (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
         return ContentDialog(
           title: const Text('Confirm Check-in'),
@@ -326,7 +298,9 @@ Future<void> showPatientCheckinLookupDialog({
           for (final appointment in allAppointments) {
             final pid = appointment.patientID;
             if (pid == null || pid.isEmpty) continue;
-            appointmentsByPatient.putIfAbsent(pid, () => <Appointment>[]).add(appointment);
+            appointmentsByPatient
+                .putIfAbsent(pid, () => <Appointment>[])
+                .add(appointment);
           }
           for (final rows in appointmentsByPatient.values) {
             rows.sort((a, b) => a.date.compareTo(b.date));
@@ -444,14 +418,15 @@ Future<void> showPatientCheckinLookupDialog({
 
           Widget patientCard(Patient patient) {
             final existing = todayAppointment(patient);
-            final allVisits = appointmentsByPatient[patient.id] ?? const <Appointment>[];
+            final allVisits =
+                appointmentsByPatient[patient.id] ?? const <Appointment>[];
             final visitsCount = allVisits.length;
             final lastVisitText = visitsCount == 0
                 ? 'No visits'
                 : DateFormat('dd MMM yyyy').format(allVisits.last.date);
             final displayName = patient.title.trim().isEmpty
                 ? 'Unnamed patient'
-              : _toTitleCase(patient.title);
+                : _toTitleCase(patient.title);
             final phone = patient.phone.trim().isEmpty ? '-' : patient.phone;
             final focusNotes = (existing?.chiefComplaints ?? const <String>[])
                 .where((row) => row.trim().isNotEmpty)
@@ -533,52 +508,55 @@ Future<void> showPatientCheckinLookupDialog({
                                 const Spacer(),
                               ],
                             ),
-                            Text(
-                              '$phone • ${patient.age}y',
-                              style: const TextStyle(
-                                color: Color(0xFF637A99),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 11,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            if (focusNotes.isNotEmpty)
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                children: focusNotes.take(4).map((note) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEAF2FF),
-                                      borderRadius: BorderRadius.circular(999),
-                                      border: Border.all(
-                                        color: const Color(0xFFCFE0F7),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      note,
-                                      style: const TextStyle(
-                                        color: Color(0xFF355279),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(growable: false),
-                              )
-                            else
+                            Row(children: [
                               Text(
-                                'Last: $lastVisitText • Visits: $visitsCount',
+                                '$phone • ${patient.age}y',
                                 style: const TextStyle(
                                   color: Color(0xFF637A99),
                                   fontWeight: FontWeight.w600,
                                   fontSize: 11,
                                 ),
                               ),
+                              const SizedBox(width: 4),
+                              if (focusNotes.isNotEmpty)
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: focusNotes.take(4).map((note) {
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEAF2FF),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                        border: Border.all(
+                                          color: const Color(0xFFCFE0F7),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        note,
+                                        style: const TextStyle(
+                                          color: Color(0xFF355279),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(growable: false),
+                                )
+                            ]),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Last: $lastVisitText • Visits: $visitsCount',
+                              style: const TextStyle(
+                                color: Color(0xFF637A99),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -612,7 +590,7 @@ Future<void> showPatientCheckinLookupDialog({
                             selectedDate,
                           );
                           if (checkinDraft == null) return;
-                          if (!_guardCheckinWriteHealth(
+                          if (!runCriticalWriteUiGuard(
                             context,
                             actionLabel: 'checking in patient',
                           )) {

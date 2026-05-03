@@ -26,13 +26,17 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   late final TextEditingController _discountController;
   bool _hasPendingAutosave = false;
   bool _discountEnabled = false;
+  bool _loadingTopTreatments = true;
   Set<String> _selectedTreatments = {};
   Set<String> _selectedConsultationTypes = {};
   Set<String> _selectedChiefComplaints = {};
+  List<String> _patientTopTreatments = const [];
+  List<String> _clinicTopTreatments = const [];
   String _visitType = 'Consultation Only';
   String? _selectedPostOpParent;
   Set<String> _selectedTeeth = {};
   Map<String, ToothState> _teethStates = {};
+  static const int _maxAppointmentsForClinicSuggestionScan = 600;
 
   static const List<String> _consultationSubTypes = [
     'General',
@@ -227,6 +231,22 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       }
       _teethStates[id]!.surfaces[ToothSurface.occlusal] = TreatmentType.filling;
     }
+
+    // Defer clinic-wide aggregation until after first paint to reduce initial UI jank.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _refreshTopTreatmentSuggestions();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _CheckinOperativeForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.appointment.id != widget.appointment.id ||
+        oldWidget.allAppointmentsForPatient.length !=
+            widget.allAppointmentsForPatient.length) {
+      _refreshTopTreatmentSuggestions();
+    }
   }
 
   bool _hasConsultationSelected() {
@@ -268,7 +288,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
 
   List<String> _topTreatmentsAcrossClinic() {
     final counts = <String, int>{};
+    var scanned = 0;
     for (final appointment in appointments.present.values) {
+      if (scanned >= _maxAppointmentsForClinicSuggestionScan) break;
+      scanned++;
       for (final treatment in appointment.selectedTreatments) {
         final key = treatment.trim();
         if (key.isEmpty) continue;
@@ -278,6 +301,17 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     final rows = counts.entries.toList(growable: false)
       ..sort((a, b) => b.value.compareTo(a.value));
     return rows.take(10).map((e) => e.key).toList(growable: false);
+  }
+
+  Future<void> _refreshTopTreatmentSuggestions() async {
+    final patientTop = _topTreatmentsForPatient();
+    final clinicTop = _topTreatmentsAcrossClinic();
+    if (!mounted) return;
+    setState(() {
+      _patientTopTreatments = patientTop;
+      _clinicTopTreatments = clinicTop;
+      _loadingTopTreatments = false;
+    });
   }
 
   // ignore: unused_element
@@ -402,8 +436,8 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       );
     }
 
-    final topTreatments = _topTreatmentsForPatient();
-    final globalTopTreatments = _topTreatmentsAcrossClinic();
+    final topTreatments = _patientTopTreatments;
+    final globalTopTreatments = _clinicTopTreatments;
     final mergedTopTreatments = <String>{
       ...topTreatments,
       ...globalTopTreatments,
@@ -723,7 +757,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         setState(() {});
                       },
                     ),
-                    if (mergedTopTreatments.isNotEmpty) ...[
+                    if (_loadingTopTreatments) ...[
+                      const SizedBox(height: 8),
+                      const ProgressRing(strokeWidth: 2.2),
+                    ] else if (mergedTopTreatments.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       Text(
                         topTreatments.isNotEmpty

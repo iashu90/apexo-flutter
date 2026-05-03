@@ -28,6 +28,7 @@ class Appointments extends Store<Appointment> {
           onSyncEnd: () {
             networkActions.isSyncing(networkActions.isSyncing() - 1);
           },
+          criticalWriteGuardEnabled: true,
         );
 
   Map<String, Map<String, List<Appointment>>> byPatient = {};
@@ -91,6 +92,7 @@ class Appointments extends Store<Appointment> {
       await loaded;
 
       local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
+      await recoverCriticalJournalWrites();
       await deleteMemoryAndLoadFromPersistence();
 
       if (launch.isDemo) {
