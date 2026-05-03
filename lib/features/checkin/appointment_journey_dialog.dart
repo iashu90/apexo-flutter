@@ -193,6 +193,11 @@ Future<void> showAppointmentJourneyDialog({
             return;
           }
 
+          final beforeAdvance = onBeforeStepAdvance;
+          if (beforeAdvance != null) {
+            await beforeAdvance(context, currentStep, currentStep + 1);
+          }
+
           Navigator.pop(dialogContext);
         }
 

@@ -11,6 +11,7 @@ import 'model.dart';
 import 'observable.dart';
 import 'save_local.dart';
 import 'save_remote.dart';
+import 'sync_write_health.dart';
 
 typedef ModellingFunc<G> = G Function(Map<String, dynamic> input);
 
@@ -65,6 +66,8 @@ class Store<G extends Model> {
     // loading from local
     loaded = deleteMemoryAndLoadFromPersistence();
   }
+
+  String get _healthStoreName => local?.name ?? remote?.storeName ?? 'unknown';
 
   static void clearAllInMemory() {
     for (final store in _instances) {
@@ -171,8 +174,16 @@ class Store<G extends Model> {
       toDefer[element] = lastProcessChanges;
     }
 
-    await local!.put(toWrite);
-    Map<String, int> lastDeferred = await local!.getDeferred();
+    Map<String, int> lastDeferred;
+    try {
+      await local!.put(toWrite);
+      lastDeferred = await local!.getDeferred();
+    } catch (e, s) {
+      syncWriteHealth.recordWriteFailure(store: _healthStoreName, error: e);
+      ActivityLogger.logException(e, s, 'Store._processChanges local write');
+      onSyncEnd?.call();
+      return;
+    }
 
     if (remote == null) {
       changes.clear();
@@ -185,6 +196,10 @@ class Store<G extends Model> {
         await remote!.put(toWrite.entries
             .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
             .toList());
+        syncWriteHealth.recordPushSuccess(
+          store: _healthStoreName,
+          records: toWrite.length,
+        );
         changes.clear();
         onSyncEnd?.call();
         // while we have the connection lets synchronize
@@ -355,6 +370,14 @@ class Store<G extends Model> {
             // Deleting a non-existing remote record is already converged.
           }
         }
+      }
+
+      final pushedCount = toRemoteWrite.length + toRemoteDelete.length;
+      if (pushedCount > 0) {
+        syncWriteHealth.recordPushSuccess(
+          store: _healthStoreName,
+          records: pushedCount,
+        );
       }
 
       // when all json related updates are done, we can handle files

@@ -15,7 +15,9 @@ import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/teeth_picker.dart';
 import 'package:apexo/common_widgets/selectable_chip_group.dart';
 import 'package:apexo/common_widgets/patient_timeline_card.dart';
+import 'package:apexo/common_widgets/schedule_appointment_dialog.dart';
 import 'package:apexo/core/theme/app_theme.dart';
+import 'package:apexo/core/sync_write_health.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_badge.dart';
 import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
@@ -130,20 +132,57 @@ Set<String> _normalizeFocusNotes(Iterable<String> values) {
   return normalized;
 }
 
+bool _guardCheckinWriteHealth(
+  BuildContext context, {
+  required String actionLabel,
+}) {
+  try {
+    syncWriteHealth.ensureHealthyForStores(
+      const ['appointments', 'patients'],
+      operation: actionLabel,
+    );
+    return true;
+  } catch (e) {
+    displayInfoBar(
+      context,
+      builder: (ctx, close) => InfoBar(
+        title: const Text('Write blocked to prevent data loss'),
+        content: Text(
+          'Please wait for storage recovery before $actionLabel.\n$e',
+        ),
+        severity: InfoBarSeverity.error,
+        action: IconButton(
+          icon: const Icon(FluentIcons.clear),
+          onPressed: close,
+        ),
+      ),
+    );
+    return false;
+  }
+}
+
 Future<void> _showNextAppointmentPromptDialog(
   BuildContext context,
   Appointment appointment,
 ) async {
-  final draft = await _showScheduleAppointmentModal(
-    context: context,
-    baseAppointment: appointment,
-    title: 'Schedule Appointment',
-    scheduleActionLabel: 'Schedule',
-  );
-  if (draft == null) return;
-
   final patient = appointment.patient;
   if (patient == null) return;
+
+  final draft = await showScheduleAppointmentDialog(
+    context: context,
+    title: 'Schedule Appointment',
+    confirmLabel: 'Schedule',
+    patientSummary:
+        '${_patientDisplayName(appointment)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+    initialDateTime: DateTime.now().add(const Duration(days: 7)),
+    initialDoctorIds: appointment.operatorsIDs,
+    initialFocusNotes: appointment.chiefComplaints,
+    suggestedFocusNotes: kCheckinFocusNotes,
+  );
+  if (draft == null) return;
+  if (!_guardCheckinWriteHealth(context, actionLabel: 'scheduling appointment')) {
+    return;
+  }
 
   final nextAppointment = Appointment.fromJson({
     'patientID': patient.id,
@@ -158,341 +197,6 @@ Future<void> _showNextAppointmentPromptDialog(
   appointments.set(nextAppointment);
 }
 
-class _ScheduledAppointmentDraft {
-  final DateTime scheduledAt;
-  final Set<String> doctorIds;
-  final Set<String> focusNotes;
-
-  const _ScheduledAppointmentDraft({
-    required this.scheduledAt,
-    required this.doctorIds,
-    required this.focusNotes,
-  });
-}
-
-Future<_ScheduledAppointmentDraft?> _showScheduleAppointmentModal({
-  required BuildContext context,
-  required Appointment baseAppointment,
-  Appointment? existingScheduled,
-  String title = 'Schedule Appointment',
-  String scheduleActionLabel = 'Save',
-}) async {
-  final patient = baseAppointment.patient;
-  if (patient == null) return null;
-
-  DateTime selectedDate =
-      existingScheduled?.date ?? DateTime.now().add(const Duration(days: 7));
-  material.TimeOfDay selectedTime = material.TimeOfDay(
-    hour: existingScheduled?.date.hour ?? 10,
-    minute: existingScheduled?.date.minute ?? 0,
-  );
-  final selectedDoctors = (existingScheduled?.operatorsIDs.isNotEmpty ?? false)
-      ? existingScheduled!.operatorsIDs.toSet()
-      : baseAppointment.operatorsIDs.toSet();
-  final selectedFocusNotes = _normalizeFocusNotes(
-    (existingScheduled?.chiefComplaints.isNotEmpty ?? false)
-        ? existingScheduled!.chiefComplaints
-        : baseAppointment.chiefComplaints,
-  );
-  final customNoteController = TextEditingController();
-
-  _ScheduledAppointmentDraft? result;
-
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (context, setStateDialog) {
-        final doctorRows = doctors.present.values.toList(growable: false)
-          ..sort(
-            (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-          );
-
-        final scheduledAt = DateTime(
-          selectedDate.year,
-          selectedDate.month,
-          selectedDate.day,
-          selectedTime.hour,
-          selectedTime.minute,
-        );
-
-        return ContentDialog(
-          title: Row(
-            children: [
-              Expanded(child: Text(title)),
-              IconButton(
-                icon: const Icon(FluentIcons.chrome_close, size: 11),
-                onPressed: () => Navigator.pop(dialogContext),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: 560,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    '${_patientDisplayName(baseAppointment)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    const Text('Date:',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 8),
-                    AppButton(
-                      label:
-                          formatClinicDate(selectedDate, pattern: 'dd MMM yyyy'),
-                      variant: AppButtonVariant.secondary,
-                      onPressed: () async {
-                        final picked = await material.showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime(2100, 12, 31),
-                          builder: apexoDatePickerBuilder(context),
-                        );
-                        if (picked == null) return;
-                        setStateDialog(() {
-                          selectedDate = DateTime(
-                            picked.year,
-                            picked.month,
-                            picked.day,
-                          );
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text('Time:',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 8),
-                    AppButton(
-                      label: selectedTime.format(context),
-                      variant: AppButtonVariant.secondary,
-                      onPressed: () async {
-                        final picked = await material.showTimePicker(
-                          context: context,
-                          initialTime: selectedTime,
-                          builder: apexoDatePickerBuilder(context),
-                        );
-                        if (picked == null) return;
-                        setStateDialog(() => selectedTime = picked);
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Scheduled: ${formatClinicDateTime(scheduledAt, pattern: 'dd MMM yyyy • h:mm a')}',
-                  style: const TextStyle(
-                    color: AppColors.brandBlueDark,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Visit Notes',
-                  style: TextStyle(
-                    color: AppColors.textBlueStrong,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: kCheckinFocusNotes.map((note) {
-                    final selected = selectedFocusNotes.contains(note);
-                    return AppButton(
-                      label: note,
-                      compact: true,
-                      variant: selected
-                          ? AppButtonVariant.primary
-                          : AppButtonVariant.secondary,
-                      onPressed: () {
-                        setStateDialog(() {
-                          if (selected) {
-                            selectedFocusNotes.remove(note);
-                          } else {
-                            selectedFocusNotes.add(note);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(growable: false),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextBox(
-                        controller: customNoteController,
-                        placeholder: 'Add custom note and press Enter',
-                        onSubmitted: (value) {
-                          final cleaned = value.trim();
-                          if (cleaned.isEmpty) return;
-                          setStateDialog(() {
-                            selectedFocusNotes.add(cleaned);
-                            customNoteController.clear();
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    AppButton(
-                      label: 'Add',
-                      variant: AppButtonVariant.secondary,
-                      compact: true,
-                      onPressed: () {
-                        final cleaned = customNoteController.text.trim();
-                        if (cleaned.isEmpty) return;
-                        setStateDialog(() {
-                          selectedFocusNotes.add(cleaned);
-                          customNoteController.clear();
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                if (selectedFocusNotes.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: selectedFocusNotes.map((note) {
-                      return GestureDetector(
-                        onTap: () {
-                          setStateDialog(() {
-                            selectedFocusNotes.remove(note);
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.slate1006,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: AppColors.violet150),
-                          ),
-                          child: Text(
-                            note,
-                            style: const TextStyle(
-                              color: AppColors.textBlueStrong,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(growable: false),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                const Text(
-                  'Consultant/Doctor',
-                  style: TextStyle(
-                    color: AppColors.textBlueStrong,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (doctorRows.isEmpty)
-                  const Text('No doctors available to assign.')
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: doctorRows.map((doctor) {
-                      final selected = selectedDoctors.contains(doctor.id);
-                      return GestureDetector(
-                        onTap: () {
-                          setStateDialog(() {
-                            if (selected) {
-                              selectedDoctors.remove(doctor.id);
-                            } else {
-                              selectedDoctors.add(doctor.id);
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppColors.brandBlue
-                                : AppColors.slate1004,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: selected
-                                  ? AppColors.brandBlue
-                                  : AppColors.violet1503,
-                            ),
-                          ),
-                          child: Text(
-                            doctor.title.trim().isEmpty
-                                ? 'Unnamed doctor'
-                                : _toTitleCase(doctor.title),
-                            style: TextStyle(
-                              color: selected
-                                  ? Colors.white
-                                  : AppColors.textBlueStrong,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(growable: false),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            AppButton(
-              label: 'Cancel',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => Navigator.pop(dialogContext),
-            ),
-            AppButton(
-              label: scheduleActionLabel,
-              onPressed: () {
-                if (scheduledAt.isBefore(DateTime.now())) {
-                  return;
-                }
-                result = _ScheduledAppointmentDraft(
-                  scheduledAt: scheduledAt,
-                  doctorIds: selectedDoctors,
-                  focusNotes: selectedFocusNotes,
-                );
-                Navigator.pop(dialogContext);
-              },
-            ),
-          ],
-        );
-      },
-    ),
-  );
-
-  customNoteController.dispose();
-
-  return result;
-}
-
 Future<void> _upsertScheduledFollowUpAppointment(
   BuildContext context,
   Appointment baseAppointment, {
@@ -500,16 +204,31 @@ Future<void> _upsertScheduledFollowUpAppointment(
 }) async {
   if ((baseAppointment.patientID ?? '').trim().isEmpty) return;
 
-  final draft = await _showScheduleAppointmentModal(
+  final patient = baseAppointment.patient;
+  if (patient == null) return;
+
+  final draft = await showScheduleAppointmentDialog(
     context: context,
-    baseAppointment: baseAppointment,
-    existingScheduled: existingScheduled,
+    patientSummary:
+        '${_patientDisplayName(baseAppointment)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+    initialDateTime:
+        existingScheduled?.date ?? DateTime.now().add(const Duration(days: 7)),
+    initialDoctorIds: (existingScheduled?.operatorsIDs.isNotEmpty ?? false)
+        ? existingScheduled!.operatorsIDs
+        : baseAppointment.operatorsIDs,
+    initialFocusNotes: (existingScheduled?.chiefComplaints.isNotEmpty ?? false)
+        ? existingScheduled!.chiefComplaints
+        : baseAppointment.chiefComplaints,
+    suggestedFocusNotes: kCheckinFocusNotes,
     title: existingScheduled == null
         ? 'Schedule Appointment'
         : 'Edit Scheduled Appointment',
-    scheduleActionLabel: existingScheduled == null ? 'Schedule' : 'Update',
+    confirmLabel: existingScheduled == null ? 'Schedule' : 'Update',
   );
   if (draft == null) return;
+  if (!_guardCheckinWriteHealth(context, actionLabel: 'saving scheduled follow-up')) {
+    return;
+  }
 
   final scheduledAt = draft.scheduledAt;
   if (scheduledAt.isBefore(DateTime.now())) {
@@ -535,8 +254,7 @@ Future<void> _upsertScheduledFollowUpAppointment(
   targetAppointment.checkinStage = 'scheduled';
   targetAppointment.isCheckedIn = false;
   targetAppointment.operatorsIDs = draft.doctorIds.toList(growable: false);
-  targetAppointment.chiefComplaints =
-      draft.focusNotes.toList(growable: false);
+  targetAppointment.chiefComplaints = draft.focusNotes.toList(growable: false);
   if (draft.focusNotes.isNotEmpty) {
     targetAppointment.preOpNotes = draft.focusNotes.join(', ');
   }
@@ -798,7 +516,7 @@ Future<void> openAppointmentJourneyDialog(
       _stepIndexFromStageValue(appointment.checkinStage);
   final startStep = isDoctorLogin
       ? (rawStartStep == 3
-          ? 2
+          ? 1
           : rawStartStep == 2
               ? 1
               : rawStartStep)
@@ -832,18 +550,7 @@ Future<void> openAppointmentJourneyDialog(
         );
       }
 
-      final previousVisits = allAppointmentsForPatient
-          .where((row) => row.id != appointment.id)
-          .toList(growable: false)
-        ..sort((a, b) => b.date.compareTo(a.date));
-      final Appointment? lastVisit =
-          previousVisits.isEmpty ? null : previousVisits.first;
-
-      return _CheckinCompletedStageScreen(
-        appointment: appointment,
-        lastVisit: lastVisit,
-        boxed: true,
-      );
+      return const SizedBox.shrink();
     }
 
     if (currentStep == 0) {
@@ -890,7 +597,6 @@ Future<void> openAppointmentJourneyDialog(
             'Checked In',
             'Patient History',
             'Treatment',
-            'Completed',
           ]
         : const [
             'Checked In',
@@ -916,7 +622,7 @@ Future<void> openAppointmentJourneyDialog(
         patientHistoryDraft.commitToPatient(appointment.patient);
       }
       if (isDoctorLogin) {
-        if (nextStep == 2) {
+        if (nextStep >= 2) {
           appointment.checkinStage = 'completed';
           appointment.completedTime = DateTime.now();
           appointment.isDone = true;
@@ -1430,7 +1136,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
     return DateTime(date.year, date.month, date.day, now.hour, now.minute);
   }
 
-  Appointment _checkInPatient(Patient patient) {
+  Appointment? _checkInPatient(Patient patient) {
+    if (!_guardCheckinWriteHealth(context, actionLabel: 'checking in patient')) {
+      return null;
+    }
     final appointment = Appointment.fromJson({
       'id': uuid(),
       'patientID': patient.id,
@@ -1471,6 +1180,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
     final created = await _openAddPatientPopup('');
     if (!mounted || created == null) return;
     final appointment = _checkInPatient(created);
+    if (appointment == null) return;
     if (!mounted) return;
     await _openAppointmentPopup(appointment);
   }
@@ -1493,146 +1203,238 @@ class _CheckinScreenState extends State<CheckinScreen> {
         }
 
         return StreamBuilder(
-      stream: appointments.observableMap.stream,
-      builder: (context, _) {
-        return StreamBuilder(
-          stream: patients.observableMap.stream,
-          builder: (context, __) {
-            final todaysAppointments = appointments.forDate(_selectedDate)
-              ..sort((a, b) => a.date.compareTo(b.date));
+          stream: appointments.observableMap.stream,
+          builder: (context, _) {
+            return StreamBuilder(
+              stream: patients.observableMap.stream,
+              builder: (context, __) {
+                final todaysAppointments = appointments.forDate(_selectedDate)
+                  ..sort((a, b) => a.date.compareTo(b.date));
 
-            final doctorOptions = <String>{};
-            for (final appt in todaysAppointments) {
-              if (appt.operatorsIDs.isEmpty) {
-                doctorOptions.add('__unassigned__');
-              } else {
-                doctorOptions.addAll(appt.operatorsIDs);
-              }
-            }
+                final doctorOptions = <String>{};
+                for (final appt in todaysAppointments) {
+                  if (appt.operatorsIDs.isEmpty) {
+                    doctorOptions.add('__unassigned__');
+                  } else {
+                    doctorOptions.addAll(appt.operatorsIDs);
+                  }
+                }
 
-            final filtered = todaysAppointments.where((a) {
-              if (_selectedDoctor == '__all__') return true;
-              if (_selectedDoctor == '__unassigned__') {
-                return a.operatorsIDs.isEmpty;
-              }
-              return a.operatorsIDs.contains(_selectedDoctor);
-            }).toList(growable: false);
+                final filtered = todaysAppointments.where((a) {
+                  if (_selectedDoctor == '__all__') return true;
+                  if (_selectedDoctor == '__unassigned__') {
+                    return a.operatorsIDs.isEmpty;
+                  }
+                  return a.operatorsIDs.contains(_selectedDoctor);
+                }).toList(growable: false);
 
-            final isDoctorLogin = permissions.currentRole == UserRole.doctor;
+                final isDoctorLogin =
+                    permissions.currentRole == UserRole.doctor;
 
-            final patientVisitCounts = <String, int>{};
-            for (final row in filtered) {
-              final patientId = row.patientID;
-              if (patientId == null || patientId.trim().isEmpty) continue;
-              patientVisitCounts[patientId] =
-                  (patientVisitCounts[patientId] ?? 0) + 1;
-            }
-            final duplicatePatientIds = patientVisitCounts.entries
-                .where((entry) => entry.value > 1)
-                .map((entry) => entry.key)
-                .toSet();
+                final patientVisitCounts = <String, int>{};
+                for (final row in filtered) {
+                  final patientId = row.patientID;
+                  if (patientId == null || patientId.trim().isEmpty) continue;
+                  patientVisitCounts[patientId] =
+                      (patientVisitCounts[patientId] ?? 0) + 1;
+                }
+                final duplicatePatientIds = patientVisitCounts.entries
+                    .where((entry) => entry.value > 1)
+                    .map((entry) => entry.key)
+                    .toSet();
 
-            final waiting = filtered
-                .where((a) => a.checkinStage == 'waiting')
-                .toList(growable: true)
-              ..sort((a, b) => a.date.compareTo(b.date));
+                final waiting = filtered
+                    .where((a) => a.checkinStage == 'waiting')
+                    .toList(growable: true)
+                  ..sort((a, b) => a.date.compareTo(b.date));
 
-            final scheduled = filtered
-                .where((a) =>
-                    a.checkinStage == 'pending' ||
-                    a.checkinStage == 'scheduled')
-                .toList(growable: true)
-              ..sort((a, b) => a.date.compareTo(b.date));
-            final cancelled = filtered
-                .where((a) => a.checkinStage == 'cancelled')
-                .toList(growable: true)
-              ..sort((a, b) => b.date.compareTo(a.date));
-            final withDoctor = filtered
-                .where((a) =>
-                    a.checkinStage == 'with_doctor' ||
-                    a.checkinStage == 'treatment')
-                .toList(growable: true)
-              ..sort((a, b) => a.date.compareTo(b.date));
-            final billingList = filtered
-                .where(
-                  (a) =>
-                      (a.checkinStage == 'checkout' ||
-                          a.checkinStage == 'billing') &&
-                      !a.isDone &&
-                      a.checkinStage != 'completed',
-                )
-                .toList(growable: true)
-              ..sort((a, b) => a.date.compareTo(b.date));
+                final scheduled = filtered
+                    .where((a) =>
+                        a.checkinStage == 'pending' ||
+                        a.checkinStage == 'scheduled')
+                    .toList(growable: true)
+                  ..sort((a, b) => a.date.compareTo(b.date));
+                final cancelled = filtered
+                    .where((a) => a.checkinStage == 'cancelled')
+                    .toList(growable: true)
+                  ..sort((a, b) => b.date.compareTo(a.date));
+                final withDoctor = filtered
+                    .where((a) =>
+                        a.checkinStage == 'with_doctor' ||
+                        a.checkinStage == 'treatment')
+                    .toList(growable: true)
+                  ..sort((a, b) => a.date.compareTo(b.date));
+                final billingList = filtered
+                    .where(
+                      (a) =>
+                          (a.checkinStage == 'checkout' ||
+                              a.checkinStage == 'billing') &&
+                          !a.isDone &&
+                          a.checkinStage != 'completed',
+                    )
+                    .toList(growable: true)
+                  ..sort((a, b) => a.date.compareTo(b.date));
 
-            final completedList = filtered
-                .where(
-                  (a) => a.checkinStage == 'completed' || a.isDone,
-                )
-                .toList(growable: true)
-              ..sort((a, b) {
-                final aTs =
-                    a.completedTime?.millisecondsSinceEpoch ??
+                final completedList = filtered
+                    .where(
+                      (a) => a.checkinStage == 'completed' || a.isDone,
+                    )
+                    .toList(growable: true)
+                  ..sort((a, b) {
+                    final aTs = a.completedTime?.millisecondsSinceEpoch ??
                         a.checkedInAt?.millisecondsSinceEpoch ??
                         a.date.millisecondsSinceEpoch;
-                final bTs =
-                    b.completedTime?.millisecondsSinceEpoch ??
+                    final bTs = b.completedTime?.millisecondsSinceEpoch ??
                         b.checkedInAt?.millisecondsSinceEpoch ??
                         b.date.millisecondsSinceEpoch;
-                return bTs.compareTo(aTs);
-              });
+                    return bTs.compareTo(aTs);
+                  });
 
-            final now = DateTime.now();
-            final isToday = _selectedDate.year == now.year &&
-                _selectedDate.month == now.month &&
-                _selectedDate.day == now.day;
-            final screenWidth = MediaQuery.of(context).size.width;
-            final isMobile = screenWidth < 760;
+                final now = DateTime.now();
+                final isToday = _selectedDate.year == now.year &&
+                    _selectedDate.month == now.month &&
+                    _selectedDate.day == now.day;
+                final screenWidth = MediaQuery.of(context).size.width;
+                final isMobile = screenWidth < 760;
 
-            return Container(
-              color: AppTheme.light.scaffoldBackgroundColor,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (isMobile)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            crossAxisAlignment: WrapCrossAlignment.center,
+                return Container(
+                  color: AppTheme.light.scaffoldBackgroundColor,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (isMobile)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                'Check-in (${todaysAppointments.length})',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.blue750,
-                                ),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Text(
+                                    'Check-in (${todaysAppointments.length})',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.blue750,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: AppButton(
+                                      variant: AppButtonVariant.secondary,
+                                      onPressed: _openNewPatientAndCheckin,
+                                      label: 'New Patient',
+                                      leading: const Icon(
+                                          FluentIcons.add_friend,
+                                          size: 12),
+                                      expanded: true,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: PatientCheckinSearchButton(
+                                      selectedDate: _selectedDate,
+                                      title: 'Search Patient',
+                                      compact: true,
+                                      showInput: false,
+                                      onAddPatient: _openAddPatientPopup,
+                                      onOpenExisting: (existing) async {
+                                        if (!mounted) return;
+                                        _selectAndOpenAppointment(existing);
+                                      },
+                                      onCheckInPatient: (patient) async {
+                                        if (!mounted) return;
+                                        _checkInPatient(patient);
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
                                 child: AppButton(
+                                  onPressed: _openTreatmentPackageManager,
                                   variant: AppButtonVariant.secondary,
-                                  onPressed: _openNewPatientAndCheckin,
-                                  label: 'New Patient',
-                                  leading: const Icon(FluentIcons.add_friend,
-                                      size: 12),
+                                  label: 'Treatment Packages',
+                                  leading:
+                                      const Icon(FluentIcons.medical, size: 12),
                                   expanded: true,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: AppButton(
+                                  onPressed: () {
+                                    final target =
+                                        _selectedAppointment ?? filtered.first;
+                                    _openNextCheckinStepper(target);
+                                  },
+                                  label: 'New Checkin Flow',
+                                  expanded: true,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AppScreenTitle(
+                                    title:
+                                        'Check-in (${todaysAppointments.length})',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 12),
                               Expanded(
+                                child: Center(
+                                  child: DateNavigatorBar(
+                                    selectedDate: _selectedDate,
+                                    onPrevious: () => _changeDate(-1),
+                                    onNext: () => _changeDate(1),
+                                    onPick: () => _pickDate(context),
+                                    onToday: () => setState(() {
+                                      _selectedDate = _dateOnly(DateTime.now());
+                                      checkinPersistedDate = _selectedDate;
+                                    }),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              AppButton(
+                                onPressed: _openNewPatientAndCheckin,
+                                variant: AppButtonVariant.secondary,
+                                label: 'New Patient',
+                                leading: const Icon(FluentIcons.add_friend,
+                                    size: 12),
+                              ),
+                              const SizedBox(width: 8),
+                              AppButton(
+                                onPressed: _openTreatmentPackageManager,
+                                variant: AppButtonVariant.secondary,
+                                label: 'Treatment Packages',
+                                leading:
+                                    const Icon(FluentIcons.medical, size: 12),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 180,
                                 child: PatientCheckinSearchButton(
                                   selectedDate: _selectedDate,
                                   title: 'Search Patient',
-                                  compact: true,
+                                  compact: false,
                                   showInput: false,
                                   onAddPatient: _openAddPatientPopup,
                                   onOpenExisting: (existing) async {
@@ -1647,257 +1449,142 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: AppButton(
-                              onPressed: _openTreatmentPackageManager,
-                              variant: AppButtonVariant.secondary,
-                              label: 'Treatment Packages',
-                              leading: const Icon(FluentIcons.medical, size: 12),
-                              expanded: true,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: AppButton(
-                              onPressed: () {
-                                final target =
-                                    _selectedAppointment ?? filtered.first;
-                                _openNextCheckinStepper(target);
-                              },
-                              label: 'New Checkin Flow',
-                              expanded: true,
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              AppScreenTitle(
-                                title:
-                                    'Check-in (${todaysAppointments.length})',
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Center(
-                              child: DateNavigatorBar(
-                                selectedDate: _selectedDate,
-                                onPrevious: () => _changeDate(-1),
-                                onNext: () => _changeDate(1),
-                                onPick: () => _pickDate(context),
-                                onToday: () => setState(() {
-                                  _selectedDate = _dateOnly(DateTime.now());
-                                  checkinPersistedDate = _selectedDate;
-                                }),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          AppButton(
-                            onPressed: _openNewPatientAndCheckin,
-                            variant: AppButtonVariant.secondary,
-                            label: 'New Patient',
-                            leading:
-                                const Icon(FluentIcons.add_friend, size: 12),
-                          ),
-                          const SizedBox(width: 8),
-                          AppButton(
-                            onPressed: _openTreatmentPackageManager,
-                            variant: AppButtonVariant.secondary,
-                            label: 'Treatment Packages',
-                            leading: const Icon(FluentIcons.medical, size: 12),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            width: 180,
-                            child: PatientCheckinSearchButton(
-                              selectedDate: _selectedDate,
-                              title: 'Search Patient',
-                              compact: false,
-                              showInput: false,
-                              onAddPatient: _openAddPatientPopup,
-                              onOpenExisting: (existing) async {
-                                if (!mounted) return;
-                                _selectAndOpenAppointment(existing);
-                              },
-                              onCheckInPatient: (patient) async {
-                                if (!mounted) return;
-                                _checkInPatient(patient);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _DoctorFilterChip(
-                          label: 'All Doctors',
-                          selected: _selectedDoctor == '__all__',
-                          onTap: () =>
-                              setState(() => _selectedDoctor = '__all__'),
-                        ),
-                        _DoctorFilterChip(
-                          label: 'Unassigned',
-                          selected: _selectedDoctor == '__unassigned__',
-                          onTap: () => setState(
-                              () => _selectedDoctor = '__unassigned__'),
-                        ),
-                        ...doctorOptions
-                            .where((id) => id != '__unassigned__')
-                            .map((id) {
-                          final isSelected = _selectedDoctor == id;
-                          return _DoctorFilterChip(
-                            label: doctors.get(id)?.title ?? 'Unknown',
-                            selected: isSelected,
-                            onTap: () => setState(
-                              () =>
-                                  _selectedDoctor = isSelected ? '__all__' : id,
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final stacked = constraints.maxWidth <
-                            (isDoctorLogin ? 1120 : 1400);
-
-                        final waitingColumn = _WorkflowColumn(
-                          title: 'Waiting (${waiting.length})',
-                          stage: 'waiting',
-                          color: AppColors.amber350,
-                          rows: waiting,
-                          duplicatePatientIds: duplicatePatientIds,
-                          showHistoryAction: false,
-                          onSelect: _selectAndOpenAppointment,
-                          selectedAppointmentId: _selectedAppointment?.id,
-                          expanded: _expandedStages['waiting'] ?? true,
-                          onToggleExpanded: () => setState(() {
-                            _expandedStages['waiting'] =
-                                !(_expandedStages['waiting'] ?? true);
-                          }),
-                        );
-
-                        final scheduledColumn = _WorkflowColumn(
-                          title: 'Scheduled (${scheduled.length})',
-                          stage: 'scheduled',
-                          color: AppColors.scheduledChipFg,
-                          rows: scheduled,
-                          duplicatePatientIds: duplicatePatientIds,
-                          showHistoryAction: false,
-                          onSelect: _selectAndOpenAppointment,
-                          selectedAppointmentId: _selectedAppointment?.id,
-                          expanded: _expandedStages['scheduled'] ?? true,
-                          onToggleExpanded: () => setState(() {
-                            _expandedStages['scheduled'] =
-                                !(_expandedStages['scheduled'] ?? true);
-                          }),
-                        );
-
-                        final cancelledColumn = _WorkflowColumn(
-                          title: 'Cancelled (${cancelled.length})',
-                          stage: 'cancelled',
-                          color: AppColors.rose6003,
-                          rows: cancelled,
-                          duplicatePatientIds: duplicatePatientIds,
-                          showHistoryAction: false,
-                          onSelect: _selectAndOpenAppointment,
-                          selectedAppointmentId: _selectedAppointment?.id,
-                          expanded: _expandedStages['cancelled'] ?? true,
-                          onToggleExpanded: () => setState(() {
-                            _expandedStages['cancelled'] =
-                                !(_expandedStages['cancelled'] ?? true);
-                          }),
-                        );
-
-                        final withDoctorColumn = _WorkflowColumn(
-                          title: 'Treatment (${withDoctor.length})',
-                          stage: 'with_doctor',
-                          color: AppColors.brandBlue,
-                          rows: withDoctor,
-                          duplicatePatientIds: duplicatePatientIds,
-                          showHistoryAction: false,
-                          onSelect: _selectAndOpenAppointment,
-                          selectedAppointmentId: _selectedAppointment?.id,
-                          expanded: _expandedStages['with_doctor'] ?? true,
-                          onToggleExpanded: () => setState(() {
-                            _expandedStages['with_doctor'] =
-                                !(_expandedStages['with_doctor'] ?? true);
-                          }),
-                        );
-
-                        final billingColumn = _WorkflowColumn(
-                          title: 'Billing (${billingList.length})',
-                          stage: 'billing',
-                          color: AppColors.blue6008,
-                          rows: billingList,
-                          duplicatePatientIds: duplicatePatientIds,
-                          onSelect: _selectAndOpenAppointment,
-                          selectedAppointmentId: _selectedAppointment?.id,
-                          interactionsEnabled: !isDoctorLogin,
-                          expanded: _expandedStages['billing'] ?? true,
-                          onToggleExpanded: () => setState(() {
-                            _expandedStages['billing'] =
-                                !(_expandedStages['billing'] ?? true);
-                          }),
-                        );
-
-                        final completedColumn = _WorkflowColumn(
-                          title: 'Completed (${completedList.length})',
-                          stage: 'completed',
-                          color: AppColors.green500,
-                          rows: completedList,
-                          duplicatePatientIds: duplicatePatientIds,
-                          onSelect: _selectAndOpenAppointment,
-                          selectedAppointmentId: _selectedAppointment?.id,
-                          interactionsEnabled: !isDoctorLogin,
-                          expanded: _expandedStages['completed'] ?? true,
-                          onToggleExpanded: () => setState(() {
-                            _expandedStages['completed'] =
-                                !(_expandedStages['completed'] ?? true);
-                          }),
-                        );
-
-                        if (stacked) {
-                          return Column(
-                            children: [
-                              waitingColumn,
-                              if (!isDoctorLogin) ...[
-                                const SizedBox(height: 10),
-                                scheduledColumn,
-                                if (cancelled.isNotEmpty) ...[
-                                  const SizedBox(height: 10),
-                                  cancelledColumn,
-                                ],
-                              ],
-                              const SizedBox(height: 10),
-                              withDoctorColumn,
-                              const SizedBox(height: 10),
-                              billingColumn,
-                              const SizedBox(height: 10),
-                              completedColumn,
-                            ],
-                          );
-                        }
-
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            Expanded(
-                              child: Column(
+                            _DoctorFilterChip(
+                              label: 'All Doctors',
+                              selected: _selectedDoctor == '__all__',
+                              onTap: () =>
+                                  setState(() => _selectedDoctor = '__all__'),
+                            ),
+                            _DoctorFilterChip(
+                              label: 'Unassigned',
+                              selected: _selectedDoctor == '__unassigned__',
+                              onTap: () => setState(
+                                  () => _selectedDoctor = '__unassigned__'),
+                            ),
+                            ...doctorOptions
+                                .where((id) => id != '__unassigned__')
+                                .map((id) {
+                              final isSelected = _selectedDoctor == id;
+                              return _DoctorFilterChip(
+                                label: doctors.get(id)?.title ?? 'Unknown',
+                                selected: isSelected,
+                                onTap: () => setState(
+                                  () => _selectedDoctor =
+                                      isSelected ? '__all__' : id,
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final stacked = constraints.maxWidth <
+                                (isDoctorLogin ? 1120 : 1400);
+
+                            final waitingColumn = _WorkflowColumn(
+                              title: 'Waiting (${waiting.length})',
+                              stage: 'waiting',
+                              color: AppColors.amber350,
+                              rows: waiting,
+                              duplicatePatientIds: duplicatePatientIds,
+                              showHistoryAction: false,
+                              onSelect: _selectAndOpenAppointment,
+                              selectedAppointmentId: _selectedAppointment?.id,
+                              expanded: _expandedStages['waiting'] ?? true,
+                              onToggleExpanded: () => setState(() {
+                                _expandedStages['waiting'] =
+                                    !(_expandedStages['waiting'] ?? true);
+                              }),
+                            );
+
+                            final scheduledColumn = _WorkflowColumn(
+                              title: 'Scheduled (${scheduled.length})',
+                              stage: 'scheduled',
+                              color: AppColors.scheduledChipFg,
+                              rows: scheduled,
+                              duplicatePatientIds: duplicatePatientIds,
+                              showHistoryAction: false,
+                              onSelect: _selectAndOpenAppointment,
+                              selectedAppointmentId: _selectedAppointment?.id,
+                              expanded: _expandedStages['scheduled'] ?? true,
+                              onToggleExpanded: () => setState(() {
+                                _expandedStages['scheduled'] =
+                                    !(_expandedStages['scheduled'] ?? true);
+                              }),
+                            );
+
+                            final cancelledColumn = _WorkflowColumn(
+                              title: 'Cancelled (${cancelled.length})',
+                              stage: 'cancelled',
+                              color: AppColors.rose6003,
+                              rows: cancelled,
+                              duplicatePatientIds: duplicatePatientIds,
+                              showHistoryAction: false,
+                              onSelect: _selectAndOpenAppointment,
+                              selectedAppointmentId: _selectedAppointment?.id,
+                              expanded: _expandedStages['cancelled'] ?? true,
+                              onToggleExpanded: () => setState(() {
+                                _expandedStages['cancelled'] =
+                                    !(_expandedStages['cancelled'] ?? true);
+                              }),
+                            );
+
+                            final withDoctorColumn = _WorkflowColumn(
+                              title: 'Treatment (${withDoctor.length})',
+                              stage: 'with_doctor',
+                              color: AppColors.brandBlue,
+                              rows: withDoctor,
+                              duplicatePatientIds: duplicatePatientIds,
+                              showHistoryAction: false,
+                              onSelect: _selectAndOpenAppointment,
+                              selectedAppointmentId: _selectedAppointment?.id,
+                              expanded: _expandedStages['with_doctor'] ?? true,
+                              onToggleExpanded: () => setState(() {
+                                _expandedStages['with_doctor'] =
+                                    !(_expandedStages['with_doctor'] ?? true);
+                              }),
+                            );
+
+                            final billingColumn = _WorkflowColumn(
+                              title: 'Billing (${billingList.length})',
+                              stage: 'billing',
+                              color: AppColors.blue6008,
+                              rows: billingList,
+                              duplicatePatientIds: duplicatePatientIds,
+                              onSelect: _selectAndOpenAppointment,
+                              selectedAppointmentId: _selectedAppointment?.id,
+                              interactionsEnabled: !isDoctorLogin,
+                              expanded: _expandedStages['billing'] ?? true,
+                              onToggleExpanded: () => setState(() {
+                                _expandedStages['billing'] =
+                                    !(_expandedStages['billing'] ?? true);
+                              }),
+                            );
+
+                            final completedColumn = _WorkflowColumn(
+                              title: 'Completed (${completedList.length})',
+                              stage: 'completed',
+                              color: AppColors.green500,
+                              rows: completedList,
+                              duplicatePatientIds: duplicatePatientIds,
+                              onSelect: _selectAndOpenAppointment,
+                              selectedAppointmentId: _selectedAppointment?.id,
+                              interactionsEnabled: !isDoctorLogin,
+                              expanded: _expandedStages['completed'] ?? true,
+                              onToggleExpanded: () => setState(() {
+                                _expandedStages['completed'] =
+                                    !(_expandedStages['completed'] ?? true);
+                              }),
+                            );
+
+                            if (stacked) {
+                              return Column(
                                 children: [
                                   waitingColumn,
                                   if (!isDoctorLogin) ...[
@@ -1908,33 +1595,58 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                       cancelledColumn,
                                     ],
                                   ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(child: withDoctorColumn),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                children: [
+                                  const SizedBox(height: 10),
+                                  withDoctorColumn,
+                                  const SizedBox(height: 10),
                                   billingColumn,
                                   const SizedBox(height: 10),
                                   completedColumn,
                                 ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                              );
+                            }
+
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    children: [
+                                      waitingColumn,
+                                      if (!isDoctorLogin) ...[
+                                        const SizedBox(height: 10),
+                                        scheduledColumn,
+                                        if (cancelled.isNotEmpty) ...[
+                                          const SizedBox(height: 10),
+                                          cancelledColumn,
+                                        ],
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(child: withDoctorColumn),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    children: [
+                                      billingColumn,
+                                      const SizedBox(height: 10),
+                                      completedColumn,
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
         );
-      },
-    );
       },
     );
   }
@@ -2925,9 +2637,9 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
           orElse: () => _selectedPrescriptionChargeItem,
         );
     _selectedPrescriptionChargeItem =
-      (presetItem == 'None' && a.prescriptionPaid > 0)
-        ? 'Medicines'
-        : presetItem;
+        (presetItem == 'None' && a.prescriptionPaid > 0)
+            ? 'Medicines'
+            : presetItem;
     _prescriptionChargeController.text =
         a.prescriptionPaid <= 0 ? '' : a.prescriptionPaid.toStringAsFixed(0);
   }
@@ -3096,14 +2808,28 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               : upcomingAppointments.first;
         })();
 
-    final draft = await _showScheduleAppointmentModal(
+    final patient = a.patient;
+    if (patient == null) {
+      return;
+    }
+
+    final draft = await showScheduleAppointmentDialog(
       context: context,
-      baseAppointment: a,
-      existingScheduled: resolvedExisting,
+      patientSummary:
+          '${_patientDisplayName(a)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+      initialDateTime:
+          resolvedExisting?.date ?? DateTime.now().add(const Duration(days: 7)),
+      initialDoctorIds: (resolvedExisting?.operatorsIDs.isNotEmpty ?? false)
+          ? resolvedExisting!.operatorsIDs
+          : a.operatorsIDs,
+      initialFocusNotes: (resolvedExisting?.chiefComplaints.isNotEmpty ?? false)
+          ? resolvedExisting!.chiefComplaints
+          : a.chiefComplaints,
+      suggestedFocusNotes: kCheckinFocusNotes,
       title: resolvedExisting == null
           ? 'Schedule Appointment'
           : 'Edit Scheduled Appointment',
-      scheduleActionLabel: resolvedExisting == null ? 'Schedule' : 'Update',
+      confirmLabel: resolvedExisting == null ? 'Schedule' : 'Update',
     );
     if (draft == null) return;
     if (!mounted) return;
@@ -3132,6 +2858,10 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     targetAppointment.checkinStage = 'scheduled';
     targetAppointment.isCheckedIn = false;
     targetAppointment.operatorsIDs = draft.doctorIds.toList(growable: false);
+    targetAppointment.chiefComplaints = draft.focusNotes.toList(growable: false);
+    if (draft.focusNotes.isNotEmpty) {
+      targetAppointment.preOpNotes = draft.focusNotes.join(', ');
+    }
     if (targetAppointment.preOpNotes.trim().isEmpty) {
       targetAppointment.preOpNotes = 'Follow-up visit';
     }
@@ -3438,7 +3168,7 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     final patientName =
         a.title.trim().isEmpty ? 'Patient' : _toTitleCase(a.title);
     final treatmentPaid =
-      double.tryParse(widget.paidController.text.trim()) ?? a.paid;
+        double.tryParse(widget.paidController.text.trim()) ?? a.paid;
     final paid = treatmentPaid + a.prescriptionPaid;
     final treatmentCost = a.price;
     final prescriptionCost = a.prescriptionPrice;
@@ -3524,9 +3254,9 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
         ? (a.price - (a.price * a.discount / 100)).clamp(0, double.infinity)
         : (a.price - a.discount).clamp(0, double.infinity);
     final netTotal =
-      (discountedTotal + a.prescriptionPrice).clamp(0, double.infinity);
+        (discountedTotal + a.prescriptionPrice).clamp(0, double.infinity);
     final outstanding =
-      (netTotal - (a.paid + a.prescriptionPaid)).clamp(0, double.infinity);
+        (netTotal - (a.paid + a.prescriptionPaid)).clamp(0, double.infinity);
     final status = outstanding <= 0 ? 'PAID' : 'DUE';
     final totalAfter =
         (double.tryParse(widget.paidController.text.trim()) ?? a.paid)

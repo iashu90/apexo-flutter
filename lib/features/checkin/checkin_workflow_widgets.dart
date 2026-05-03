@@ -620,9 +620,9 @@ class _WorkflowRow extends StatelessWidget {
     final focusNotes = <String>{
       ...appointment.chiefComplaints.where((n) => n.trim().isNotEmpty),
       ...appointment.preOpNotes
-        .split(',')
-        .map((n) => n.trim())
-        .where((n) => n.isNotEmpty),
+          .split(',')
+          .map((n) => n.trim())
+          .where((n) => n.isNotEmpty),
     }.toList(growable: false);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -765,44 +765,46 @@ class _WorkflowRow extends StatelessWidget {
                                   : TextDecoration.none,
                             ),
                           ),
+                          const SizedBox(width: 16),
+                          if (focusNotes.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 0),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: focusNotes
+                                    .take(5)
+                                    .map(
+                                      (note) => Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.slate1006,
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                          border: Border.all(
+                                            color: AppColors.violet150,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          note,
+                                          style: const TextStyle(
+                                            color: AppColors.textBlueStrong,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(growable: false),
+                              ),
+                            ),
                         ],
                       ),
                     ),
                   ),
-                  if (focusNotes.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: focusNotes
-                            .take(5)
-                            .map(
-                              (note) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.slate1006,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: AppColors.violet150,
-                                  ),
-                                ),
-                                child: Text(
-                                  note,
-                                  style: const TextStyle(
-                                    color: AppColors.textBlueStrong,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ),
                 ],
               ),
             ),

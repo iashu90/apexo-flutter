@@ -1,13 +1,14 @@
 import 'package:apexo/common_widgets/patient_history_modal.dart';
+import 'package:apexo/core/sync_write_health.dart';
+import 'package:apexo/common_widgets/schedule_appointment_dialog.dart';
+import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
-import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
 typedef PatientLookupAddPatient = Future<Patient?> Function(String query);
@@ -27,276 +28,56 @@ const List<String> kPatientLookupFocusNotes = [
   'RCT',
 ];
 
-class _VisitActionDraft {
-  final DateTime scheduledAt;
-  final Set<String> doctorIds;
-  final Set<String> focusNotes;
-
-  const _VisitActionDraft({
-    required this.scheduledAt,
-    required this.doctorIds,
-    required this.focusNotes,
-  });
+bool _guardCheckinWriteHealth(
+  BuildContext context, {
+  required String actionLabel,
+}) {
+  try {
+    syncWriteHealth.ensureHealthyForStores(
+      const ['appointments', 'patients'],
+      operation: actionLabel,
+    );
+    return true;
+  } catch (e) {
+    displayInfoBar(
+      context,
+      builder: (ctx, close) => InfoBar(
+        title: const Text('Write blocked to prevent data loss'),
+        content: Text(
+          'Please wait for storage recovery before $actionLabel.\n$e',
+        ),
+        severity: InfoBarSeverity.error,
+        action: IconButton(
+          icon: const Icon(FluentIcons.clear),
+          onPressed: close,
+        ),
+      ),
+    );
+    return false;
+  }
 }
 
-Future<_VisitActionDraft?> _pickScheduleDateTime(
-  BuildContext context,
-  DateTime selectedDate,
-  Patient? patient,
-) async {
-  final now = DateTime.now();
-  DateTime pickedDate = selectedDate.isBefore(now)
-      ? DateTime(now.year, now.month, now.day)
-      : DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-  material.TimeOfDay pickedTime = const material.TimeOfDay(
-    hour: 10,
-    minute: 0,
-  );
-
-  final selectedDoctors = <String>{};
-  final selectedFocusNotes = <String>{};
-  final customNoteController = TextEditingController();
-  _VisitActionDraft? result;
-
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (context, setStateDialog) {
-        final updatedDateTime = DateTime(
-          pickedDate.year,
-          pickedDate.month,
-          pickedDate.day,
-          pickedTime.hour,
-          pickedTime.minute,
-        );
-
-        return ContentDialog(
-          title: const Text('Schedule Appointment'),
-          content: SizedBox(
-            width: 460,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (patient != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Text(
-                      '${patient.title.trim().isEmpty ? 'Unnamed patient' : _toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
-                      style: const TextStyle(
-                        color: Color(0xFF355279),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                Row(
-                  children: [
-                    const Text(
-                      'Date:',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(width: 8),
-                    AppButton(
-                      label: DateFormat('dd MMM yyyy').format(pickedDate),
-                      variant: AppButtonVariant.secondary,
-                      onPressed: () async {
-                        final next = await material.showDatePicker(
-                          context: context,
-                          initialDate: pickedDate,
-                          firstDate: DateTime(now.year - 1, 1, 1),
-                          lastDate: DateTime(now.year + 5, 12, 31),
-                          helpText: 'Select appointment date',
-                          builder: apexoDatePickerBuilder(context),
-                        );
-                        if (next == null) return;
-                        setStateDialog(() {
-                          pickedDate =
-                              DateTime(next.year, next.month, next.day);
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text(
-                      'Time:',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(width: 8),
-                    AppButton(
-                      label: pickedTime.format(context),
-                      variant: AppButtonVariant.secondary,
-                      onPressed: () async {
-                        final next = await material.showTimePicker(
-                          context: context,
-                          initialTime: pickedTime,
-                          helpText: 'Select appointment time',
-                          builder: apexoDatePickerBuilder(context),
-                        );
-                        if (next == null) return;
-                        setStateDialog(() => pickedTime = next);
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Scheduled: ${DateFormat('dd MMM yyyy, h:mm a').format(updatedDateTime)}',
-                  style: const TextStyle(
-                    color: Color(0xFF1459AD),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Visit Notes',
-                  style: TextStyle(
-                    color: Color(0xFF355279),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: kPatientLookupFocusNotes.map((note) {
-                    final selected = selectedFocusNotes.contains(note);
-                    return AppButton(
-                      label: note,
-                      compact: true,
-                      variant: selected
-                          ? AppButtonVariant.primary
-                          : AppButtonVariant.secondary,
-                      onPressed: () {
-                        setStateDialog(() {
-                          if (selected) {
-                            selectedFocusNotes.remove(note);
-                          } else {
-                            selectedFocusNotes.add(note);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(growable: false),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextBox(
-                        controller: customNoteController,
-                        placeholder: 'Add custom note and press Enter',
-                        onSubmitted: (value) {
-                          final cleaned = value.trim();
-                          if (cleaned.isEmpty) return;
-                          setStateDialog(() {
-                            selectedFocusNotes.add(cleaned);
-                            customNoteController.clear();
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    AppButton(
-                      label: 'Add',
-                      compact: true,
-                      variant: AppButtonVariant.secondary,
-                      onPressed: () {
-                        final cleaned = customNoteController.text.trim();
-                        if (cleaned.isEmpty) return;
-                        setStateDialog(() {
-                          selectedFocusNotes.add(cleaned);
-                          customNoteController.clear();
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Consultant/Doctor',
-                  style: TextStyle(
-                    color: Color(0xFF355279),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Builder(
-                  builder: (context) {
-                    final doctorRows = doctors.present.values.toList(growable: false)
-                      ..sort((a, b) =>
-                          a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-                    if (doctorRows.isEmpty) {
-                      return const Text('No doctors available to assign.');
-                    }
-                    return Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: doctorRows.map((doctor) {
-                        final selected = selectedDoctors.contains(doctor.id);
-                        return AppButton(
-                          label: doctor.title.trim().isEmpty
-                              ? 'Unnamed doctor'
-                              : _toTitleCase(doctor.title),
-                          compact: true,
-                          variant: selected
-                              ? AppButtonVariant.primary
-                              : AppButtonVariant.secondary,
-                          onPressed: () {
-                            setStateDialog(() {
-                              if (selected) {
-                                selectedDoctors.remove(doctor.id);
-                              } else {
-                                selectedDoctors.add(doctor.id);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(growable: false),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            AppButton(
-              label: 'Cancel',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => Navigator.pop(dialogContext),
-            ),
-            AppButton(
-              label: 'Schedule',
-              onPressed: () {
-                result = _VisitActionDraft(
-                  scheduledAt: updatedDateTime,
-                  doctorIds: selectedDoctors,
-                  focusNotes: selectedFocusNotes,
-                );
-                Navigator.pop(dialogContext);
-              },
-            ),
-          ],
-        );
-      },
-    ),
-  );
-
-  customNoteController.dispose();
-
-  return result;
-}
-
-Future<_VisitActionDraft?> _scheduleAppointmentForPatient(
+Future<ScheduleAppointmentDraft?> _scheduleAppointmentForPatient(
   BuildContext context,
   Patient patient,
   DateTime selectedDate,
 ) async {
-  final draft =
-      await _pickScheduleDateTime(context, selectedDate, patient);
+  final initialDateTime = selectedDate.isBefore(DateTime.now())
+      ? DateTime.now().add(const Duration(days: 1))
+      : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 10);
+  final draft = await showScheduleAppointmentDialog(
+    context: context,
+    patientSummary:
+        '${patient.title.trim().isEmpty ? 'Unnamed patient' : _toTitleCase(patient.title)} • ${patient.age}y • ${patient.phone.trim().isEmpty ? '-' : patient.phone}',
+    initialDateTime: initialDateTime,
+    suggestedFocusNotes: kPatientLookupFocusNotes,
+    title: 'Schedule Appointment',
+    confirmLabel: 'Schedule',
+  );
   if (draft == null) return null;
+  if (!_guardCheckinWriteHealth(context, actionLabel: 'scheduling appointment')) {
+    return null;
+  }
 
   final appointment = Appointment.fromJson({});
   appointment.patientID = patient.id;
@@ -312,7 +93,7 @@ Future<_VisitActionDraft?> _scheduleAppointmentForPatient(
   return draft;
 }
 
-Future<_VisitActionDraft?> _confirmCheckInForPatient(
+Future<ScheduleAppointmentDraft?> _confirmCheckInForPatient(
   BuildContext context,
   Patient patient,
   DateTime selectedDate,
@@ -320,7 +101,7 @@ Future<_VisitActionDraft?> _confirmCheckInForPatient(
   final selectedDoctors = <String>{};
   final selectedFocusNotes = <String>{};
   final customNoteController = TextEditingController();
-  _VisitActionDraft? result;
+  ScheduleAppointmentDraft? result;
 
   await showDialog<void>(
     context: context,
@@ -436,15 +217,8 @@ Future<_VisitActionDraft?> _confirmCheckInForPatient(
                     runSpacing: 8,
                     children: doctorRows.map((doctor) {
                       final selected = selectedDoctors.contains(doctor.id);
-                      return AppButton(
-                        label: doctor.title.trim().isEmpty
-                            ? 'Unnamed doctor'
-                            : _toTitleCase(doctor.title),
-                        compact: true,
-                        variant: selected
-                            ? AppButtonVariant.primary
-                            : AppButtonVariant.secondary,
-                        onPressed: () {
+                      return GestureDetector(
+                        onTap: () {
                           setStateDialog(() {
                             if (selected) {
                               selectedDoctors.remove(doctor.id);
@@ -453,6 +227,35 @@ Future<_VisitActionDraft?> _confirmCheckInForPatient(
                             }
                           });
                         },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppColors.brandBlue
+                                : AppColors.slate1004,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: selected
+                                  ? AppColors.brandBlue
+                                  : AppColors.violet1503,
+                            ),
+                          ),
+                          child: Text(
+                            doctor.title.trim().isEmpty
+                                ? 'Unnamed doctor'
+                                : _toTitleCase(doctor.title),
+                            style: TextStyle(
+                              color: selected
+                                  ? Colors.white
+                                  : AppColors.textBlueStrong,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
                       );
                     }).toList(growable: false),
                   ),
@@ -468,7 +271,7 @@ Future<_VisitActionDraft?> _confirmCheckInForPatient(
             AppButton(
               label: 'Check-in',
               onPressed: () {
-                result = _VisitActionDraft(
+                result = ScheduleAppointmentDraft(
                   scheduledAt: DateTime(
                     selectedDate.year,
                     selectedDate.month,
@@ -519,6 +322,26 @@ Future<void> showPatientCheckinLookupDialog({
 
       return StatefulBuilder(
         builder: (context, setDialogState) {
+          final appointmentsByPatient = <String, List<Appointment>>{};
+          for (final appointment in allAppointments) {
+            final pid = appointment.patientID;
+            if (pid == null || pid.isEmpty) continue;
+            appointmentsByPatient.putIfAbsent(pid, () => <Appointment>[]).add(appointment);
+          }
+          for (final rows in appointmentsByPatient.values) {
+            rows.sort((a, b) => a.date.compareTo(b.date));
+          }
+
+          final todaysAppointmentByPatient = <String, Appointment>{};
+          for (final appointment in todaysAppointments) {
+            final pid = appointment.patientID;
+            if (pid == null || pid.isEmpty) continue;
+            final existing = todaysAppointmentByPatient[pid];
+            if (existing == null || appointment.date.isAfter(existing.date)) {
+              todaysAppointmentByPatient[pid] = appointment;
+            }
+          }
+
           final waitingCount = todaysAppointments
               .where((a) =>
                   a.checkinStage == 'waiting' ||
@@ -544,15 +367,11 @@ Future<void> showPatientCheckinLookupDialog({
               });
 
           final recentToday = allPatients
-              .where((p) => todaysAppointments.any((a) => a.patientID == p.id))
+              .where((p) => todaysAppointmentByPatient.containsKey(p.id))
               .toList(growable: false);
 
           Appointment? todayAppointment(Patient patient) {
-            final rows = todaysAppointments
-                .where((a) => a.patientID == patient.id)
-                .toList(growable: false);
-            if (rows.isEmpty) return null;
-            return rows.last;
+            return todaysAppointmentByPatient[patient.id];
           }
 
           String statusLabel(Appointment? existing) {
@@ -625,10 +444,7 @@ Future<void> showPatientCheckinLookupDialog({
 
           Widget patientCard(Patient patient) {
             final existing = todayAppointment(patient);
-            final allVisits = allAppointments
-                .where((a) => a.patientID == patient.id)
-                .toList(growable: false)
-              ..sort((a, b) => a.date.compareTo(b.date));
+            final allVisits = appointmentsByPatient[patient.id] ?? const <Appointment>[];
             final visitsCount = allVisits.length;
             final lastVisitText = visitsCount == 0
                 ? 'No visits'
@@ -637,6 +453,9 @@ Future<void> showPatientCheckinLookupDialog({
                 ? 'Unnamed patient'
               : _toTitleCase(patient.title);
             final phone = patient.phone.trim().isEmpty ? '-' : patient.phone;
+            final focusNotes = (existing?.chiefComplaints ?? const <String>[])
+                .where((row) => row.trim().isNotEmpty)
+                .toList(growable: false);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 0),
@@ -715,13 +534,51 @@ Future<void> showPatientCheckinLookupDialog({
                               ],
                             ),
                             Text(
-                              '$phone • ${patient.age}y • Last: $lastVisitText • Visits: $visitsCount',
+                              '$phone • ${patient.age}y',
                               style: const TextStyle(
                                 color: Color(0xFF637A99),
                                 fontWeight: FontWeight.w600,
                                 fontSize: 11,
                               ),
                             ),
+                            const SizedBox(height: 4),
+                            if (focusNotes.isNotEmpty)
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: focusNotes.take(4).map((note) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEAF2FF),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: const Color(0xFFCFE0F7),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      note,
+                                      style: const TextStyle(
+                                        color: Color(0xFF355279),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(growable: false),
+                              )
+                            else
+                              Text(
+                                'Last: $lastVisitText • Visits: $visitsCount',
+                                style: const TextStyle(
+                                  color: Color(0xFF637A99),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -755,6 +612,12 @@ Future<void> showPatientCheckinLookupDialog({
                             selectedDate,
                           );
                           if (checkinDraft == null) return;
+                          if (!_guardCheckinWriteHealth(
+                            context,
+                            actionLabel: 'checking in patient',
+                          )) {
+                            return;
+                          }
 
                           final titledName = patient.title.trim().isEmpty
                               ? patient.title

@@ -4,6 +4,23 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
+const List<String> _scheduledCheckinFocusNotes = [
+  'Suture removal',
+  'PCS',
+  'Pain',
+  'Scaling',
+  'Filling',
+  'Extraction',
+  'Ortho',
+  'RCT',
+];
+
+class _ScheduledCheckinDraft {
+  final Set<String> focusNotes;
+
+  const _ScheduledCheckinDraft({required this.focusNotes});
+}
+
 typedef CheckinStageModalOpener = Future<void> Function(
   BuildContext context,
   Appointment appointment,
@@ -111,15 +128,19 @@ class CheckinStageModalRouter {
     final stage = normalizeCheckinStage(appointment.checkinStage);
 
     if (stage == 'scheduled') {
-      final shouldCheckin = await _showScheduledCheckinDialog(
+      final draft = await _showScheduledCheckinDialog(
         context,
         appointment,
       );
-      if (shouldCheckin != true) return;
+      if (draft == null) return;
       appointment.checkinStage = 'waiting';
       appointment.checkedInAt = DateTime.now();
       appointment.completedTime = null;
       appointment.isDone = false;
+      appointment.chiefComplaints = draft.focusNotes.toList(growable: false);
+      if (draft.focusNotes.isNotEmpty) {
+        appointment.preOpNotes = draft.focusNotes.join(', ');
+      }
       appointments.set(appointment);
       onUpdated?.call();
 
@@ -173,30 +194,147 @@ class CheckinStageModalRouter {
     await openTreatmentModal(context, appointment);
   }
 
-  static Future<bool?> _showScheduledCheckinDialog(
+  static Future<_ScheduledCheckinDraft?> _showScheduledCheckinDialog(
     BuildContext context,
     Appointment appointment,
-  ) {
+  ) async {
     final patientName = appointment.title.trim().isEmpty
         ? 'Patient'
         : appointment.title.trim();
-    return showDialog<bool>(
+    final selectedFocusNotes = {
+      ...appointment.chiefComplaints.where((row) => row.trim().isNotEmpty),
+    };
+    final customNoteController = TextEditingController();
+    _ScheduledCheckinDraft? result;
+
+    await showDialog<void>(
       context: context,
-      builder: (dialogContext) => ContentDialog(
-        title: Text('Checkin $patientName'),
-        content: Text(_stagePatientSummary(appointment)),
-        actions: [
-          AppButton(
-            label: 'Cancel',
-            variant: AppButtonVariant.secondary,
-            onPressed: () => Navigator.pop(dialogContext, false),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateDialog) => ContentDialog(
+          title: Text('Checkin $patientName'),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_stagePatientSummary(appointment)),
+                const SizedBox(height: 8),
+                if (selectedFocusNotes.isNotEmpty)
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: selectedFocusNotes.map((note) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF2FF),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0xFFCFE0F7)),
+                        ),
+                        child: Text(
+                          note,
+                          style: const TextStyle(
+                            color: Color(0xFF355279),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                        ),
+                      );
+                    }).toList(growable: false),
+                  ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Visit Notes',
+                  style: TextStyle(
+                    color: Color(0xFF355279),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _scheduledCheckinFocusNotes.map((note) {
+                    final selected = selectedFocusNotes.contains(note);
+                    return AppButton(
+                      label: note,
+                      compact: true,
+                      variant: selected
+                          ? AppButtonVariant.primary
+                          : AppButtonVariant.secondary,
+                      onPressed: () {
+                        setStateDialog(() {
+                          if (selected) {
+                            selectedFocusNotes.remove(note);
+                          } else {
+                            selectedFocusNotes.add(note);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(growable: false),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextBox(
+                        controller: customNoteController,
+                        placeholder: 'Add custom note and press Enter',
+                        onSubmitted: (value) {
+                          final cleaned = value.trim();
+                          if (cleaned.isEmpty) return;
+                          setStateDialog(() {
+                            selectedFocusNotes.add(cleaned);
+                            customNoteController.clear();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AppButton(
+                      label: 'Add',
+                      compact: true,
+                      variant: AppButtonVariant.secondary,
+                      onPressed: () {
+                        final cleaned = customNoteController.text.trim();
+                        if (cleaned.isEmpty) return;
+                        setStateDialog(() {
+                          selectedFocusNotes.add(cleaned);
+                          customNoteController.clear();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          AppButton(
-            label: 'Check In',
-            onPressed: () => Navigator.pop(dialogContext, true),
-          ),
-        ],
+          actions: [
+            AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.secondary,
+              onPressed: () => Navigator.pop(dialogContext),
+            ),
+            AppButton(
+              label: 'Check In',
+              onPressed: () {
+                result = _ScheduledCheckinDraft(
+                  focusNotes: Set<String>.from(selectedFocusNotes),
+                );
+                Navigator.pop(dialogContext);
+              },
+            ),
+          ],
+        ),
       ),
     );
+
+    customNoteController.dispose();
+    return result;
   }
 }

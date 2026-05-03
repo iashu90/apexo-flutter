@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 
 class ActivityLogger {
-  static final String _logDir = "${Directory.current.path}/.log"; // Use .log folder
+  static final String _logDir = _resolveLogDir();
   static final List<String> _pendingMessages = <String>[];
   static IOSink? _sink;
   static String? _activeLogDate;
@@ -13,8 +13,16 @@ class ActivityLogger {
   static const Duration _flushInterval = Duration(milliseconds: 350);
   static const int _immediateFlushThreshold = 20;
 
+  static String _resolveLogDir() {
+    final sep = Platform.pathSeparator;
+    final home = Platform.isWindows
+        ? (Platform.environment['USERPROFILE'] ?? Directory.current.path)
+        : (Platform.environment['HOME'] ?? Directory.current.path);
+    return '$home${sep}.drnowfardentalclinic${sep}logs';
+  }
+
   static File _fileForDate(String dateStr) {
-    // Ensure the .log directory exists
+    // Ensure the app-specific log directory exists.
     final dir = Directory(_logDir);
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
