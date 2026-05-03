@@ -1,5 +1,7 @@
 import 'package:apexo/app/app.dart';
+import 'package:apexo/core/sync_write_health.dart';
 import 'package:apexo/sentry_dsn.dart';
+import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/init_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -17,10 +19,19 @@ bool _isValidSentryDsn(String dsn) {
 }
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   Logger.root.onRecord.listen((record) {
     // ignore: avoid_print
     print('>>> ${record.level.name}: ${record.time}: ${record.message}');
   });
+
+  final storageProbe = await runStorageSelfTest();
+  if (storageProbe.success) {
+    syncWriteHealth.recordStorageProbeSuccess();
+  } else {
+    syncWriteHealth.recordStorageProbeFailure(storageProbe.message);
+  }
 
   initializeStores();
 

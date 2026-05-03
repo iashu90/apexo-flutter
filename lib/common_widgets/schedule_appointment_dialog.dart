@@ -121,7 +121,8 @@ Future<ScheduleAppointmentDraft?> showScheduleAppointmentDialog({
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
                     AppButton(
-                      label: formatClinicDate(selectedDate, pattern: 'dd MMM yyyy'),
+                      label: formatClinicDate(selectedDate,
+                          pattern: 'dd MMM yyyy'),
                       variant: AppButtonVariant.secondary,
                       onPressed: () async {
                         final picked = await material.showDatePicker(
@@ -141,11 +142,7 @@ Future<ScheduleAppointmentDraft?> showScheduleAppointmentDialog({
                         });
                       },
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
+                    const SizedBox(width: 8),
                     const Text('Time:',
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(width: 8),
@@ -173,7 +170,9 @@ Future<ScheduleAppointmentDraft?> showScheduleAppointmentDialog({
                     fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 6),
+                const Divider(direction: Axis.horizontal),
+                const SizedBox(height: 12),
                 const Text(
                   'Visit Notes',
                   style: TextStyle(
@@ -273,7 +272,9 @@ Future<ScheduleAppointmentDraft?> showScheduleAppointmentDialog({
                     }).toList(growable: false),
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: 6),
+                const Divider(direction: Axis.horizontal),
+                const SizedBox(height: 12),
                 const Text(
                   'Consultant/Doctor',
                   style: TextStyle(
@@ -344,7 +345,8 @@ Future<ScheduleAppointmentDraft?> showScheduleAppointmentDialog({
             AppButton(
               label: confirmLabel,
               onPressed: () {
-                if (requireFutureDateTime && scheduledAt.isBefore(DateTime.now())) {
+                if (requireFutureDateTime &&
+                    scheduledAt.isBefore(DateTime.now())) {
                   return;
                 }
                 result = ScheduleAppointmentDraft(

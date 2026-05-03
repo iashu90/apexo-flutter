@@ -113,10 +113,6 @@ Future<void> showAppointmentJourneyDialog({
           return GestureDetector(
             onTap: () async {
               if (targetStep == currentStep) return;
-              final beforeAdvance = onBeforeStepAdvance;
-              if (beforeAdvance != null && targetStep > currentStep) {
-                await beforeAdvance(context, currentStep, targetStep);
-              }
               setStateDialog(() {
                 currentStep = targetStep.clamp(0, dynamicMaxStep);
               });

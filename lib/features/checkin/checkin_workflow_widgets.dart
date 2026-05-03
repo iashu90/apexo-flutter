@@ -445,7 +445,6 @@ class _WorkflowRow extends StatelessWidget {
       openTreatmentModal: openAppointmentJourneyDialog,
       openBillingModal: openAppointmentJourneyDialog,
       openCompleteModal: openAppointmentJourneyDialog,
-      onUpdated: () => onSelect?.call(appointment),
     );
   }
 

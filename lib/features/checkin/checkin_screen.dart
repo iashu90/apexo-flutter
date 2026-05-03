@@ -18,6 +18,7 @@ import 'package:apexo/common_widgets/patient_timeline_card.dart';
 import 'package:apexo/common_widgets/schedule_appointment_dialog.dart';
 import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/core/sync_write_health.dart';
+import 'package:apexo/core/ui/critical_write_ui_guard.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:apexo/core/ui/components/app_badge.dart';
 import 'package:apexo/core/ui/components/app_dropdown_menu.dart';
@@ -132,35 +133,6 @@ Set<String> _normalizeFocusNotes(Iterable<String> values) {
   return normalized;
 }
 
-bool _guardCheckinWriteHealth(
-  BuildContext context, {
-  required String actionLabel,
-}) {
-  try {
-    syncWriteHealth.ensureHealthyForStores(
-      const ['appointments', 'patients'],
-      operation: actionLabel,
-    );
-    return true;
-  } catch (e) {
-    displayInfoBar(
-      context,
-      builder: (ctx, close) => InfoBar(
-        title: const Text('Write blocked to prevent data loss'),
-        content: Text(
-          'Please wait for storage recovery before $actionLabel.\n$e',
-        ),
-        severity: InfoBarSeverity.error,
-        action: IconButton(
-          icon: const Icon(FluentIcons.clear),
-          onPressed: close,
-        ),
-      ),
-    );
-    return false;
-  }
-}
-
 Future<void> _showNextAppointmentPromptDialog(
   BuildContext context,
   Appointment appointment,
@@ -180,7 +152,7 @@ Future<void> _showNextAppointmentPromptDialog(
     suggestedFocusNotes: kCheckinFocusNotes,
   );
   if (draft == null) return;
-  if (!_guardCheckinWriteHealth(context, actionLabel: 'scheduling appointment')) {
+  if (!runCriticalWriteUiGuard(context, actionLabel: 'scheduling appointment')) {
     return;
   }
 
@@ -226,7 +198,7 @@ Future<void> _upsertScheduledFollowUpAppointment(
     confirmLabel: existingScheduled == null ? 'Schedule' : 'Update',
   );
   if (draft == null) return;
-  if (!_guardCheckinWriteHealth(context, actionLabel: 'saving scheduled follow-up')) {
+  if (!runCriticalWriteUiGuard(context, actionLabel: 'saving scheduled follow-up')) {
     return;
   }
 
@@ -1137,7 +1109,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   }
 
   Appointment? _checkInPatient(Patient patient) {
-    if (!_guardCheckinWriteHealth(context, actionLabel: 'checking in patient')) {
+    if (!runCriticalWriteUiGuard(context, actionLabel: 'checking in patient')) {
       return null;
     }
     final appointment = Appointment.fromJson({

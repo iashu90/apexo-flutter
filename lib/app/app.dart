@@ -227,12 +227,18 @@ class _SyncWriteHealthBanner extends StatelessWidget {
         final latestWrite = health.latestLocalWrite();
         final latestPush = health.latestPush();
         final blocking = health.latestBlockingFailure(_criticalStores);
+        final syncFailure = health.latestCriticalSyncFailure(_criticalStores);
+        final readOnly = health.criticalReadOnlyMode;
 
-        if (latestWrite == null && latestPush == null && blocking == null) {
+        if (latestWrite == null &&
+            latestPush == null &&
+            blocking == null &&
+            syncFailure == null &&
+            !readOnly) {
           return const SizedBox.shrink();
         }
 
-        final hasError = blocking != null;
+        final hasError = readOnly || blocking != null || syncFailure != null;
         final bg = hasError ? const Color(0xFFFFEAEA) : const Color(0xFFE8F4EA);
         final border = hasError ? const Color(0xFFFFB9B9) : const Color(0xFFBFE5C6);
         final text = hasError ? const Color(0xFF7A1111) : const Color(0xFF1D5D31);
@@ -243,6 +249,10 @@ class _SyncWriteHealthBanner extends StatelessWidget {
         final pushText = latestPush == null
             ? 'Push: never'
             : 'Push: ${_formatDateTime(latestPush.at)} (${latestPush.store})';
+
+        final errorText = readOnly
+          ? 'Read-only safety mode: ${health.criticalReadOnlyReason ?? 'storage self-test failed'}'
+          : (blocking?.message ?? syncFailure?.message);
 
         return Container(
           width: double.infinity,
@@ -255,7 +265,7 @@ class _SyncWriteHealthBanner extends StatelessWidget {
           ),
           child: Text(
             hasError
-                ? '${blocking.message} | $writeText | $pushText'
+                ? '$errorText | $writeText | $pushText'
                 : '$writeText | $pushText',
             style: TextStyle(
               color: text,

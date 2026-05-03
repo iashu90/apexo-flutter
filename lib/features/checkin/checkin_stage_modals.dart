@@ -144,14 +144,13 @@ class CheckinStageModalRouter {
       appointments.set(appointment);
       onUpdated?.call();
 
+      if (!context.mounted) return;
       final assigned = await AssignDoctorModal.show(
         context,
         appointment,
         onUpdated: onUpdated,
       );
-      if (assigned) {
-        await openTreatmentModal(context, appointment);
-      }
+      if (assigned) return;
       return;
     }
 
