@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:apexo/core/sync_write_health.dart';
 import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/safe_hive_init.dart';
 import 'package:hive_flutter/adapters.dart';
@@ -37,7 +38,9 @@ class SaveLocal {
     try {
       final box = await mainHiveBox;
       await box.putAll(entries);
+      syncWriteHealth.recordLocalWriteSuccess(store: name, records: entries.length);
     } catch (e, s) {
+      syncWriteHealth.recordWriteFailure(store: name, error: e);
       throw StorageException('Failed to put entries: $e', s);
     }
   }
@@ -77,7 +80,9 @@ class SaveLocal {
     try {
       final Box box = await metaHiveBox;
       await box.put(_versionKey, versionValue.toString());
+      syncWriteHealth.recordLocalWriteSuccess(store: name, records: 1);
     } catch (e, s) {
+      syncWriteHealth.recordWriteFailure(store: name, error: e);
       throw StorageException('Failed to put version: $e', s);
     }
   }
@@ -98,7 +103,9 @@ class SaveLocal {
     try {
       final Box box = await metaHiveBox;
       await box.put(_deferredKey, jsonEncode(deferred));
+      syncWriteHealth.recordLocalWriteSuccess(store: name, records: 1);
     } catch (e, s) {
+      syncWriteHealth.recordWriteFailure(store: name, error: e);
       throw StorageException('Failed to put deferred data: $e', s);
     }
   }

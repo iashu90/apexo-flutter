@@ -4,6 +4,7 @@ import 'package:apexo/app/top_tabs_navbar.dart';
 import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/core/sync_write_health.dart';
 import 'package:apexo/core/theme/app_text_theme.dart';
 import 'package:apexo/core/theme/app_theme.dart';
 import 'package:apexo/features/login/login_screen.dart';
@@ -16,6 +17,7 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' as material;
+import 'package:intl/intl.dart';
 
 late BuildContext appContext;
 
@@ -156,6 +158,7 @@ class ApexoApp extends StatelessWidget {
         child: Column(
           children: [
             if (launch.open()) const TopTabsNavBar(),
+            if (launch.open()) const _SyncWriteHealthBanner(),
             Expanded(
               child: launch.open()
                   ? Container(
@@ -201,6 +204,69 @@ class ApexoApp extends StatelessWidget {
                 panel: routes.panels().last,
               ),
             ),
+    );
+  }
+}
+
+class _SyncWriteHealthBanner extends StatelessWidget {
+  const _SyncWriteHealthBanner();
+
+  static const _criticalStores = ['appointments', 'patients'];
+
+  String _formatDateTime(DateTime dateTime) {
+    return DateFormat('dd MMM yyyy, hh:mm:ss a').format(dateTime);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<SyncWriteHealthSnapshot>(
+      stream: syncWriteHealth.stream,
+      initialData: syncWriteHealth.snapshot,
+      builder: (context, snapshot) {
+        final health = snapshot.data ?? SyncWriteHealthSnapshot.empty;
+        final latestWrite = health.latestLocalWrite();
+        final latestPush = health.latestPush();
+        final blocking = health.latestBlockingFailure(_criticalStores);
+
+        if (latestWrite == null && latestPush == null && blocking == null) {
+          return const SizedBox.shrink();
+        }
+
+        final hasError = blocking != null;
+        final bg = hasError ? const Color(0xFFFFEAEA) : const Color(0xFFE8F4EA);
+        final border = hasError ? const Color(0xFFFFB9B9) : const Color(0xFFBFE5C6);
+        final text = hasError ? const Color(0xFF7A1111) : const Color(0xFF1D5D31);
+
+        final writeText = latestWrite == null
+            ? 'Local write: never'
+            : 'Local write: ${_formatDateTime(latestWrite.at)} (${latestWrite.store})';
+        final pushText = latestPush == null
+            ? 'Push: never'
+            : 'Push: ${_formatDateTime(latestPush.at)} (${latestPush.store})';
+
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: bg,
+            border: Border.all(color: border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            hasError
+                ? '${blocking.message} | $writeText | $pushText'
+                : '$writeText | $pushText',
+            style: TextStyle(
+              color: text,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      },
     );
   }
 }
