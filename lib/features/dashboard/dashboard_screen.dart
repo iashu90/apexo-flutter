@@ -1,5 +1,6 @@
 // ignore_for_file: unused_element, unused_field, unused_local_variable, unused_import
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:apexo/common_widgets/app_screen_title.dart';
@@ -19,6 +20,7 @@ import 'package:apexo/features/dashboard/overall_due_helper.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/labwork/labwork_model.dart';
 import 'package:apexo/features/labwork/open_labwork_dialog.dart';
+import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/indian_money.dart';
@@ -32,6 +34,7 @@ import 'package:intl/intl.dart';
 import 'package:apexo/features/dashboard/outstanding_balance_modal.dart';
 
 DateTime dashboardPersistedDate = DateTime.now();
+bool _dashboardInitialAppointmentsSyncSettled = false;
 const String dashboardDoctorFilterAll = '__all__';
 const String dashboardDoctorFilterUnassigned = '__unassigned__';
 const String dashboardTreatmentFilterAll = '__all_treatments__';
@@ -62,6 +65,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _selectedTreatmentFilter = dashboardTreatmentFilterAll;
   bool _showAllTreatmentStats = false;
   final TextEditingController _searchController = TextEditingController();
+  late final Future<void> _bootstrapFuture;
+  String? _initialSyncWarning;
 
   String? _doctorFilterChipLabel() {
     if (_selectedDoctorFilter == dashboardDoctorFilterAll) return null;
@@ -80,12 +85,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _bootstrapFuture = _initializeStores();
     selectedDate = _dateOnly(dashboardPersistedDate);
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text;
       });
     });
+  }
+
+  Future<void> _initializeStores() async {
+    await Future.wait([
+      appointments.loaded,
+      patients.loaded,
+      doctors.loaded,
+    ]);
+    await _awaitInitialAppointmentsSync();
+  }
+
+  Future<void> _awaitInitialAppointmentsSync() async {
+    if (_dashboardInitialAppointmentsSyncSettled) return;
+    if (appointments.remote == null) {
+      _dashboardInitialAppointmentsSyncSettled = true;
+      return;
+    }
+
+    final startedAt = DateTime.now();
+    var attemptedRemoteSync = false;
+
+    try {
+      final alreadyInSync =
+          await appointments.inSync().timeout(const Duration(seconds: 8));
+
+      if (!alreadyInSync) {
+        attemptedRemoteSync = true;
+        unawaited(appointments.synchronize());
+
+        final syncDeadline = DateTime.now().add(const Duration(seconds: 90));
+        var converged = false;
+        while (DateTime.now().isBefore(syncDeadline)) {
+          final inSyncNow = await appointments
+              .inSync()
+              .timeout(const Duration(seconds: 5), onTimeout: () => false);
+          if (inSyncNow) {
+            converged = true;
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 350));
+        }
+
+        if (!converged) {
+          _initialSyncWarning =
+              'Could not finish full server sync. Showing available local data.';
+        }
+      }
+    } on TimeoutException {
+      if (networkActions.isSyncing() > 0) {
+        _initialSyncWarning =
+            'Server sync is taking longer than expected. Showing available local data.';
+      }
+    } catch (_) {
+      _initialSyncWarning =
+          'Could not finish full server sync. Showing available local data.';
+    } finally {
+      if (attemptedRemoteSync) {
+        final elapsed = DateTime.now().difference(startedAt);
+        const minSkeletonVisibility = Duration(milliseconds: 700);
+        if (elapsed < minSkeletonVisibility) {
+          await Future.delayed(minSkeletonVisibility - elapsed);
+        }
+      }
+      _dashboardInitialAppointmentsSyncSettled = true;
+    }
   }
 
   @override
@@ -465,9 +536,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: appointments.observableMap.stream,
-      builder: (context, _) {
+    return FutureBuilder<void>(
+      future: _bootstrapFuture,
+      builder: (context, bootSnapshot) {
+        if (bootSnapshot.connectionState != ConnectionState.done) {
+          return const _DashboardLoadingOverlay();
+        }
+
+        return StreamBuilder(
+          stream: appointments.observableMap.stream,
+          builder: (context, _) {
         final todaysAppointments = appointments.forDate(selectedDate)
           ..sort((a, b) => a.date.compareTo(b.date));
 
@@ -609,6 +687,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onPick: () => _pickDate(context),
                   onToday: _goToday,
                 ),
+                if (_initialSyncWarning != null) ...[
+                  const SizedBox(height: 8),
+                  InfoBar(
+                    severity: InfoBarSeverity.warning,
+                    title: const Text('Sync Incomplete'),
+                    content: Text(_initialSyncWarning!),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -907,6 +993,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
+        );
+          },
         );
       },
     );
@@ -3422,6 +3510,89 @@ class _FinanceCard extends StatelessWidget {
                 color: valueColor,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardLoadingOverlay extends StatelessWidget {
+  const _DashboardLoadingOverlay();
+
+  Widget _skeletonCard({double height = 168}) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 120,
+            height: 12,
+            decoration: BoxDecoration(
+              color: AppColors.slate100,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...List.generate(
+            5,
+            (_) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                width: double.infinity,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.slate1004,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            growable: false,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppTheme.light.scaffoldBackgroundColor,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD7E3F0)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                SizedBox(width: 220, child: _skeletonCard()),
+                SizedBox(width: 220, child: _skeletonCard()),
+                SizedBox(width: 220, child: _skeletonCard()),
+                SizedBox(width: 220, child: _skeletonCard()),
+                SizedBox(width: 220, child: _skeletonCard()),
+                SizedBox(width: 220, child: _skeletonCard()),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _skeletonCard(height: 420),
           ],
         ),
       ),

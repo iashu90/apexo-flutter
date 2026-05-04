@@ -128,7 +128,6 @@ const List<String> _addressSuggestions = [
   'Murungapakkam',
   'Muthialpet',
   'Muthirapalayam',
-  'Muthirayarpalayam',
   'Nainar Mandapam',
   'Nallathur',
   'Navarkulam',

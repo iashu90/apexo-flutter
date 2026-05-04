@@ -23,6 +23,7 @@ import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/checkin/checkin_screen.dart';
+import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/clinic_time.dart';
 import 'package:apexo/utils/pdf_export_utility.dart';
@@ -48,6 +49,8 @@ String _patientDisplayName(Patient patient) {
       : _toTitleCasePatientName(patient.title);
 }
 
+bool _patientsInitialAppointmentsSyncSettled = false;
+
 class PatientsScreen extends StatefulWidget {
   const PatientsScreen({super.key});
 
@@ -57,6 +60,8 @@ class PatientsScreen extends StatefulWidget {
 
 class _PatientsScreenState extends State<PatientsScreen> {
   final TextEditingController _listSearchController = TextEditingController();
+  late final Future<void> _bootstrapFuture;
+  String? _initialSyncWarning;
 
   String _listQuery = '';
   final String _topRange = 'All';
@@ -91,12 +96,77 @@ class _PatientsScreenState extends State<PatientsScreen> {
   @override
   void initState() {
     super.initState();
+    _bootstrapFuture = _initializeStores();
     _listSearchController.addListener(() {
       setState(() {
         _listQuery = _listSearchController.text.trim().toLowerCase();
         _currentPage = 1;
       });
     });
+  }
+
+  Future<void> _initializeStores() async {
+    await Future.wait([
+      patients.loaded,
+      appointments.loaded,
+    ]);
+    await _awaitInitialAppointmentsSync();
+  }
+
+  Future<void> _awaitInitialAppointmentsSync() async {
+    if (_patientsInitialAppointmentsSyncSettled) return;
+    if (appointments.remote == null) {
+      _patientsInitialAppointmentsSyncSettled = true;
+      return;
+    }
+
+    final startedAt = DateTime.now();
+    var attemptedRemoteSync = false;
+
+    try {
+      final alreadyInSync =
+          await appointments.inSync().timeout(const Duration(seconds: 8));
+
+      if (!alreadyInSync) {
+        attemptedRemoteSync = true;
+        unawaited(appointments.synchronize());
+
+        final syncDeadline = DateTime.now().add(const Duration(seconds: 90));
+        var converged = false;
+        while (DateTime.now().isBefore(syncDeadline)) {
+          final inSyncNow = await appointments
+              .inSync()
+              .timeout(const Duration(seconds: 5), onTimeout: () => false);
+          if (inSyncNow) {
+            converged = true;
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 350));
+        }
+
+        if (!converged) {
+          _initialSyncWarning =
+              'Could not finish full server sync. Showing available local data.';
+        }
+      }
+    } on TimeoutException {
+      if (networkActions.isSyncing() > 0) {
+        _initialSyncWarning =
+            'Server sync is taking longer than expected. Showing available local data.';
+      }
+    } catch (_) {
+      _initialSyncWarning =
+          'Could not finish full server sync. Showing available local data.';
+    } finally {
+      if (attemptedRemoteSync) {
+        final elapsed = DateTime.now().difference(startedAt);
+        const minSkeletonVisibility = Duration(milliseconds: 700);
+        if (elapsed < minSkeletonVisibility) {
+          await Future.delayed(minSkeletonVisibility - elapsed);
+        }
+      }
+      _patientsInitialAppointmentsSyncSettled = true;
+    }
   }
 
   @override
@@ -494,16 +564,30 @@ class _PatientsScreenState extends State<PatientsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage.scrollable(
-      key: WK.patientsScreen,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-      children: [
-        MStreamBuilder(
-          streams: [
-            patients.observableMap.stream,
-            appointments.observableMap.stream,
-          ],
-          builder: (context, _) {
+    return FutureBuilder<void>(
+      future: _bootstrapFuture,
+      builder: (context, bootSnapshot) {
+        if (bootSnapshot.connectionState != ConnectionState.done) {
+          return const _PatientsScreenLoadingSkeleton();
+        }
+
+        return ScaffoldPage.scrollable(
+          key: WK.patientsScreen,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          children: [
+            if (_initialSyncWarning != null)
+              InfoBar(
+                severity: InfoBarSeverity.warning,
+                title: const Text('Sync Incomplete'),
+                content: Text(_initialSyncWarning!),
+              ),
+            if (_initialSyncWarning != null) const SizedBox(height: 8),
+            MStreamBuilder(
+              streams: [
+                patients.observableMap.stream,
+                appointments.observableMap.stream,
+              ],
+              builder: (context, _) {
             final allPatients = patients.present.values.toList(growable: false);
             final uniquePatientCount = allPatients
                 .map((p) => p.id)
@@ -877,9 +961,11 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 ),
               ],
             );
-          },
-        ),
-      ],
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -3632,6 +3718,87 @@ class _SortableHead extends StatelessWidget {
               size: 10,
               color: onDark ? Colors.white : AppColors.blue5004,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PatientsScreenLoadingSkeleton extends StatelessWidget {
+  const _PatientsScreenLoadingSkeleton();
+
+  Widget _skeletonCard({double height = 168}) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFD7E3F0)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 140,
+            height: 12,
+            decoration: BoxDecoration(
+              color: AppColors.slate100,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...List.generate(
+            5,
+            (_) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                width: double.infinity,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.slate1004,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            growable: false,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF6F8FC),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD7E3F0)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                SizedBox(width: 260, child: _skeletonCard()),
+                SizedBox(width: 260, child: _skeletonCard()),
+                SizedBox(width: 260, child: _skeletonCard()),
+                SizedBox(width: 260, child: _skeletonCard()),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _skeletonCard(height: 420),
           ],
         ),
       ),

@@ -157,7 +157,12 @@ class _LabworkDialogState extends State<_LabworkDialog> {
                   label: '${txt('patient')}:',
                   child: PatientPicker(
                     value: widget.item.patientID,
-                    onChanged: (id) => widget.item.patientID = id,
+                    useCustomSuggestionPanel: false,
+                    onChanged: (id) {
+                      setState(() {
+                        widget.item.patientID = id;
+                      });
+                    },
                   ),
                 ),
                 _fieldBox(

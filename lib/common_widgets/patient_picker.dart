@@ -10,8 +10,14 @@ import 'package:fluent_ui/fluent_ui.dart';
 class PatientPicker extends StatelessWidget {
   final void Function(String? id) onChanged;
   final String? value;
+  final bool allowEditFromSelectedTagTap;
+  final bool useCustomSuggestionPanel;
   const PatientPicker(
-      {super.key, required this.onChanged, required this.value});
+      {super.key,
+      required this.onChanged,
+      required this.value,
+      this.allowEditFromSelectedTagTap = false,
+      this.useCustomSuggestionPanel = true});
 
   String _suggestionLabel(Patient patient) {
     final name =
@@ -52,7 +58,7 @@ class PatientPicker extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  name,
+                  '$name • ${patient.age}y • $phone',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -61,9 +67,8 @@ class PatientPicker extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 2),
                 Text(
-                  '${patient.age}y • $phone\nLast: $lastVisit • Visits: $visits',
+                  'Last: $lastVisit • Visits: $visits',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -93,11 +98,13 @@ class PatientPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return TagInputWidget(
       key: WK.fieldPatient,
-      onItemTap: (tag) {
-        Patient? tapped = patients.get(tag.value ?? "");
-        if (tapped == null) return;
-        openAddPatientPopup(context: context, existingPatient: tapped);
-      },
+      onItemTap: allowEditFromSelectedTagTap
+          ? (tag) {
+              Patient? tapped = patients.get(tag.value ?? "");
+              if (tapped == null) return;
+              openAddPatientPopup(context: context, existingPatient: tapped);
+            }
+          : null,
       suggestions: patients.present.values
           .map((e) => TagInputItem(
                 value: e.id,
@@ -114,7 +121,7 @@ class PatientPicker extends StatelessWidget {
           : [],
       strict: true,
       limit: 1,
-      useCustomSuggestionPanel: true,
+      useCustomSuggestionPanel: useCustomSuggestionPanel,
       placeholder: txt("selectPatient"),
     );
   }

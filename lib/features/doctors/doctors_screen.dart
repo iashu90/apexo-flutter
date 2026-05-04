@@ -20,7 +20,9 @@ import 'package:apexo/features/checkin/checkin_screen.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/core/theme/app_text_theme.dart';
 import 'package:apexo/theme/material_date_picker_theme.dart';
 import 'package:apexo/utils/csv_export_utility.dart';
@@ -34,6 +36,7 @@ import 'package:flutter/material.dart' as material;
 import 'package:intl/intl.dart';
 
 DateTime doctorPersistedDate = DateTime.now();
+bool _doctorsInitialAppointmentsSyncSettled = false;
 
 class DoctorsScreen extends StatefulWidget {
   const DoctorsScreen({super.key});
@@ -59,9 +62,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   DateTime? _customRangeEnd;
   DateTime _topMonthAnchor =
       DateTime(DateTime.now().year, DateTime.now().month, 1);
-  bool _showTopRangeLoadingOverlay = false;
-  Timer? _topRangeLoadingTimer;
   late final Future<void> _bootstrapFuture;
+  String? _initialSyncWarning;
 
   static DateTime _dateOnly(DateTime input) =>
       DateTime(input.year, input.month, input.day);
@@ -78,30 +80,70 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     await Future.wait([
       doctors.loaded,
       appointments.loaded,
+      patients.loaded,
     ]);
+    await _awaitInitialAppointmentsSync();
+  }
+
+  Future<void> _awaitInitialAppointmentsSync() async {
+    if (_doctorsInitialAppointmentsSyncSettled) return;
+    if (appointments.remote == null) {
+      _doctorsInitialAppointmentsSyncSettled = true;
+      return;
+    }
+
+    final startedAt = DateTime.now();
+    var attemptedRemoteSync = false;
+
+    try {
+      final alreadyInSync =
+          await appointments.inSync().timeout(const Duration(seconds: 8));
+
+      if (!alreadyInSync) {
+        attemptedRemoteSync = true;
+        unawaited(appointments.synchronize());
+
+        final syncDeadline = DateTime.now().add(const Duration(seconds: 90));
+        var converged = false;
+        while (DateTime.now().isBefore(syncDeadline)) {
+          final inSyncNow = await appointments
+              .inSync()
+              .timeout(const Duration(seconds: 5), onTimeout: () => false);
+          if (inSyncNow) {
+            converged = true;
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 350));
+        }
+
+        if (!converged) {
+          _initialSyncWarning =
+              'Could not finish full server sync. Showing available local data.';
+        }
+      }
+    } on TimeoutException {
+      if (networkActions.isSyncing() > 0) {
+        _initialSyncWarning =
+            'Server sync is taking longer than expected. Showing available local data.';
+      }
+    } catch (_) {
+      _initialSyncWarning =
+          'Could not finish full server sync. Showing available local data.';
+    } finally {
+      if (attemptedRemoteSync) {
+        final elapsed = DateTime.now().difference(startedAt);
+        const minSkeletonVisibility = Duration(milliseconds: 700);
+        if (elapsed < minSkeletonVisibility) {
+          await Future.delayed(minSkeletonVisibility - elapsed);
+        }
+      }
+      _doctorsInitialAppointmentsSyncSettled = true;
+    }
   }
 
   @override
   void dispose() {
-    _topRangeLoadingTimer?.cancel();
     super.dispose();
-  }
-
-  void _setTopRangeLoadingOverlay(bool show) {
-    if (!mounted) return;
-    if (_showTopRangeLoadingOverlay == show) return;
-    setState(() {
-      _showTopRangeLoadingOverlay = show;
-    });
-  }
-
-  void _showTopRangeLoading() {
-    _topRangeLoadingTimer?.cancel();
-    _setTopRangeLoadingOverlay(true);
-    _topRangeLoadingTimer = Timer(const Duration(milliseconds: 820), () {
-      if (!mounted) return;
-      _setTopRangeLoadingOverlay(false);
-    });
   }
 
   List<DateTime> _topMonthOptions(List<Appointment> rows) {
@@ -114,7 +156,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   }
 
   void _changeDate(int days) {
-    _showTopRangeLoading();
     setState(() {
       _selectedDate = _dateOnly(_selectedDate.add(Duration(days: days)));
       _topMonthAnchor = DateTime(_selectedDate.year, _selectedDate.month, 1);
@@ -133,7 +174,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     );
 
     if (picked == null) return;
-    _showTopRangeLoading();
     setState(() {
       _selectedDate = _dateOnly(picked);
       _topMonthAnchor = DateTime(_selectedDate.year, _selectedDate.month, 1);
@@ -155,7 +195,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     );
 
     if (picked == null) return;
-    _showTopRangeLoading();
     setState(() {
       _customRangeStart = _dateOnly(picked.start);
       _customRangeEnd = _dateOnly(picked.end);
@@ -201,7 +240,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       _pickCustomRange(context);
       return;
     }
-    _showTopRangeLoading();
     setState(() {
       _handledRange = range;
       _performanceRange = range;
@@ -226,9 +264,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           return const _DoctorsScreenSkeleton();
         }
 
-        return Stack(
-      children: [
-        Container(
+        return Container(
             color: AppTheme.light.scaffoldBackgroundColor,
             child: ScaffoldPage.scrollable(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -237,6 +273,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                   streams: [
                     doctors.observableMap.stream,
                     appointments.observableMap.stream,
+                    patients.observableMap.stream,
                   ],
                   builder: (context, _) {
                     final allDoctors = doctors.present.values
@@ -245,7 +282,11 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                           .toLowerCase()
                           .compareTo(b.title.toLowerCase()));
                     final allAppointments =
-                        appointments.present.values.toList(growable: false);
+                        appointments.present.values.where((appointment) {
+                      final stage =
+                          normalizeCheckinStage(appointment.checkinStage);
+                      return stage != 'scheduled' && stage != 'cancelled';
+                    }).toList(growable: false);
 
                     final currentStart =
                         _handledRange == 'custom' && _customRangeStart != null
@@ -276,6 +317,18 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                             a.date.isBefore(currentEnd))
                         .toList(growable: false);
 
+                    final hasUnresolvedPatients = scopedCurrent.any((a) {
+                      final patientId = a.patientID;
+                      if (patientId == null || patientId.trim().isEmpty) {
+                        return false;
+                      }
+                      return patients.get(patientId) == null;
+                    });
+
+                    if (hasUnresolvedPatients) {
+                      return const _DoctorsScreenSkeleton();
+                    }
+
                     final scopedCompare = allAppointments
                         .where((a) =>
                             !a.date.isBefore(compareStart) &&
@@ -303,7 +356,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                                         onNext: () => _changeDate(1),
                                         onPick: () => _pickDate(context),
                                         onToday: () {
-                                          _showTopRangeLoading();
                                           setState(() {
                                             _selectedDate =
                                                 _dateOnly(DateTime.now());
@@ -337,7 +389,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                                                   .toList(growable: false),
                                               onChanged: (value) {
                                                 if (value == null) return;
-                                                _showTopRangeLoading();
                                                 setState(() {
                                                   _topMonthAnchor = value;
                                                   _selectedDate = value;
@@ -360,6 +411,14 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                             ],
                           ),
                         ),
+                        if (_initialSyncWarning != null) ...[
+                          const SizedBox(height: 8),
+                          InfoBar(
+                            severity: InfoBarSeverity.warning,
+                            title: const Text('Sync Incomplete'),
+                            content: Text(_initialSyncWarning!),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -401,53 +460,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                   },
                 ),
               ],
-            )),
-        if (_showTopRangeLoadingOverlay)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Container(
-                color: const Color(0x220F1F33),
-                alignment: Alignment.topCenter,
-                padding: const EdgeInsets.only(top: 86),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFD7E3F0)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x180D2F5B),
-                        blurRadius: 10,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: ProgressRing(strokeWidth: 2),
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Loading data...',
-                        style: TextStyle(
-                          color: Color(0xFF244A77),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-      );
+            ));
         },
       );
   }

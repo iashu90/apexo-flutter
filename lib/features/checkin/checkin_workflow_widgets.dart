@@ -685,7 +685,7 @@ class _WorkflowRow extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const Spacer(),
                       if (stage == 'waiting') ...[
                         const SizedBox(width: 10),
                         AppBadge(
@@ -708,6 +708,7 @@ class _WorkflowRow extends StatelessWidget {
                           type: BadgeType.error,
                         ),
                       ],
+                      const SizedBox(width: 12),
                     ],
                   ),
                   const SizedBox(height: 2),

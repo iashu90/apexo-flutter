@@ -256,7 +256,7 @@ class _SyncWriteHealthBanner extends StatelessWidget {
 
         return Container(
           width: double.infinity,
-          margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+          margin: const EdgeInsets.fromLTRB(14, 6, 14, 6),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: bg,

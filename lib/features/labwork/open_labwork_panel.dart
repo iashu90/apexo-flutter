@@ -89,6 +89,7 @@ class _LabworkEditingState extends State<_LabworkEditing> {
           InfoLabel(
             label: "${txt("patient")}:",
             child: PatientPicker(
+                useCustomSuggestionPanel: false,
                 value: widget.labwork.patientID,
                 onChanged: (id) {
                   widget.labwork.patientID = id;
