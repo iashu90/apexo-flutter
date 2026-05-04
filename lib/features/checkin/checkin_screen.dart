@@ -37,6 +37,7 @@ import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
+import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/features/patients/open_add_patient_popup.dart';
 import 'package:apexo/features/patients/patient_history_suggestions.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -66,6 +67,7 @@ part 'checkin_checkout_summary.dart';
 part 'checkin_operative_form.dart';
 
 DateTime checkinPersistedDate = DateTime.now();
+bool _checkinInitialAppointmentsSyncSettled = false;
 
 String _toTitleCase(String input) {
   final cleaned = input.trim();
@@ -471,6 +473,7 @@ Future<void> openAppointmentJourneyDialog(
   BuildContext context,
   Appointment appointment, {
   int? initialStep,
+  Map<String, List<Appointment>>? appointmentsByPatientCache,
 }) async {
   final originalSnapshot = Appointment.fromJson({
     ...appointment.toJson(),
@@ -496,10 +499,29 @@ Future<void> openAppointmentJourneyDialog(
   final patient = appointment.patient;
   final patientContext =
       '${patient?.age ?? 0}y • ${_patientGenderShort(appointment)} • ${(patient?.phone.trim().isEmpty ?? true) ? '-' : patient!.phone.trim()}';
-  final allAppointmentsForPatient = appointments.present.values
-      .where((row) => row.patientID == appointment.patientID)
-      .toList(growable: false)
-    ..sort((a, b) => b.date.compareTo(a.date));
+  final patientId = appointment.patientID;
+  final allAppointmentsForPatient = (() {
+    if (appointmentsByPatientCache != null &&
+        patientId != null &&
+        patientId.trim().isNotEmpty) {
+      final cached =
+          (appointmentsByPatientCache[patientId] ?? const <Appointment>[])
+              .toList(growable: true);
+      final containsCurrent =
+          cached.any((row) => row.id.trim() == appointment.id.trim());
+      if (!containsCurrent) {
+        cached.add(appointment);
+      }
+      cached.sort((a, b) => b.date.compareTo(a.date));
+      return cached.toList(growable: false);
+    }
+
+    final rows = appointments.present.values
+        .where((row) => row.patientID == appointment.patientID)
+        .toList(growable: false)
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return rows;
+  })();
   Widget stageBody(BuildContext context, int currentStep, double panelHeight) {
     if (isDoctorLogin) {
       if (currentStep == 0) {
@@ -1044,6 +1066,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   Appointment? _selectedAppointment;
   Timer? _waitingTimer;
   late final Future<void> _bootstrapFuture;
+  String? _initialSyncWarning;
   final Map<String, bool> _expandedStages = {
     'waiting': true,
     'with_doctor': true,
@@ -1067,6 +1090,64 @@ class _CheckinScreenState extends State<CheckinScreen> {
       doctors.loaded,
       labworks.loaded,
     ]);
+
+    await _awaitInitialAppointmentsSync();
+  }
+
+  Future<void> _awaitInitialAppointmentsSync() async {
+    if (_checkinInitialAppointmentsSyncSettled) return;
+    if (appointments.remote == null) {
+      _checkinInitialAppointmentsSyncSettled = true;
+      return;
+    }
+
+    final startedAt = DateTime.now();
+    var attemptedRemoteSync = false;
+
+    try {
+      final alreadyInSync =
+          await appointments.inSync().timeout(const Duration(seconds: 8));
+
+      if (!alreadyInSync) {
+        attemptedRemoteSync = true;
+        unawaited(appointments.synchronize());
+
+        final syncDeadline = DateTime.now().add(const Duration(seconds: 90));
+        var converged = false;
+        while (DateTime.now().isBefore(syncDeadline)) {
+          final inSyncNow = await appointments
+              .inSync()
+              .timeout(const Duration(seconds: 5), onTimeout: () => false);
+          if (inSyncNow) {
+            converged = true;
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 350));
+        }
+
+        if (!converged) {
+          _initialSyncWarning =
+              'Could not finish full server sync. Showing available local data.';
+        }
+      }
+    } on TimeoutException {
+      if (networkActions.isSyncing() > 0) {
+        _initialSyncWarning =
+            'Server sync is taking longer than expected. Showing available local data.';
+      }
+    } catch (_) {
+      _initialSyncWarning =
+          'Could not finish full server sync. Showing available local data.';
+    } finally {
+      if (attemptedRemoteSync) {
+        final elapsed = DateTime.now().difference(startedAt);
+        const minSkeletonVisibility = Duration(milliseconds: 700);
+        if (elapsed < minSkeletonVisibility) {
+          await Future.delayed(minSkeletonVisibility - elapsed);
+        }
+      }
+      _checkinInitialAppointmentsSyncSettled = true;
+    }
   }
 
   @override
@@ -1132,13 +1213,26 @@ class _CheckinScreenState extends State<CheckinScreen> {
     return 'checkout';
   }
 
-  Future<void> _openAppointmentPopup(Appointment appointment) async {
-    await openAppointmentJourneyDialog(context, appointment);
+  Future<void> _openAppointmentPopup(
+    Appointment appointment, {
+    Map<String, List<Appointment>>? appointmentsByPatientCache,
+  }) async {
+    await openAppointmentJourneyDialog(
+      context,
+      appointment,
+      appointmentsByPatientCache: appointmentsByPatientCache,
+    );
   }
 
-  void _selectAndOpenAppointment(Appointment appointment) {
+  void _selectAndOpenAppointment(
+    Appointment appointment, {
+    Map<String, List<Appointment>>? appointmentsByPatientCache,
+  }) {
     setState(() => _selectedAppointment = appointment);
-    _openAppointmentPopup(appointment);
+    _openAppointmentPopup(
+      appointment,
+      appointmentsByPatientCache: appointmentsByPatientCache,
+    );
   }
 
   Future<Patient?> _openAddPatientPopup(String query) {
@@ -1161,8 +1255,15 @@ class _CheckinScreenState extends State<CheckinScreen> {
     await showTreatmentPackageManagerDialog(context: context);
   }
 
-  Future<void> _openNextCheckinStepper(Appointment appointment) async {
-    await openAppointmentJourneyDialog(context, appointment);
+  Future<void> _openNextCheckinStepper(
+    Appointment appointment, {
+    Map<String, List<Appointment>>? appointmentsByPatientCache,
+  }) async {
+    await openAppointmentJourneyDialog(
+      context,
+      appointment,
+      appointmentsByPatientCache: appointmentsByPatientCache,
+    );
   }
 
   @override
@@ -1180,11 +1281,27 @@ class _CheckinScreenState extends State<CheckinScreen> {
             return StreamBuilder(
               stream: patients.observableMap.stream,
               builder: (context, __) {
+                final isDoctorLogin =
+                    permissions.currentRole == UserRole.doctor;
                 final todaysAppointments = appointments.forDate(_selectedDate)
                   ..sort((a, b) => a.date.compareTo(b.date));
 
+                bool shouldHideForDoctorRole(Appointment appointment) {
+                  final stage =
+                      normalizeCheckinStage(appointment.checkinStage);
+                  return stage == 'scheduled' ||
+                      stage == 'pending' ||
+                      stage == 'cancelled';
+                }
+
+                final doctorVisibleAppointments = isDoctorLogin
+                    ? todaysAppointments
+                        .where((a) => !shouldHideForDoctorRole(a))
+                        .toList(growable: false)
+                    : todaysAppointments;
+
                 final doctorOptions = <String>{};
-                for (final appt in todaysAppointments) {
+                for (final appt in doctorVisibleAppointments) {
                   if (appt.operatorsIDs.isEmpty) {
                     doctorOptions.add('__unassigned__');
                   } else {
@@ -1192,16 +1309,52 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   }
                 }
 
-                final filtered = todaysAppointments.where((a) {
-                  if (_selectedDoctor == '__all__') return true;
-                  if (_selectedDoctor == '__unassigned__') {
+                final effectiveSelectedDoctor = isDoctorLogin &&
+                        _selectedDoctor != '__all__' &&
+                        _selectedDoctor != '__unassigned__' &&
+                        !doctorOptions.contains(_selectedDoctor)
+                    ? '__all__'
+                    : _selectedDoctor;
+
+                final filtered = doctorVisibleAppointments.where((a) {
+                  if (effectiveSelectedDoctor == '__all__') return true;
+                  if (effectiveSelectedDoctor == '__unassigned__') {
                     return a.operatorsIDs.isEmpty;
                   }
-                  return a.operatorsIDs.contains(_selectedDoctor);
+                  return a.operatorsIDs.contains(effectiveSelectedDoctor);
                 }).toList(growable: false);
 
-                final isDoctorLogin =
-                    permissions.currentRole == UserRole.doctor;
+                final hasUnresolvedPatients = todaysAppointments.any((a) {
+                  final patientId = a.patientID;
+                  if (patientId == null || patientId.trim().isEmpty) {
+                    return false;
+                  }
+                  return patients.get(patientId) == null;
+                });
+                final hasUnresolvedDoctors = todaysAppointments.any((a) {
+                  if (a.operatorsIDs.isEmpty) return false;
+                  return a.operatorsIDs.any((id) => doctors.get(id) == null);
+                });
+
+                final appointmentsByPatientCache = <String, List<Appointment>>{};
+                for (final row in appointments.present.values) {
+                  final patientId = row.patientID;
+                  if (patientId == null || patientId.trim().isEmpty) continue;
+                  (appointmentsByPatientCache[patientId] ??= <Appointment>[])
+                      .add(row);
+                }
+                for (final rows in appointmentsByPatientCache.values) {
+                  rows.sort((a, b) => b.date.compareTo(a.date));
+                }
+
+                final visibleCheckinCount = isDoctorLogin
+                    ? todaysAppointments
+                        .where((a) =>
+                            a.checkinStage != 'scheduled' &&
+                            a.checkinStage != 'pending' &&
+                            a.checkinStage != 'cancelled')
+                        .length
+                    : todaysAppointments.length;
 
                 final patientVisitCounts = <String, int>{};
                 for (final row in filtered) {
@@ -1269,7 +1422,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 final screenWidth = MediaQuery.of(context).size.width;
                 final isMobile = screenWidth < 760;
 
-                return Container(
+                final content = Container(
                   color: AppTheme.light.scaffoldBackgroundColor,
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
@@ -1286,7 +1439,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   Text(
-                                    'Check-in (${todaysAppointments.length})',
+                                    'Check-in ($visibleCheckinCount)',
                                     style: const TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.w700,
@@ -1319,7 +1472,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                       onAddPatient: _openAddPatientPopup,
                                       onOpenExisting: (existing) async {
                                         if (!mounted) return;
-                                        _selectAndOpenAppointment(existing);
+                                        _selectAndOpenAppointment(
+                                          existing,
+                                          appointmentsByPatientCache:
+                                              appointmentsByPatientCache,
+                                        );
                                       },
                                       onCheckInPatient: (patient) async {
                                         if (!mounted) return;
@@ -1348,7 +1505,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                   onPressed: () {
                                     final target =
                                         _selectedAppointment ?? filtered.first;
-                                    _openNextCheckinStepper(target);
+                                    _openNextCheckinStepper(
+                                      target,
+                                      appointmentsByPatientCache:
+                                          appointmentsByPatientCache,
+                                    );
                                   },
                                   label: 'New Checkin Flow',
                                   expanded: true,
@@ -1364,8 +1525,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   AppScreenTitle(
-                                    title:
-                                        'Check-in (${todaysAppointments.length})',
+                                    title: 'Check-in ($visibleCheckinCount)',
                                   ),
                                 ],
                               ),
@@ -1377,10 +1537,13 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                     onPrevious: () => _changeDate(-1),
                                     onNext: () => _changeDate(1),
                                     onPick: () => _pickDate(context),
-                                    onToday: () => setState(() {
-                                      _selectedDate = _dateOnly(DateTime.now());
-                                      checkinPersistedDate = _selectedDate;
-                                    }),
+                                    onToday: () {
+                                      setState(() {
+                                        _selectedDate =
+                                            _dateOnly(DateTime.now());
+                                        checkinPersistedDate = _selectedDate;
+                                      });
+                                    },
                                   ),
                                 ),
                               ),
@@ -1411,7 +1574,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                   onAddPatient: _openAddPatientPopup,
                                   onOpenExisting: (existing) async {
                                     if (!mounted) return;
-                                    _selectAndOpenAppointment(existing);
+                                    _selectAndOpenAppointment(
+                                      existing,
+                                      appointmentsByPatientCache:
+                                          appointmentsByPatientCache,
+                                    );
                                   },
                                   onCheckInPatient: (patient) async {
                                     if (!mounted) return;
@@ -1428,20 +1595,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           children: [
                             _DoctorFilterChip(
                               label: 'All Doctors',
-                              selected: _selectedDoctor == '__all__',
+                              selected: effectiveSelectedDoctor == '__all__',
                               onTap: () =>
                                   setState(() => _selectedDoctor = '__all__'),
                             ),
                             _DoctorFilterChip(
                               label: 'Unassigned',
-                              selected: _selectedDoctor == '__unassigned__',
+                              selected:
+                                  effectiveSelectedDoctor == '__unassigned__',
                               onTap: () => setState(
                                   () => _selectedDoctor = '__unassigned__'),
                             ),
                             ...doctorOptions
                                 .where((id) => id != '__unassigned__')
                                 .map((id) {
-                              final isSelected = _selectedDoctor == id;
+                              final isSelected = effectiveSelectedDoctor == id;
                               return _DoctorFilterChip(
                                 label: doctors.get(id)?.title ?? 'Unknown',
                                 selected: isSelected,
@@ -1453,6 +1621,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             }),
                           ],
                         ),
+                        if (_initialSyncWarning != null) ...[
+                          const SizedBox(height: 8),
+                          InfoBar(
+                            severity: InfoBarSeverity.warning,
+                            title: const Text('Sync Incomplete'),
+                            content: Text(_initialSyncWarning!),
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         LayoutBuilder(
                           builder: (context, constraints) {
@@ -1466,7 +1642,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               rows: waiting,
                               duplicatePatientIds: duplicatePatientIds,
                               showHistoryAction: false,
-                              onSelect: _selectAndOpenAppointment,
+                              onSelect: (appointment) =>
+                                  _selectAndOpenAppointment(
+                                appointment,
+                                appointmentsByPatientCache:
+                                    appointmentsByPatientCache,
+                              ),
                               selectedAppointmentId: _selectedAppointment?.id,
                               expanded: _expandedStages['waiting'] ?? true,
                               onToggleExpanded: () => setState(() {
@@ -1482,7 +1663,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               rows: scheduled,
                               duplicatePatientIds: duplicatePatientIds,
                               showHistoryAction: false,
-                              onSelect: _selectAndOpenAppointment,
+                              onSelect: (appointment) =>
+                                  _selectAndOpenAppointment(
+                                appointment,
+                                appointmentsByPatientCache:
+                                    appointmentsByPatientCache,
+                              ),
                               selectedAppointmentId: _selectedAppointment?.id,
                               expanded: _expandedStages['scheduled'] ?? true,
                               onToggleExpanded: () => setState(() {
@@ -1498,7 +1684,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               rows: cancelled,
                               duplicatePatientIds: duplicatePatientIds,
                               showHistoryAction: false,
-                              onSelect: _selectAndOpenAppointment,
+                              onSelect: (appointment) =>
+                                  _selectAndOpenAppointment(
+                                appointment,
+                                appointmentsByPatientCache:
+                                    appointmentsByPatientCache,
+                              ),
                               selectedAppointmentId: _selectedAppointment?.id,
                               expanded: _expandedStages['cancelled'] ?? true,
                               onToggleExpanded: () => setState(() {
@@ -1514,7 +1705,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               rows: withDoctor,
                               duplicatePatientIds: duplicatePatientIds,
                               showHistoryAction: false,
-                              onSelect: _selectAndOpenAppointment,
+                              onSelect: (appointment) =>
+                                  _selectAndOpenAppointment(
+                                appointment,
+                                appointmentsByPatientCache:
+                                    appointmentsByPatientCache,
+                              ),
                               selectedAppointmentId: _selectedAppointment?.id,
                               expanded: _expandedStages['with_doctor'] ?? true,
                               onToggleExpanded: () => setState(() {
@@ -1529,7 +1725,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               color: AppColors.blue6008,
                               rows: billingList,
                               duplicatePatientIds: duplicatePatientIds,
-                              onSelect: _selectAndOpenAppointment,
+                              onSelect: (appointment) =>
+                                  _selectAndOpenAppointment(
+                                appointment,
+                                appointmentsByPatientCache:
+                                    appointmentsByPatientCache,
+                              ),
                               selectedAppointmentId: _selectedAppointment?.id,
                               interactionsEnabled: !isDoctorLogin,
                               expanded: _expandedStages['billing'] ?? true,
@@ -1545,7 +1746,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               color: AppColors.green500,
                               rows: completedList,
                               duplicatePatientIds: duplicatePatientIds,
-                              onSelect: _selectAndOpenAppointment,
+                              onSelect: (appointment) =>
+                                  _selectAndOpenAppointment(
+                                appointment,
+                                appointmentsByPatientCache:
+                                    appointmentsByPatientCache,
+                              ),
                               selectedAppointmentId: _selectedAppointment?.id,
                               interactionsEnabled: !isDoctorLogin,
                               expanded: _expandedStages['completed'] ?? true,
@@ -1615,6 +1821,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     ),
                   ),
                 );
+
+                if (hasUnresolvedPatients || hasUnresolvedDoctors) {
+                  return const _CheckinScreenSkeleton();
+                }
+
+                return content;
               },
             );
           },

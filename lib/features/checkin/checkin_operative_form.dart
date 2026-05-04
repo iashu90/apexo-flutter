@@ -24,7 +24,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   late final TextEditingController _priceController;
   late final TextEditingController _paidController;
   late final TextEditingController _discountController;
-  bool _hasPendingAutosave = false;
+  Timer? _draftChangedDebounce;
   bool _discountEnabled = false;
   bool _loadingTopTreatments = true;
   Set<String> _selectedTreatments = {};
@@ -259,12 +259,22 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   }
 
   void _scheduleAutosave({bool immediate = false}) {
-    _hasPendingAutosave = !immediate;
-    widget.onDraftChanged?.call();
+    if (immediate) {
+      _draftChangedDebounce?.cancel();
+      widget.onDraftChanged?.call();
+      return;
+    }
+
+    _draftChangedDebounce?.cancel();
+    _draftChangedDebounce = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      widget.onDraftChanged?.call();
+    });
   }
 
   @override
   void dispose() {
+    _draftChangedDebounce?.cancel();
     _postOpController.dispose();
     _priceController.dispose();
     _paidController.dispose();
