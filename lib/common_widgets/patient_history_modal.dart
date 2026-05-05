@@ -376,9 +376,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
         header: (context) => exportPdfHeader(
           context,
           title: 'Patient Invoice',
-            subtitle: displayName.isEmpty
-              ? widget.patient.id
-              : displayName,
+          subtitle: displayName.isEmpty ? widget.patient.id : displayName,
         ),
         footer: exportPdfFooter,
         build: (context) => exportPdfBodyWithMargins([
@@ -450,7 +448,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
         date: row.date,
         tooth: row.teeth.trim().isEmpty ? '-' : row.teeth,
         chiefComplaint:
-          row.chiefComplaint.trim().isEmpty ? '-' : row.chiefComplaint,
+            row.chiefComplaint.trim().isEmpty ? '-' : row.chiefComplaint,
         treatment: row.treatment.trim().isEmpty ? '-' : row.treatment,
         doctor: row.doctorName.trim().isEmpty ? '-' : row.doctorName,
         cost: _toAmount(row.cost),
@@ -737,7 +735,8 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
 
           List<int> bytes;
           try {
-            bytes = await _buildPdfDocument([row]).save().timeout(_pdfBuildTimeout);
+            bytes =
+                await _buildPdfDocument([row]).save().timeout(_pdfBuildTimeout);
           } on TimeoutException {
             throw StateError(
               'PDF generation timed out. Please try again.',
@@ -748,7 +747,8 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
           progress.setProgress(0.65);
 
           final dateTag = DateFormat('yyyyMMdd').format(row.date);
-          final treatmentTag = _sanitizeFilePart(row.treatment, fallback: 'treatment');
+          final treatmentTag =
+              _sanitizeFilePart(row.treatment, fallback: 'treatment');
           final defaultName = '${_fileStem()}_${dateTag}_$treatmentTag.pdf';
 
           final savePath = await FilePicker.platform.saveFile(
@@ -798,8 +798,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });
-    _appointmentsSubscription =
-        appointments.observableMap.stream.listen((_) {
+    _appointmentsSubscription = appointments.observableMap.stream.listen((_) {
       if (mounted) setState(() {});
     });
   }
@@ -1014,16 +1013,20 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                   alignment: WrapAlignment.end,
                   children: [
                     if (widget.onEditTreatment != null)
-                    AppButton(
-                      label: 'Share',
-                      variant: AppButtonVariant.secondary,
-                      onPressed: _openShareOptions,
-                    ),
+                      AppButton(
+                        label: 'Share',
+                        variant: AppButtonVariant.secondary,
+                        onPressed: _openShareOptions,
+                      ),
                     ExportButtons(
                       csvBusy: _isExportingCsv,
                       pdfBusy: _isExportingPdf,
-                      onCsv: (_isExportingCsv || _isExportingPdf) ? null : _exportCsv,
-                      onPdf: (_isExportingCsv || _isExportingPdf) ? null : _exportPdf,
+                      onCsv: (_isExportingCsv || _isExportingPdf)
+                          ? null
+                          : _exportCsv,
+                      onPdf: (_isExportingCsv || _isExportingPdf)
+                          ? null
+                          : _exportPdf,
                     ),
                   ],
                 ),
@@ -1077,121 +1080,7 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
             ),
           ),
           const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x120D2F5B),
-                  blurRadius: 10,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextBox(
-                    controller: _searchController,
-                    placeholder: _historyTab == 'labs'
-                        ? 'Search lab records...'
-                        : 'Search treatments...',
-                    prefix: const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Icon(FluentIcons.search, size: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 170,
-                  child: ComboBox<String>(
-                    isExpanded: true,
-                    value: _historyTab,
-                    items: const [
-                      ComboBoxItem(value: 'labs', child: Text('Labs')),
-                      ComboBoxItem(
-                        value: 'treatments',
-                        child: Text('Treatments'),
-                      ),
-                    ],
-                    onChanged: (v) {
-                      if (v == null) return;
-                      setState(() {
-                        _historyTab = v;
-                        _expandedRowId = null;
-                        _sortBy = 'date';
-                        _sortAscending = false;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _filterHeaderIcon(
-                  icon: FluentIcons.completed,
-                  tooltip: 'Status',
-                  selected: _statusFilter != 'All',
-                ),
-                const SizedBox(width: 6),
-                _combo(
-                  value: _statusFilter,
-                  values: const ['All', 'Paid', 'Due', 'Partial'],
-                  onChanged: (v) => setState(() => _statusFilter = v),
-                  width: 140,
-                ),
-                const SizedBox(width: 8),
-                _filterHeaderIcon(
-                  icon: FluentIcons.payment_card,
-                  tooltip: 'Mode',
-                  selected: _modeFilter != 'All',
-                ),
-                const SizedBox(width: 6),
-                _combo(
-                  value: _modeFilter,
-                  values: const ['All', 'Cash', 'UPI'],
-                  onChanged: (v) => setState(() => _modeFilter = v),
-                  width: 120,
-                ),
-                const SizedBox(width: 8),
-                _filterHeaderIcon(
-                  icon: FluentIcons.date_time,
-                  tooltip: 'Date',
-                  selected: _dateRange != 'All',
-                ),
-                const SizedBox(width: 6),
-                _combo(
-                  value: _dateRange,
-                  values: const [
-                    '1 Month',
-                    '3 Months',
-                    '6 Months',
-                    '1 Year',
-                    'All'
-                  ],
-                  onChanged: (v) => setState(() => _dateRange = v),
-                  width: 150,
-                ),
-                const SizedBox(width: 8),
-                _filterHeaderIcon(
-                  icon: FluentIcons.medical,
-                  tooltip: 'Doctor',
-                  selected: _doctorFilter != 'All Doctors',
-                ),
-                const SizedBox(width: 6),
-                _combo(
-                  value: _doctorFilter,
-                  values: const ['All Doctors', 'Dr Nowfar'],
-                  onChanged: (v) => setState(() => _doctorFilter = v),
-                  width: 140,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
+          RepaintBoundary(
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -1206,275 +1095,428 @@ class _PatientHistoryDialogState extends State<PatientHistoryDialog> {
                   ),
                 ],
               ),
-              child: Column(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextBox(
+                      controller: _searchController,
+                      placeholder: _historyTab == 'labs'
+                          ? 'Search lab records...'
+                          : 'Search treatments...',
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Icon(FluentIcons.search, size: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 170,
+                    child: ComboBox<String>(
+                      isExpanded: true,
+                      value: _historyTab,
+                      items: const [
+                        ComboBoxItem(value: 'labs', child: Text('Labs')),
+                        ComboBoxItem(
+                          value: 'treatments',
+                          child: Text('Treatments'),
+                        ),
+                      ],
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() {
+                          _historyTab = v;
+                          _expandedRowId = null;
+                          _sortBy = 'date';
+                          _sortAscending = false;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _filterHeaderIcon(
+                    icon: FluentIcons.completed,
+                    tooltip: 'Status',
+                    selected: _statusFilter != 'All',
+                  ),
+                  const SizedBox(width: 6),
+                  _combo(
+                    value: _statusFilter,
+                    values: const ['All', 'Paid', 'Due', 'Partial'],
+                    onChanged: (v) => setState(() => _statusFilter = v),
+                    width: 140,
+                  ),
+                  const SizedBox(width: 8),
+                  _filterHeaderIcon(
+                    icon: FluentIcons.payment_card,
+                    tooltip: 'Mode',
+                    selected: _modeFilter != 'All',
+                  ),
+                  const SizedBox(width: 6),
+                  _combo(
+                    value: _modeFilter,
+                    values: const ['All', 'Cash', 'UPI'],
+                    onChanged: (v) => setState(() => _modeFilter = v),
+                    width: 120,
+                  ),
+                  const SizedBox(width: 8),
+                  _filterHeaderIcon(
+                    icon: FluentIcons.date_time,
+                    tooltip: 'Date',
+                    selected: _dateRange != 'All',
+                  ),
+                  const SizedBox(width: 6),
+                  _combo(
+                    value: _dateRange,
+                    values: const [
+                      '1 Month',
+                      '3 Months',
+                      '6 Months',
+                      '1 Year',
+                      'All'
+                    ],
+                    onChanged: (v) => setState(() => _dateRange = v),
+                    width: 150,
+                  ),
+                  const SizedBox(width: 8),
+                  _filterHeaderIcon(
+                    icon: FluentIcons.medical,
+                    tooltip: 'Doctor',
+                    selected: _doctorFilter != 'All Doctors',
+                  ),
+                  const SizedBox(width: 6),
+                  _combo(
+                    value: _doctorFilter,
+                    values: const ['All Doctors', 'Dr Nowfar'],
+                    onChanged: (v) => setState(() => _doctorFilter = v),
+                    width: 140,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: RepaintBoundary(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x120D2F5B),
+                      blurRadius: 10,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
                   children: [
                     Builder(builder: (context) {
-                    final visibleRows = _visibleRows;
-                    final runningBalances = _runningBalances(visibleRows);
-                    return Expanded(
-                      child: Column(
-                    children: [
-                      Container(
-                        color: hasActiveFilters
-                            ? const Color(0xFFEAF2FF)
-                            : Colors.transparent,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 8),
-                        child: Row(
+                      final visibleRows = _visibleRows;
+                      final runningBalances = _runningBalances(visibleRows);
+                      return Expanded(
+                        child: Column(
                           children: [
-                            Expanded(
-                        flex: 7,
-                        child: _sortableHead('S.No', 'serial')),
-                      Expanded(
-                        flex: 12,
-                                child: _sortableHead('Date', 'date')),
-                            Expanded(
-                                flex: 9,
-                                child: _sortableHead('Tooth', 'tooth')),
-                            Expanded(
-                                flex: 14,
-                                child: _sortableHead('Doctor', 'doctor')),
-                            Expanded(
-                        flex: 14,
-                        child:
-                          _sortableHead('Chief Complaint', 'chief')),
-                      Expanded(
-                        flex: 18,
-                        child: _sortableHead('Treatment', 'treatment')),
-                      Expanded(
-                        flex: 8,
-                                child: _sortableHead('Cost', 'cost')),
-                            Expanded(
-                        flex: 8,
-                                child: _sortableHead('Paid', 'paid')),
-                            Expanded(
-                        flex: 9,
-                                child: _sortableHead('Balance', 'balance')),
-                            Expanded(
-                                flex: 8,
-                                child: _sortableHead('Status', 'status')),
-                            Expanded(
-                                flex: 8,
-                                child: _sortableHead('Mode', 'mode')),
-                            const Expanded(
-                              flex: 12,
-                              child: Text('Actions',
-                                  style: TextStyle(fontWeight: FontWeight.w600)),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Divider(size: 1),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: visibleRows.length,
-                          itemBuilder: (context, index) {
-                            final row = visibleRows[index];
-                            final expanded = _expandedRowId == row.id;
-                            final statusColor = _statusColor(row.status);
-                            final runningBalance =
-                                runningBalances[row.id] ?? row.balance;
-
-                            return MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: Column(
+                            Container(
+                              color: hasActiveFilters
+                                  ? const Color(0xFFEAF2FF)
+                                  : Colors.transparent,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 8),
+                              child: Row(
                                 children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _expandedRowId =
-                                            expanded ? null : row.id;
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 10),
-                                      color: index.isEven
-                                          ? const Color(0xFFF9FBFF)
-                                          : Colors.white,
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            flex: 7,
-                                            child: Text('${index + 1}'),
-                                          ),
-                                          Expanded(
-                                            flex: 12,
-                                            child: Text(formatClinicDate(
-                                                row.date,
-                                                pattern: 'dd MMM yyyy')),
-                                          ),
-                                          Expanded(
-                                              flex: 9,
-                                              child: Text(row.tooth)),
-                                          Expanded(
-                                              flex: 14,
-                                              child: Text(
-                                                row.doctor,
-                                                overflow: TextOverflow.ellipsis,
-                                              )),
-                                          Expanded(
-                                            flex: 14,
-                                            child: Text(
-                                              row.chiefComplaint,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 18,
-                                            child: Text(
-                                              row.treatment,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 8,
-                                            child: Text(
-                                                '₹${row.cost.toStringAsFixed(0)}'),
-                                          ),
-                                          Expanded(
-                                            flex: 8,
-                                            child: Text(
-                                              '₹${row.paid.toStringAsFixed(0)}',
-                                              style: TextStyle(
-                                                color: row.paid < row.cost
-                                                    ? const Color(0xFFD97706)
-                                                    : const Color(0xFF16A34A),
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 9,
-                                            child: Text(
-                                              '₹${runningBalance.toStringAsFixed(0)}',
-                                              style: const TextStyle(
-                                                color: Color(0xFFDC2626),
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 8,
-                                            child: Align(
-                                              alignment: Alignment.centerLeft,
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: statusColor.withValues(
-                                                      alpha: 0.12),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          999),
-                                                  border: Border.all(
-                                                      color: statusColor),
-                                                ),
-                                                child: Text(
-                                                  row.status,
-                                                  style: TextStyle(
-                                                    color: statusColor,
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                              flex: 8,
-                                              child: Text(row.mode)),
-                                          Expanded(
-                                            flex: 12,
-                                            child: Wrap(
-                                              spacing: 6,
-                                              runSpacing: 6,
+                                  Expanded(
+                                      flex: 7,
+                                      child: _sortableHead('S.No', 'serial')),
+                                  Expanded(
+                                      flex: 12,
+                                      child: _sortableHead('Date', 'date')),
+                                  Expanded(
+                                      flex: 9,
+                                      child: _sortableHead('Tooth', 'tooth')),
+                                  Expanded(
+                                      flex: 14,
+                                      child: _sortableHead('Doctor', 'doctor')),
+                                  Expanded(
+                                      flex: 14,
+                                      child: _sortableHead(
+                                          'Chief Complaint', 'chief')),
+                                  Expanded(
+                                      flex: 18,
+                                      child: _sortableHead(
+                                          'Treatment', 'treatment')),
+                                  Expanded(
+                                      flex: 8,
+                                      child: _sortableHead('Cost', 'cost')),
+                                  Expanded(
+                                      flex: 8,
+                                      child: _sortableHead('Paid', 'paid')),
+                                  Expanded(
+                                      flex: 9,
+                                      child:
+                                          _sortableHead('Balance', 'balance')),
+                                  Expanded(
+                                      flex: 8,
+                                      child: _sortableHead('Status', 'status')),
+                                  Expanded(
+                                      flex: 8,
+                                      child: _sortableHead('Mode', 'mode')),
+                                  const Expanded(
+                                    flex: 12,
+                                    child: Text('Actions',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w600)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Divider(size: 1),
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: visibleRows.length,
+                                itemBuilder: (context, index) {
+                                  final row = visibleRows[index];
+                                  final expanded = _expandedRowId == row.id;
+                                  final statusColor = _statusColor(row.status);
+                                  final runningBalance =
+                                      runningBalances[row.id] ?? row.balance;
+
+                                  return MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Column(
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _expandedRowId =
+                                                  expanded ? null : row.id;
+                                            });
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 10),
+                                            color: index.isEven
+                                                ? const Color(0xFFF9FBFF)
+                                                : Colors.white,
+                                            child: Row(
                                               children: [
-                                                if (widget.onEditTreatment != null &&
-                                                    row.appointmentId != null &&
-                                                    row.appointmentId!.trim().isNotEmpty)
-                                                  _actionIcon(
-                                                    icon: FluentIcons.edit,
-                                                    tooltip: 'Edit treatment',
-                                                    onTap: () {
-                                                      final callback = widget.onEditTreatment;
-                                                      final appointmentId = row.appointmentId;
-                                                      if (callback == null ||
-                                                          appointmentId == null ||
-                                                          appointmentId.trim().isEmpty) {
-                                                        return;
-                                                      }
-                                                      unawaited(callback(appointmentId));
-                                                    },
-                                                  ),
-                                                _actionIcon(
-                                                  icon: FluentIcons.pdf,
-                                                  tooltip: 'Download Treatment PDF',
-                                                  onTap: () => _exportRowPdf(row),
+                                                Expanded(
+                                                  flex: 7,
+                                                  child: Text('${index + 1}'),
                                                 ),
-                                                _actionIcon(
-                                                  icon: FluentIcons.share,
-                                                  tooltip: 'Share Invoice',
-                                                  onTap: () =>
-                                                      _openShareOptions(row),
+                                                Expanded(
+                                                  flex: 12,
+                                                  child: Text(formatClinicDate(
+                                                      row.date,
+                                                      pattern: 'dd MMM yyyy')),
+                                                ),
+                                                Expanded(
+                                                    flex: 9,
+                                                    child: Text(row.tooth)),
+                                                Expanded(
+                                                    flex: 14,
+                                                    child: Text(
+                                                      row.doctor,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    )),
+                                                Expanded(
+                                                  flex: 14,
+                                                  child: Text(
+                                                    row.chiefComplaint,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  flex: 18,
+                                                  child: Text(
+                                                    row.treatment,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  flex: 8,
+                                                  child: Text(
+                                                      '₹${row.cost.toStringAsFixed(0)}'),
+                                                ),
+                                                Expanded(
+                                                  flex: 8,
+                                                  child: Text(
+                                                    '₹${row.paid.toStringAsFixed(0)}',
+                                                    style: TextStyle(
+                                                      color: row.paid < row.cost
+                                                          ? const Color(
+                                                              0xFFD97706)
+                                                          : const Color(
+                                                              0xFF16A34A),
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  flex: 9,
+                                                  child: Text(
+                                                    '₹${runningBalance.toStringAsFixed(0)}',
+                                                    style: const TextStyle(
+                                                      color: Color(0xFFDC2626),
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  flex: 8,
+                                                  child: Align(
+                                                    alignment:
+                                                        Alignment.centerLeft,
+                                                    child: Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: statusColor
+                                                            .withValues(
+                                                                alpha: 0.12),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(999),
+                                                        border: Border.all(
+                                                            color: statusColor),
+                                                      ),
+                                                      child: Text(
+                                                        row.status,
+                                                        style: TextStyle(
+                                                          color: statusColor,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 11,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                    flex: 8,
+                                                    child: Text(row.mode)),
+                                                Expanded(
+                                                  flex: 12,
+                                                  child: Wrap(
+                                                    spacing: 6,
+                                                    runSpacing: 6,
+                                                    children: [
+                                                      if (widget.onEditTreatment !=
+                                                              null &&
+                                                          row.appointmentId !=
+                                                              null &&
+                                                          row.appointmentId!
+                                                              .trim()
+                                                              .isNotEmpty)
+                                                        _actionIcon(
+                                                          icon:
+                                                              FluentIcons.edit,
+                                                          tooltip:
+                                                              'Edit treatment',
+                                                          onTap: () {
+                                                            final callback = widget
+                                                                .onEditTreatment;
+                                                            final appointmentId =
+                                                                row.appointmentId;
+                                                            if (callback ==
+                                                                    null ||
+                                                                appointmentId ==
+                                                                    null ||
+                                                                appointmentId
+                                                                    .trim()
+                                                                    .isEmpty) {
+                                                              return;
+                                                            }
+                                                            unawaited(callback(
+                                                                appointmentId));
+                                                          },
+                                                        ),
+                                                      _actionIcon(
+                                                        icon: FluentIcons.pdf,
+                                                        tooltip:
+                                                            'Download Treatment PDF',
+                                                        onTap: () =>
+                                                            _exportRowPdf(row),
+                                                      ),
+                                                      _actionIcon(
+                                                        icon: FluentIcons.share,
+                                                        tooltip:
+                                                            'Share Invoice',
+                                                        onTap: () =>
+                                                            _openShareOptions(
+                                                                row),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                        if (expanded)
+                                          RepaintBoundary(
+                                            child: Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.all(12),
+                                              color: const Color(0xFFF3F7FC),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'Treatment Details',
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w700),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                      'Notes by doctor: ${row.notes}'),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                      'Medicines prescribed: ${row.prescription}'),
+                                                  const SizedBox(height: 4),
+                                                  const Text(
+                                                      'Attachments: No files attached'),
+                                                  const SizedBox(height: 10),
+                                                  const Text(
+                                                    'Payment Breakdown',
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w700),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                    '₹${row.paid.toStringAsFixed(0)} — ${row.mode} — ${formatClinicDate(row.date, pattern: 'dd MMM yyyy')}',
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        const Divider(size: 1),
+                                      ],
                                     ),
-                                  ),
-                                  if (expanded)
-                                    Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(12),
-                                      color: const Color(0xFFF3F7FC),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'Treatment Details',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w700),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text('Notes by doctor: ${row.notes}'),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                              'Medicines prescribed: ${row.prescription}'),
-                                          const SizedBox(height: 4),
-                                          const Text(
-                                              'Attachments: No files attached'),
-                                          const SizedBox(height: 10),
-                                          const Text(
-                                            'Payment Breakdown',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w700),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            '₹${row.paid.toStringAsFixed(0)} — ${row.mode} — ${formatClinicDate(row.date, pattern: 'dd MMM yyyy')}',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  const Divider(size: 1),
-                                ],
+                                  );
+                                },
                               ),
-                            );
-                          },
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                        );
-                      }),
-                    ],
-                  ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

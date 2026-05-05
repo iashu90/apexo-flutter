@@ -155,7 +155,8 @@ Future<void> _showNextAppointmentPromptDialog(
     suggestedFocusNotes: kCheckinFocusNotes,
   );
   if (draft == null) return;
-  if (!runCriticalWriteUiGuard(context, actionLabel: 'scheduling appointment')) {
+  if (!runCriticalWriteUiGuard(context,
+      actionLabel: 'scheduling appointment')) {
     return;
   }
 
@@ -201,7 +202,8 @@ Future<void> _upsertScheduledFollowUpAppointment(
     confirmLabel: existingScheduled == null ? 'Schedule' : 'Update',
   );
   if (draft == null) return;
-  if (!runCriticalWriteUiGuard(context, actionLabel: 'saving scheduled follow-up')) {
+  if (!runCriticalWriteUiGuard(context,
+      actionLabel: 'saving scheduled follow-up')) {
     return;
   }
 
@@ -1293,8 +1295,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   ..sort((a, b) => a.date.compareTo(b.date));
 
                 bool shouldHideForDoctorRole(Appointment appointment) {
-                  final stage =
-                      normalizeCheckinStage(appointment.checkinStage);
+                  final stage = normalizeCheckinStage(appointment.checkinStage);
                   return stage == 'scheduled' ||
                       stage == 'pending' ||
                       stage == 'cancelled';
@@ -1342,7 +1343,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   return a.operatorsIDs.any((id) => doctors.get(id) == null);
                 });
 
-                final appointmentsByPatientCache = <String, List<Appointment>>{};
+                final appointmentsByPatientCache =
+                    <String, List<Appointment>>{};
                 for (final row in appointments.present.values) {
                   final patientId = row.patientID;
                   if (patientId == null || patientId.trim().isEmpty) continue;
@@ -1770,21 +1772,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             if (stacked) {
                               return Column(
                                 children: [
-                                  waitingColumn,
+                                  RepaintBoundary(child: waitingColumn),
                                   if (!isDoctorLogin) ...[
                                     const SizedBox(height: 10),
-                                    scheduledColumn,
+                                    RepaintBoundary(child: scheduledColumn),
                                     if (cancelled.isNotEmpty) ...[
                                       const SizedBox(height: 10),
-                                      cancelledColumn,
+                                      RepaintBoundary(child: cancelledColumn),
                                     ],
                                   ],
                                   const SizedBox(height: 10),
-                                  withDoctorColumn,
+                                  RepaintBoundary(child: withDoctorColumn),
                                   const SizedBox(height: 10),
-                                  billingColumn,
+                                  RepaintBoundary(child: billingColumn),
                                   const SizedBox(height: 10),
-                                  completedColumn,
+                                  RepaintBoundary(child: completedColumn),
                                 ],
                               );
                             }
@@ -1795,27 +1797,30 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                 Expanded(
                                   child: Column(
                                     children: [
-                                      waitingColumn,
+                                      RepaintBoundary(child: waitingColumn),
                                       if (!isDoctorLogin) ...[
                                         const SizedBox(height: 10),
-                                        scheduledColumn,
+                                        RepaintBoundary(child: scheduledColumn),
                                         if (cancelled.isNotEmpty) ...[
                                           const SizedBox(height: 10),
-                                          cancelledColumn,
+                                          RepaintBoundary(
+                                              child: cancelledColumn),
                                         ],
                                       ],
                                     ],
                                   ),
                                 ),
                                 const SizedBox(width: 10),
-                                Expanded(child: withDoctorColumn),
+                                Expanded(
+                                    child: RepaintBoundary(
+                                        child: withDoctorColumn)),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
                                     children: [
-                                      billingColumn,
+                                      RepaintBoundary(child: billingColumn),
                                       const SizedBox(height: 10),
-                                      completedColumn,
+                                      RepaintBoundary(child: completedColumn),
                                     ],
                                   ),
                                 ),
@@ -3048,7 +3053,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     targetAppointment.checkinStage = 'scheduled';
     targetAppointment.isCheckedIn = false;
     targetAppointment.operatorsIDs = draft.doctorIds.toList(growable: false);
-    targetAppointment.chiefComplaints = draft.focusNotes.toList(growable: false);
+    targetAppointment.chiefComplaints =
+        draft.focusNotes.toList(growable: false);
     if (draft.focusNotes.isNotEmpty) {
       targetAppointment.preOpNotes = draft.focusNotes.join(', ');
     }

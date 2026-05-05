@@ -546,454 +546,480 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StreamBuilder(
           stream: appointments.observableMap.stream,
           builder: (context, _) {
-        final todaysAppointments = appointments.forDate(selectedDate)
-          ..sort((a, b) => a.date.compareTo(b.date));
+            final todaysAppointments = appointments.forDate(selectedDate)
+              ..sort((a, b) => a.date.compareTo(b.date));
 
-        final allAppointments =
-            appointments.present.values.toList(growable: false);
-        final doctorScopedAppointments = _doctorFiltered(todaysAppointments);
-        final doctorAndTreatmentFiltered =
-            _treatmentFiltered(doctorScopedAppointments);
-        final availableStatusFilters =
-          _availableStatusFilters(doctorAndTreatmentFiltered);
-        final selectedStatusFilter =
-          _appointmentStatusFilter == 'all' ||
-              availableStatusFilters.contains(_appointmentStatusFilter)
-            ? _appointmentStatusFilter
-            : 'all';
-        final tableAppointments = _filteredAndSorted(
-          _statusFilteredAppointments(doctorAndTreatmentFiltered),
-        );
-        final treatmentStats =
-            DashboardTreatmentStats.from(doctorScopedAppointments);
+            final allAppointments =
+                appointments.present.values.toList(growable: false);
+            final doctorScopedAppointments =
+                _doctorFiltered(todaysAppointments);
+            final doctorAndTreatmentFiltered =
+                _treatmentFiltered(doctorScopedAppointments);
+            final availableStatusFilters =
+                _availableStatusFilters(doctorAndTreatmentFiltered);
+            final selectedStatusFilter = _appointmentStatusFilter == 'all' ||
+                    availableStatusFilters.contains(_appointmentStatusFilter)
+                ? _appointmentStatusFilter
+                : 'all';
+            final tableAppointments = _filteredAndSorted(
+              _statusFilteredAppointments(doctorAndTreatmentFiltered),
+            );
+            final treatmentStats =
+                DashboardTreatmentStats.from(doctorScopedAppointments);
 
-        final doctorFilterChip = _doctorFilterChipLabel();
-        final treatmentFilterChip = _treatmentFilterChipLabel();
-        final isDoctorFilterApplied =
-            _selectedDoctorFilter != dashboardDoctorFilterAll ||
-                _selectedTreatmentFilter != dashboardTreatmentFilterAll;
+            final doctorFilterChip = _doctorFilterChipLabel();
+            final treatmentFilterChip = _treatmentFilterChipLabel();
+            final isDoctorFilterApplied =
+                _selectedDoctorFilter != dashboardDoctorFilterAll ||
+                    _selectedTreatmentFilter != dashboardTreatmentFilterAll;
 
-        final duplicatePatientCounts = <String, int>{};
-        for (final appointment in tableAppointments) {
-          final pid = appointment.patientID;
-          if (pid == null || pid.isEmpty) continue;
-          duplicatePatientCounts[pid] = (duplicatePatientCounts[pid] ?? 0) + 1;
-        }
-        final duplicatePatientKeys = duplicatePatientCounts.entries
-            .where((entry) => entry.value > 1)
-            .map((entry) => entry.key)
-            .toSet();
-
-        final waiting = doctorScopedAppointments.where((appointment) {
-          final stage = normalizeCheckinStage(appointment.checkinStage);
-          return stage == 'waiting';
-        }).length;
-        final scheduled = doctorScopedAppointments.where((appointment) {
-          final stage = normalizeCheckinStage(appointment.checkinStage);
-          return stage == 'scheduled';
-        }).length;
-        final treatment = doctorScopedAppointments.where((appointment) {
-          final stage = normalizeCheckinStage(appointment.checkinStage);
-          return stage == 'with_doctor';
-        }).length;
-        final billing = doctorScopedAppointments.where((appointment) {
-          final stage = normalizeCheckinStage(appointment.checkinStage);
-          return stage == 'checkout';
-        }).length;
-        final completed = doctorScopedAppointments.where((appointment) {
-          final stage = normalizeCheckinStage(appointment.checkinStage);
-          return stage == 'complete';
-        }).length;
-
-        final newPatients = doctorScopedAppointments
-            .where((appointment) => appointment.firstAppointmentForThisPatient)
-            .length;
-        final returningPatients =
-            math.max(0, doctorScopedAppointments.length - newPatients);
-
-        final treatmentRevenue = doctorScopedAppointments.fold<double>(
-          0,
-          (sum, appointment) => sum + appointment.paid,
-        );
-        final prescriptionRevenue = doctorScopedAppointments.fold<double>(
-          0,
-          (sum, appointment) => sum + appointment.prescriptionPaid,
-        );
-        final revenueToday = treatmentRevenue + prescriptionRevenue;
-
-        final doctorFeeToday = doctorScopedAppointments.fold<double>(
-          0,
-          (sum, appointment) => sum + appointment.doctorPayableAmount,
-        );
-        final netProfitToday = revenueToday - doctorFeeToday;
-
-        final outstandingBalance = dashboardCtrl.totalDueAmount();
-
-        double morningCash = 0;
-        double morningUpi = 0;
-        int morningPatients = 0;
-        double eveningCash = 0;
-        double eveningUpi = 0;
-        int eveningPatients = 0;
-
-        for (final appointment in doctorScopedAppointments) {
-          final totalPayment = appointment.paid + appointment.prescriptionPaid;
-          final isDigital =
-              appointment.treatmentGpayPaid || appointment.prescriptionGpayPaid;
-          final hour = appointment.date.hour;
-
-          if (hour < 15) {
-            morningPatients += 1;
-            if (isDigital) {
-              morningUpi += totalPayment;
-            } else {
-              morningCash += totalPayment;
+            final duplicatePatientCounts = <String, int>{};
+            for (final appointment in tableAppointments) {
+              final pid = appointment.patientID;
+              if (pid == null || pid.isEmpty) continue;
+              duplicatePatientCounts[pid] =
+                  (duplicatePatientCounts[pid] ?? 0) + 1;
             }
-          } else {
-            eveningPatients += 1;
-            if (isDigital) {
-              eveningUpi += totalPayment;
-            } else {
-              eveningCash += totalPayment;
+            final duplicatePatientKeys = duplicatePatientCounts.entries
+                .where((entry) => entry.value > 1)
+                .map((entry) => entry.key)
+                .toSet();
+
+            final waiting = doctorScopedAppointments.where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'waiting';
+            }).length;
+            final scheduled = doctorScopedAppointments.where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'scheduled';
+            }).length;
+            final treatment = doctorScopedAppointments.where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'with_doctor';
+            }).length;
+            final billing = doctorScopedAppointments.where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'checkout';
+            }).length;
+            final completed = doctorScopedAppointments.where((appointment) {
+              final stage = normalizeCheckinStage(appointment.checkinStage);
+              return stage == 'complete';
+            }).length;
+
+            final newPatients = doctorScopedAppointments
+                .where(
+                    (appointment) => appointment.firstAppointmentForThisPatient)
+                .length;
+            final returningPatients =
+                math.max(0, doctorScopedAppointments.length - newPatients);
+
+            final treatmentRevenue = doctorScopedAppointments.fold<double>(
+              0,
+              (sum, appointment) => sum + appointment.paid,
+            );
+            final prescriptionRevenue = doctorScopedAppointments.fold<double>(
+              0,
+              (sum, appointment) => sum + appointment.prescriptionPaid,
+            );
+            final revenueToday = treatmentRevenue + prescriptionRevenue;
+
+            final doctorFeeToday = doctorScopedAppointments.fold<double>(
+              0,
+              (sum, appointment) => sum + appointment.doctorPayableAmount,
+            );
+            final netProfitToday = revenueToday - doctorFeeToday;
+
+            final outstandingBalance = dashboardCtrl.totalDueAmount();
+
+            double morningCash = 0;
+            double morningUpi = 0;
+            int morningPatients = 0;
+            double eveningCash = 0;
+            double eveningUpi = 0;
+            int eveningPatients = 0;
+
+            for (final appointment in doctorScopedAppointments) {
+              final totalPayment =
+                  appointment.paid + appointment.prescriptionPaid;
+              final isDigital = appointment.treatmentGpayPaid ||
+                  appointment.prescriptionGpayPaid;
+              final hour = appointment.date.hour;
+
+              if (hour < 15) {
+                morningPatients += 1;
+                if (isDigital) {
+                  morningUpi += totalPayment;
+                } else {
+                  morningCash += totalPayment;
+                }
+              } else {
+                eveningPatients += 1;
+                if (isDigital) {
+                  eveningUpi += totalPayment;
+                } else {
+                  eveningCash += totalPayment;
+                }
+              }
             }
-          }
-        }
 
-        final firstVisitByPatient = <String, DateTime>{};
-        for (final a in allAppointments) {
-          final pid = a.patientID;
-          if (pid == null || pid.isEmpty) continue;
-          final visitDate = _dateOnly(a.date);
-          final existing = firstVisitByPatient[pid];
-          if (existing == null || visitDate.isBefore(existing)) {
-            firstVisitByPatient[pid] = visitDate;
-          }
-        }
+            final firstVisitByPatient = <String, DateTime>{};
+            for (final a in allAppointments) {
+              final pid = a.patientID;
+              if (pid == null || pid.isEmpty) continue;
+              final visitDate = _dateOnly(a.date);
+              final existing = firstVisitByPatient[pid];
+              if (existing == null || visitDate.isBefore(existing)) {
+                firstVisitByPatient[pid] = visitDate;
+              }
+            }
 
-        final dailyTreatmentDistribution =
-            _treatmentDistributionRows(todaysAppointments);
+            final dailyTreatmentDistribution =
+                _treatmentDistributionRows(todaysAppointments);
 
-        return Container(
-          color: AppTheme.light.scaffoldBackgroundColor,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _OverviewHeader(
-                  selectedDate: selectedDate,
-                  onPrevious: () => _changeDate(-1),
-                  onNext: () => _changeDate(1),
-                  onPick: () => _pickDate(context),
-                  onToday: _goToday,
-                ),
-                if (_initialSyncWarning != null) ...[
-                  const SizedBox(height: 8),
-                  InfoBar(
-                    severity: InfoBarSeverity.warning,
-                    title: const Text('Sync Incomplete'),
-                    content: Text(_initialSyncWarning!),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final cards = [
-                      _AppointmentsTodayCard(
-                        totalAppointments: todaysAppointments.length,
-                        newPatients: newPatients,
-                        returningPatients: returningPatients,
-                        onTap: () => _openNewPatientsDialog(todaysAppointments),
+            return Container(
+              color: AppTheme.light.scaffoldBackgroundColor,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _OverviewHeader(
+                      selectedDate: selectedDate,
+                      onPrevious: () => _changeDate(-1),
+                      onNext: () => _changeDate(1),
+                      onPick: () => _pickDate(context),
+                      onToday: _goToday,
+                    ),
+                    if (_initialSyncWarning != null) ...[
+                      const SizedBox(height: 8),
+                      InfoBar(
+                        severity: InfoBarSeverity.warning,
+                        title: const Text('Sync Incomplete'),
+                        content: Text(_initialSyncWarning!),
                       ),
-                      _StatusSummaryCard(
-                        waiting: waiting,
-                        scheduled: scheduled,
-                        treatment: treatment,
-                        billing: billing,
-                        completed: completed,
-                      ),
-                      _RevenueCard(
-                        title: 'Revenue Today',
-                        value: _money(revenueToday),
-                        revenueTotal: revenueToday,
-                        doctorFee: doctorFeeToday,
-                        netProfit: netProfitToday,
-                      ),
-                      _SessionRevenueCard(
-                        title: 'Morning',
-                        range: '12 AM - 3 PM',
-                        total: morningCash + morningUpi,
-                        cash: morningCash,
-                        upi: morningUpi,
-                        patientCount: morningPatients,
-                        borderColor: AppColors.amber200,
-                        background: AppColors.amber1004,
-                        iconColor: AppColors.amber500,
-                      ),
-                      _SessionRevenueCard(
-                        title: 'Evening',
-                        range: '3 PM - 12 AM',
-                        total: eveningCash + eveningUpi,
-                        cash: eveningCash,
-                        upi: eveningUpi,
-                        patientCount: eveningPatients,
-                        borderColor: AppColors.violet400,
-                        background: AppColors.slate1008,
-                        iconColor: AppColors.primary800,
-                      ),
-                      _TopDailyTreatmentCard(
-                        rows: dailyTreatmentDistribution,
-                      ),
-                    ];
-                    const gap = 10.0;
+                    ],
+                    const SizedBox(height: 10),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final cards = [
+                          _AppointmentsTodayCard(
+                            totalAppointments: todaysAppointments.length,
+                            newPatients: newPatients,
+                            returningPatients: returningPatients,
+                            onTap: () =>
+                                _openNewPatientsDialog(todaysAppointments),
+                          ),
+                          _StatusSummaryCard(
+                            waiting: waiting,
+                            scheduled: scheduled,
+                            treatment: treatment,
+                            billing: billing,
+                            completed: completed,
+                          ),
+                          _RevenueCard(
+                            title: 'Revenue Today',
+                            value: _money(revenueToday),
+                            revenueTotal: revenueToday,
+                            doctorFee: doctorFeeToday,
+                            netProfit: netProfitToday,
+                          ),
+                          _SessionRevenueCard(
+                            title: 'Morning',
+                            range: '12 AM - 3 PM',
+                            total: morningCash + morningUpi,
+                            cash: morningCash,
+                            upi: morningUpi,
+                            patientCount: morningPatients,
+                            borderColor: AppColors.amber200,
+                            background: AppColors.amber1004,
+                            iconColor: AppColors.amber500,
+                          ),
+                          _SessionRevenueCard(
+                            title: 'Evening',
+                            range: '3 PM - 12 AM',
+                            total: eveningCash + eveningUpi,
+                            cash: eveningCash,
+                            upi: eveningUpi,
+                            patientCount: eveningPatients,
+                            borderColor: AppColors.violet400,
+                            background: AppColors.slate1008,
+                            iconColor: AppColors.primary800,
+                          ),
+                          _TopDailyTreatmentCard(
+                            rows: dailyTreatmentDistribution,
+                          ),
+                        ];
+                        const gap = 10.0;
 
-                    return Wrap(
-                      spacing: gap,
-                      runSpacing: gap,
-                      children: cards,
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                const _SectionTitle('Financial Summary'),
-                const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 980;
-                    if (isNarrow) {
-                      return Column(
-                        children: [
-                          _FinanceCard(
-                            title: 'Treatment Revenue',
-                            value: _money(treatmentRevenue),
-                            icon: FluentIcons.money,
-                            iconColor: AppColors.successTeal,
-                            iconBackground: AppColors.violet1005,
-                            valueColor: AppColors.blue600,
-                          ),
-                          const SizedBox(height: 10),
-                          _FinanceCard(
-                            title: 'Prescription Revenue',
-                            value: _money(prescriptionRevenue),
-                            icon: FluentIcons.precipitation,
-                            iconColor: AppColors.successTeal,
-                            iconBackground: AppColors.green1002,
-                            valueColor: AppColors.blue600,
-                          ),
-                          const SizedBox(height: 10),
-                          _FinanceCard(
-                            title: 'Outstanding Balance',
-                            value: _money(outstandingBalance),
-                            icon: FluentIcons.status_error_full,
-                            iconColor: AppColors.dangerRose,
-                            iconBackground: AppColors.amber2003,
-                            valueColor: AppColors.blue7508,
-                            onTap: _openOutstandingDialog,
-                          ),
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: _FinanceCard(
-                            title: 'Treatment Revenue',
-                            value: _money(treatmentRevenue),
-                            icon: FluentIcons.money,
-                            iconColor: AppColors.successTeal,
-                            iconBackground: AppColors.violet1005,
-                            valueColor: AppColors.blue600,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _FinanceCard(
-                            title: 'Prescription Revenue',
-                            value: _money(prescriptionRevenue),
-                            icon: FluentIcons.precipitation,
-                            iconColor: AppColors.successTeal,
-                            iconBackground: AppColors.green1002,
-                            valueColor: AppColors.blue600,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _FinanceCard(
-                            title: 'Outstanding Balance',
-                            value: _money(outstandingBalance),
-                            icon: FluentIcons.status_error_full,
-                            iconColor: AppColors.dangerRose,
-                            iconBackground: AppColors.amber2003,
-                            valueColor: AppColors.blue7508,
-                            onTap: _openOutstandingDialog,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 14),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final useColumn = constraints.maxWidth < 1080;
-                    if (useColumn) {
-                      return Column(
-                        children: [
-                          DashboardDoctorInsightsCard(
-                            todaysAppointments: todaysAppointments,
-                            selectedFilter: _selectedDoctorFilter,
-                            allFilterToken: dashboardDoctorFilterAll,
-                            unassignedFilterToken:
-                                dashboardDoctorFilterUnassigned,
-                            onFilterChanged: (v) => setState(() {
-                              _selectedDoctorFilter = _selectedDoctorFilter == v
-                                  ? dashboardDoctorFilterAll
-                                  : v;
-                            }),
-                          ),
-                          const SizedBox(height: 10),
-                          DashboardTreatmentStatsCard(
-                            stats: treatmentStats,
-                            selectedTreatment: _selectedTreatmentFilter,
-                            allTreatmentFilterToken:
-                                dashboardTreatmentFilterAll,
-                            showAll: _showAllTreatmentStats,
-                            onFilterChanged: (v) => setState(() {
-                              _selectedTreatmentFilter =
-                                  _selectedTreatmentFilter == v
-                                      ? dashboardTreatmentFilterAll
-                                      : v;
-                            }),
-                            onToggleShowAll: () => setState(
-                              () => _showAllTreatmentStats =
-                                  !_showAllTreatmentStats,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          _RightDashboardColumn(
-                            tableAppointments: tableAppointments,
-                            duplicatePatientKeys: duplicatePatientKeys,
-                            isFilterApplied: isDoctorFilterApplied,
-                            doctorFilterChip: doctorFilterChip,
-                            treatmentFilterChip: treatmentFilterChip,
-                            searchController: _searchController,
-                            selectedDate: selectedDate,
-                            sortBy: _sortBy,
-                            sortAscending: _sortAscending,
-                            onSort: _onSort,
-                            onPreviousDate: () => _changeDate(-1),
-                            onNextDate: () => _changeDate(1),
-                            onPickDate: () => _pickDate(context),
-                            onGoToday: _goToday,
-                            onAddAppointment: _openAddAppointmentFromDashboard,
-                            onClearDoctorFilter: () => setState(() {
-                              _selectedDoctorFilter = dashboardDoctorFilterAll;
-                            }),
-                            onClearTreatmentFilter: () => setState(() {
-                              _selectedTreatmentFilter =
-                                  dashboardTreatmentFilterAll;
-                            }),
-                            onClearFilters: () => setState(() {
-                              _selectedDoctorFilter = dashboardDoctorFilterAll;
-                              _selectedTreatmentFilter =
-                                  dashboardTreatmentFilterAll;
-                              _appointmentStatusFilter = 'all';
-                            }),
-                            selectedStatusFilter: selectedStatusFilter,
-                            availableStatusFilters: availableStatusFilters,
-                            onStatusFilterChanged: (value) => setState(
-                                () => _appointmentStatusFilter = value),
-                          ),
-                        ],
-                      );
-                    }
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 320,
-                          child: Column(
+                        return Wrap(
+                          spacing: gap,
+                          runSpacing: gap,
+                          children: cards,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const _SectionTitle('Financial Summary'),
+                    const SizedBox(height: 10),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 980;
+                        if (isNarrow) {
+                          return Column(
                             children: [
-                              DashboardDoctorInsightsCard(
-                                todaysAppointments: todaysAppointments,
-                                selectedFilter: _selectedDoctorFilter,
-                                allFilterToken: dashboardDoctorFilterAll,
-                                unassignedFilterToken:
-                                    dashboardDoctorFilterUnassigned,
-                                onFilterChanged: (v) => setState(() {
-                                  _selectedDoctorFilter =
-                                      _selectedDoctorFilter == v
-                                          ? dashboardDoctorFilterAll
-                                          : v;
-                                }),
+                              _FinanceCard(
+                                title: 'Treatment Revenue',
+                                value: _money(treatmentRevenue),
+                                icon: FluentIcons.money,
+                                iconColor: AppColors.successTeal,
+                                iconBackground: AppColors.violet1005,
+                                valueColor: AppColors.blue600,
                               ),
                               const SizedBox(height: 10),
-                              DashboardTreatmentStatsCard(
-                                stats: treatmentStats,
-                                selectedTreatment: _selectedTreatmentFilter,
-                                allTreatmentFilterToken:
-                                    dashboardTreatmentFilterAll,
-                                showAll: _showAllTreatmentStats,
-                                onFilterChanged: (v) => setState(() {
-                                  _selectedTreatmentFilter =
-                                      _selectedTreatmentFilter == v
-                                          ? dashboardTreatmentFilterAll
-                                          : v;
-                                }),
-                                onToggleShowAll: () => setState(
-                                  () => _showAllTreatmentStats =
-                                      !_showAllTreatmentStats,
+                              _FinanceCard(
+                                title: 'Prescription Revenue',
+                                value: _money(prescriptionRevenue),
+                                icon: FluentIcons.precipitation,
+                                iconColor: AppColors.successTeal,
+                                iconBackground: AppColors.green1002,
+                                valueColor: AppColors.blue600,
+                              ),
+                              const SizedBox(height: 10),
+                              _FinanceCard(
+                                title: 'Outstanding Balance',
+                                value: _money(outstandingBalance),
+                                icon: FluentIcons.status_error_full,
+                                iconColor: AppColors.dangerRose,
+                                iconBackground: AppColors.amber2003,
+                                valueColor: AppColors.blue7508,
+                                onTap: _openOutstandingDialog,
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _FinanceCard(
+                                title: 'Treatment Revenue',
+                                value: _money(treatmentRevenue),
+                                icon: FluentIcons.money,
+                                iconColor: AppColors.successTeal,
+                                iconBackground: AppColors.violet1005,
+                                valueColor: AppColors.blue600,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _FinanceCard(
+                                title: 'Prescription Revenue',
+                                value: _money(prescriptionRevenue),
+                                icon: FluentIcons.precipitation,
+                                iconColor: AppColors.successTeal,
+                                iconBackground: AppColors.green1002,
+                                valueColor: AppColors.blue600,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _FinanceCard(
+                                title: 'Outstanding Balance',
+                                value: _money(outstandingBalance),
+                                icon: FluentIcons.status_error_full,
+                                iconColor: AppColors.dangerRose,
+                                iconBackground: AppColors.amber2003,
+                                valueColor: AppColors.blue7508,
+                                onTap: _openOutstandingDialog,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final useColumn = constraints.maxWidth < 1080;
+                        if (useColumn) {
+                          return Column(
+                            children: [
+                              RepaintBoundary(
+                                child: DashboardDoctorInsightsCard(
+                                  todaysAppointments: todaysAppointments,
+                                  selectedFilter: _selectedDoctorFilter,
+                                  allFilterToken: dashboardDoctorFilterAll,
+                                  unassignedFilterToken:
+                                      dashboardDoctorFilterUnassigned,
+                                  onFilterChanged: (v) => setState(() {
+                                    _selectedDoctorFilter =
+                                        _selectedDoctorFilter == v
+                                            ? dashboardDoctorFilterAll
+                                            : v;
+                                  }),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              RepaintBoundary(
+                                child: DashboardTreatmentStatsCard(
+                                  stats: treatmentStats,
+                                  selectedTreatment: _selectedTreatmentFilter,
+                                  allTreatmentFilterToken:
+                                      dashboardTreatmentFilterAll,
+                                  showAll: _showAllTreatmentStats,
+                                  onFilterChanged: (v) => setState(() {
+                                    _selectedTreatmentFilter =
+                                        _selectedTreatmentFilter == v
+                                            ? dashboardTreatmentFilterAll
+                                            : v;
+                                  }),
+                                  onToggleShowAll: () => setState(
+                                    () => _showAllTreatmentStats =
+                                        !_showAllTreatmentStats,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              RepaintBoundary(
+                                child: _RightDashboardColumn(
+                                  tableAppointments: tableAppointments,
+                                  duplicatePatientKeys: duplicatePatientKeys,
+                                  isFilterApplied: isDoctorFilterApplied,
+                                  doctorFilterChip: doctorFilterChip,
+                                  treatmentFilterChip: treatmentFilterChip,
+                                  searchController: _searchController,
+                                  selectedDate: selectedDate,
+                                  sortBy: _sortBy,
+                                  sortAscending: _sortAscending,
+                                  onSort: _onSort,
+                                  onPreviousDate: () => _changeDate(-1),
+                                  onNextDate: () => _changeDate(1),
+                                  onPickDate: () => _pickDate(context),
+                                  onGoToday: _goToday,
+                                  onAddAppointment:
+                                      _openAddAppointmentFromDashboard,
+                                  onClearDoctorFilter: () => setState(() {
+                                    _selectedDoctorFilter =
+                                        dashboardDoctorFilterAll;
+                                  }),
+                                  onClearTreatmentFilter: () => setState(() {
+                                    _selectedTreatmentFilter =
+                                        dashboardTreatmentFilterAll;
+                                  }),
+                                  onClearFilters: () => setState(() {
+                                    _selectedDoctorFilter =
+                                        dashboardDoctorFilterAll;
+                                    _selectedTreatmentFilter =
+                                        dashboardTreatmentFilterAll;
+                                    _appointmentStatusFilter = 'all';
+                                  }),
+                                  selectedStatusFilter: selectedStatusFilter,
+                                  availableStatusFilters:
+                                      availableStatusFilters,
+                                  onStatusFilterChanged: (value) => setState(
+                                      () => _appointmentStatusFilter = value),
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _RightDashboardColumn(
-                            tableAppointments: tableAppointments,
-                            duplicatePatientKeys: duplicatePatientKeys,
-                            isFilterApplied: isDoctorFilterApplied,
-                            doctorFilterChip: doctorFilterChip,
-                            treatmentFilterChip: treatmentFilterChip,
-                            searchController: _searchController,
-                            selectedDate: selectedDate,
-                            sortBy: _sortBy,
-                            sortAscending: _sortAscending,
-                            onSort: _onSort,
-                            onPreviousDate: () => _changeDate(-1),
-                            onNextDate: () => _changeDate(1),
-                            onPickDate: () => _pickDate(context),
-                            onGoToday: _goToday,
-                            onAddAppointment: _openAddAppointmentFromDashboard,
-                            onClearDoctorFilter: () => setState(() {
-                              _selectedDoctorFilter = dashboardDoctorFilterAll;
-                            }),
-                            onClearTreatmentFilter: () => setState(() {
-                              _selectedTreatmentFilter =
-                                  dashboardTreatmentFilterAll;
-                            }),
-                            onClearFilters: () => setState(() {
-                              _selectedDoctorFilter = dashboardDoctorFilterAll;
-                              _selectedTreatmentFilter =
-                                  dashboardTreatmentFilterAll;
-                              _appointmentStatusFilter = 'all';
-                            }),
-                            selectedStatusFilter: selectedStatusFilter,
-                            availableStatusFilters: availableStatusFilters,
-                            onStatusFilterChanged: (value) => setState(
-                                () => _appointmentStatusFilter = value),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                          );
+                        }
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 320,
+                              child: Column(
+                                children: [
+                                  RepaintBoundary(
+                                    child: DashboardDoctorInsightsCard(
+                                      todaysAppointments: todaysAppointments,
+                                      selectedFilter: _selectedDoctorFilter,
+                                      allFilterToken: dashboardDoctorFilterAll,
+                                      unassignedFilterToken:
+                                          dashboardDoctorFilterUnassigned,
+                                      onFilterChanged: (v) => setState(() {
+                                        _selectedDoctorFilter =
+                                            _selectedDoctorFilter == v
+                                                ? dashboardDoctorFilterAll
+                                                : v;
+                                      }),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  RepaintBoundary(
+                                    child: DashboardTreatmentStatsCard(
+                                      stats: treatmentStats,
+                                      selectedTreatment:
+                                          _selectedTreatmentFilter,
+                                      allTreatmentFilterToken:
+                                          dashboardTreatmentFilterAll,
+                                      showAll: _showAllTreatmentStats,
+                                      onFilterChanged: (v) => setState(() {
+                                        _selectedTreatmentFilter =
+                                            _selectedTreatmentFilter == v
+                                                ? dashboardTreatmentFilterAll
+                                                : v;
+                                      }),
+                                      onToggleShowAll: () => setState(
+                                        () => _showAllTreatmentStats =
+                                            !_showAllTreatmentStats,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: RepaintBoundary(
+                                child: _RightDashboardColumn(
+                                  tableAppointments: tableAppointments,
+                                  duplicatePatientKeys: duplicatePatientKeys,
+                                  isFilterApplied: isDoctorFilterApplied,
+                                  doctorFilterChip: doctorFilterChip,
+                                  treatmentFilterChip: treatmentFilterChip,
+                                  searchController: _searchController,
+                                  selectedDate: selectedDate,
+                                  sortBy: _sortBy,
+                                  sortAscending: _sortAscending,
+                                  onSort: _onSort,
+                                  onPreviousDate: () => _changeDate(-1),
+                                  onNextDate: () => _changeDate(1),
+                                  onPickDate: () => _pickDate(context),
+                                  onGoToday: _goToday,
+                                  onAddAppointment:
+                                      _openAddAppointmentFromDashboard,
+                                  onClearDoctorFilter: () => setState(() {
+                                    _selectedDoctorFilter =
+                                        dashboardDoctorFilterAll;
+                                  }),
+                                  onClearTreatmentFilter: () => setState(() {
+                                    _selectedTreatmentFilter =
+                                        dashboardTreatmentFilterAll;
+                                  }),
+                                  onClearFilters: () => setState(() {
+                                    _selectedDoctorFilter =
+                                        dashboardDoctorFilterAll;
+                                    _selectedTreatmentFilter =
+                                        dashboardTreatmentFilterAll;
+                                    _appointmentStatusFilter = 'all';
+                                  }),
+                                  selectedStatusFilter: selectedStatusFilter,
+                                  availableStatusFilters:
+                                      availableStatusFilters,
+                                  onStatusFilterChanged: (value) => setState(
+                                      () => _appointmentStatusFilter = value),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
+              ),
+            );
           },
         );
       },
