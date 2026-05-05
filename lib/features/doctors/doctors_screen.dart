@@ -461,110 +461,110 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                 ),
               ],
             ));
-        },
-      );
+      },
+    );
   }
 }
 
-  class _DoctorsScreenSkeleton extends StatelessWidget {
-    const _DoctorsScreenSkeleton();
+class _DoctorsScreenSkeleton extends StatelessWidget {
+  const _DoctorsScreenSkeleton();
 
-    Widget _line(double width, {double height = 10}) {
-      return Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: AppColors.slate100,
-          borderRadius: BorderRadius.circular(999),
-        ),
-      );
-    }
+  Widget _line(double width, {double height = 10}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.slate100,
+        borderRadius: BorderRadius.circular(999),
+      ),
+    );
+  }
 
-    Widget _card(double width) {
-      return Container(
-        width: width,
-        height: 84,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.violet1506),
-        ),
-        padding: const EdgeInsets.all(10),
+  Widget _card(double width) {
+    return Container(
+      width: width,
+      height: 84,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.violet1506),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _line(width * 0.45, height: 12),
+          const SizedBox(height: 10),
+          _line(width * 0.3, height: 16),
+          const SizedBox(height: 8),
+          _line(width * 0.5),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppTheme.light.scaffoldBackgroundColor,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _line(width * 0.45, height: 12),
-            const SizedBox(height: 10),
-            _line(width * 0.3, height: 16),
-            const SizedBox(height: 8),
-            _line(width * 0.5),
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.violet1506),
+              ),
+            ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cardWidth = (constraints.maxWidth - 24) / 4;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _card(cardWidth),
+                    _card(cardWidth),
+                    _card(cardWidth),
+                    _card(cardWidth),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.violet1506),
+              ),
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                children: List.generate(
+                  5,
+                  (index) => Container(
+                    margin: EdgeInsets.only(bottom: index == 4 ? 0 : 8),
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.slate1006,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  growable: false,
+                ),
+              ),
+            ),
           ],
         ),
-      );
-    }
-
-    @override
-    Widget build(BuildContext context) {
-      return Container(
-        color: AppTheme.light.scaffoldBackgroundColor,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.violet1506),
-                ),
-              ),
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final cardWidth = (constraints.maxWidth - 24) / 4;
-                  return Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _card(cardWidth),
-                      _card(cardWidth),
-                      _card(cardWidth),
-                      _card(cardWidth),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.violet1506),
-                ),
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  children: List.generate(
-                    5,
-                    (index) => Container(
-                      margin: EdgeInsets.only(bottom: index == 4 ? 0 : 8),
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.slate1006,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    growable: false,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+      ),
+    );
   }
+}
 
 String _doctorTitleCase(String input) {
   final cleaned = input.trim();
@@ -575,6 +575,10 @@ String _doctorTitleCase(String input) {
           ? word
           : '${word[0].toUpperCase()}${word.length > 1 ? word.substring(1).toLowerCase() : ''}')
       .join(' ');
+}
+
+String _formatFullCount(num value) {
+  return NumberFormat.decimalPattern('en_IN').format(value);
 }
 
 class _TopScopeChip extends StatelessWidget {
@@ -1600,7 +1604,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
     return appointment.doctorPayableAmount;
   }
 
-  List<({Appointment primary, List<Appointment> rows})> _filteredSortedGroupedRows(
+  List<({Appointment primary, List<Appointment> rows})>
+      _filteredSortedGroupedRows(
     List<({Appointment primary, List<Appointment> rows})> groupedRows,
     String doctorId,
   ) {
@@ -1616,7 +1621,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
           : _paymentStatusForAppointment(primary);
       final patientName = primary.title.trim().toLowerCase();
 
-      final statusPass = rowStatusFilter == 'All' || groupedStatus == rowStatusFilter;
+      final statusPass =
+          rowStatusFilter == 'All' || groupedStatus == rowStatusFilter;
       final queryPass = query.isEmpty || patientName.contains(query);
       return statusPass && queryPass;
     }).toList(growable: false);
@@ -1892,9 +1898,8 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
   @override
   Widget build(BuildContext context) {
     final doctorEntries = _doctorEntries();
-    final visibleDoctorEntries = doctorEntries
-        .take(_doctorVisibleLimit)
-        .toList(growable: false);
+    final visibleDoctorEntries =
+        doctorEntries.take(_doctorVisibleLimit).toList(growable: false);
 
     final totalPatients = widget.todaysAppointments.length;
     final revenue = widget.todaysAppointments.fold<double>(
@@ -1982,8 +1987,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           width: cardWidth,
                           child: TopWidgetSmallCard(
                             title: 'Patients Seen',
-                            value: NumberFormat.compact(locale: 'en_IN')
-                                .format(totalPatients),
+                            value: _formatFullCount(totalPatients),
                             valueColor: const Color(0xFF1B3557),
                             cardColor: const Color(0xFFFBFDFF),
                             borderColor: const Color(0xFFEAF1FB),
@@ -2157,7 +2161,7 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                               ),
                               _inlineMetric(
                                 'Patients Seen',
-                                '${doctorAppts.length}',
+                                _formatFullCount(doctorAppts.length),
                                 const Color(0xFF2D7BD8),
                               ),
                               const SizedBox(width: 8),
@@ -2185,312 +2189,313 @@ class _DoctorTodayDetailCardState extends State<_DoctorTodayDetailCard> {
                           ),
                         ),
                         content: Builder(builder: (context) {
-                                if (!expanded) {
-                                  return const SizedBox.shrink();
-                                }
+                          if (!expanded) {
+                            return const SizedBox.shrink();
+                          }
 
-                                final groupedRows = _filteredSortedGroupedRows(
-                                  _patientGroupedRows(doctorAppts),
-                                  doctor.id,
-                                );
-                                return SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: ConstrainedBox(
-                                  constraints:
-                                      BoxConstraints(minWidth: minTableWidth),
-                                  child: Column(
-                                    children: [
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    alignment: WrapAlignment.end,
-                                    children: [
-                                      SizedBox(
-                                        width: 220,
-                                        height: 34,
-                                        child: TextBox(
-                                          controller:
-                                              _controllerForDoctor(doctor.id),
-                                          placeholder: 'Search patient',
-                                          onChanged: (_) => setState(() {}),
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 132,
-                                        child: ComboBox<String>(
-                                          value:
-                                              _statusFilterForDoctor(doctor.id),
-                                          items: const [
-                                            ComboBoxItem(
-                                              value: 'All',
-                                              child: Text('All'),
-                                            ),
-                                            ComboBoxItem(
-                                              value: 'Paid',
-                                              child: Text('Paid'),
-                                            ),
-                                            ComboBoxItem(
-                                              value: 'Partial',
-                                              child: Text('Partial'),
-                                            ),
-                                            ComboBoxItem(
-                                              value: 'Nil',
-                                              child: Text('Nil'),
-                                            ),
-                                            ComboBoxItem(
-                                              value: 'Free',
-                                              child: Text('Free'),
-                                            ),
-                                          ],
-                                          onChanged: (value) {
-                                            if (value == null) return;
-                                            setState(() {
-                                              _doctorStatusFilter[doctor.id] =
-                                                  value;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 154,
-                                        child: ComboBox<String>(
-                                          value: _sortByForDoctor(doctor.id),
-                                          items: const [
-                                            ComboBoxItem(
-                                              value: 'Date',
-                                              child: Text('Sort: Date'),
-                                            ),
-                                            ComboBoxItem(
-                                              value: 'Patient',
-                                              child: Text('Sort: Patient'),
-                                            ),
-                                            ComboBoxItem(
-                                              value: 'Paid',
-                                              child: Text('Sort: Paid'),
-                                            ),
-                                            ComboBoxItem(
-                                              value: 'Fee',
-                                              child: Text('Sort: Fee'),
-                                            ),
-                                            ComboBoxItem(
-                                              value: 'Net',
-                                              child: Text('Sort: Net'),
-                                            ),
-                                          ],
-                                          onChanged: (value) {
-                                            if (value == null) return;
-                                            setState(() {
-                                              _doctorSortBy[doctor.id] = value;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 116,
-                                        child: ToggleSwitch(
-                                          checked:
-                                              _sortAscendingForDoctor(doctor.id),
-                                          content: Text(
-                                            _sortAscendingForDoctor(doctor.id)
-                                                ? 'Asc'
-                                                : 'Desc',
+                          final groupedRows = _filteredSortedGroupedRows(
+                            _patientGroupedRows(doctorAppts),
+                            doctor.id,
+                          );
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: ConstrainedBox(
+                              constraints:
+                                  BoxConstraints(minWidth: minTableWidth),
+                              child: Column(
+                                children: [
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      alignment: WrapAlignment.end,
+                                      children: [
+                                        SizedBox(
+                                          width: 220,
+                                          height: 34,
+                                          child: TextBox(
+                                            controller:
+                                                _controllerForDoctor(doctor.id),
+                                            placeholder: 'Search patient',
+                                            onChanged: (_) => setState(() {}),
                                           ),
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _doctorSortAscending[doctor.id] =
-                                                  value;
-                                            });
-                                          },
                                         ),
-                                      ),
-                                    ],
+                                        SizedBox(
+                                          width: 132,
+                                          child: ComboBox<String>(
+                                            value: _statusFilterForDoctor(
+                                                doctor.id),
+                                            items: const [
+                                              ComboBoxItem(
+                                                value: 'All',
+                                                child: Text('All'),
+                                              ),
+                                              ComboBoxItem(
+                                                value: 'Paid',
+                                                child: Text('Paid'),
+                                              ),
+                                              ComboBoxItem(
+                                                value: 'Partial',
+                                                child: Text('Partial'),
+                                              ),
+                                              ComboBoxItem(
+                                                value: 'Nil',
+                                                child: Text('Nil'),
+                                              ),
+                                              ComboBoxItem(
+                                                value: 'Free',
+                                                child: Text('Free'),
+                                              ),
+                                            ],
+                                            onChanged: (value) {
+                                              if (value == null) return;
+                                              setState(() {
+                                                _doctorStatusFilter[doctor.id] =
+                                                    value;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 154,
+                                          child: ComboBox<String>(
+                                            value: _sortByForDoctor(doctor.id),
+                                            items: const [
+                                              ComboBoxItem(
+                                                value: 'Date',
+                                                child: Text('Sort: Date'),
+                                              ),
+                                              ComboBoxItem(
+                                                value: 'Patient',
+                                                child: Text('Sort: Patient'),
+                                              ),
+                                              ComboBoxItem(
+                                                value: 'Paid',
+                                                child: Text('Sort: Paid'),
+                                              ),
+                                              ComboBoxItem(
+                                                value: 'Fee',
+                                                child: Text('Sort: Fee'),
+                                              ),
+                                              ComboBoxItem(
+                                                value: 'Net',
+                                                child: Text('Sort: Net'),
+                                              ),
+                                            ],
+                                            onChanged: (value) {
+                                              if (value == null) return;
+                                              setState(() {
+                                                _doctorSortBy[doctor.id] =
+                                                    value;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 116,
+                                          child: ToggleSwitch(
+                                            checked: _sortAscendingForDoctor(
+                                                doctor.id),
+                                            content: Text(
+                                              _sortAscendingForDoctor(doctor.id)
+                                                  ? 'Asc'
+                                                  : 'Desc',
+                                            ),
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _doctorSortAscending[
+                                                    doctor.id] = value;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEFF5FF),
-                                    borderRadius: BorderRadius.circular(8),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEFF5FF),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        SizedBox(
+                                            width: patientWidth,
+                                            child: const Text('Patient',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                        SizedBox(
+                                            width: timeWidth,
+                                            child: Text(
+                                                _showTimeOnly ? 'Time' : 'Date',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                        SizedBox(
+                                            width: treatmentWidth,
+                                            child: const Text('Treatment',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                        SizedBox(
+                                            width: toothWidth,
+                                            child: const Text('Tooth/Area',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                        SizedBox(
+                                            width: stageWidth,
+                                            child: const Text('Stage',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                        SizedBox(
+                                            width: paidWidth,
+                                            child: const Text('Paid',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                        SizedBox(
+                                            width: feeWidth,
+                                            child: const Text('Fee',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                        SizedBox(
+                                            width: netWidth,
+                                            child: const Text('Net',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                        SizedBox(
+                                            width: statusWidth,
+                                            child: const Text('Status',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                        SizedBox(
+                                            width: actionWidth,
+                                            child: const Text('Actions',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF355279)))),
+                                      ],
+                                    ),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      SizedBox(
-                                          width: patientWidth,
-                                          child: const Text('Patient',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                      SizedBox(
-                                          width: timeWidth,
-                                          child: Text(
-                                              _showTimeOnly ? 'Time' : 'Date',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                      SizedBox(
-                                          width: treatmentWidth,
-                                          child: const Text('Treatment',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                      SizedBox(
-                                          width: toothWidth,
-                                          child: const Text('Tooth/Area',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                      SizedBox(
-                                          width: stageWidth,
-                                          child: const Text('Stage',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                      SizedBox(
-                                          width: paidWidth,
-                                          child: const Text('Paid',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                      SizedBox(
-                                          width: feeWidth,
-                                          child: const Text('Fee',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                      SizedBox(
-                                          width: netWidth,
-                                          child: const Text('Net',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                      SizedBox(
-                                          width: statusWidth,
-                                          child: const Text('Status',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                      SizedBox(
-                                          width: actionWidth,
-                                          child: const Text('Actions',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF355279)))),
-                                    ],
-                                  ),
-                                ),
-                                ...groupedRows.map((groupedRow) {
-                                  final appointment = groupedRow.primary;
-                                  final groupedAppointments = groupedRow.rows;
-                                  final end = appointment.date
-                                      .add(const Duration(minutes: 40));
-                                  final groupedCount =
-                                      groupedAppointments.length;
-                                  final treatmentSet = groupedAppointments
-                                      .expand((a) => a.selectedTreatments)
-                                      .map((t) => t.trim())
-                                      .where((t) => t.isNotEmpty)
-                                      .toSet()
-                                      .toList(growable: false);
-                                  final treatment = treatmentSet.join(', ');
-                                  final toothSet = groupedAppointments
-                                      .expand((a) => a.selectedTeeth)
-                                      .map((t) => t.trim())
-                                      .where((t) => t.isNotEmpty)
-                                      .toSet()
-                                      .toList(growable: false);
-                                  final tooth = toothSet.isEmpty
-                                      ? '-'
-                                      : toothSet.join(', ');
-                                  final stageSet = groupedAppointments
-                                      .map((a) => _stageLabel(a))
-                                      .toSet();
-                                  final stage = stageSet.length > 1
-                                      ? 'Mixed'
-                                      : _stageLabel(appointment);
-                                  final stageColor = _stageColor(stage);
-                                  final paid = groupedAppointments.fold<double>(
-                                    0,
-                                    (sum, a) =>
-                                        sum + a.paid + a.prescriptionPaid,
-                                  );
-                                  final consultantFee =
-                                      groupedAppointments.fold<double>(
-                                    0,
-                                    (sum, a) =>
-                                        sum + _doctorFeeFor(a, doctor.id),
-                                  );
-                                  final appointmentNet = paid - consultantFee;
-                                  final paymentStatus = groupedCount > 1
-                                      ? _paymentStatusForGroupedAppointments(
-                                          groupedAppointments,
-                                        )
-                                      : _paymentStatusForAppointment(
-                                          appointment);
-                                  final patientLabel = groupedCount > 1
-                                      ? '${appointment.title.trim().isEmpty ? 'Unnamed patient' : _doctorTitleCase(appointment.title)} ($groupedCount records)'
-                                      : (appointment.title.trim().isEmpty
-                                          ? 'Unnamed patient'
-                                          : _doctorTitleCase(
-                                              appointment.title));
+                                  ...groupedRows.map((groupedRow) {
+                                    final appointment = groupedRow.primary;
+                                    final groupedAppointments = groupedRow.rows;
+                                    final end = appointment.date
+                                        .add(const Duration(minutes: 40));
+                                    final groupedCount =
+                                        groupedAppointments.length;
+                                    final treatmentSet = groupedAppointments
+                                        .expand((a) => a.selectedTreatments)
+                                        .map((t) => t.trim())
+                                        .where((t) => t.isNotEmpty)
+                                        .toSet()
+                                        .toList(growable: false);
+                                    final treatment = treatmentSet.join(', ');
+                                    final toothSet = groupedAppointments
+                                        .expand((a) => a.selectedTeeth)
+                                        .map((t) => t.trim())
+                                        .where((t) => t.isNotEmpty)
+                                        .toSet()
+                                        .toList(growable: false);
+                                    final tooth = toothSet.isEmpty
+                                        ? '-'
+                                        : toothSet.join(', ');
+                                    final stageSet = groupedAppointments
+                                        .map((a) => _stageLabel(a))
+                                        .toSet();
+                                    final stage = stageSet.length > 1
+                                        ? 'Mixed'
+                                        : _stageLabel(appointment);
+                                    final stageColor = _stageColor(stage);
+                                    final paid =
+                                        groupedAppointments.fold<double>(
+                                      0,
+                                      (sum, a) =>
+                                          sum + a.paid + a.prescriptionPaid,
+                                    );
+                                    final consultantFee =
+                                        groupedAppointments.fold<double>(
+                                      0,
+                                      (sum, a) =>
+                                          sum + _doctorFeeFor(a, doctor.id),
+                                    );
+                                    final appointmentNet = paid - consultantFee;
+                                    final paymentStatus = groupedCount > 1
+                                        ? _paymentStatusForGroupedAppointments(
+                                            groupedAppointments,
+                                          )
+                                        : _paymentStatusForAppointment(
+                                            appointment);
+                                    final patientLabel = groupedCount > 1
+                                        ? '${appointment.title.trim().isEmpty ? 'Unnamed patient' : _doctorTitleCase(appointment.title)} ($groupedCount records)'
+                                        : (appointment.title.trim().isEmpty
+                                            ? 'Unnamed patient'
+                                            : _doctorTitleCase(
+                                                appointment.title));
 
-                                  final rowId =
-                                      '${doctor.id}:${appointment.id}:$groupedCount';
-                                  final dateText = _showTimeOnly
-                                      ? '${formatClinicDateTime(appointment.date, pattern: 'hh:mm a')} - ${formatClinicDateTime(end, pattern: 'hh:mm a')}'
-                                      : groupedCount > 1
-                                          ? _groupedDateLabel(
-                                              groupedAppointments)
-                                          : formatClinicDate(
-                                              appointment.date,
-                                              pattern: 'dd MMM yyyy');
+                                    final rowId =
+                                        '${doctor.id}:${appointment.id}:$groupedCount';
+                                    final dateText = _showTimeOnly
+                                        ? '${formatClinicDateTime(appointment.date, pattern: 'hh:mm a')} - ${formatClinicDateTime(end, pattern: 'hh:mm a')}'
+                                        : groupedCount > 1
+                                            ? _groupedDateLabel(
+                                                groupedAppointments)
+                                            : formatClinicDate(appointment.date,
+                                                pattern: 'dd MMM yyyy');
 
-                                  return _DoctorActivityLedgerRow(
-                                    key: ValueKey(rowId),
-                                    patientWidth: patientWidth,
-                                    timeWidth: timeWidth,
-                                    treatmentWidth: treatmentWidth,
-                                    toothWidth: toothWidth,
-                                    stageWidth: stageWidth,
-                                    paidWidth: paidWidth,
-                                    feeWidth: feeWidth,
-                                    netWidth: netWidth,
-                                    statusWidth: statusWidth,
-                                    actionWidth: actionWidth,
-                                    patientLabel: patientLabel,
-                                    dateText: dateText,
-                                    treatment: treatment,
-                                    tooth: tooth,
-                                    stage: stage,
-                                    stageColor: stageColor,
-                                    paid: paid,
-                                    consultantFee: consultantFee,
-                                    appointmentNet: appointmentNet,
-                                    paymentStatus: paymentStatus,
-                                    onEditPatient: () =>
-                                        _openPatientEditor(appointment),
-                                    onOpenHistory: () =>
-                                        _openPatientHistory(appointment),
-                                    onEditTreatment: () {
-                                      openAppointmentJourneyDialog(
-                                        context,
-                                        appointment,
-                                        initialStep: 1,
-                                      );
-                                    },
-                                    statusPillBuilder: _statusPill,
-                                  );
-                                }),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }),
+                                    return _DoctorActivityLedgerRow(
+                                      key: ValueKey(rowId),
+                                      patientWidth: patientWidth,
+                                      timeWidth: timeWidth,
+                                      treatmentWidth: treatmentWidth,
+                                      toothWidth: toothWidth,
+                                      stageWidth: stageWidth,
+                                      paidWidth: paidWidth,
+                                      feeWidth: feeWidth,
+                                      netWidth: netWidth,
+                                      statusWidth: statusWidth,
+                                      actionWidth: actionWidth,
+                                      patientLabel: patientLabel,
+                                      dateText: dateText,
+                                      treatment: treatment,
+                                      tooth: tooth,
+                                      stage: stage,
+                                      stageColor: stageColor,
+                                      paid: paid,
+                                      consultantFee: consultantFee,
+                                      appointmentNet: appointmentNet,
+                                      paymentStatus: paymentStatus,
+                                      onEditPatient: () =>
+                                          _openPatientEditor(appointment),
+                                      onOpenHistory: () =>
+                                          _openPatientHistory(appointment),
+                                      onEditTreatment: () {
+                                        openAppointmentJourneyDialog(
+                                          context,
+                                          appointment,
+                                          initialStep: 1,
+                                        );
+                                      },
+                                      statusPillBuilder: _statusPill,
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
                       ),
                     );
                   }),
@@ -3557,8 +3562,7 @@ class _DoctorAppointmentDoneChartCardState
                 Expanded(
                   child: _summaryTile(
                     title: 'Appointments',
-                    value: NumberFormat.compact(locale: 'en_IN')
-                        .format(totalAppointments),
+                    value: _formatFullCount(totalAppointments),
                     valueColor: const Color(0xFF1B3557),
                   ),
                 ),
@@ -3690,8 +3694,7 @@ class _DoctorAppointmentDoneChartCardState
                               ),
                               Expanded(
                                 child: Text(
-                                  NumberFormat.compact(locale: 'en_IN')
-                                      .format(row.totalCount),
+                                  _formatFullCount(row.totalCount),
                                   style: const TextStyle(
                                     color: Color(0xFF1F2B40),
                                     fontWeight: FontWeight.w700,
