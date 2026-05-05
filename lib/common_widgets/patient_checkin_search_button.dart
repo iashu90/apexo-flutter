@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:apexo/common_widgets/patient_checkin_lookup_dialog.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/core/perf/perf_markers.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -34,6 +37,10 @@ class PatientCheckinSearchButton extends StatefulWidget {
 
 class _PatientCheckinSearchButtonState extends State<PatientCheckinSearchButton> {
   late final TextEditingController _queryController;
+  StreamSubscription? _patientsSubscription;
+  StreamSubscription? _appointmentsSubscription;
+  List<_PatientSearchIndexEntry> _searchIndex = const [];
+  Map<String, Appointment> _todayAppointmentByPatient = const {};
   List<Patient> _matches = const [];
   bool _showInlineResults = false;
 
@@ -41,10 +48,39 @@ class _PatientCheckinSearchButtonState extends State<PatientCheckinSearchButton>
   void initState() {
     super.initState();
     _queryController = TextEditingController();
+    _rebuildSearchIndex();
+    _rebuildTodayAppointmentCache();
+    _patientsSubscription = patients.observableMap.stream.listen((_) {
+      if (!mounted) return;
+      _rebuildSearchIndex();
+      if (_queryController.text.trim().isNotEmpty) {
+        _refreshInlineResults(_queryController.text);
+      }
+    });
+    _appointmentsSubscription = appointments.observableMap.stream.listen((_) {
+      if (!mounted) return;
+      _rebuildTodayAppointmentCache();
+      if (_showInlineResults) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant PatientCheckinSearchButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameDay(oldWidget.selectedDate, widget.selectedDate)) {
+      _rebuildTodayAppointmentCache();
+      if (_showInlineResults) {
+        setState(() {});
+      }
+    }
   }
 
   @override
   void dispose() {
+    _patientsSubscription?.cancel();
+    _appointmentsSubscription?.cancel();
     _queryController.dispose();
     super.dispose();
   }
@@ -54,37 +90,67 @@ class _PatientCheckinSearchButtonState extends State<PatientCheckinSearchButton>
   }
 
   Appointment? _todayAppointmentFor(Patient patient) {
-    final todayRows = appointments.present.values
-        .where((a) => a.patientID == patient.id && _sameDay(a.date, widget.selectedDate))
-        .toList(growable: false);
-    if (todayRows.isEmpty) return null;
-    todayRows.sort((a, b) => a.date.compareTo(b.date));
-    return todayRows.last;
+    return _todayAppointmentByPatient[patient.id];
+  }
+
+  void _rebuildSearchIndex() {
+    final entries = <_PatientSearchIndexEntry>[];
+    for (final patient in patients.present.values) {
+      entries.add(
+        _PatientSearchIndexEntry(
+          patient: patient,
+          normalizedName: patient.title.toLowerCase(),
+          normalizedPhone: patient.phone.toLowerCase(),
+        ),
+      );
+    }
+    _searchIndex = entries;
+  }
+
+  void _rebuildTodayAppointmentCache() {
+    final byPatient = <String, Appointment>{};
+    for (final appointment in appointments.present.values) {
+      final pid = appointment.patientID;
+      if (pid == null || pid.isEmpty) continue;
+      if (!_sameDay(appointment.date, widget.selectedDate)) continue;
+      final existing = byPatient[pid];
+      if (existing == null || appointment.date.isAfter(existing.date)) {
+        byPatient[pid] = appointment;
+      }
+    }
+    _todayAppointmentByPatient = byPatient;
   }
 
   void _refreshInlineResults(String raw) {
-    final query = raw.trim().toLowerCase();
-    if (query.isEmpty) {
-      setState(() {
-        _matches = const [];
-        _showInlineResults = false;
-      });
-      return;
-    }
+    PerfMarkers.track(
+      'checkin.search.inlineFilter',
+      () {
+        final query = raw.trim().toLowerCase();
+        if (query.isEmpty) {
+          setState(() {
+            _matches = const [];
+            _showInlineResults = false;
+          });
+          return;
+        }
 
-    final rows = patients.present.values
-        .where((p) {
-          final name = p.title.toLowerCase();
-          final phone = p.phone.toLowerCase();
-          return name.contains(query) || phone.contains(query);
-        })
-        .take(8)
-        .toList(growable: false);
+        final rows = _searchIndex
+            .where((entry) =>
+                entry.normalizedName.contains(query) ||
+                entry.normalizedPhone.contains(query))
+            .take(8)
+            .map((entry) => entry.patient)
+            .toList(growable: false);
 
-    setState(() {
-      _matches = rows;
-      _showInlineResults = rows.isNotEmpty;
-    });
+        setState(() {
+          _matches = rows;
+          _showInlineResults = rows.isNotEmpty;
+        });
+      },
+      data: {
+        'queryLen': raw.trim().length,
+      },
+    );
   }
 
   Future<void> _openSearch(BuildContext context) async {
@@ -208,4 +274,16 @@ class _PatientCheckinSearchButtonState extends State<PatientCheckinSearchButton>
       ],
     );
   }
+}
+
+class _PatientSearchIndexEntry {
+  final Patient patient;
+  final String normalizedName;
+  final String normalizedPhone;
+
+  const _PatientSearchIndexEntry({
+    required this.patient,
+    required this.normalizedName,
+    required this.normalizedPhone,
+  });
 }

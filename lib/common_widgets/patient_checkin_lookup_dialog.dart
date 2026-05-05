@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/patient_history_modal.dart';
 import 'package:apexo/common_widgets/schedule_appointment_dialog.dart';
+import 'package:apexo/core/perf/perf_markers.dart';
 import 'package:apexo/core/theme/app_colors.dart';
 import 'package:apexo/core/ui/critical_write_ui_guard.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -291,58 +292,71 @@ Future<void> showPatientCheckinLookupDialog({
       final allAppointments =
           appointments.present.values.toList(growable: false);
       final todaysAppointments = appointments.forDate(selectedDate);
+      final appointmentsByPatient = <String, List<Appointment>>{};
+      for (final appointment in allAppointments) {
+        final pid = appointment.patientID;
+        if (pid == null || pid.isEmpty) continue;
+        (appointmentsByPatient[pid] ??= <Appointment>[]).add(appointment);
+      }
+      for (final rows in appointmentsByPatient.values) {
+        rows.sort((a, b) => a.date.compareTo(b.date));
+      }
+
+      final todaysAppointmentByPatient = <String, Appointment>{};
+      for (final appointment in todaysAppointments) {
+        final pid = appointment.patientID;
+        if (pid == null || pid.isEmpty) continue;
+        final existing = todaysAppointmentByPatient[pid];
+        if (existing == null || appointment.date.isAfter(existing.date)) {
+          todaysAppointmentByPatient[pid] = appointment;
+        }
+      }
+
+      final waitingCount = todaysAppointments
+          .where((a) =>
+              a.checkinStage == 'waiting' ||
+              a.checkinStage == 'pending' ||
+              a.checkinStage == 'scheduled')
+          .length;
+
+      final recentToday = allPatients
+          .where((p) => todaysAppointmentByPatient.containsKey(p.id))
+          .toList(growable: false);
+
+      final searchIndex = allPatients
+          .map(
+            (patient) => _PatientLookupSearchIndexEntry(
+              patient: patient,
+              normalizedName: patient.title.toLowerCase(),
+              normalizedPhone: patient.phone.toLowerCase(),
+            ),
+          )
+          .toList(growable: false);
 
       return StatefulBuilder(
         builder: (context, setDialogState) {
-          final appointmentsByPatient = <String, List<Appointment>>{};
-          for (final appointment in allAppointments) {
-            final pid = appointment.patientID;
-            if (pid == null || pid.isEmpty) continue;
-            appointmentsByPatient
-                .putIfAbsent(pid, () => <Appointment>[])
-                .add(appointment);
-          }
-          for (final rows in appointmentsByPatient.values) {
-            rows.sort((a, b) => a.date.compareTo(b.date));
-          }
-
-          final todaysAppointmentByPatient = <String, Appointment>{};
-          for (final appointment in todaysAppointments) {
-            final pid = appointment.patientID;
-            if (pid == null || pid.isEmpty) continue;
-            final existing = todaysAppointmentByPatient[pid];
-            if (existing == null || appointment.date.isAfter(existing.date)) {
-              todaysAppointmentByPatient[pid] = appointment;
-            }
-          }
-
-          final waitingCount = todaysAppointments
-              .where((a) =>
-                  a.checkinStage == 'waiting' ||
-                  a.checkinStage == 'pending' ||
-                  a.checkinStage == 'scheduled')
-              .length;
-
-          final matches = allPatients
-              .where((p) {
-                if (query.isEmpty) return true;
-                final name = p.title.toLowerCase();
-                final phone = p.phone.toLowerCase();
-                return name.contains(query) || phone.contains(query);
-              })
-              .take(40)
-              .toList(growable: false);
+          final matches = PerfMarkers.track(
+            'checkin.search.lookupFilter',
+            () => searchIndex
+                .where((entry) {
+                  if (query.isEmpty) return true;
+                  return entry.normalizedName.contains(query) ||
+                      entry.normalizedPhone.contains(query);
+                })
+                .take(40)
+                .map((entry) => entry.patient)
+                .toList(growable: false),
+            data: {
+              'queryLen': query.length,
+            },
+          );
 
           final hasExactMatch = query.isNotEmpty &&
-              allPatients.any((p) {
-                final name = p.title.trim().toLowerCase();
-                final phone = p.phone.trim().toLowerCase();
+              searchIndex.any((entry) {
+                final name = entry.normalizedName.trim();
+                final phone = entry.normalizedPhone.trim();
                 return name == query || phone == query;
               });
-
-          final recentToday = allPatients
-              .where((p) => todaysAppointmentByPatient.containsKey(p.id))
-              .toList(growable: false);
 
           Appointment? todayAppointment(Patient patient) {
             return todaysAppointmentByPatient[patient.id];
@@ -892,4 +906,16 @@ String _toTitleCase(String input) {
           : word.substring(0, 1).toUpperCase() +
               (word.length > 1 ? word.substring(1).toLowerCase() : ''))
       .join(' ');
+}
+
+class _PatientLookupSearchIndexEntry {
+  final Patient patient;
+  final String normalizedName;
+  final String normalizedPhone;
+
+  const _PatientLookupSearchIndexEntry({
+    required this.patient,
+    required this.normalizedName,
+    required this.normalizedPhone,
+  });
 }

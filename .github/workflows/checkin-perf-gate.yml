@@ -1,0 +1,56 @@
+name: Checkin Perf Gate
+
+on:
+  pull_request:
+    paths:
+      - 'lib/features/checkin/**'
+      - 'lib/common_widgets/patient_checkin_*'
+      - 'scripts/checkin_perf_gate.dart'
+      - 'scripts/checkin_perf_gate_stability.dart'
+      - 'scripts/screen_perf_gate.dart'
+      - 'scripts/perf/**'
+      - '.github/workflows/checkin-perf-gate.yml'
+  workflow_dispatch:
+
+jobs:
+  checkin-perf-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Run check-in performance gate
+        run: dart run scripts/checkin_perf_gate.dart
+
+  checkin-perf-stability-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Run check-in stability gate (median/p95)
+        run: dart run scripts/checkin_perf_gate_stability.dart
+
+  screen-perf-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Run screen performance gate
+        run: dart run scripts/screen_perf_gate.dart

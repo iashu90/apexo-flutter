@@ -39,6 +39,37 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
 
 - [How to run ___unit testing___](https://github.com/alselawi/apexo-flutter/blob/master/test/unit_test_readme.md).
 - [How to run ___integration testing___](https://github.com/alselawi/apexo-flutter/blob/master/integration_test/readme.md).
+- Check-in performance stress gate:
+
+```bash
+dart run scripts/checkin_perf_gate.dart
+```
+
+This runs a repeatable synthetic stress scenario with 10k patients and 50k appointments and fails when latency thresholds regress.
+
+- Check-in stability gate (multi-run median/p95):
+
+```bash
+dart run scripts/checkin_perf_gate_stability.dart
+```
+
+This runs the same stress gate repeatedly and enforces percentile bounds to reduce CI machine-noise false positives.
+
+- Cross-screen synthetic gate (dashboard/patient/doctor workloads):
+
+```bash
+dart run scripts/screen_perf_gate.dart
+```
+
+- CI performance gate workflow:
+
+   - [.github/workflows/checkin-perf-gate.yml](.github/workflows/checkin-perf-gate.yml)
+
+- Optional lightweight runtime perf markers (sampled, thresholded):
+
+```bash
+flutter run --dart-define=APEXO_PERF_MARKERS=true
+```
 
 
 ## Building
