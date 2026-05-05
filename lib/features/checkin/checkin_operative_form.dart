@@ -36,6 +36,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   String? _selectedPostOpParent;
   Set<String> _selectedTeeth = {};
   Map<String, ToothState> _teethStates = {};
+  final ValueNotifier<int> _rightRailSignal = ValueNotifier<int>(0);
   static const int _maxAppointmentsForClinicSuggestionScan = 600;
 
   static const List<String> _consultationSubTypes = [
@@ -272,9 +273,14 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     });
   }
 
+  void _bumpRightRailSignal() {
+    _rightRailSignal.value = _rightRailSignal.value + 1;
+  }
+
   @override
   void dispose() {
     _draftChangedDebounce?.cancel();
+    _rightRailSignal.dispose();
     _postOpController.dispose();
     _priceController.dispose();
     _paidController.dispose();
@@ -283,39 +289,57 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   }
 
   List<String> _topTreatmentsForPatient() {
-    final counts = <String, int>{};
-    for (final appointment in widget.allAppointmentsForPatient) {
-      for (final treatment in appointment.selectedTreatments) {
-        final key = treatment.trim();
-        if (key.isEmpty) continue;
-        counts[key] = (counts[key] ?? 0) + 1;
-      }
-    }
-    final rows = counts.entries.toList(growable: false)
-      ..sort((a, b) => b.value.compareTo(a.value));
-    return rows.take(10).map((e) => e.key).toList(growable: false);
+    return PerfMarkers.track(
+      'checkin.topTreatments.patient',
+      () {
+        final counts = <String, int>{};
+        for (final appointment in widget.allAppointmentsForPatient) {
+          for (final treatment in appointment.selectedTreatments) {
+            final key = treatment.trim();
+            if (key.isEmpty) continue;
+            counts[key] = (counts[key] ?? 0) + 1;
+          }
+        }
+        final rows = counts.entries.toList(growable: false)
+          ..sort((a, b) => b.value.compareTo(a.value));
+        return rows.take(10).map((e) => e.key).toList(growable: false);
+      },
+      data: {
+        'appointments': widget.allAppointmentsForPatient.length,
+      },
+    );
   }
 
   List<String> _topTreatmentsAcrossClinic() {
-    final counts = <String, int>{};
-    var scanned = 0;
-    for (final appointment in appointments.present.values) {
-      if (scanned >= _maxAppointmentsForClinicSuggestionScan) break;
-      scanned++;
-      for (final treatment in appointment.selectedTreatments) {
-        final key = treatment.trim();
-        if (key.isEmpty) continue;
-        counts[key] = (counts[key] ?? 0) + 1;
-      }
-    }
-    final rows = counts.entries.toList(growable: false)
-      ..sort((a, b) => b.value.compareTo(a.value));
-    return rows.take(10).map((e) => e.key).toList(growable: false);
+    return PerfMarkers.track(
+      'checkin.topTreatments.clinic',
+      () {
+        final counts = <String, int>{};
+        var scanned = 0;
+        for (final appointment in appointments.present.values) {
+          if (scanned >= _maxAppointmentsForClinicSuggestionScan) break;
+          scanned++;
+          for (final treatment in appointment.selectedTreatments) {
+            final key = treatment.trim();
+            if (key.isEmpty) continue;
+            counts[key] = (counts[key] ?? 0) + 1;
+          }
+        }
+        final rows = counts.entries.toList(growable: false)
+          ..sort((a, b) => b.value.compareTo(a.value));
+        return rows.take(10).map((e) => e.key).toList(growable: false);
+      },
+      data: {
+        'scanLimit': _maxAppointmentsForClinicSuggestionScan,
+      },
+    );
   }
 
   Future<void> _refreshTopTreatmentSuggestions() async {
-    final patientTop = _topTreatmentsForPatient();
-    final clinicTop = _topTreatmentsAcrossClinic();
+    final patientTop =
+        PerfMarkers.track('checkin.refreshTopTreatments.patient', _topTreatmentsForPatient);
+    final clinicTop =
+        PerfMarkers.track('checkin.refreshTopTreatments.clinic', _topTreatmentsAcrossClinic);
     if (!mounted) return;
     setState(() {
       _patientTopTreatments = patientTop;
@@ -550,393 +574,77 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 final firstColumn = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Visit Type', style: sectionTitleStyle),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: _visitTypes.map((type) {
-                        final selected = _visitType == type;
-                        final icon = type == 'Follow-up Visit'
-                            ? FluentIcons.calendar
-                            : type == 'New Problem / New Treatment'
-                                ? FluentIcons.health
-                                : FluentIcons.chat;
-                        final note = type == 'Follow-up Visit'
-                            ? 'Patient is returning for a review'
-                            : type == 'New Problem / New Treatment'
-                                ? 'New concern or additional treatment'
-                                : 'Advice or opinion only';
-
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _visitType = type;
-                              a.visitType = type;
-                              _scheduleAutosave();
-                            });
-                          },
-                          child: Container(
-                            width: 250,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? const Color(0xFFEAF6FF)
-                                  : const Color(0xFFF4F6FA),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: selected
-                                    ? const Color(0xFF4DB6C6)
-                                    : const Color(0xFFDDE5F0),
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? const Color(0xFFBEE9EF)
-                                        : const Color(0xFFE9EDF5),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Icon(icon,
-                                      size: 12, color: const Color(0xFF2E5C85)),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        type,
-                                        style: const TextStyle(
-                                          color: Color(0xFF254870),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        note,
-                                        style: const TextStyle(
-                                          color: Color(0xFF5B7394),
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(growable: false),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text('Chief Complaint', style: sectionTitleStyle),
-                    const SizedBox(height: 6),
-                    _CheckinSearchableTagInput(
-                      initialValues:
-                          _selectedChiefComplaints.toList(growable: false),
-                      suggestions: _chiefComplaintSuggestions,
-                      placeholder: 'Add chief complaint...',
-                      onChanged: (values) {
-                        setState(() {
-                          _selectedChiefComplaints = values.toSet();
-                          a.chiefComplaints = values;
+                    _VisitChiefSection(
+                      initialVisitType: _visitType,
+                      initialChiefComplaints: _selectedChiefComplaints,
+                      onVisitTypeChanged: (type) {
+                        PerfMarkers.track('checkin.tap.visitType', () {
+                          _visitType = type;
+                          a.visitType = type;
                           _scheduleAutosave();
+                          _bumpRightRailSignal();
+                        });
+                      },
+                      onChiefComplaintsChanged: (chiefComplaints) {
+                        PerfMarkers.track('checkin.tap.chiefComplaint', () {
+                          _selectedChiefComplaints = chiefComplaints;
+                          a.chiefComplaints =
+                              chiefComplaints.toList(growable: false);
+                          _scheduleAutosave();
+                          _bumpRightRailSignal();
                         });
                       },
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: _chiefComplaintSuggestions
-                          .map(
-                            (complaint) => _quickChip(
-                              label: complaint,
-                              selected:
-                                  _selectedChiefComplaints.contains(complaint),
-                              onTap: () {
-                                setState(() {
-                                  if (_selectedChiefComplaints
-                                      .contains(complaint)) {
-                                    _selectedChiefComplaints.remove(complaint);
-                                  } else {
-                                    _selectedChiefComplaints.add(complaint);
-                                  }
-                                  a.chiefComplaints = _selectedChiefComplaints
-                                      .toList(growable: false);
-                                  _scheduleAutosave();
-                                });
-                              },
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
                     const SizedBox(height: 12),
-                    InfoLabel(
-                      label: 'Teeth:',
-                      child: TeethPicker(
-                        selectedTeeth: _selectedTeeth,
-                        isAdult: (a.patient?.age ?? 0) >= 13,
-                        onChanged: (teeth) {
-                          setState(() {
-                            _selectedTeeth = teeth;
-                            for (final id in teeth) {
-                              _teethStates.putIfAbsent(
-                                id,
-                                () => ToothState(toothId: id),
-                              );
-                            }
-                            a.selectedTeeth = teeth.toList(growable: false);
-                            _scheduleAutosave();
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text('Diagnosis', style: sectionTitleStyle),
-                    const SizedBox(height: 6),
-                    _CheckinSearchableTagInput(
-                      initialValues: a.diagnosis,
-                      suggestions: allDiagnosis,
-                      placeholder: 'Add diagnosis...',
-                      onChanged: (values) {
-                        setState(() {
-                          a.diagnosis = values;
+                    _TeethSection(
+                      initialTeeth: _selectedTeeth,
+                      isAdult: (a.patient?.age ?? 0) >= 13,
+                      onChanged: (teeth) {
+                        PerfMarkers.track('checkin.tap.teeth', () {
+                          _selectedTeeth = teeth;
+                          for (final id in teeth) {
+                            _teethStates.putIfAbsent(
+                              id,
+                              () => ToothState(toothId: id),
+                            );
+                          }
+                          a.selectedTeeth = teeth.toList(growable: false);
                           _scheduleAutosave();
+                          _bumpRightRailSignal();
                         });
                       },
                     ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: allDiagnosis
-                          .take(16)
-                          .map(
-                            (diagnosis) => _quickChip(
-                              label: diagnosis,
-                              selected: a.diagnosis.contains(diagnosis),
-                              onTap: () {
-                                setState(() {
-                                  final updated =
-                                      a.diagnosis.toList(growable: true);
-                                  if (updated.contains(diagnosis)) {
-                                    updated.remove(diagnosis);
-                                  } else {
-                                    updated.add(diagnosis);
-                                  }
-                                  a.diagnosis = updated;
-                                  _scheduleAutosave();
-                                });
-                              },
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Treatment', style: sectionTitleStyle),
-                    const SizedBox(height: 6),
-                    _CheckinSearchableTagInput(
-                      initialValues:
-                          _selectedTreatments.toList(growable: false),
-                      suggestions: allTreatments
-                          .map((t) => t.name)
-                          .toList(growable: false),
-                      placeholder: 'Add treatment...',
-                      onChanged: (values) {
-                        _selectedTreatments = values.toSet();
-                        a.selectedTreatments = values;
-                        if (!_hasConsultationSelected() && !_hasRctSelected()) {
-                          _selectedConsultationTypes.clear();
-                          a.subTreatments = [];
-                        } else {
-                          a.subTreatments = _selectedConsultationTypes.toList(
-                              growable: false);
+                    _DiagnosisTreatmentPricingSection(
+                      initialDiagnosis: a.diagnosis,
+                      initialTreatments: _selectedTreatments,
+                      initialSubTreatments: _selectedConsultationTypes,
+                      initialPriceText: _priceController.text,
+                      loadingTopTreatments: _loadingTopTreatments,
+                      topTreatments: topTreatments,
+                      mergedTopTreatments: mergedTopTreatments,
+                      onDiagnosisChanged: (diagnosis) {
+                        a.diagnosis = diagnosis.toList(growable: false);
+                        _scheduleAutosave();
+                        _bumpRightRailSignal();
+                      },
+                      onTreatmentChanged: (treatments, subTreatments) {
+                        _selectedTreatments = treatments;
+                        _selectedConsultationTypes = subTreatments;
+                        a.selectedTreatments =
+                            treatments.toList(growable: false);
+                        a.subTreatments =
+                            subTreatments.toList(growable: false);
+                        _scheduleAutosave();
+                        _bumpRightRailSignal();
+                      },
+                      onPriceChanged: (price, priceText) {
+                        a.price = price;
+                        if (_priceController.text != priceText) {
+                          _priceController.text = priceText;
                         }
                         _scheduleAutosave();
-                        setState(() {});
+                        _bumpRightRailSignal();
                       },
-                    ),
-                    if (_loadingTopTreatments) ...[
-                      const SizedBox(height: 8),
-                      const ProgressRing(strokeWidth: 2.2),
-                    ] else if (mergedTopTreatments.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        topTreatments.isNotEmpty
-                            ? 'Top 10 treatments (includes patient history):'
-                            : 'Top 10 provided treatments:',
-                        style: const TextStyle(
-                          color: Color(0xFF5A7397),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: mergedTopTreatments
-                            .map(
-                              (t) => _quickChip(
-                                label: t,
-                                selected: _selectedTreatments.contains(t),
-                                onTap: () {
-                                  setState(() {
-                                    if (_selectedTreatments.contains(t)) {
-                                      _selectedTreatments.remove(t);
-                                    } else {
-                                      _selectedTreatments.add(t);
-                                    }
-                                    a.selectedTreatments = _selectedTreatments
-                                        .toList(growable: false);
-                                    if (!_hasConsultationSelected() &&
-                                        !_hasRctSelected()) {
-                                      _selectedConsultationTypes.clear();
-                                      a.subTreatments = [];
-                                    } else {
-                                      a.subTreatments =
-                                          _selectedConsultationTypes.toList(
-                                        growable: false,
-                                      );
-                                    }
-                                    _scheduleAutosave();
-                                  });
-                                },
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ],
-                    if (_hasConsultationSelected()) ...[
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Consultation Type Suggestions:',
-                        style: TextStyle(
-                          color: Color(0xFF5A7397),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: _consultationSubTypes
-                            .map(
-                              (type) => _hierarchyChip(
-                                label: type,
-                                selected:
-                                    _selectedConsultationTypes.contains(type),
-                                onTap: () {
-                                  setState(() {
-                                    if (_selectedConsultationTypes
-                                        .contains(type)) {
-                                      _selectedConsultationTypes.remove(type);
-                                    } else {
-                                      _selectedConsultationTypes.add(type);
-                                    }
-                                    a.subTreatments =
-                                        _selectedConsultationTypes.toList(
-                                      growable: false,
-                                    );
-                                    _scheduleAutosave();
-                                  });
-                                },
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ],
-                    if (_hasRctSelected()) ...[
-                      const SizedBox(height: 10),
-                      const Text(
-                        'RCT Stage Selection:',
-                        style: TextStyle(
-                          color: Color(0xFF5A7397),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: _rctSubTypes
-                            .map(
-                              (type) => _hierarchyChip(
-                                label: type,
-                                selected:
-                                    _selectedConsultationTypes.contains(type),
-                                onTap: () {
-                                  setState(() {
-                                    if (_selectedConsultationTypes
-                                        .contains(type)) {
-                                      _selectedConsultationTypes.remove(type);
-                                    } else {
-                                      _selectedConsultationTypes.add(type);
-                                    }
-                                    a.subTreatments =
-                                        _selectedConsultationTypes.toList(
-                                      growable: false,
-                                    );
-                                    _scheduleAutosave();
-                                  });
-                                },
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    const Text('Treatment Price', style: sectionTitleStyle),
-                    const SizedBox(height: 6),
-                    CupertinoTextField(
-                      controller: _priceController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                      ],
-                      prefix: const Padding(
-                        padding: EdgeInsets.only(left: 10),
-                        child: Text('₹',
-                            style: TextStyle(color: Color(0xFF355279))),
-                      ),
-                      placeholder: 'Treatment price',
-                      onChanged: (value) {
-                        a.price = double.tryParse(value) ?? 0;
-                        _scheduleAutosave();
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [100, 200, 500, 1000, 2000, 2500]
-                          .map(
-                            (v) => AppButton(
-                              label: '₹$v',
-                              compact: false,
-                              variant: AppButtonVariant.secondary,
-                              onPressed: () {
-                                _priceController.text = '$v';
-                                a.price = v.toDouble();
-                                _scheduleAutosave();
-                                setState(() {});
-                              },
-                            ),
-                          )
-                          .toList(growable: false),
                     ),
                   ],
                 );
@@ -944,75 +652,19 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                 final secondColumn = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Post-operative Notes',
-                        style: sectionTitleStyle),
-                    const SizedBox(height: 6),
-                    CupertinoTextField(
-                      controller: _postOpController,
-                      minLines: 4,
-                      maxLines: 8,
-                      onChanged: (value) {
-                        a.postOpNotes = value;
+                    _PostOperativeNotesSection(
+                      initialText: _postOpController.text,
+                      initialSelectedParent: _selectedPostOpParent,
+                      onNotesChanged: (notes, selectedParent) {
+                        _selectedPostOpParent = selectedParent;
+                        a.postOpNotes = notes;
+                        if (_postOpController.text != notes) {
+                          _postOpController.text = notes;
+                        }
                         _scheduleAutosave();
+                        _bumpRightRailSignal();
                       },
-                      placeholder: 'Post-operative notes',
                     ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: _postOpSuggestions.keys
-                          .map(
-                            (parent) => AppButton(
-                              label: parent,
-                              compact: false,
-                              variant: _selectedPostOpParent == parent
-                                  ? AppButtonVariant.primary
-                                  : AppButtonVariant.secondary,
-                              onPressed: () {
-                                setState(() => _selectedPostOpParent = parent);
-                              },
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                    if (_selectedPostOpParent != null &&
-                        _postOpSuggestions[_selectedPostOpParent!] != null) ...[
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _postOpSuggestions[_selectedPostOpParent!]!
-                            .map(
-                              (child) => _hierarchyChip(
-                                label: child,
-                                selected: false,
-                                onTap: () {
-                                  final parent = _selectedPostOpParent;
-                                  if (parent == null) return;
-                                  final parentLine = '- $parent';
-                                  final childLine = '  - $child';
-                                  final current = _postOpController.text.trim();
-                                  if (current.contains(
-                                          '$parentLine\n$childLine') ||
-                                      current.contains('\n$childLine')) {
-                                    return;
-                                  }
-                                  _postOpController.text = current
-                                          .contains(parentLine)
-                                      ? '$current\n$childLine'
-                                      : (current.isEmpty
-                                          ? '$parentLine\n$childLine'
-                                          : '$current\n$parentLine\n$childLine');
-                                  setState(() {});
-                                  a.postOpNotes = _postOpController.text;
-                                  _scheduleAutosave();
-                                },
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
-                    ],
                     if (widget.showInlineBottomActions) ...[
                       const SizedBox(height: 18),
                       Row(
@@ -1070,11 +722,24 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   ],
                 );
 
-                final scheduler = _InlineNextAppointmentCard(
-                  appointment: a,
-                  includeCancelledSection: true,
+                final rightRail = ValueListenableBuilder<int>(
+                  valueListenable: _rightRailSignal,
+                  builder: (context, _, __) {
+                    PerfMarkers.track('checkin.build.rightRail', () {});
+                    final scheduler = _InlineNextAppointmentCard(
+                      appointment: a,
+                      includeCancelledSection: true,
+                    );
+                    final todaySummary = _buildTodaySummaryCard(a);
+                    return Column(
+                      children: [
+                        scheduler,
+                        const SizedBox(height: 10),
+                        todaySummary,
+                      ],
+                    );
+                  },
                 );
-                final todaySummary = _buildTodaySummaryCard(a);
 
                 if (constraints.maxWidth >= 1180) {
                   return Row(
@@ -1086,13 +751,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       const SizedBox(width: 12),
                       SizedBox(
                         width: 260,
-                        child: Column(
-                          children: [
-                            scheduler,
-                            const SizedBox(height: 10),
-                            todaySummary,
-                          ],
-                        ),
+                        child: rightRail,
                       ),
                     ],
                   );
@@ -1104,9 +763,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                     const SizedBox(height: 16),
                     secondColumn,
                     const SizedBox(height: 16),
-                    scheduler,
-                    const SizedBox(height: 10),
-                    todaySummary,
+                    rightRail,
                   ],
                 );
               },
@@ -1244,6 +901,738 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisitChiefSection extends StatefulWidget {
+  final String initialVisitType;
+  final Set<String> initialChiefComplaints;
+  final ValueChanged<String> onVisitTypeChanged;
+  final ValueChanged<Set<String>> onChiefComplaintsChanged;
+
+  const _VisitChiefSection({
+    required this.initialVisitType,
+    required this.initialChiefComplaints,
+    required this.onVisitTypeChanged,
+    required this.onChiefComplaintsChanged,
+  });
+
+  @override
+  State<_VisitChiefSection> createState() => _VisitChiefSectionState();
+}
+
+class _VisitChiefSectionState extends State<_VisitChiefSection> {
+  static const sectionTitleStyle = TextStyle(
+    color: Color(0xFF2C4E76),
+    fontWeight: FontWeight.w800,
+    fontSize: 15,
+  );
+
+  late String _visitType;
+  late Set<String> _chiefComplaints;
+
+  @override
+  void initState() {
+    super.initState();
+    _visitType = widget.initialVisitType;
+    _chiefComplaints = Set<String>.from(widget.initialChiefComplaints);
+  }
+
+  @override
+  void didUpdateWidget(covariant _VisitChiefSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialVisitType != widget.initialVisitType) {
+      _visitType = widget.initialVisitType;
+    }
+    if (oldWidget.initialChiefComplaints != widget.initialChiefComplaints) {
+      _chiefComplaints = Set<String>.from(widget.initialChiefComplaints);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PerfMarkers.track(
+      'checkin.build.visitChief',
+      () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Visit Type', style: sectionTitleStyle),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _CheckinOperativeFormState._visitTypes.map((type) {
+              final selected = _visitType == type;
+              final icon = type == 'Follow-up Visit'
+                  ? FluentIcons.calendar
+                  : type == 'New Problem / New Treatment'
+                      ? FluentIcons.health
+                      : FluentIcons.chat;
+              final note = type == 'Follow-up Visit'
+                  ? 'Patient is returning for a review'
+                  : type == 'New Problem / New Treatment'
+                      ? 'New concern or additional treatment'
+                      : 'Advice or opinion only';
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _visitType = type);
+                  widget.onVisitTypeChanged(type);
+                },
+                child: Container(
+                  width: 250,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? const Color(0xFFEAF6FF)
+                        : const Color(0xFFF4F6FA),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: selected
+                          ? const Color(0xFF4DB6C6)
+                          : const Color(0xFFDDE5F0),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? const Color(0xFFBEE9EF)
+                              : const Color(0xFFE9EDF5),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          icon,
+                          size: 12,
+                          color: const Color(0xFF2E5C85),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              type,
+                              style: const TextStyle(
+                                color: Color(0xFF254870),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              note,
+                              style: const TextStyle(
+                                color: Color(0xFF5B7394),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(growable: false),
+          ),
+          const SizedBox(height: 12),
+          const Text('Chief Complaint', style: sectionTitleStyle),
+          const SizedBox(height: 6),
+          _CheckinSearchableTagInput(
+            initialValues: _chiefComplaints.toList(growable: false),
+            suggestions: _CheckinOperativeFormState._chiefComplaintSuggestions,
+            placeholder: 'Add chief complaint...',
+            onChanged: (values) {
+              final updated = values.toSet();
+              setState(() => _chiefComplaints = updated);
+              widget.onChiefComplaintsChanged(updated);
+            },
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _CheckinOperativeFormState._chiefComplaintSuggestions
+                .map(
+                  (complaint) => AppButton(
+                    label: complaint,
+                    compact: false,
+                    variant: _chiefComplaints.contains(complaint)
+                        ? AppButtonVariant.primary
+                        : AppButtonVariant.secondary,
+                    onPressed: () {
+                      final updated = Set<String>.from(_chiefComplaints);
+                      if (updated.contains(complaint)) {
+                        updated.remove(complaint);
+                      } else {
+                        updated.add(complaint);
+                      }
+                      setState(() => _chiefComplaints = updated);
+                      widget.onChiefComplaintsChanged(updated);
+                    },
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeethSection extends StatefulWidget {
+  final Set<String> initialTeeth;
+  final bool isAdult;
+  final ValueChanged<Set<String>> onChanged;
+
+  const _TeethSection({
+    required this.initialTeeth,
+    required this.isAdult,
+    required this.onChanged,
+  });
+
+  @override
+  State<_TeethSection> createState() => _TeethSectionState();
+}
+
+class _TeethSectionState extends State<_TeethSection> {
+  late Set<String> _selectedTeeth;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTeeth = Set<String>.from(widget.initialTeeth);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TeethSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTeeth != widget.initialTeeth) {
+      _selectedTeeth = Set<String>.from(widget.initialTeeth);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PerfMarkers.track(
+      'checkin.build.teeth',
+      () => InfoLabel(
+        label: 'Teeth:',
+        child: TeethPicker(
+          selectedTeeth: _selectedTeeth,
+          isAdult: widget.isAdult,
+          onChanged: (teeth) {
+            setState(() => _selectedTeeth = teeth);
+            widget.onChanged(teeth);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _DiagnosisTreatmentPricingSection extends StatefulWidget {
+  final List<String> initialDiagnosis;
+  final Set<String> initialTreatments;
+  final Set<String> initialSubTreatments;
+  final String initialPriceText;
+  final bool loadingTopTreatments;
+  final List<String> topTreatments;
+  final List<String> mergedTopTreatments;
+  final ValueChanged<Set<String>> onDiagnosisChanged;
+  final void Function(Set<String> treatments, Set<String> subTreatments)
+      onTreatmentChanged;
+  final void Function(double price, String priceText) onPriceChanged;
+
+  const _DiagnosisTreatmentPricingSection({
+    required this.initialDiagnosis,
+    required this.initialTreatments,
+    required this.initialSubTreatments,
+    required this.initialPriceText,
+    required this.loadingTopTreatments,
+    required this.topTreatments,
+    required this.mergedTopTreatments,
+    required this.onDiagnosisChanged,
+    required this.onTreatmentChanged,
+    required this.onPriceChanged,
+  });
+
+  @override
+  State<_DiagnosisTreatmentPricingSection> createState() =>
+      _DiagnosisTreatmentPricingSectionState();
+}
+
+class _DiagnosisTreatmentPricingSectionState
+    extends State<_DiagnosisTreatmentPricingSection> {
+  static const sectionTitleStyle = TextStyle(
+    color: Color(0xFF2C4E76),
+    fontWeight: FontWeight.w800,
+    fontSize: 15,
+  );
+
+  late Set<String> _diagnosis;
+  late Set<String> _treatments;
+  late Set<String> _subTreatments;
+  late final TextEditingController _priceController;
+
+  bool _hasConsultationSelected() {
+    return _treatments.any((t) => t.trim().toLowerCase() == 'consultation');
+  }
+
+  bool _hasRctSelected() {
+    return _treatments.any((t) => t.trim().toLowerCase() == 'rct');
+  }
+
+  void _emitTreatmentChange() {
+    if (!_hasConsultationSelected() && !_hasRctSelected()) {
+      _subTreatments.clear();
+    }
+    widget.onTreatmentChanged(_treatments, _subTreatments);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _diagnosis = widget.initialDiagnosis.toSet();
+    _treatments = Set<String>.from(widget.initialTreatments);
+    _subTreatments = Set<String>.from(widget.initialSubTreatments);
+    _priceController = TextEditingController(text: widget.initialPriceText);
+  }
+
+  @override
+  void didUpdateWidget(covariant _DiagnosisTreatmentPricingSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialDiagnosis != widget.initialDiagnosis) {
+      _diagnosis = widget.initialDiagnosis.toSet();
+    }
+    if (oldWidget.initialTreatments != widget.initialTreatments) {
+      _treatments = Set<String>.from(widget.initialTreatments);
+    }
+    if (oldWidget.initialSubTreatments != widget.initialSubTreatments) {
+      _subTreatments = Set<String>.from(widget.initialSubTreatments);
+    }
+    if (_priceController.text != widget.initialPriceText) {
+      _priceController.text = widget.initialPriceText;
+    }
+  }
+
+  @override
+  void dispose() {
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  Widget _hierarchyChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFE6F7EC) : const Color(0xFFF4FBF6),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color:
+                selected ? const Color(0xFF9FD9B1) : const Color(0xFFCDEBD7),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color:
+                selected ? const Color(0xFF1E8B66) : const Color(0xFF2F7A57),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PerfMarkers.track(
+      'checkin.build.diagnosisTreatmentPricing',
+      () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 10),
+          const Text('Diagnosis', style: sectionTitleStyle),
+          const SizedBox(height: 6),
+          _CheckinSearchableTagInput(
+            initialValues: _diagnosis.toList(growable: false),
+            suggestions: allDiagnosis,
+            placeholder: 'Add diagnosis...',
+            onChanged: (values) {
+              final updated = values.toSet();
+              setState(() => _diagnosis = updated);
+              widget.onDiagnosisChanged(updated);
+            },
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: allDiagnosis
+                .take(16)
+                .map(
+                  (diagnosis) => AppButton(
+                    label: diagnosis,
+                    compact: false,
+                    variant: _diagnosis.contains(diagnosis)
+                        ? AppButtonVariant.primary
+                        : AppButtonVariant.secondary,
+                    onPressed: () {
+                      final updated = Set<String>.from(_diagnosis);
+                      if (updated.contains(diagnosis)) {
+                        updated.remove(diagnosis);
+                      } else {
+                        updated.add(diagnosis);
+                      }
+                      setState(() => _diagnosis = updated);
+                      widget.onDiagnosisChanged(updated);
+                    },
+                  ),
+                )
+                .toList(growable: false),
+          ),
+          const SizedBox(height: 16),
+          const Text('Treatment', style: sectionTitleStyle),
+          const SizedBox(height: 6),
+          _CheckinSearchableTagInput(
+            initialValues: _treatments.toList(growable: false),
+            suggestions:
+                allTreatments.map((t) => t.name).toList(growable: false),
+            placeholder: 'Add treatment...',
+            onChanged: (values) {
+              setState(() => _treatments = values.toSet());
+              _emitTreatmentChange();
+            },
+          ),
+          if (widget.loadingTopTreatments) ...[
+            const SizedBox(height: 8),
+            const ProgressRing(strokeWidth: 2.2),
+          ] else if (widget.mergedTopTreatments.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              widget.topTreatments.isNotEmpty
+                  ? 'Top 10 treatments (includes patient history):'
+                  : 'Top 10 provided treatments:',
+              style: const TextStyle(
+                color: Color(0xFF5A7397),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: widget.mergedTopTreatments
+                  .map(
+                    (t) => AppButton(
+                      label: t,
+                      compact: false,
+                      variant: _treatments.contains(t)
+                          ? AppButtonVariant.primary
+                          : AppButtonVariant.secondary,
+                      onPressed: () {
+                        final updated = Set<String>.from(_treatments);
+                        if (updated.contains(t)) {
+                          updated.remove(t);
+                        } else {
+                          updated.add(t);
+                        }
+                        setState(() => _treatments = updated);
+                        _emitTreatmentChange();
+                      },
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+          if (_hasConsultationSelected()) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Consultation Type Suggestions:',
+              style: TextStyle(
+                color: Color(0xFF5A7397),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _CheckinOperativeFormState._consultationSubTypes
+                  .map(
+                    (type) => _hierarchyChip(
+                      label: type,
+                      selected: _subTreatments.contains(type),
+                      onTap: () {
+                        final updated = Set<String>.from(_subTreatments);
+                        if (updated.contains(type)) {
+                          updated.remove(type);
+                        } else {
+                          updated.add(type);
+                        }
+                        setState(() => _subTreatments = updated);
+                        _emitTreatmentChange();
+                      },
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+          if (_hasRctSelected()) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'RCT Stage Selection:',
+              style: TextStyle(
+                color: Color(0xFF5A7397),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _CheckinOperativeFormState._rctSubTypes
+                  .map(
+                    (type) => _hierarchyChip(
+                      label: type,
+                      selected: _subTreatments.contains(type),
+                      onTap: () {
+                        final updated = Set<String>.from(_subTreatments);
+                        if (updated.contains(type)) {
+                          updated.remove(type);
+                        } else {
+                          updated.add(type);
+                        }
+                        setState(() => _subTreatments = updated);
+                        _emitTreatmentChange();
+                      },
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+          const SizedBox(height: 10),
+          const Text('Treatment Price', style: sectionTitleStyle),
+          const SizedBox(height: 6),
+          CupertinoTextField(
+            controller: _priceController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            ],
+            prefix: const Padding(
+              padding: EdgeInsets.only(left: 10),
+              child: Text('₹', style: TextStyle(color: Color(0xFF355279))),
+            ),
+            placeholder: 'Treatment price',
+            onChanged: (value) {
+              widget.onPriceChanged(double.tryParse(value) ?? 0, value);
+            },
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [100, 200, 500, 1000, 2000, 2500]
+                .map(
+                  (v) => AppButton(
+                    label: '₹$v',
+                    compact: false,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: () {
+                      final next = '$v';
+                      _priceController.text = next;
+                      widget.onPriceChanged(v.toDouble(), next);
+                    },
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PostOperativeNotesSection extends StatefulWidget {
+  final String initialText;
+  final String? initialSelectedParent;
+  final void Function(String notes, String? selectedParent) onNotesChanged;
+
+  const _PostOperativeNotesSection({
+    required this.initialText,
+    required this.initialSelectedParent,
+    required this.onNotesChanged,
+  });
+
+  @override
+  State<_PostOperativeNotesSection> createState() =>
+      _PostOperativeNotesSectionState();
+}
+
+class _PostOperativeNotesSectionState extends State<_PostOperativeNotesSection> {
+  static const sectionTitleStyle = TextStyle(
+    color: Color(0xFF2C4E76),
+    fontWeight: FontWeight.w800,
+    fontSize: 15,
+  );
+
+  late final TextEditingController _notesController;
+  String? _selectedParent;
+
+  @override
+  void initState() {
+    super.initState();
+    _notesController = TextEditingController(text: widget.initialText);
+    _selectedParent = widget.initialSelectedParent;
+  }
+
+  @override
+  void didUpdateWidget(covariant _PostOperativeNotesSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_notesController.text != widget.initialText) {
+      _notesController.text = widget.initialText;
+    }
+    if (oldWidget.initialSelectedParent != widget.initialSelectedParent) {
+      _selectedParent = widget.initialSelectedParent;
+    }
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  void _emitNotes() {
+    widget.onNotesChanged(_notesController.text, _selectedParent);
+  }
+
+  Widget _hierarchyChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFE6F7EC) : const Color(0xFFF4FBF6),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color:
+                selected ? const Color(0xFF9FD9B1) : const Color(0xFFCDEBD7),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color:
+                selected ? const Color(0xFF1E8B66) : const Color(0xFF2F7A57),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PerfMarkers.track(
+      'checkin.build.postOpSection',
+      () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Post-operative Notes', style: sectionTitleStyle),
+          const SizedBox(height: 6),
+          CupertinoTextField(
+            controller: _notesController,
+            minLines: 4,
+            maxLines: 8,
+            onChanged: (_) => _emitNotes(),
+            placeholder: 'Post-operative notes',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _CheckinOperativeFormState._postOpSuggestions.keys
+                .map(
+                  (parent) => AppButton(
+                    label: parent,
+                    compact: false,
+                    variant: _selectedParent == parent
+                        ? AppButtonVariant.primary
+                        : AppButtonVariant.secondary,
+                    onPressed: () {
+                      setState(() => _selectedParent = parent);
+                      _emitNotes();
+                    },
+                  ),
+                )
+                .toList(growable: false),
+          ),
+          if (_selectedParent != null &&
+              _CheckinOperativeFormState._postOpSuggestions[_selectedParent!] !=
+                  null) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _CheckinOperativeFormState
+                  ._postOpSuggestions[_selectedParent!]!
+                  .map(
+                    (child) => _hierarchyChip(
+                      label: child,
+                      selected: false,
+                      onTap: () {
+                        final parent = _selectedParent;
+                        if (parent == null) return;
+                        final parentLine = '- $parent';
+                        final childLine = '  - $child';
+                        final current = _notesController.text.trim();
+                        if (current.contains('$parentLine\n$childLine') ||
+                            current.contains('\n$childLine')) {
+                          return;
+                        }
+                        _notesController.text = current.contains(parentLine)
+                            ? '$current\n$childLine'
+                            : (current.isEmpty
+                                ? '$parentLine\n$childLine'
+                                : '$current\n$parentLine\n$childLine');
+                        _emitNotes();
+                      },
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ],
         ],
       ),
     );

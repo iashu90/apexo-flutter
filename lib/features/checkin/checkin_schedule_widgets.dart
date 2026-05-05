@@ -1,6 +1,6 @@
 part of 'checkin_screen.dart';
 
-class _InlineNextAppointmentCard extends StatelessWidget {
+class _InlineNextAppointmentCard extends StatefulWidget {
   final Appointment appointment;
   final bool includeCancelledSection;
 
@@ -10,42 +10,100 @@ class _InlineNextAppointmentCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: appointments.observableMap.stream,
-      builder: (context, _) {
-        final upcomingRows = appointments.present.values
-            .where(
-              (row) =>
-                  row.patientID == appointment.patientID &&
-                  row.id != appointment.id &&
-                  (row.checkinStage == 'scheduled' ||
-                      row.checkinStage == 'pending') &&
-                  !row.isCheckedIn &&
-                  row.date.isAfter(DateTime.now()),
-            )
-            .toList(growable: true)
-          ..sort((a, b) => a.date.compareTo(b.date));
-        final cancelledRows = appointments.present.values
-            .where(
-              (row) =>
-                  includeCancelledSection &&
-                  row.patientID == appointment.patientID &&
-                  row.id != appointment.id &&
-                  row.checkinStage == 'cancelled',
-            )
-            .toList(growable: true)
-          ..sort((a, b) => b.date.compareTo(a.date));
+  State<_InlineNextAppointmentCard> createState() =>
+      _InlineNextAppointmentCardState();
+}
 
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.borderBlueSoft),
-          ),
-          child: Column(
+class _InlineNextAppointmentCardState extends State<_InlineNextAppointmentCard> {
+  StreamSubscription? _appointmentsSubscription;
+  List<Appointment> _upcomingRows = const [];
+  List<Appointment> _cancelledRows = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _recomputeRows();
+    _appointmentsSubscription = appointments.observableMap.stream.listen((_) {
+      if (!mounted) return;
+      _recomputeRows();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _InlineNextAppointmentCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.appointment.id != widget.appointment.id ||
+        oldWidget.appointment.patientID != widget.appointment.patientID ||
+        oldWidget.includeCancelledSection != widget.includeCancelledSection) {
+      _recomputeRows();
+    }
+  }
+
+  @override
+  void dispose() {
+    _appointmentsSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _recomputeRows() {
+    PerfMarkers.track(
+      'checkin.recompute.nextAppointments',
+      () {
+        final upcomingRows = <Appointment>[];
+        final cancelledRows = <Appointment>[];
+        final now = DateTime.now();
+
+        for (final row in appointments.present.values) {
+          if (row.patientID != widget.appointment.patientID) continue;
+          if (row.id == widget.appointment.id) continue;
+
+          final stage = row.checkinStage;
+          final isUpcoming =
+              (stage == 'scheduled' || stage == 'pending') &&
+                  !row.isCheckedIn &&
+                  row.date.isAfter(now);
+          if (isUpcoming) {
+            upcomingRows.add(row);
+            continue;
+          }
+
+          final isCancelled =
+              widget.includeCancelledSection && stage == 'cancelled';
+          if (isCancelled) {
+            cancelledRows.add(row);
+          }
+        }
+
+        upcomingRows.sort((a, b) => a.date.compareTo(b.date));
+        cancelledRows.sort((a, b) => b.date.compareTo(a.date));
+
+        setState(() {
+          _upcomingRows = upcomingRows;
+          _cancelledRows = cancelledRows;
+        });
+      },
+      data: {
+        'includeCancelled': widget.includeCancelledSection,
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appointment = widget.appointment;
+    final includeCancelledSection = widget.includeCancelledSection;
+    final upcomingRows = _upcomingRows;
+    final cancelledRows = _cancelledRows;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderBlueSoft),
+      ),
+      child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
@@ -221,8 +279,6 @@ class _InlineNextAppointmentCard extends StatelessWidget {
               ),
             ],
           ),
-        );
-      },
     );
   }
 }

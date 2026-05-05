@@ -17,6 +17,7 @@ import 'package:apexo/common_widgets/selectable_chip_group.dart';
 import 'package:apexo/common_widgets/patient_timeline_card.dart';
 import 'package:apexo/common_widgets/schedule_appointment_dialog.dart';
 import 'package:apexo/core/theme/app_theme.dart';
+import 'package:apexo/core/perf/perf_markers.dart';
 import 'package:apexo/core/sync_write_health.dart';
 import 'package:apexo/core/ui/critical_write_ui_guard.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
@@ -1079,6 +1080,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
     _bootstrapFuture = _initializeStores();
     _waitingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
+      final now = DateTime.now();
+      final isToday = _selectedDate.year == now.year &&
+          _selectedDate.month == now.month &&
+          _selectedDate.day == now.day;
+      if (!isToday) return;
       setState(() {});
     });
   }
