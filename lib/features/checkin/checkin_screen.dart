@@ -620,9 +620,9 @@ Future<void> openAppointmentJourneyDialog(
       }
       if (isDoctorLogin) {
         if (nextStep >= 2) {
-          appointment.checkinStage = 'completed';
-          appointment.completedTime = DateTime.now();
-          appointment.isDone = true;
+          appointment.checkinStage = 'checkout';
+          appointment.completedTime = null;
+          appointment.isDone = false;
         }
         appointments.set(appointment);
         return;
