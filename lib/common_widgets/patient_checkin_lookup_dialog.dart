@@ -9,6 +9,7 @@ import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/core/ui/components/app_button.dart';
+import 'package:apexo/services/sync_priority.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 
@@ -778,6 +779,7 @@ Future<void> showPatientCheckinLookupDialog({
                         }
                       },
                       onChanged: (value) {
+                        syncPriorityDeferral.markTyping();
                         setDialogState(
                             () => query = value.trim().toLowerCase());
                       },

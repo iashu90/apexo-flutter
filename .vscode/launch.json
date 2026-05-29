@@ -22,6 +22,18 @@
             "deviceId": "windows"
         },
         {
+            "name": "apexo-flutter (Flutter Web - Chrome)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "chrome"
+        },
+        {
+            "name": "apexo-flutter (Flutter Web - Web Server)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "web-server"
+        },
+        {
             "name": "apexo-flutter (release mode)",
             "request": "launch",
             "type": "dart",

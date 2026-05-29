@@ -15,6 +15,7 @@ import 'package:apexo/services/admins.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/features/stats/charts_controller.dart';
 import 'package:apexo/services/permissions.dart';
+import 'package:apexo/services/sync_priority.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -135,6 +136,43 @@ class _Routes {
 
   final ObservableState<List<Panel>> panels = ObservableState([]);
   final minimizePanels = ObservableState(false);
+  Timer? _routeSyncDebounce;
+  Future<void> Function()? _pendingRouteSync;
+  bool _routeSyncRunning = false;
+
+  void _scheduleRouteSync(
+    String routeIdentifier,
+    Future<void> Function() syncWork,
+  ) {
+    _pendingRouteSync = syncWork;
+    _routeSyncDebounce?.cancel();
+    _routeSyncDebounce = Timer(
+      const Duration(milliseconds: 280),
+      () => _runPendingRouteSync(routeIdentifier),
+    );
+  }
+
+  Future<void> _runPendingRouteSync(String routeIdentifier) async {
+    if (_routeSyncRunning) return;
+
+    while (_pendingRouteSync != null) {
+      final work = _pendingRouteSync!;
+      _pendingRouteSync = null;
+      _routeSyncRunning = true;
+      try {
+        await syncPriorityDeferral.waitForTypingIdle();
+        await work();
+      } catch (e, s) {
+        ActivityLogger.logException(
+          e,
+          s,
+          'Route sync failed for $routeIdentifier',
+        );
+      } finally {
+        _routeSyncRunning = false;
+      }
+    }
+  }
 
   void openPanel(Panel panel) {
     final foundPanel = panels()
@@ -181,8 +219,10 @@ class _Routes {
           navbarTitle: txt("home"),
           onSelect: () {
             chartsCtrl.resetSelected();
-            patients.synchronize();
-            appointments.synchronize();
+            _scheduleRouteSync('dashboard', () async {
+              await patients.synchronize();
+              await appointments.synchronize();
+            });
           },
         ),
         Route(
@@ -192,10 +232,12 @@ class _Routes {
           screen: DoctorsScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('doctors'),
           navbarTitle: 'Doctors',
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            appointments.synchronize();
+          onSelect: () {
+            _scheduleRouteSync('doctors', () async {
+              await doctors.synchronize();
+              await patients.synchronize();
+              await appointments.synchronize();
+            });
           },
         ),
         Route(
@@ -205,10 +247,12 @@ class _Routes {
           icon: FluentIcons.test_beaker,
           screen: LabworksScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('labworks'),
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            labworks.synchronize();
+          onSelect: () {
+            _scheduleRouteSync('labworks', () async {
+              await doctors.synchronize();
+              await patients.synchronize();
+              await labworks.synchronize();
+            });
           },
         ),
         Route(
@@ -218,10 +262,12 @@ class _Routes {
           icon: FluentIcons.medication_admin,
           screen: PatientsScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('patients'),
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            appointments.synchronize();
+          onSelect: () {
+            _scheduleRouteSync('patients', () async {
+              await doctors.synchronize();
+              await patients.synchronize();
+              await appointments.synchronize();
+            });
           },
         ),
         Route(
@@ -231,10 +277,12 @@ class _Routes {
           icon: FluentIcons.calendar,
           screen: CheckinScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('calendar'),
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            appointments.synchronize();
+          onSelect: () {
+            _scheduleRouteSync('calendar', () async {
+              await doctors.synchronize();
+              await patients.synchronize();
+              await appointments.synchronize();
+            });
           },
         ),
         Route(
@@ -244,10 +292,12 @@ class _Routes {
           icon: FluentIcons.preview_link,
           screen: CheckinScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('checkin'),
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            appointments.synchronize();
+          onSelect: () {
+            _scheduleRouteSync('checkin', () async {
+              await doctors.synchronize();
+              await patients.synchronize();
+              await appointments.synchronize();
+            });
           },
         ),
         Route(
@@ -257,10 +307,12 @@ class _Routes {
           icon: FluentIcons.receipt_processing,
           screen: ExpensesScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('expenses'),
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            expenses.synchronize();
+          onSelect: () {
+            _scheduleRouteSync('expenses', () async {
+              await doctors.synchronize();
+              await patients.synchronize();
+              await expenses.synchronize();
+            });
           },
         ),
         Route(
@@ -269,10 +321,12 @@ class _Routes {
           icon: FluentIcons.report_document,
           screen: ReportScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('report'),
-          onSelect: () async {
-            await doctors.synchronize();
-            await patients.synchronize();
-            appointments.synchronize();
+          onSelect: () {
+            _scheduleRouteSync('report', () async {
+              await doctors.synchronize();
+              await patients.synchronize();
+              await appointments.synchronize();
+            });
           },
         ),
         Route(
@@ -282,12 +336,14 @@ class _Routes {
           screen: DataScreen.new,
           accessible: permissions.canAccessByRouteIdentifier('data'),
           onFooter: false,
-          onSelect: () async {
+          onSelect: () {
             chartsCtrl.resetSelected();
-            await doctors.synchronize();
-            await patients.synchronize();
-            appointments.synchronize();
-            prescriptionsStore.synchronize();
+            _scheduleRouteSync('data', () async {
+              await doctors.synchronize();
+              await patients.synchronize();
+              await appointments.synchronize();
+              await prescriptionsStore.synchronize();
+            });
           },
         ),
         Route(

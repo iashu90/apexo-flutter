@@ -475,6 +475,8 @@ class Store<G extends Model> {
   Future<void> Function()? _syncJob;
   // holds the result of the last job that ran
   List<SyncResult>? lastRes;
+  // Coalesces overlapping synchronize calls into one in-flight operation.
+  Future<List<SyncResult>>? _inFlightSync;
 
   // ----------------------------- Public API --------------------------------
 
@@ -489,23 +491,30 @@ class Store<G extends Model> {
 
   /// Syncs the local database with the remote database
   Future<List<SyncResult>> synchronize() async {
-    // this would only register a job
-    // and wait patiently for its result
-    // if runs out of patience
-    // then it would steal the last result
-    // and shows as its own
-    // pretty weird... but it works
-    List<SyncResult>? res;
-    final sw = Stopwatch();
-    sw.start();
-    _syncJob = () async {
-      res = await _syncRequest();
-      lastRes = res;
-    };
-    while (res == null && sw.elapsed.inSeconds < 10) {
-      await Future.delayed(Duration(milliseconds: this.debounceMS));
+    if (_inFlightSync != null) {
+      return _inFlightSync!;
     }
-    return res ?? lastRes ?? [];
+
+    final completer = Completer<List<SyncResult>>();
+    _inFlightSync = completer.future;
+
+    _syncJob = () async {
+      try {
+        final res = await _syncRequest();
+        lastRes = res;
+        if (!completer.isCompleted) {
+          completer.complete(res);
+        }
+      } catch (e, s) {
+        if (!completer.isCompleted) {
+          completer.completeError(e, s);
+        }
+      } finally {
+        _inFlightSync = null;
+      }
+    };
+
+    return _inFlightSync!;
   }
 
   Future<List<SyncResult>> _syncRequest() async {
