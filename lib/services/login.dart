@@ -11,6 +11,7 @@ import 'package:apexo/utils/init_pocketbase.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import '../core/observable.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -292,6 +293,17 @@ class _LoginService extends ObservablePersistingObject {
             routes.currentRoute.onSelect?.call();
           } catch (e, s) {
             logger('Lazy route sync trigger failed: $e', s);
+          }
+        }),
+      );
+
+      // Run patient integrity audit once after bootstrap sync has started.
+      unawaited(
+        Future<void>.delayed(const Duration(seconds: 3), () async {
+          try {
+            await patients.triggerBootstrapIntegrityAuditOnce();
+          } catch (e, s) {
+            logger('Lazy bootstrap integrity audit failed: $e', s);
           }
         }),
       );
