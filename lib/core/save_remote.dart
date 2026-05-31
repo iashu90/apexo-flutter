@@ -38,6 +38,10 @@ class SaveRemote {
   static const int _syncPageSize = 200;
   static const int _syncOverlapMs = 5 * 60 * 1000;
   static const int _sessionRecoveryLookbackMs = 2 * 24 * 60 * 60 * 1000;
+  static const Duration _readTimeout = Duration(seconds: 8);
+  static const Duration _writeTimeout = Duration(seconds: 12);
+  static const int _transientMaxRetries = 2;
+  static const int _retryBaseDelayMs = 350;
   static final Set<String> _sessionRecoveryDoneStores = <String>{};
 
   final String storeName;
@@ -60,6 +64,53 @@ class SaveRemote {
 
   RecordService get remoteRows {
     return pbInstance.collection(dataCollectionName);
+  }
+
+  bool _isTransientError(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('statuscode: 0') ||
+        text.contains('connection closed') ||
+        text.contains('timed out') ||
+        text.contains('timeout') ||
+        text.contains('socket') ||
+        text.contains('connection reset') ||
+        text.contains('network') ||
+        text.contains('abort');
+  }
+
+  Duration _retryDelayForAttempt(int attempt) {
+    final exp = min(3, attempt);
+    final base = _retryBaseDelayMs * (1 << exp);
+    final jitter = Random().nextInt(180);
+    return Duration(milliseconds: base + jitter);
+  }
+
+  Future<T> _runWithRetry<T>({
+    required Future<T> Function() operation,
+    required String opName,
+    Duration timeout = _readTimeout,
+    int maxRetries = _transientMaxRetries,
+  }) async {
+    Object? lastError;
+    StackTrace? lastStack;
+
+    for (var attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation().timeout(timeout);
+      } catch (e, s) {
+        lastError = e;
+        lastStack = s;
+        await checkOnline();
+        final isTransient = _isTransientError(e);
+        if (!isTransient || attempt >= maxRetries) {
+          ActivityLogger.logException(e, s, opName);
+          rethrow;
+        }
+        await Future.delayed(_retryDelayForAttempt(attempt));
+      }
+    }
+
+    throw Exception('$opName failed: $lastError\n$lastStack');
   }
 
   void retryConnection() {
@@ -132,12 +183,16 @@ class SaveRemote {
           },
         );
 
-        final pageResult = await remoteRows.getList(
-          filter: filter,
-          sort: "updated,id",
-          perPage: _syncPageSize,
-          page: 1,
-          fields: "data,id,updated,imgs",
+        final pageResult = await _runWithRetry(
+          opName: 'getSince.getList',
+          timeout: _readTimeout,
+          operation: () => remoteRows.getList(
+            filter: filter,
+            sort: "updated,id",
+            perPage: _syncPageSize,
+            page: 1,
+            fields: "data,id,updated,imgs",
+          ),
         );
 
         ActivityLogger.logApi(
@@ -227,11 +282,15 @@ class SaveRemote {
 
   Future<int> getVersion() async {
     try {
-      final result = await remoteRows.getList(
-          sort: "-updated",
-          perPage: 1,
-          filter: 'store="$storeName"',
-          fields: "updated");
+      final result = await _runWithRetry(
+        opName: 'getVersion.getList',
+        timeout: _readTimeout,
+        operation: () => remoteRows.getList(
+            sort: "-updated",
+            perPage: 1,
+            filter: 'store="$storeName"',
+            fields: "updated"),
+      );
       if (result.items.isEmpty) {
         return 0;
       }
@@ -261,7 +320,11 @@ class SaveRemote {
           batchOperation.collection(dataCollectionName).upsert(
               body: {"store": storeName, "data": item.data, "id": item.id});
         }
-        await batchOperation.send();
+        await _runWithRetry(
+          opName: 'put.batchSend',
+          timeout: _writeTimeout,
+          operation: () => batchOperation.send(),
+        );
       } catch (e) {
         await checkOnline();
         rethrow;
@@ -306,8 +369,12 @@ class SaveRemote {
       }
       late List<String> alreadyUploaded;
       try {
-        alreadyUploaded = List<String>.from(
-            (await remoteRows.getOne(rowID, fields: "imgs")).data["imgs"]);
+        final row = await _runWithRetry(
+          opName: 'uploadImage.getOne',
+          timeout: _readTimeout,
+          operation: () => remoteRows.getOne(rowID, fields: "imgs"),
+        );
+        alreadyUploaded = List<String>.from(row.data["imgs"]);
       } catch (e, s) {
         alreadyUploaded = [];
         logger(
@@ -321,8 +388,11 @@ class SaveRemote {
         return false;
       }
       inProgress.add(nameWithoutExt);
-      final updatedRecord =
-          await remoteRows.update(rowID, files: [file], fields: "imgs");
+      final updatedRecord = await _runWithRetry(
+        opName: 'uploadImage.update',
+        timeout: _writeTimeout,
+        operation: () => remoteRows.update(rowID, files: [file], fields: "imgs"),
+      );
       fullNamesCache
           .addAll({rowID: List<String>.from(updatedRecord.data["imgs"])});
     } catch (e) {
@@ -337,16 +407,24 @@ class SaveRemote {
   Future<bool> deleteImage(String rowID, String imgName) async {
     try {
       final nameWithoutExt = p.basenameWithoutExtension(imgName);
-      final allFullNames = List<String>.from(
-          (await remoteRows.getOne(rowID, fields: "imgs")).data["imgs"]);
+      final row = await _runWithRetry(
+        opName: 'deleteImage.getOne',
+        timeout: _readTimeout,
+        operation: () => remoteRows.getOne(rowID, fields: "imgs"),
+      );
+      final allFullNames = List<String>.from(row.data["imgs"]);
       final fullNameToDelete =
           allFullNames.where((e) => e.contains(nameWithoutExt)).firstOrNull;
       if (fullNameToDelete == null) {
         return false;
       }
-      await remoteRows.update(rowID, body: {
-        "imgs-": [fullNameToDelete],
-      });
+      await _runWithRetry(
+        opName: 'deleteImage.update',
+        timeout: _writeTimeout,
+        operation: () => remoteRows.update(rowID, body: {
+          "imgs-": [fullNameToDelete],
+        }),
+      );
     } catch (e) {
       await checkOnline();
       rethrow;
@@ -360,7 +438,11 @@ class SaveRemote {
       if (fullNamesCache.containsKey(rowID)) {
         fullNames = fullNamesCache[rowID]!;
       } else {
-        final record = await remoteRows.getOne(rowID, fields: "imgs");
+        final record = await _runWithRetry(
+          opName: 'getImageLink.getOne',
+          timeout: _readTimeout,
+          operation: () => remoteRows.getOne(rowID, fields: "imgs"),
+        );
         fullNames = List<String>.from(record.data["imgs"]);
       }
       fullNamesCache[rowID] = fullNames;
@@ -379,7 +461,11 @@ class SaveRemote {
   }
 
   Future<void> deleteRow(String id) async {
-    await remoteRows.delete(id);
+    await _runWithRetry(
+      opName: 'deleteRow.delete',
+      timeout: _writeTimeout,
+      operation: () => remoteRows.delete(id),
+    );
   }
 
   Map<String, List<String>> fullNamesCache = {};

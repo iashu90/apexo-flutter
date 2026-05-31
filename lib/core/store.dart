@@ -35,6 +35,8 @@ class SyncResult {
 class Store<G extends Model> {
   static const String _deferredDeletePrefix = "DEL||";
   static final Set<Store<dynamic>> _instances = <Store<dynamic>>{};
+  static bool globalSyncCoordinatorEnabled = true;
+  static Future<void> _globalSyncQueue = Future<void>.value();
 
   late Future<void> loaded;
   final Function? onSyncStart;
@@ -50,6 +52,8 @@ class Store<G extends Model> {
   int lastProcessChanges = 0;
   bool? manualSyncOnly;
   final bool criticalWriteGuardEnabled;
+  final int maxSyncAttemptsPerRequest;
+  final Duration maxSyncDurationPerRequest;
   bool? isDemo;
   ObservableState<bool>? showArchived;
 
@@ -64,6 +68,8 @@ class Store<G extends Model> {
     this.onSyncEnd,
     this.manualSyncOnly,
     this.criticalWriteGuardEnabled = false,
+    this.maxSyncAttemptsPerRequest = 3,
+    this.maxSyncDurationPerRequest = const Duration(seconds: 20),
   }) : observableMap = ObservableDict() {
     _instances.add(this);
     // loading from local
@@ -480,6 +486,28 @@ class Store<G extends Model> {
 
   // ----------------------------- Public API --------------------------------
 
+  Future<T> _runThroughGlobalSyncCoordinator<T>(
+      Future<T> Function() operation) {
+    if (!Store.globalSyncCoordinatorEnabled) {
+      return operation();
+    }
+
+    final completer = Completer<T>();
+    Store._globalSyncQueue = Store._globalSyncQueue.then((_) async {
+      try {
+        final result = await operation();
+        if (!completer.isCompleted) {
+          completer.complete(result);
+        }
+      } catch (e, s) {
+        if (!completer.isCompleted) {
+          completer.completeError(e, s);
+        }
+      }
+    });
+    return completer.future;
+  }
+
   void cancelRealtimeSub() {
     if (realtimeSub != null) {
       // cancel the subscription once we go offline
@@ -500,7 +528,7 @@ class Store<G extends Model> {
 
     _syncJob = () async {
       try {
-        final res = await _syncRequest();
+        final res = await _runThroughGlobalSyncCoordinator(_syncRequest);
         lastRes = res;
         if (!completer.isCompleted) {
           completer.complete(res);
@@ -544,12 +572,33 @@ class Store<G extends Model> {
 
     lastProcessChanges = DateTime.now().millisecondsSinceEpoch;
     final syncStopwatch = Stopwatch()..start();
+    final budgetStopwatch = Stopwatch()..start();
     onSyncStart?.call();
     List<SyncResult> tries = [];
+    String? budgetException;
     while (true) {
       SyncResult result = await _syncTry();
       tries.add(result);
       if (result.exception != null) break;
+
+      if (tries.length >= maxSyncAttemptsPerRequest) {
+        budgetException =
+            "sync attempts budget reached (${maxSyncAttemptsPerRequest})";
+        break;
+      }
+      if (budgetStopwatch.elapsed > maxSyncDurationPerRequest) {
+        budgetException =
+            "sync duration budget reached (${maxSyncDurationPerRequest.inMilliseconds}ms)";
+        break;
+      }
+    }
+
+    if (budgetException != null) {
+      if (tries.isEmpty) {
+        tries.add(SyncResult(exception: budgetException));
+      } else {
+        tries.last.exception = budgetException;
+      }
     }
     syncStopwatch.stop();
 
