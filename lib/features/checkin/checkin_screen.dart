@@ -519,8 +519,11 @@ Future<void> openAppointmentJourneyDialog(
       return cached.toList(growable: false);
     }
 
-    final rows = appointments.present.values
-        .where((row) => row.patientID == appointment.patientID)
+    final rows = appointments.docs.values
+        .where((row) =>
+            row.archived != true &&
+            row.locked != true &&
+            row.patientID == appointment.patientID)
         .toList(growable: false)
       ..sort((a, b) => b.date.compareTo(a.date));
     return rows;
@@ -1056,6 +1059,79 @@ class _CheckinScreenSkeleton extends StatelessWidget {
   }
 }
 
+class _CheckinAppointmentIndex {
+  final Map<int, List<Appointment>> byDayAsc;
+  final Map<String, List<Appointment>> byPatientDesc;
+
+  const _CheckinAppointmentIndex({
+    required this.byDayAsc,
+    required this.byPatientDesc,
+  });
+
+  factory _CheckinAppointmentIndex.empty() {
+    return const _CheckinAppointmentIndex(
+      byDayAsc: <int, List<Appointment>>{},
+      byPatientDesc: <String, List<Appointment>>{},
+    );
+  }
+}
+
+class _CheckinDerivedState {
+  final bool isDoctorLogin;
+  final String effectiveSelectedDoctor;
+  final Set<String> doctorOptions;
+  final bool hasUnresolvedPatients;
+  final bool hasUnresolvedDoctors;
+  final int visibleCheckinCount;
+  final List<Appointment> filtered;
+  final Set<String> duplicatePatientIds;
+  final List<Appointment> waiting;
+  final List<Appointment> scheduled;
+  final List<Appointment> cancelled;
+  final List<Appointment> withDoctor;
+  final List<Appointment> billingList;
+  final List<Appointment> completedList;
+  final Map<String, List<Appointment>> appointmentsByPatientCache;
+
+  const _CheckinDerivedState({
+    required this.isDoctorLogin,
+    required this.effectiveSelectedDoctor,
+    required this.doctorOptions,
+    required this.hasUnresolvedPatients,
+    required this.hasUnresolvedDoctors,
+    required this.visibleCheckinCount,
+    required this.filtered,
+    required this.duplicatePatientIds,
+    required this.waiting,
+    required this.scheduled,
+    required this.cancelled,
+    required this.withDoctor,
+    required this.billingList,
+    required this.completedList,
+    required this.appointmentsByPatientCache,
+  });
+
+  factory _CheckinDerivedState.empty() {
+    return const _CheckinDerivedState(
+      isDoctorLogin: false,
+      effectiveSelectedDoctor: '__all__',
+      doctorOptions: <String>{},
+      hasUnresolvedPatients: false,
+      hasUnresolvedDoctors: false,
+      visibleCheckinCount: 0,
+      filtered: <Appointment>[],
+      duplicatePatientIds: <String>{},
+      waiting: <Appointment>[],
+      scheduled: <Appointment>[],
+      cancelled: <Appointment>[],
+      withDoctor: <Appointment>[],
+      billingList: <Appointment>[],
+      completedList: <Appointment>[],
+      appointmentsByPatientCache: <String, List<Appointment>>{},
+    );
+  }
+}
+
 class CheckinScreen extends StatefulWidget {
   const CheckinScreen({super.key});
 
@@ -1068,7 +1144,13 @@ class _CheckinScreenState extends State<CheckinScreen> {
   String _selectedDoctor = '__all__';
   Appointment? _selectedAppointment;
   Timer? _waitingTimer;
+  StreamSubscription? _appointmentsSubscription;
+  StreamSubscription? _patientsSubscription;
+  StreamSubscription? _doctorsSubscription;
   late final Future<void> _bootstrapFuture;
+  _CheckinAppointmentIndex _appointmentIndex =
+      _CheckinAppointmentIndex.empty();
+  _CheckinDerivedState _derivedState = _CheckinDerivedState.empty();
   String? _initialSyncWarning;
   final Map<String, bool> _expandedStages = {
     'waiting': true,
@@ -1080,6 +1162,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
   void initState() {
     super.initState();
     _bootstrapFuture = _initializeStores();
+    _appointmentIndex = _buildAppointmentIndex();
+    _derivedState = _computeDerivedState(_appointmentIndex);
+    _appointmentsSubscription = appointments.observableMap.stream.listen((_) {
+      _refreshAppointmentsAndDerivedState();
+    });
+    _patientsSubscription = patients.observableMap.stream.listen((_) {
+      _recomputeDerivedState();
+    });
+    _doctorsSubscription = doctors.observableMap.stream.listen((_) {
+      _recomputeDerivedState();
+    });
     _waitingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
       final now = DateTime.now();
@@ -1100,6 +1193,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
     ]);
 
     await _awaitInitialAppointmentsSync();
+    _refreshAppointmentsAndDerivedState();
   }
 
   Future<void> _awaitInitialAppointmentsSync() async {
@@ -1160,8 +1254,196 @@ class _CheckinScreenState extends State<CheckinScreen> {
 
   @override
   void dispose() {
+    _appointmentsSubscription?.cancel();
+    _patientsSubscription?.cancel();
+    _doctorsSubscription?.cancel();
     _waitingTimer?.cancel();
     super.dispose();
+  }
+
+  void _recomputeDerivedState() {
+    if (!mounted) return;
+    setState(() {
+      _derivedState = _computeDerivedState(_appointmentIndex);
+    });
+  }
+
+  void _refreshAppointmentsAndDerivedState() {
+    if (!mounted) return;
+    setState(() {
+      _appointmentIndex = _buildAppointmentIndex();
+      _derivedState = _computeDerivedState(_appointmentIndex);
+    });
+  }
+
+  _CheckinAppointmentIndex _buildAppointmentIndex() {
+    final byDayAsc = <int, List<Appointment>>{};
+    final byPatientDesc = <String, List<Appointment>>{};
+
+    for (final row in appointments.docs.values) {
+      if (row.archived == true || row.locked == true) continue;
+
+      final dayKey = _dateKey(row.date);
+      (byDayAsc[dayKey] ??= <Appointment>[]).add(row);
+
+      final patientId = row.patientID;
+      if (patientId == null || patientId.trim().isEmpty) continue;
+      (byPatientDesc[patientId] ??= <Appointment>[]).add(row);
+    }
+
+    for (final rows in byDayAsc.values) {
+      rows.sort((a, b) => a.date.compareTo(b.date));
+    }
+    for (final rows in byPatientDesc.values) {
+      rows.sort((a, b) => b.date.compareTo(a.date));
+    }
+
+    return _CheckinAppointmentIndex(
+      byDayAsc: byDayAsc,
+      byPatientDesc: byPatientDesc,
+    );
+  }
+
+  static int _dateKey(DateTime value) {
+    return value.year * 10000 + value.month * 100 + value.day;
+  }
+
+  _CheckinDerivedState _computeDerivedState(_CheckinAppointmentIndex index) {
+    final isDoctorLogin = permissions.currentRole == UserRole.doctor;
+    final todaysAppointments =
+        index.byDayAsc[_dateKey(_selectedDate)] ?? const <Appointment>[];
+
+    bool shouldHideForDoctorRole(Appointment appointment) {
+      final stage = normalizeCheckinStage(appointment.checkinStage);
+      return stage == 'scheduled' || stage == 'pending' || stage == 'cancelled';
+    }
+
+    final doctorVisibleAppointments = isDoctorLogin
+        ? todaysAppointments
+            .where((a) => !shouldHideForDoctorRole(a))
+            .toList(growable: false)
+        : todaysAppointments.toList(growable: false);
+
+    final doctorOptions = <String>{};
+    for (final appt in doctorVisibleAppointments) {
+      if (appt.operatorsIDs.isEmpty) {
+        doctorOptions.add('__unassigned__');
+      } else {
+        doctorOptions.addAll(appt.operatorsIDs);
+      }
+    }
+
+    final effectiveSelectedDoctor = isDoctorLogin &&
+            _selectedDoctor != '__all__' &&
+            _selectedDoctor != '__unassigned__' &&
+            !doctorOptions.contains(_selectedDoctor)
+        ? '__all__'
+        : _selectedDoctor;
+
+    final filtered = doctorVisibleAppointments.where((a) {
+      if (effectiveSelectedDoctor == '__all__') return true;
+      if (effectiveSelectedDoctor == '__unassigned__') {
+        return a.operatorsIDs.isEmpty;
+      }
+      return a.operatorsIDs.contains(effectiveSelectedDoctor);
+    }).toList(growable: false);
+
+    final hasUnresolvedPatients = todaysAppointments.any((a) {
+      final patientId = a.patientID;
+      if (patientId == null || patientId.trim().isEmpty) {
+        return false;
+      }
+      return patients.get(patientId) == null;
+    });
+
+    final hasUnresolvedDoctors = todaysAppointments.any((a) {
+      if (a.operatorsIDs.isEmpty) return false;
+      return a.operatorsIDs.any((id) => doctors.get(id) == null);
+    });
+
+    final appointmentsByPatientCache = index.byPatientDesc;
+
+    final visibleCheckinCount = isDoctorLogin
+        ? todaysAppointments
+            .where((a) =>
+                a.checkinStage != 'scheduled' &&
+                a.checkinStage != 'pending' &&
+                a.checkinStage != 'cancelled')
+            .length
+        : todaysAppointments.length;
+
+    final patientVisitCounts = <String, int>{};
+    for (final row in filtered) {
+      final patientId = row.patientID;
+      if (patientId == null || patientId.trim().isEmpty) continue;
+      patientVisitCounts[patientId] = (patientVisitCounts[patientId] ?? 0) + 1;
+    }
+
+    final duplicatePatientIds = patientVisitCounts.entries
+        .where((entry) => entry.value > 1)
+        .map((entry) => entry.key)
+        .toSet();
+
+    final waiting = filtered
+        .where((a) => a.checkinStage == 'waiting')
+        .toList(growable: true)
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    final scheduled = filtered
+        .where((a) => a.checkinStage == 'pending' || a.checkinStage == 'scheduled')
+        .toList(growable: true)
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    final cancelled = filtered
+        .where((a) => a.checkinStage == 'cancelled')
+        .toList(growable: true)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    final withDoctor = filtered
+        .where((a) => a.checkinStage == 'with_doctor' || a.checkinStage == 'treatment')
+        .toList(growable: true)
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    final billingList = filtered
+        .where(
+          (a) =>
+              (a.checkinStage == 'checkout' || a.checkinStage == 'billing') &&
+              !a.isDone &&
+              a.checkinStage != 'completed',
+        )
+        .toList(growable: true)
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    final completedList = filtered
+        .where((a) => a.checkinStage == 'completed' || a.isDone)
+        .toList(growable: true)
+      ..sort((a, b) {
+        final aTs = a.completedTime?.millisecondsSinceEpoch ??
+            a.checkedInAt?.millisecondsSinceEpoch ??
+            a.date.millisecondsSinceEpoch;
+        final bTs = b.completedTime?.millisecondsSinceEpoch ??
+            b.checkedInAt?.millisecondsSinceEpoch ??
+            b.date.millisecondsSinceEpoch;
+        return bTs.compareTo(aTs);
+      });
+
+    return _CheckinDerivedState(
+      isDoctorLogin: isDoctorLogin,
+      effectiveSelectedDoctor: effectiveSelectedDoctor,
+      doctorOptions: doctorOptions,
+      hasUnresolvedPatients: hasUnresolvedPatients,
+      hasUnresolvedDoctors: hasUnresolvedDoctors,
+      visibleCheckinCount: visibleCheckinCount,
+      filtered: filtered,
+      duplicatePatientIds: duplicatePatientIds,
+      waiting: waiting,
+      scheduled: scheduled,
+      cancelled: cancelled,
+      withDoctor: withDoctor,
+      billingList: billingList,
+      completedList: completedList,
+      appointmentsByPatientCache: appointmentsByPatientCache,
+    );
   }
 
   static DateTime _dateOnly(DateTime input) {
@@ -1172,6 +1454,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
     setState(() {
       _selectedDate = _dateOnly(_selectedDate.add(Duration(days: days)));
       checkinPersistedDate = _selectedDate;
+      _derivedState = _computeDerivedState(_appointmentIndex);
     });
   }
 
@@ -1189,6 +1472,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
     setState(() {
       _selectedDate = _dateOnly(picked);
       checkinPersistedDate = _selectedDate;
+      _derivedState = _computeDerivedState(_appointmentIndex);
     });
   }
 
@@ -1282,155 +1566,31 @@ class _CheckinScreenState extends State<CheckinScreen> {
         if (bootSnapshot.connectionState != ConnectionState.done) {
           return const _CheckinScreenSkeleton();
         }
+        final derived = _derivedState;
+        final isDoctorLogin = derived.isDoctorLogin;
+        final effectiveSelectedDoctor = derived.effectiveSelectedDoctor;
+        final doctorOptions = derived.doctorOptions;
+        final appointmentsByPatientCache = derived.appointmentsByPatientCache;
+        final visibleCheckinCount = derived.visibleCheckinCount;
+        final filtered = derived.filtered;
+        final duplicatePatientIds = derived.duplicatePatientIds;
+        final waiting = derived.waiting;
+        final scheduled = derived.scheduled;
+        final cancelled = derived.cancelled;
+        final withDoctor = derived.withDoctor;
+        final billingList = derived.billingList;
+        final completedList = derived.completedList;
+        final hasUnresolvedPatients = derived.hasUnresolvedPatients;
+        final hasUnresolvedDoctors = derived.hasUnresolvedDoctors;
 
-        return StreamBuilder(
-          stream: appointments.observableMap.stream,
-          builder: (context, _) {
-            return StreamBuilder(
-              stream: patients.observableMap.stream,
-              builder: (context, __) {
-                final isDoctorLogin =
-                    permissions.currentRole == UserRole.doctor;
-                final todaysAppointments = appointments.forDate(_selectedDate)
-                  ..sort((a, b) => a.date.compareTo(b.date));
+        final now = DateTime.now();
+        final isToday = _selectedDate.year == now.year &&
+            _selectedDate.month == now.month &&
+            _selectedDate.day == now.day;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isMobile = screenWidth < 760;
 
-                bool shouldHideForDoctorRole(Appointment appointment) {
-                  final stage = normalizeCheckinStage(appointment.checkinStage);
-                  return stage == 'scheduled' ||
-                      stage == 'pending' ||
-                      stage == 'cancelled';
-                }
-
-                final doctorVisibleAppointments = isDoctorLogin
-                    ? todaysAppointments
-                        .where((a) => !shouldHideForDoctorRole(a))
-                        .toList(growable: false)
-                    : todaysAppointments;
-
-                final doctorOptions = <String>{};
-                for (final appt in doctorVisibleAppointments) {
-                  if (appt.operatorsIDs.isEmpty) {
-                    doctorOptions.add('__unassigned__');
-                  } else {
-                    doctorOptions.addAll(appt.operatorsIDs);
-                  }
-                }
-
-                final effectiveSelectedDoctor = isDoctorLogin &&
-                        _selectedDoctor != '__all__' &&
-                        _selectedDoctor != '__unassigned__' &&
-                        !doctorOptions.contains(_selectedDoctor)
-                    ? '__all__'
-                    : _selectedDoctor;
-
-                final filtered = doctorVisibleAppointments.where((a) {
-                  if (effectiveSelectedDoctor == '__all__') return true;
-                  if (effectiveSelectedDoctor == '__unassigned__') {
-                    return a.operatorsIDs.isEmpty;
-                  }
-                  return a.operatorsIDs.contains(effectiveSelectedDoctor);
-                }).toList(growable: false);
-
-                final hasUnresolvedPatients = todaysAppointments.any((a) {
-                  final patientId = a.patientID;
-                  if (patientId == null || patientId.trim().isEmpty) {
-                    return false;
-                  }
-                  return patients.get(patientId) == null;
-                });
-                final hasUnresolvedDoctors = todaysAppointments.any((a) {
-                  if (a.operatorsIDs.isEmpty) return false;
-                  return a.operatorsIDs.any((id) => doctors.get(id) == null);
-                });
-
-                final appointmentsByPatientCache =
-                    <String, List<Appointment>>{};
-                for (final row in appointments.present.values) {
-                  final patientId = row.patientID;
-                  if (patientId == null || patientId.trim().isEmpty) continue;
-                  (appointmentsByPatientCache[patientId] ??= <Appointment>[])
-                      .add(row);
-                }
-                for (final rows in appointmentsByPatientCache.values) {
-                  rows.sort((a, b) => b.date.compareTo(a.date));
-                }
-
-                final visibleCheckinCount = isDoctorLogin
-                    ? todaysAppointments
-                        .where((a) =>
-                            a.checkinStage != 'scheduled' &&
-                            a.checkinStage != 'pending' &&
-                            a.checkinStage != 'cancelled')
-                        .length
-                    : todaysAppointments.length;
-
-                final patientVisitCounts = <String, int>{};
-                for (final row in filtered) {
-                  final patientId = row.patientID;
-                  if (patientId == null || patientId.trim().isEmpty) continue;
-                  patientVisitCounts[patientId] =
-                      (patientVisitCounts[patientId] ?? 0) + 1;
-                }
-                final duplicatePatientIds = patientVisitCounts.entries
-                    .where((entry) => entry.value > 1)
-                    .map((entry) => entry.key)
-                    .toSet();
-
-                final waiting = filtered
-                    .where((a) => a.checkinStage == 'waiting')
-                    .toList(growable: true)
-                  ..sort((a, b) => a.date.compareTo(b.date));
-
-                final scheduled = filtered
-                    .where((a) =>
-                        a.checkinStage == 'pending' ||
-                        a.checkinStage == 'scheduled')
-                    .toList(growable: true)
-                  ..sort((a, b) => a.date.compareTo(b.date));
-                final cancelled = filtered
-                    .where((a) => a.checkinStage == 'cancelled')
-                    .toList(growable: true)
-                  ..sort((a, b) => b.date.compareTo(a.date));
-                final withDoctor = filtered
-                    .where((a) =>
-                        a.checkinStage == 'with_doctor' ||
-                        a.checkinStage == 'treatment')
-                    .toList(growable: true)
-                  ..sort((a, b) => a.date.compareTo(b.date));
-                final billingList = filtered
-                    .where(
-                      (a) =>
-                          (a.checkinStage == 'checkout' ||
-                              a.checkinStage == 'billing') &&
-                          !a.isDone &&
-                          a.checkinStage != 'completed',
-                    )
-                    .toList(growable: true)
-                  ..sort((a, b) => a.date.compareTo(b.date));
-
-                final completedList = filtered
-                    .where(
-                      (a) => a.checkinStage == 'completed' || a.isDone,
-                    )
-                    .toList(growable: true)
-                  ..sort((a, b) {
-                    final aTs = a.completedTime?.millisecondsSinceEpoch ??
-                        a.checkedInAt?.millisecondsSinceEpoch ??
-                        a.date.millisecondsSinceEpoch;
-                    final bTs = b.completedTime?.millisecondsSinceEpoch ??
-                        b.checkedInAt?.millisecondsSinceEpoch ??
-                        b.date.millisecondsSinceEpoch;
-                    return bTs.compareTo(aTs);
-                  });
-
-                final now = DateTime.now();
-                final isToday = _selectedDate.year == now.year &&
-                    _selectedDate.month == now.month &&
-                    _selectedDate.day == now.day;
-                final screenWidth = MediaQuery.of(context).size.width;
-                final isMobile = screenWidth < 760;
-
-                final content = Container(
+        final content = Container(
                   color: AppTheme.light.scaffoldBackgroundColor,
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
@@ -1550,6 +1710,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                                         _selectedDate =
                                             _dateOnly(DateTime.now());
                                         checkinPersistedDate = _selectedDate;
+                                        _derivedState =
+                                            _computeDerivedState(_appointmentIndex);
                                       });
                                     },
                                   ),
@@ -1605,14 +1767,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               label: 'All Doctors',
                               selected: effectiveSelectedDoctor == '__all__',
                               onTap: () =>
-                                  setState(() => _selectedDoctor = '__all__'),
+                                  setState(() {
+                                _selectedDoctor = '__all__';
+                                _derivedState =
+                                    _computeDerivedState(_appointmentIndex);
+                              }),
                             ),
                             _DoctorFilterChip(
                               label: 'Unassigned',
                               selected:
                                   effectiveSelectedDoctor == '__unassigned__',
-                              onTap: () => setState(
-                                  () => _selectedDoctor = '__unassigned__'),
+                              onTap: () => setState(() {
+                                _selectedDoctor = '__unassigned__';
+                                _derivedState =
+                                    _computeDerivedState(_appointmentIndex);
+                              }),
                             ),
                             ...doctorOptions
                                 .where((id) => id != '__unassigned__')
@@ -1621,10 +1790,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               return _DoctorFilterChip(
                                 label: doctors.get(id)?.title ?? 'Unknown',
                                 selected: isSelected,
-                                onTap: () => setState(
-                                  () => _selectedDoctor =
-                                      isSelected ? '__all__' : id,
-                                ),
+                                onTap: () => setState(() {
+                                  _selectedDoctor =
+                                      isSelected ? '__all__' : id;
+                                  _derivedState =
+                                      _computeDerivedState(_appointmentIndex);
+                                }),
                               );
                             }),
                           ],
@@ -1838,10 +2009,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 }
 
                 return content;
-              },
-            );
-          },
-        );
       },
     );
   }
@@ -1869,7 +2036,9 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
     final pickedDoctorIds = await showDialog<List<String>>(
       context: context,
       builder: (dialogContext) {
-        final doctorRows = doctors.present.values.toList(growable: false)
+        final doctorRows = doctors.docs.values
+            .where((doctor) => doctor.archived != true && doctor.locked != true)
+            .toList(growable: false)
           ..sort(
               (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
         final selected = appointment.operatorsIDs.toSet();
@@ -2078,8 +2247,11 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
     final isCheckout = appointment.checkinStage == 'checkout';
     final pid = appointment.patientID;
 
-    final all = appointments.present.values
-        .where((a) => pid != null && pid.isNotEmpty && a.patientID == pid)
+    final all = appointments.docs.values
+        .where((a) {
+          if (a.archived == true || a.locked == true) return false;
+          return pid != null && pid.isNotEmpty && a.patientID == pid;
+        })
         .toList(growable: false)
       ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -2392,9 +2564,12 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                 leading: StreamBuilder(
                   stream: appointments.observableMap.stream,
                   builder: (context, _) {
-                    final latest = appointments.present.values.firstWhere(
-                        (a) => a.id == appointment.id,
-                        orElse: () => appointment);
+                    final latestDoc = appointments.docs[appointment.id];
+                    final latest = latestDoc != null &&
+                            latestDoc.archived != true &&
+                            latestDoc.locked != true
+                        ? latestDoc
+                        : appointment;
                     final paid = latest.paid;
                     return Text('\u20B9${paid.toStringAsFixed(0)}');
                   },
@@ -2902,7 +3077,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
     required String doctorId,
     required DateTime monthAnchor,
   }) {
-    final monthlyTotal = appointments.present.values.where((row) {
+    final monthlyTotal = appointments.docs.values.where((row) {
+      if (row.archived == true || row.locked == true) return false;
       if ((row.consultantDoctorID ?? '').trim() != doctorId) return false;
       if (row.date.year != monthAnchor.year ||
           row.date.month != monthAnchor.month) {
@@ -2911,7 +3087,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
       return row.priceToPayDoctor > 0;
     }).fold<double>(0, (sum, row) => sum + row.priceToPayDoctor);
 
-    final existingRows = expenses.present.values.where((expense) {
+    final existingRows = expenses.docs.values.where((expense) {
+      if (expense.archived == true || expense.locked == true) return false;
       if (expense.items.isEmpty) return false;
       if (expense.items.first.trim().toLowerCase() != 'consultant') {
         return false;
@@ -2990,7 +3167,8 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
 
     final resolvedExisting = existingScheduled ??
         (() {
-          final upcomingAppointments = appointments.present.values.where((row) {
+          final upcomingAppointments = appointments.docs.values.where((row) {
+            if (row.archived == true || row.locked == true) return false;
             if (row.id == a.id) return false;
             if (row.patientID != a.patientID) return false;
             final stage = row.checkinStage.trim().toLowerCase();
@@ -3459,21 +3637,27 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
             .clamp(0, double.infinity)
             .toDouble();
     final visitDay = DateTime(a.date.year, a.date.month, a.date.day);
-    final seenDoctorIds = appointments.present.values
+    final allPatientRows = appointments.docs.values
         .where((row) {
-          if (row.patientID != a.patientID) return false;
+          if (row.archived == true || row.locked == true) return false;
+          return row.patientID == a.patientID;
+        })
+        .toList(growable: false);
+
+    final seenDoctorIds = allPatientRows
+        .where((row) {
           final rowDay = DateTime(row.date.year, row.date.month, row.date.day);
           return rowDay == visitDay;
         })
         .expand((row) => row.operatorsIDs)
         .toSet();
-    final consultantDoctors = doctors.present.values
+    final consultantDoctors = doctors.docs.values
+        .where((doctor) => doctor.archived != true && doctor.locked != true)
         .where((doctor) => seenDoctorIds.contains(doctor.id))
         .toList(growable: false)
       ..sort((x, y) => x.title.toLowerCase().compareTo(y.title.toLowerCase()));
-    final upcomingAppointments = appointments.present.values.where((row) {
+    final upcomingAppointments = allPatientRows.where((row) {
       if (row.id == a.id) return false;
-      if (row.patientID != a.patientID) return false;
       final stage = row.checkinStage.trim().toLowerCase();
       if (stage != 'scheduled' && stage != 'pending') return false;
       return row.date.isAfter(DateTime.now());

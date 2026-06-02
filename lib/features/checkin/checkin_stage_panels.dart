@@ -65,9 +65,11 @@ class _CheckinCompletedStageScreen extends StatelessWidget {
     return StreamBuilder(
       stream: appointments.observableMap.stream,
       builder: (context, _) {
-        final upcomingForPatient = appointments.present.values
+        final upcomingForPatient = appointments.docs.values
             .where(
               (candidate) =>
+              candidate.archived != true &&
+              candidate.locked != true &&
                   (candidate.patientID ?? '').trim() ==
                       (appointment.patientID ?? '').trim() &&
                   candidate.id != appointment.id &&

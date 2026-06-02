@@ -54,8 +54,11 @@ class _CheckoutBillingSummaryPanel extends StatelessWidget {
 
     final allPatientRows = patientId.isEmpty
         ? <Appointment>[]
-        : appointments.present.values
-            .where((row) => row.patientID == patientId)
+      : appointments.docs.values
+        .where((row) =>
+          row.archived != true &&
+          row.locked != true &&
+          row.patientID == patientId)
             .toList(growable: false);
 
     final outstandingRows = includeTodayInOutstanding

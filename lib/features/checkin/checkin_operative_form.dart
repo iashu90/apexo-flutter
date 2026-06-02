@@ -37,7 +37,9 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   Set<String> _selectedTeeth = {};
   Map<String, ToothState> _teethStates = {};
   final ValueNotifier<int> _rightRailSignal = ValueNotifier<int>(0);
-  static const int _maxAppointmentsForClinicSuggestionScan = 600;
+  static const int _maxAppointmentsForClinicSuggestionScan = 250;
+  static List<String> _dailyClinicTopTreatmentsCache = const [];
+  static String? _dailyClinicTopTreatmentsDayKey;
 
   static const List<String> _consultationSubTypes = [
     'General',
@@ -314,9 +316,19 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     return PerfMarkers.track(
       'checkin.topTreatments.clinic',
       () {
+        final now = DateTime.now();
+        final dayKey = '${now.year}-${now.month}-${now.day}';
+        if (_dailyClinicTopTreatmentsDayKey == dayKey &&
+            _dailyClinicTopTreatmentsCache.isNotEmpty) {
+          return _dailyClinicTopTreatmentsCache;
+        }
+
         final counts = <String, int>{};
         var scanned = 0;
-        for (final appointment in appointments.present.values) {
+        for (final appointment in appointments.docs.values) {
+          if (appointment.archived == true || appointment.locked == true) {
+            continue;
+          }
           if (scanned >= _maxAppointmentsForClinicSuggestionScan) break;
           scanned++;
           for (final treatment in appointment.selectedTreatments) {
@@ -327,7 +339,11 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
         }
         final rows = counts.entries.toList(growable: false)
           ..sort((a, b) => b.value.compareTo(a.value));
-        return rows.take(10).map((e) => e.key).toList(growable: false);
+        final topTreatments =
+            rows.take(10).map((e) => e.key).toList(growable: false);
+        _dailyClinicTopTreatmentsCache = topTreatments;
+        _dailyClinicTopTreatmentsDayKey = dayKey;
+        return topTreatments;
       },
       data: {
         'scanLimit': _maxAppointmentsForClinicSuggestionScan,

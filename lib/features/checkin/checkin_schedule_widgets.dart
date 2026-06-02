@@ -53,7 +53,8 @@ class _InlineNextAppointmentCardState extends State<_InlineNextAppointmentCard> 
         final cancelledRows = <Appointment>[];
         final now = DateTime.now();
 
-        for (final row in appointments.present.values) {
+        for (final row in appointments.docs.values) {
+          if (row.archived == true || row.locked == true) continue;
           if (row.patientID != widget.appointment.patientID) continue;
           if (row.id == widget.appointment.id) continue;
 
