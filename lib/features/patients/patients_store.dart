@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:apexo/core/activity_logger.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/labwork/labworks_store.dart';
@@ -21,7 +19,7 @@ const _storeName = "patients";
 
 class Patients extends Store<Patient> {
   final Map<String, ({String title, String phone})> _coreSnapshot = {};
-  Timer? _integrityAuditDebounce;
+  bool _bootstrapAuditTriggered = false;
 
   Patients()
       : super(
@@ -44,10 +42,7 @@ class Patients extends Store<Patient> {
     _primeSnapshot();
     observableMap.observe((events) {
       _auditCoreFieldLoss(events);
-      _scheduleIntegrityAudit();
     });
-    appointments.observableMap.observe((_) => _scheduleIntegrityAudit());
-    labworks.observableMap.observe((_) => _scheduleIntegrityAudit());
 
     login.activators[_storeName] = () async {
       await loaded;
@@ -260,10 +255,10 @@ class Patients extends Store<Patient> {
     }
   }
 
-  void _scheduleIntegrityAudit() {
-    _integrityAuditDebounce?.cancel();
-    _integrityAuditDebounce =
-        Timer(const Duration(seconds: 2), runIntegrityAudit);
+  Future<void> triggerBootstrapIntegrityAuditOnce() async {
+    if (_bootstrapAuditTriggered) return;
+    _bootstrapAuditTriggered = true;
+    await runIntegrityAuditAsync();
   }
 
   Future<PatientIntegrityAuditResult> runIntegrityAuditAsync() async {
