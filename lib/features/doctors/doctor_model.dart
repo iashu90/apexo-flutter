@@ -84,24 +84,33 @@ extension DoctorPayments on Doctor {
 }
 
 class Doctor extends Model {
-  List<Appointment> get allAppointments {
-    return (appointments.byDoctor[id]?["all"] ?? [])
+  List<Appointment> _appointmentsForDoctor() {
+    return appointments.present.values
+        .where((appointment) => appointment.operatorsIDs.contains(id))
         .where((appointment) => appointment.archived != true || showArchived())
-        .toList()
+        .toList(growable: false);
+  }
+
+  List<Appointment> get allAppointments {
+    return _appointmentsForDoctor()
+        .toList(growable: false)
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
   List<Appointment> get upcomingAppointments {
-    return (appointments.byDoctor[id]?["upcoming"] ?? [])
-        .where((appointment) => appointment.archived != true || showArchived())
-        .toList()
+    final now = DateTime.now();
+    return _appointmentsForDoctor()
+        .where((appointment) => appointment.date.isAfter(now))
+        .toList(growable: false)
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
   List<Appointment> get pastDoneAppointments {
-    return (appointments.byDoctor[id]?["past"] ?? [])
-        .where((appointment) => appointment.archived != true || showArchived())
-        .toList()
+    final now = DateTime.now();
+    return _appointmentsForDoctor()
+        .where((appointment) =>
+            appointment.date.isBefore(now) && !appointment.isDone)
+        .toList(growable: false)
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 

@@ -31,62 +31,11 @@ class Appointments extends Store<Appointment> {
           criticalWriteGuardEnabled: true,
         );
 
-  Map<String, Map<String, List<Appointment>>> byPatient = {};
-  Map<String, Map<String, List<Appointment>>> byDoctor = {};
-
   @override
   init() {
     super.init();
 
     observableMap.observe((_) => _allPrescriptions = null);
-    observableMap.observe((_) {
-      byPatient = {};
-      byDoctor = {};
-      for (var appointment in observableMap.values) {
-        final patientID = appointment.patientID ?? "";
-        final isDone = appointment.isDone;
-        final isUpcoming = appointment.date.isAfter(DateTime.now());
-        final isPast = appointment.date.isBefore(DateTime.now());
-
-        // build patient caches
-        if (byPatient[patientID] == null) {
-          byPatient[patientID] = {
-            "upcoming": [],
-            "done": [],
-            "past": [],
-            "all": [],
-          };
-        }
-        byPatient[patientID]!["all"]!.add(appointment);
-        if (isUpcoming) {
-          byPatient[patientID]!["upcoming"]!.add(appointment);
-        } else if (isDone) {
-          byPatient[patientID]!["done"]!.add(appointment);
-        } else if (isPast) {
-          byPatient[patientID]!["past"]!.add(appointment);
-        }
-
-        // build doctor caches
-        for (var doctorId in appointment.operatorsIDs) {
-          if (byDoctor[doctorId] == null) {
-            byDoctor[doctorId] = {
-              "upcoming": [],
-              "done": [],
-              "past": [],
-              "all": [],
-            };
-          }
-          byDoctor[doctorId]!["all"]!.add(appointment);
-          if (isUpcoming) {
-            byDoctor[doctorId]!["upcoming"]!.add(appointment);
-          } else if (isDone) {
-            byDoctor[doctorId]!["done"]!.add(appointment);
-          } else if (isPast) {
-            byDoctor[doctorId]!["past"]!.add(appointment);
-          }
-        }
-      }
-    });
 
     login.activators[_storeName] = () async {
       await loaded;

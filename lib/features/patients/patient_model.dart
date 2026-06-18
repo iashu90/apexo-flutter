@@ -11,10 +11,16 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 
 class Patient extends Model {
   List<Appointment>? _allAppointmentsCached;
+  List<Appointment> _appointmentsForPatient() {
+    return appointments.present.values
+        .where((appointment) => (appointment.patientID ?? '') == id)
+        .toList(growable: false);
+  }
+
   List<Appointment> get allAppointments {
-    return _allAppointmentsCached ??= (appointments.byPatient[id]?["all"] ?? [])
+    return _allAppointmentsCached ??= _appointmentsForPatient()
         .where((appointment) => appointment.archived != true || showArchived())
-        .toList()
+        .toList(growable: false)
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
@@ -89,24 +95,28 @@ class Patient extends Model {
 
   List<Appointment>? _doneAppointmentsCached;
   List<Appointment> get doneAppointments {
-    return _doneAppointmentsCached ??= (appointments.byPatient[id]?["done"] ??
-            [])
-        .where((appointment) => appointment.archived != true || showArchived())
-        .toList()
+    final now = DateTime.now();
+    return _doneAppointmentsCached ??= allAppointments
+      .where((appointment) =>
+        !appointment.date.isAfter(now) && appointment.isDone)
+      .toList(growable: false)
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
   List<Appointment> get upcomingAppointments {
-    return (appointments.byPatient[id]?["upcoming"] ?? [])
-        .where((appointment) => appointment.archived != true || showArchived())
-        .toList()
+    final now = DateTime.now();
+    return allAppointments
+      .where((appointment) => appointment.date.isAfter(now))
+      .toList(growable: false)
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
   List<Appointment> get pastAppointments {
-    return (appointments.byPatient[id]?["past"] ?? [])
-        .where((appointment) => appointment.archived != true || showArchived())
-        .toList()
+    final now = DateTime.now();
+    return allAppointments
+      .where((appointment) =>
+        appointment.date.isBefore(now) && !appointment.isDone)
+      .toList(growable: false)
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 

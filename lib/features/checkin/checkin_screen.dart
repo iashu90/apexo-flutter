@@ -541,7 +541,6 @@ Future<void> openAppointmentJourneyDialog(
       if (currentStep == 1) {
         return _CheckinTreatmentStageScreen(
           appointment: appointment,
-          allAppointmentsForPatient: allAppointmentsForPatient,
           forcedStage: 'with_doctor',
           showInlineBottomActions: false,
           boxed: true,
@@ -564,7 +563,6 @@ Future<void> openAppointmentJourneyDialog(
     if (currentStep == 1 || currentStep == 2) {
       return _CheckinTreatmentStageScreen(
         appointment: appointment,
-        allAppointmentsForPatient: allAppointmentsForPatient,
         forcedStage: currentStep == 2 ? 'checkout' : 'with_doctor',
         showInlineBottomActions: false,
         boxed: true,
@@ -2364,7 +2362,6 @@ class _CheckinHistoryDetailsState extends State<_CheckinHistoryDetails> {
                     appointment.checkinStage == 'checkout')
                   _CheckinTreatmentStageScreen(
                     appointment: appointment,
-                    allAppointmentsForPatient: all,
                     forcedStage: appointment.checkinStage == 'checkout'
                         ? 'checkout'
                         : 'with_doctor',
@@ -4218,63 +4215,6 @@ class _CheckoutPaymentCardState extends State<_CheckoutPaymentCard> {
               color: valueColor ?? AppColors.blue7006,
               fontWeight: FontWeight.w700,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class EnhancedTeethPickerCard extends StatelessWidget {
-  final Set<String> selectedTeeth;
-  final ValueChanged<Set<String>> onChanged;
-
-  const EnhancedTeethPickerCard({
-    super.key,
-    required this.selectedTeeth,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.slate502, AppColors.violet1008],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.violet1504),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(FluentIcons.accounts, size: 13, color: AppColors.brandBlue),
-              SizedBox(width: 6),
-              Text(
-                'Teeth Map (Enhanced)',
-                style: TextStyle(
-                  color: AppColors.blue7005,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          TeethPicker(
-            selectedTeeth: selectedTeeth,
-            isAdult: selectedTeeth.every((t) =>
-                t.startsWith('1') ||
-                t.startsWith('2') ||
-                t.startsWith('3') ||
-                t.startsWith('4')),
-            onChanged: onChanged,
           ),
         ],
       ),

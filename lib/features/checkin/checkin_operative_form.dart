@@ -2,14 +2,12 @@
 
 class _CheckinOperativeForm extends StatefulWidget {
   final Appointment appointment;
-  final List<Appointment> allAppointmentsForPatient;
   final bool showInlineBottomActions;
   final String? forcedStage;
   final VoidCallback? onDraftChanged;
 
   const _CheckinOperativeForm({
     required this.appointment,
-    required this.allAppointmentsForPatient,
     this.showInlineBottomActions = false,
     this.forcedStage,
     this.onDraftChanged,
@@ -26,20 +24,18 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
   late final TextEditingController _discountController;
   Timer? _draftChangedDebounce;
   bool _discountEnabled = false;
-  bool _loadingTopTreatments = true;
   Set<String> _selectedTreatments = {};
   Set<String> _selectedConsultationTypes = {};
   Set<String> _selectedChiefComplaints = {};
-  List<String> _patientTopTreatments = const [];
-  List<String> _clinicTopTreatments = const [];
   String _visitType = 'Consultation Only';
   String? _selectedPostOpParent;
   Set<String> _selectedTeeth = {};
   Map<String, ToothState> _teethStates = {};
-  final ValueNotifier<int> _rightRailSignal = ValueNotifier<int>(0);
-  static const int _maxAppointmentsForClinicSuggestionScan = 250;
-  static List<String> _dailyClinicTopTreatmentsCache = const [];
-  static String? _dailyClinicTopTreatmentsDayKey;
+  static final List<String> _staticTreatmentSuggestions = allTreatments
+      .map((t) => t.name.trim())
+      .where((t) => t.isNotEmpty)
+      .toSet()
+      .toList(growable: false);
 
   static const List<String> _consultationSubTypes = [
     'General',
@@ -234,22 +230,12 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       }
       _teethStates[id]!.surfaces[ToothSurface.occlusal] = TreatmentType.filling;
     }
-
-    // Defer clinic-wide aggregation until after first paint to reduce initial UI jank.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _refreshTopTreatmentSuggestions();
-    });
   }
 
   @override
   void didUpdateWidget(covariant _CheckinOperativeForm oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.appointment.id != widget.appointment.id ||
-        oldWidget.allAppointmentsForPatient.length !=
-            widget.allAppointmentsForPatient.length) {
-      _refreshTopTreatmentSuggestions();
-    }
+    // No-op: dynamic top treatment aggregation was removed for performance.
   }
 
   bool _hasConsultationSelected() {
@@ -275,93 +261,14 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
     });
   }
 
-  void _bumpRightRailSignal() {
-    _rightRailSignal.value = _rightRailSignal.value + 1;
-  }
-
   @override
   void dispose() {
     _draftChangedDebounce?.cancel();
-    _rightRailSignal.dispose();
     _postOpController.dispose();
     _priceController.dispose();
     _paidController.dispose();
     _discountController.dispose();
     super.dispose();
-  }
-
-  List<String> _topTreatmentsForPatient() {
-    return PerfMarkers.track(
-      'checkin.topTreatments.patient',
-      () {
-        final counts = <String, int>{};
-        for (final appointment in widget.allAppointmentsForPatient) {
-          for (final treatment in appointment.selectedTreatments) {
-            final key = treatment.trim();
-            if (key.isEmpty) continue;
-            counts[key] = (counts[key] ?? 0) + 1;
-          }
-        }
-        final rows = counts.entries.toList(growable: false)
-          ..sort((a, b) => b.value.compareTo(a.value));
-        return rows.take(10).map((e) => e.key).toList(growable: false);
-      },
-      data: {
-        'appointments': widget.allAppointmentsForPatient.length,
-      },
-    );
-  }
-
-  List<String> _topTreatmentsAcrossClinic() {
-    return PerfMarkers.track(
-      'checkin.topTreatments.clinic',
-      () {
-        final now = DateTime.now();
-        final dayKey = '${now.year}-${now.month}-${now.day}';
-        if (_dailyClinicTopTreatmentsDayKey == dayKey &&
-            _dailyClinicTopTreatmentsCache.isNotEmpty) {
-          return _dailyClinicTopTreatmentsCache;
-        }
-
-        final counts = <String, int>{};
-        var scanned = 0;
-        for (final appointment in appointments.docs.values) {
-          if (appointment.archived == true || appointment.locked == true) {
-            continue;
-          }
-          if (scanned >= _maxAppointmentsForClinicSuggestionScan) break;
-          scanned++;
-          for (final treatment in appointment.selectedTreatments) {
-            final key = treatment.trim();
-            if (key.isEmpty) continue;
-            counts[key] = (counts[key] ?? 0) + 1;
-          }
-        }
-        final rows = counts.entries.toList(growable: false)
-          ..sort((a, b) => b.value.compareTo(a.value));
-        final topTreatments =
-            rows.take(10).map((e) => e.key).toList(growable: false);
-        _dailyClinicTopTreatmentsCache = topTreatments;
-        _dailyClinicTopTreatmentsDayKey = dayKey;
-        return topTreatments;
-      },
-      data: {
-        'scanLimit': _maxAppointmentsForClinicSuggestionScan,
-      },
-    );
-  }
-
-  Future<void> _refreshTopTreatmentSuggestions() async {
-    final patientTop =
-        PerfMarkers.track('checkin.refreshTopTreatments.patient', _topTreatmentsForPatient);
-    final clinicTop =
-        PerfMarkers.track('checkin.refreshTopTreatments.clinic', _topTreatmentsAcrossClinic);
-    if (!mounted) return;
-    setState(() {
-      _patientTopTreatments = patientTop;
-      _clinicTopTreatments = clinicTop;
-      _loadingTopTreatments = false;
-    });
   }
 
   // ignore: unused_element
@@ -486,18 +393,7 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
       );
     }
 
-    final topTreatments = _patientTopTreatments;
-    final globalTopTreatments = _clinicTopTreatments;
-    final mergedTopTreatments = <String>{
-      ...topTreatments,
-      ...globalTopTreatments,
-    }.take(10).toList(growable: false);
-
-    const sectionTitleStyle = TextStyle(
-      color: Color(0xFF2C4E76),
-      fontWeight: FontWeight.w800,
-      fontSize: 15,
-    );
+    final treatmentSuggestions = _staticTreatmentSuggestions;
 
     return SizedBox(
       width: double.infinity,
@@ -598,7 +494,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           _visitType = type;
                           a.visitType = type;
                           _scheduleAutosave();
-                          _bumpRightRailSignal();
                         });
                       },
                       onChiefComplaintsChanged: (chiefComplaints) {
@@ -607,7 +502,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           a.chiefComplaints =
                               chiefComplaints.toList(growable: false);
                           _scheduleAutosave();
-                          _bumpRightRailSignal();
                         });
                       },
                     ),
@@ -626,7 +520,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           }
                           a.selectedTeeth = teeth.toList(growable: false);
                           _scheduleAutosave();
-                          _bumpRightRailSignal();
                         });
                       },
                     ),
@@ -635,13 +528,10 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                       initialTreatments: _selectedTreatments,
                       initialSubTreatments: _selectedConsultationTypes,
                       initialPriceText: _priceController.text,
-                      loadingTopTreatments: _loadingTopTreatments,
-                      topTreatments: topTreatments,
-                      mergedTopTreatments: mergedTopTreatments,
+                      treatmentSuggestions: treatmentSuggestions,
                       onDiagnosisChanged: (diagnosis) {
                         a.diagnosis = diagnosis.toList(growable: false);
                         _scheduleAutosave();
-                        _bumpRightRailSignal();
                       },
                       onTreatmentChanged: (treatments, subTreatments) {
                         _selectedTreatments = treatments;
@@ -651,7 +541,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                         a.subTreatments =
                             subTreatments.toList(growable: false);
                         _scheduleAutosave();
-                        _bumpRightRailSignal();
                       },
                       onPriceChanged: (price, priceText) {
                         a.price = price;
@@ -659,7 +548,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           _priceController.text = priceText;
                         }
                         _scheduleAutosave();
-                        _bumpRightRailSignal();
                       },
                     ),
                   ],
@@ -678,7 +566,6 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                           _postOpController.text = notes;
                         }
                         _scheduleAutosave();
-                        _bumpRightRailSignal();
                       },
                     ),
                     if (widget.showInlineBottomActions) ...[
@@ -738,23 +625,18 @@ class _CheckinOperativeFormState extends State<_CheckinOperativeForm> {
                   ],
                 );
 
-                final rightRail = ValueListenableBuilder<int>(
-                  valueListenable: _rightRailSignal,
-                  builder: (context, _, __) {
-                    PerfMarkers.track('checkin.build.rightRail', () {});
-                    final scheduler = _InlineNextAppointmentCard(
-                      appointment: a,
-                      includeCancelledSection: true,
-                    );
-                    final todaySummary = _buildTodaySummaryCard(a);
-                    return Column(
-                      children: [
-                        scheduler,
-                        const SizedBox(height: 10),
-                        todaySummary,
-                      ],
-                    );
-                  },
+                final rightRail = PerfMarkers.track(
+                  'checkin.build.rightRail',
+                  () => Column(
+                    children: [
+                      _InlineNextAppointmentCard(
+                        appointment: a,
+                        includeCancelledSection: true,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildTodaySummaryCard(a),
+                    ],
+                  ),
                 );
 
                 if (constraints.maxWidth >= 1180) {
@@ -1163,9 +1045,7 @@ class _DiagnosisTreatmentPricingSection extends StatefulWidget {
   final Set<String> initialTreatments;
   final Set<String> initialSubTreatments;
   final String initialPriceText;
-  final bool loadingTopTreatments;
-  final List<String> topTreatments;
-  final List<String> mergedTopTreatments;
+  final List<String> treatmentSuggestions;
   final ValueChanged<Set<String>> onDiagnosisChanged;
   final void Function(Set<String> treatments, Set<String> subTreatments)
       onTreatmentChanged;
@@ -1176,9 +1056,7 @@ class _DiagnosisTreatmentPricingSection extends StatefulWidget {
     required this.initialTreatments,
     required this.initialSubTreatments,
     required this.initialPriceText,
-    required this.loadingTopTreatments,
-    required this.topTreatments,
-    required this.mergedTopTreatments,
+    required this.treatmentSuggestions,
     required this.onDiagnosisChanged,
     required this.onTreatmentChanged,
     required this.onPriceChanged,
@@ -1340,16 +1218,11 @@ class _DiagnosisTreatmentPricingSectionState
               _emitTreatmentChange();
             },
           ),
-          if (widget.loadingTopTreatments) ...[
-            const SizedBox(height: 8),
-            const ProgressRing(strokeWidth: 2.2),
-          ] else if (widget.mergedTopTreatments.isNotEmpty) ...[
+          if (widget.treatmentSuggestions.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(
-              widget.topTreatments.isNotEmpty
-                  ? 'Top 10 treatments (includes patient history):'
-                  : 'Top 10 provided treatments:',
-              style: const TextStyle(
+            const Text(
+              'Treatment suggestions:',
+              style: TextStyle(
                 color: Color(0xFF5A7397),
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1359,7 +1232,7 @@ class _DiagnosisTreatmentPricingSectionState
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: widget.mergedTopTreatments
+              children: widget.treatmentSuggestions
                   .map(
                     (t) => AppButton(
                       label: t,

@@ -2,7 +2,6 @@ part of 'checkin_screen.dart';
 
 class _CheckinTreatmentStageScreen extends StatelessWidget {
   final Appointment appointment;
-  final List<Appointment> allAppointmentsForPatient;
   final String forcedStage;
   final bool showInlineBottomActions;
   final bool boxed;
@@ -11,7 +10,6 @@ class _CheckinTreatmentStageScreen extends StatelessWidget {
 
   const _CheckinTreatmentStageScreen({
     required this.appointment,
-    required this.allAppointmentsForPatient,
     required this.forcedStage,
     this.showInlineBottomActions = false,
     this.boxed = false,
@@ -24,7 +22,6 @@ class _CheckinTreatmentStageScreen extends StatelessWidget {
     final content = SingleChildScrollView(
       child: _CheckinOperativeForm(
         appointment: appointment,
-        allAppointmentsForPatient: allAppointmentsForPatient,
         showInlineBottomActions: showInlineBottomActions,
         forcedStage: forcedStage,
         onDraftChanged: onDraftChanged,
