@@ -2,7 +2,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/common_widgets/text_util.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 class PatientDetailsTable extends StatefulWidget {
   final List<ReportDetailRow> rows;
